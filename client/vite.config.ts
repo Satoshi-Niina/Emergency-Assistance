@@ -23,11 +23,11 @@ export default defineConfig(({ command, mode }) => {
     NODE_ENV: env.NODE_ENV
   });
 
-  // APIのベースURLを環境変数から取得（VITE_API_BASEを使用）
+  // APIのベースURLを環境変数から取得（統合サーバー用）
   const apiBaseUrl =
     env.VITE_API_BASE ||
     env.VITE_API_BASE_URL ||
-    (command === 'serve' ? 'http://localhost:8000' : 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net');
+    (command === 'serve' ? 'http://localhost:8081' : '/api');
   const serverPort = parseInt(env.PORT || '3003');
   const clientPort = parseInt(env.CLIENT_PORT || '5175');
 
@@ -86,7 +86,7 @@ export default defineConfig(({ command, mode }) => {
       }
     },
     build: {
-      outDir: 'dist',
+      outDir: '../server/public',
       assetsDir: 'assets',
       sourcemap: false,
       minify: 'terser',

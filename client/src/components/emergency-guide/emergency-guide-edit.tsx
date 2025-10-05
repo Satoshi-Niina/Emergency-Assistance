@@ -348,7 +348,7 @@ const EmergencyGuideEdit: React.FC = () => {
 
         // 統一API設定を使用 - flows APIを使用（確実に動作するエンドポイント）
         const { buildApiUrl } = await import('../../lib/api-unified');
-        const apiUrl = buildApiUrl(`/flows${cacheBuster}`);
+        const apiUrl = buildApiUrl(`/emergency-flow/list${cacheBuster}`);
         
         console.log('🌐 フロー一覧API URL:', apiUrl);
         

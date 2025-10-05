@@ -140,6 +140,7 @@ export default function ChatPage() {
   useEffect(() => {
     fetchMachineTypes();
     fetchKnowledgeData();
+    loadAiAssistSettings(); // AI支援設定を初期化時に読み込み
   }, []);
 
   // 機種データが更新された時にフィルタリングリストも更新
@@ -277,8 +278,43 @@ export default function ChatPage() {
     questions: string[];
   } | null>(null);
 
+  // AI支援カスタマイズ設定
+  const [aiAssistSettings, setAiAssistSettings] = useState({
+    initialPrompt: '何か問題がありましたか？お困りの事象を教えてください！',
+    conversationStyle: 'frank',
+    questionFlow: {
+      step1: '具体的な症状を教えてください',
+      step2: 'いつ頃から発生していますか？',
+      step3: '作業環境や状況を教えてください',
+      step4: '他に気になることはありますか？',
+      step5: '緊急度を教えてください'
+    },
+    branchingConditions: {
+      timeCheck: true,
+      detailsCheck: true,
+      toolsCheck: true,
+      safetyCheck: true
+    },
+    responsePattern: 'step_by_step',
+    escalationTime: 20,
+    customInstructions: '',
+    enableEmergencyContact: true
+  });
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // AI支援設定の読み込み
+  const loadAiAssistSettings = () => {
+    try {
+      const saved = localStorage.getItem('aiAssistSettings');
+      if (saved) {
+        setAiAssistSettings(JSON.parse(saved));
+      }
+    } catch (_error) {
+      // 設定読み込みエラー（デフォルト値を使用）
+    }
   };
 
   // 追加: 機種一覧を取得する関数（設定UIと同じAPIを使用）
@@ -315,13 +351,22 @@ export default function ChatPage() {
       if (response.ok) {
         const result = await response.json();
         console.log('✅ 機種一覧取得結果:', result);
-        if (result.success && Array.isArray(result.data)) {
-          console.log('✅ 機種一覧設定完了:', result.data.length, '件');
-          console.log('✅ 機種データ:', result.data);
-          setMachineTypes(result.data);
-          setFilteredMachineTypes(result.data); // 初期表示用にも設定
+        if (result.success) {
+          // APIレスポンス形式に対応（machineTypesキーにデータが入っている）
+          const typesData = result.machineTypes || result.data || [];
+          console.log('✅ 機種一覧設定完了:', typesData.length, '件');
+          console.log('✅ 機種データ:', typesData);
+          
+          // データ形式を統一（machine_type_nameフィールドに統一）
+          const formattedData = typesData.map((type: any) => ({
+            id: type.id,
+            machine_type_name: type.name || type.machine_type_name || type.category
+          }));
+          
+          setMachineTypes(formattedData);
+          setFilteredMachineTypes(formattedData); // 初期表示用にも設定
 
-          if (result.data.length === 0) {
+          if (formattedData.length === 0) {
             console.log('⚠️ 機種データが0件です');
           }
         } else {
@@ -452,7 +497,7 @@ export default function ChatPage() {
 
         // 統一API設定を使用
         const { buildApiUrl } = await import('../lib/api-unified');
-        const apiUrl = buildApiUrl(`/machines/machines?type_id=${typeId}`);
+        const apiUrl = buildApiUrl(`/machines?type_id=${typeId}`);
         console.log('🔍 機械番号一覧取得URL:', apiUrl);
 
         const response = await fetch(apiUrl, {
@@ -472,15 +517,24 @@ export default function ChatPage() {
           const result = await response.json();
           console.log('✅ 機械番号一覧取得結果:', result);
           if (result.success) {
-            console.log('✅ 機械番号一覧設定完了:', result.data.length, '件');
-            console.log('✅ 機械番号データ:', result.data);
-            setMachines(result.data);
-            setFilteredMachines(result.data); // 初期表示用
+            // APIレスポンス形式に対応（machinesキーにデータが入っている）
+            const machinesData = result.machines || result.data || [];
+            console.log('✅ 機械番号一覧設定完了:', machinesData.length, '件');
+            console.log('✅ 機械番号データ:', machinesData);
+            
+            // データ形式を統一（machine_numberフィールドに統一）
+            const formattedMachines = machinesData.map((machine: any) => ({
+              id: machine.id,
+              machine_number: machine.machine_number
+            }));
+            
+            setMachines(formattedMachines);
+            setFilteredMachines(formattedMachines); // 初期表示用
 
             // 機械番号データ取得完了のデバッグ情報
             console.log('🔧 機械番号取得後の状態:', {
-              machinesCount: result.data.length,
-              machines: result.data,
+              machinesCount: formattedMachines.length,
+              machines: formattedMachines,
               machineNumberInput,
               selectedMachineNumber,
               showMachineNumberSuggestions,
@@ -619,7 +673,7 @@ export default function ChatPage() {
 
   // 追加: Q&Aモードの初期化（動的質問生成システムに変更済み）
 
-  // AI支援時間表示のためのuseEffect
+  // AI支援時間表示とエスカレーション機能のためのuseEffect
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
@@ -628,6 +682,23 @@ export default function ChatPage() {
         const now = new Date();
         const elapsed = Math.floor((now.getTime() - aiSupportStartTime.getTime()) / 1000);
         setElapsedTime(elapsed);
+        
+        // エスカレーション時間をチェック（カスタム設定対応）
+        const elapsedMinutes = Math.floor(elapsed / 60);
+        if (aiAssistSettings.enableEmergencyContact && 
+            elapsedMinutes >= aiAssistSettings.escalationTime && 
+            elapsedMinutes % 5 === 0) { // 5分ごとに通知
+          
+          const escalationMessage = {
+            id: Date.now().toString(),
+            content: `🚨 **救援要請の検討**\n\nAI支援開始から${elapsedMinutes}分が経過しました。\n\n**技術支援センター:**\n📞 0123-456-789\n\n**または**\n現場の専門家に連絡することをお勧めします。\n\n安全を最優先に行動してください。`,
+            isAiResponse: true,
+            timestamp: new Date(),
+            type: 'escalation_notice',
+          };
+
+          setMessages((prev: any) => [...prev, escalationMessage]);
+        }
       }, 1000);
     }
     
@@ -636,26 +707,29 @@ export default function ChatPage() {
         clearInterval(interval);
       }
     };
-  }, [aiSupportMode, aiSupportStartTime]);
+  }, [aiSupportMode, aiSupportStartTime, aiAssistSettings]);
 
-  // AI支援開始（シンプル化版）
+  // AI支援開始（カスタマイズ対応版）
   const handleStartAiSupport = async () => {
     try {
+      // AI支援設定を読み込み
+      loadAiAssistSettings();
+      
       // AI支援モードを開始
       setAiSupportMode(true);
       setAiSupportStartTime(new Date());
       setElapsedTime(0);
 
-      // シンプルな初期メッセージを送信
+      // カスタマイズされた初期メッセージを送信
       const aiSupportMessage = {
         id: Date.now().toString(),
-        content: '何か問題がありましたか？お困りの事象を教えてください！',
+        content: aiAssistSettings.initialPrompt,
         isAiResponse: true,
         timestamp: new Date(),
         type: 'ai_support',
       };
 
-      setMessages(prev => [...prev, aiSupportMessage]);
+      setMessages((prev: any) => [...prev, aiSupportMessage]);
 
       toast({
         title: 'AI支援開始',
@@ -869,10 +943,26 @@ export default function ChatPage() {
 
         console.log('✅ サーバー送信成功:', result);
 
+        // ナレッジベース自動更新の情報を含む成功メッセージ
+        const knowledgeUpdateInfo = result.knowledgeUpdateScheduled 
+          ? ' ナレッジベースに自動追加されます。'
+          : '';
+
         toast({
           title: '送信成功',
-          description: `チャット内容をサーバーに送信しました。(${messages.filter(msg => msg.content && msg.content.trim()).length}件のメッセージ)${machineInfoText}`,
+          description: `チャット内容をサーバーに送信しました。(${messages.filter(msg => msg.content && msg.content.trim()).length}件のメッセージ)${machineInfoText}${knowledgeUpdateInfo}`,
         });
+
+        // ナレッジベース更新が有効な場合は追加の通知
+        if (result.knowledgeUpdateScheduled) {
+          setTimeout(() => {
+            toast({
+              title: '🧠 AIナレッジベース',
+              description: 'この故障履歴が自動的にAIの学習データに追加されました。次回から同様の問題に対してより正確なサポートが可能になります。',
+              duration: 6000,
+            });
+          }, 2000);
+        }
 
         // 送信完了後にチャットをクリア
         await clearChatHistory();
@@ -1280,38 +1370,83 @@ export default function ChatPage() {
     }
   };
 
-  // 段階的応急処置フローに基づくAI応答生成
+  // 段階的応急処置フローに基づくAI応答生成（カスタマイズ対応）
   const generateStepByStepResponse = async (userInput: string): Promise<string> => {
     try {
-      // ハードコードされた質問リスト（確実に1つの質問のみを表示）
-      const hardcodedQuestion = getHardcodedQuestion(userInput, emergencyStep, problemType);
-      if (hardcodedQuestion) {
-        console.log('✅ Using hardcoded question:', hardcodedQuestion);
+      // カスタム設定からの質問を取得
+      const customQuestion = getCustomQuestion(userInput, emergencyStep);
+      if (customQuestion) {
         // ステップの更新
-        updateEmergencyStep(userInput, hardcodedQuestion);
-        return hardcodedQuestion;
+        updateEmergencyStep(userInput, customQuestion);
+        return applyConversationStyle(customQuestion);
       }
 
-      console.log('⚠️ No hardcoded question found, using fallback...');
-      
       // フォールバック: 基本的な質問を返す
       const fallbackQuestions = [
-        "応急処置する時間がありますか？",
-        "問題の詳細を教えてください",
-        "他に症状はありますか？",
-        "応急処置を試してみてください"
+        aiAssistSettings.questionFlow.step1,
+        aiAssistSettings.questionFlow.step2,
+        aiAssistSettings.questionFlow.step3,
+        aiAssistSettings.questionFlow.step4,
+        aiAssistSettings.questionFlow.step5
       ];
       
       const fallbackQuestion = fallbackQuestions[emergencyStep % fallbackQuestions.length];
-      console.log('🔄 Using fallback question:', fallbackQuestion);
       
       // ステップの更新
       updateEmergencyStep(userInput, fallbackQuestion);
       
-      return fallbackQuestion;
-    } catch (error) {
-      console.error('AI支援応答生成エラー:', error);
+      return applyConversationStyle(fallbackQuestion);
+    } catch (_error) {
       return '申し訳ございません。現在AI支援の応答を生成できません。しばらく時間をおいてから再度お試しください。';
+    }
+  };
+
+  // カスタム設定に基づく質問を取得
+  const getCustomQuestion = (userInput: string, step: number): string | null => {
+    const lowerInput = userInput.toLowerCase();
+    
+    // ステップに応じてカスタム質問を返す
+    switch (step) {
+      case 0:
+        return aiAssistSettings.questionFlow.step1;
+      case 1:
+        return aiAssistSettings.questionFlow.step2;
+      case 2:
+        // 分岐条件をチェック
+        if (aiAssistSettings.branchingConditions.timeCheck && 
+            (lowerInput.includes('急') || lowerInput.includes('すぐ'))) {
+          return '時間はありますか？';
+        }
+        return aiAssistSettings.questionFlow.step3;
+      case 3:
+        if (aiAssistSettings.branchingConditions.detailsCheck) {
+          return '詳細を教えていただけますか？';
+        }
+        return aiAssistSettings.questionFlow.step4;
+      case 4:
+        if (aiAssistSettings.branchingConditions.toolsCheck) {
+          return '必要な工具はありますか？';
+        }
+        return aiAssistSettings.questionFlow.step5;
+      default:
+        if (aiAssistSettings.branchingConditions.safetyCheck) {
+          return '安全に作業できる状況ですか？';
+        }
+        return null;
+    }
+  };
+
+  // 会話スタイルを適用
+  const applyConversationStyle = (question: string): string => {
+    switch (aiAssistSettings.conversationStyle) {
+      case 'frank':
+        return question.replace(/ください/g, 'くださいね').replace(/ますか/g, 'ますか？');
+      case 'business':
+        return `恐れ入りますが、${question}をお聞かせいただけますでしょうか。`;
+      case 'technical':
+        return `技術的確認として、${question}`;
+      default:
+        return question;
     }
   };
 

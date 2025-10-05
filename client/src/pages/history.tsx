@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Search,
   FileText,
@@ -51,7 +51,7 @@ import ChatExportReport from '../components/report/chat-export-report';
 
 // 画像ユーティリティ関数
 const API_BASE = import.meta.env.DEV
-  ? 'http://localhost:8000'
+  ? 'http://localhost:8081'
   : import.meta.env.VITE_API_BASE_URL || window.location.origin;
 
 async function fetchDetailFile(name: string) {
@@ -148,6 +148,17 @@ const HistoryPage: React.FC = () => {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
 
+  // 削除確認ダイアログの状態
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    show: boolean;
+    id: string;
+    title: string;
+  }>({
+    show: false,
+    id: '',
+    title: '',
+  });
+
   // 印刷機能の状態
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [printMode, setPrintMode] = useState<'table' | 'report'>('table');
@@ -156,6 +167,10 @@ const HistoryPage: React.FC = () => {
   const [showReport, setShowReport] = useState(false);
   const [selectedReportData, setSelectedReportData] = useState<any>(null);
   const [selectedFileName, setSelectedFileName] = useState<string>('');
+
+  // 機械故障報告書の状態
+  const [showMachineFailureReport, setShowMachineFailureReport] = useState(false);
+  const [machineFailureReportData, setMachineFailureReportData] = useState<any>(null);
 
   // 機種・機械番号マスターデータ（編集UI用 - PostgreSQLから）
   const [machineData, setMachineData] = useState<MachineData>({
@@ -173,6 +188,8 @@ const HistoryPage: React.FC = () => {
   });
 
   const [searchFilterLoading, setSearchFilterLoading] = useState(false);
+  const lastApiCallRef = useRef<number>(0);
+  const isInitialLoadedRef = useRef<boolean>(false);
 
   // アイテム選択ハンドラー
   const handleItemSelect = (itemId: string, isSelected: boolean) => {
@@ -300,31 +317,7 @@ const HistoryPage: React.FC = () => {
     console.log('🔍 machineData状態変化:', machineData);
   }, [machineData]);
 
-  // データ取得（サーバーAPIから取得）
-  useEffect(() => {
-    const initializeData = async () => {
-      try {
-        console.log('🔍 データ初期化開始');
-        setLoading(true);
-        await Promise.all([
-          fetchHistoryData().catch(error => {
-            console.error('履歴データ取得エラー:', error);
-          }),
-          fetchMachineDataFromAPI().catch(error => {
-            console.error('機種データ取得エラー:', error);
-          }),
-        ]);
-        console.log('🔍 データ初期化完了');
-      } catch (error) {
-        console.error('データ初期化エラー:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    console.log('🔍 useEffect実行');
-    initializeData();
-  }, []);
+  // データ取得（サーバーAPIから取得） - この処理は初期ロードに統合済み
 
   // 機種・機械番号マスターデータ取得
   const fetchMachineDataFromAPI = async () => {
@@ -418,23 +411,39 @@ const HistoryPage: React.FC = () => {
     }
   };
 
-  const fetchHistoryData = async (page: number = 1) => {
+  const fetchHistoryData = useCallback(async (page: number = 1) => {
     try {
       setLoading(true);
 
+      // レート制限チェック
+      const now = Date.now();
+      if (lastApiCallRef.current && now - lastApiCallRef.current < 1000) {
+        console.log('🔍 APIリクエスト制限中...');
+        return;
+      }
+      lastApiCallRef.current = now;
+
+      // 現在のフィルター値を取得
+      const currentFilters = {
+        machineType: filters.machineType,
+        machineNumber: filters.machineNumber,
+        searchText: filters.searchText,
+        searchDate: filters.searchDate
+      };
+
       // サーバー側でフィルタリングを行う
       const params = new URLSearchParams();
-      if (filters.machineType)
-        params.append('machineType', filters.machineType);
-      if (filters.machineNumber)
-        params.append('machineNumber', filters.machineNumber);
-      if (filters.searchText) params.append('searchText', filters.searchText);
-      if (filters.searchDate) params.append('searchDate', filters.searchDate);
+      if (currentFilters.machineType)
+        params.append('machineType', currentFilters.machineType);
+      if (currentFilters.machineNumber)
+        params.append('machineNumber', currentFilters.machineNumber);
+      if (currentFilters.searchText) params.append('searchText', currentFilters.searchText);
+      if (currentFilters.searchDate) params.append('searchDate', currentFilters.searchDate);
       params.append('limit', '20');
       params.append('offset', ((page - 1) * 20).toString());
 
       const { buildApiUrl } = await import('../lib/api-unified');
-      const requestUrl = buildApiUrl('/history/machine-data');
+      const requestUrl = buildApiUrl('/history/export-files');
       console.log('🔍 APIリクエストURL:', requestUrl);
       
       const response = await fetch(requestUrl);
@@ -452,60 +461,60 @@ const HistoryPage: React.FC = () => {
         total: data.total
       });
 
-      if (data.success && data.data) {
-        console.log('🔍 取得件数:', data.data.length);
+      // デバッグ用にローカルストレージにも保存
+      localStorage.setItem('debug_api_response', JSON.stringify(data, null, 2));
 
-        // 機種・機械番号データの確認
-        data.data.forEach((item: any, index: number) => {
+      if (Array.isArray(data)) {
+        console.log('🔍 取得件数:', data.length);
+
+        // エクスポートファイルデータの確認
+        data.forEach((item: any, index: number) => {
           console.log(`🔍 アイテム ${index + 1}:`, {
             fileName: item.fileName,
-            machineType: item.machineType,
-            machineNumber: item.machineNumber,
-            machineInfo: item.machineInfo,
+            title: item.title,
+            chatId: item.chatId,
           });
         });
 
-               // 機械故障履歴ファイルを履歴アイテムとして変換
-               const updatedItems = data.data.map((file: any) => {
+               // エクスポートファイルを履歴アイテムとして変換
+               const updatedItems = data.map((file: any) => {
+                 // titleはサーバーから返されたものを使用
+                 const displayTitle = file.title || 'タイトルなし';
+                 
+                 // JSONデータから詳細情報を取得
+                 const content = file.content || {};
+                 const machineType = content.machineType || file.machineType || '';
+                 const machineNumber = content.machineNumber || file.machineNumber || '';
+                 const problemDescription = content.problemDescription || content.answer || '';
+                 
                  // SupportHistoryItem型に変換
                  const convertedItem: SupportHistoryItem = {
-                   id: file.id,
-                   chatId: file.id,
-                   fileName: file.name,
-                   machineType: file.machineType || 'Unknown',
-                   machineNumber: file.machineNumber || 'Unknown',
-                   title: file.title || file.name,
+                   id: file.chatId || file.fileName,
+                   chatId: file.chatId || file.fileName,
+                   fileName: file.fileName,
+                   machineType: machineType,
+                   machineNumber: machineNumber,
+                   title: displayTitle,
                    createdAt: file.createdAt,
-                   lastModified: file.createdAt,
-                   extractedComponents: file.extractedComponents || [],
-                   extractedSymptoms: file.extractedSymptoms || [],
-                   possibleModels: file.possibleModels || [],
-                   machineInfo: `${file.machineType} - ${file.machineNumber}`,
+                   lastModified: file.lastModified,
+                   extractedComponents: content.extractedComponents || [],
+                   extractedSymptoms: content.extractedSymptoms || [],
+                   possibleModels: content.possibleModels || [],
+                   machineInfo: {
+                     machineTypeName: machineType,
+                     machineNumber: machineNumber
+                   },
                    jsonData: {
-                     id: file.id,
-                     name: file.name,
-                     title: file.title || file.name,
-                     filePath: file.filePath,
-                     size: file.size,
-                     createdAt: file.createdAt,
-                     category: file.category || 'history',
-                     machineType: file.machineType || 'Unknown',
-                     machineNumber: file.machineNumber || 'Unknown',
-                     problemDescription: file.problemDescription || '',
-                     extractedComponents: file.extractedComponents || [],
-                     extractedSymptoms: file.extractedSymptoms || [],
-                     possibleModels: file.possibleModels || [],
-                     conversationHistory: file.conversationHistory || [],
-                     chatData: null,
-                     savedImages: file.hasImages ? [`http://localhost:8000/api/local-image/${file.id}.jpg`] : [],
-                     metadata: {
-                       fileName: file.name,
-                       filePath: file.filePath,
-                       size: file.size,
-                       category: file.category || 'history',
-                       hasImages: file.hasImages || false,
-                       imageCount: file.imageCount || 0
-                     },
+                     title: displayTitle,
+                     problemDescription: problemDescription,
+                     machineType: machineType,
+                     machineNumber: machineNumber,
+                     extractedComponents: content.extractedComponents || [],
+                     extractedSymptoms: content.extractedSymptoms || [],
+                     possibleModels: content.possibleModels || [],
+                     conversationHistory: content.conversationHistory || [],
+                     savedImages: content.savedImages || [],
+                     fileName: file.fileName
                    },
                  };
 
@@ -527,12 +536,12 @@ const HistoryPage: React.FC = () => {
         
         setHistoryItems(updatedItems);
         setFilteredItems(updatedItems);
-        setTotalPages(Math.ceil(data.total / 20));
+        setTotalPages(Math.ceil(updatedItems.length / 20));
         setCurrentPage(page);
         
         console.log('🔍 設定後の状態:', {
           updatedItemsLength: updatedItems.length,
-          totalPages: Math.ceil(data.total / 20)
+          totalPages: Math.ceil(updatedItems.length / 20)
         });
       } else {
         console.log('🔍 データ取得成功せず:', data);
@@ -552,12 +561,16 @@ const HistoryPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // 初期ロード
+  // 初期ロード（一度だけ実行）
   useEffect(() => {
-    fetchHistoryData(1);
-    fetchSearchFilterData(); // 履歴検索用フィルターデータを取得
+    if (!isInitialLoadedRef.current) {
+      isInitialLoadedRef.current = true;
+      fetchHistoryData(1);
+      fetchSearchFilterData(); // 履歴検索用フィルターデータを取得
+      // fetchMachineDataFromAPI(); // 機種データは編集時に必要に応じて取得
+    }
   }, []); // 初期ロード時のみ実行
 
   // フィルター変更時の処理
@@ -604,13 +617,24 @@ const HistoryPage: React.FC = () => {
   };
 
   const handleDeleteHistory = async (id: string) => {
-    if (window.confirm('この履歴を削除しますか？')) {
-      try {
-        await deleteHistory(id);
-        fetchHistoryData(currentPage);
-      } catch (error) {
-        console.error('履歴削除エラー:', error);
-      }
+    try {
+      setLoading(true);
+      await deleteHistory(id);
+      
+      // 削除後、現在のページを再読み込み
+      await fetchHistoryData(currentPage);
+      
+      // 削除確認ダイアログを閉じる
+      setDeleteConfirm({
+        show: false,
+        id: '',
+        title: '',
+      });
+    } catch (error) {
+      console.error('履歴削除エラー:', error);
+      alert('履歴の削除に失敗しました。');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -3729,11 +3753,7 @@ const HistoryPage: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {console.log('🔍 レンダリング時の状態:', {
-            filteredItemsLength: filteredItems.length,
-            historyItemsLength: historyItems.length,
-            loading: loading
-          })}
+
           {filteredItems.length === 0 ? (
             <div className='text-center py-8'>
               <FileText className='h-12 w-12 text-gray-400 mx-auto mb-4' />
@@ -3788,11 +3808,11 @@ const HistoryPage: React.FC = () => {
                       // 新しいフォーマットのデータ構造に合わせて表示
                       const jsonData = item.jsonData;
 
-                      // 事象データを抽出（ファイル名から優先的に取得、次にJSONデータから）
-                      let incidentTitle = '事象なし';
+                      // タイトルを優先的にJSONデータのtitleフィールドから取得
+                      let incidentTitle = jsonData?.title || '';
 
-                      // まずファイル名から事象内容を抽出
-                      if (item.fileName) {
+                      // titleがない場合は、ファイル名から事象内容を抽出
+                      if (!incidentTitle && item.fileName) {
                         const fileNameParts = item.fileName.split('_');
                         if (fileNameParts.length > 1) {
                           // ファイル名の最初の部分が事象内容
@@ -3800,25 +3820,24 @@ const HistoryPage: React.FC = () => {
                         }
                       }
 
-                      // ファイル名から取得できない場合は、JSONデータから取得
-                      if (incidentTitle === '事象なし') {
-                        incidentTitle =
-                          jsonData?.title || jsonData?.question || '事象なし';
-                        if (
-                          incidentTitle === '事象なし' &&
-                          jsonData?.chatData?.messages
-                        ) {
+                      // まだタイトルが取得できない場合は、その他のフィールドから取得
+                      if (!incidentTitle) {
+                        incidentTitle = jsonData?.question || '事象なし';
+                        if (incidentTitle === '事象なし' && jsonData?.chatData?.messages) {
                           // 従来フォーマットの場合、ユーザーメッセージから事象を抽出
-                          const userMessages =
-                            jsonData.chatData.messages.filter(
-                              (msg: any) => !msg.isAiResponse
-                            );
+                          const userMessages = jsonData.chatData.messages.filter(
+                            (msg: any) => !msg.isAiResponse
+                          );
                           if (userMessages.length > 0) {
                             // 最初のユーザーメッセージを事象として使用
-                            incidentTitle =
-                              userMessages[0].content || '事象なし';
+                            incidentTitle = userMessages[0].content || '事象なし';
                           }
                         }
+                      }
+                      
+                      // まだタイトルがない場合は、デフォルト値を設定
+                      if (!incidentTitle) {
+                        incidentTitle = '事象なし';
                       }
 
                       const problemDescription =
@@ -3840,23 +3859,7 @@ const HistoryPage: React.FC = () => {
                         item.machineNumber ||
                         '';
 
-                      // デバッグ情報
-                      console.log(`🔍 アイテム表示: ${item.fileName}`, {
-                        machineType,
-                        machineNumber,
-                        jsonDataMachineType: jsonData?.machineType,
-                        jsonDataMachineNumber: jsonData?.machineNumber,
-                        itemMachineType: item.machineType,
-                        itemMachineNumber: item.machineNumber,
-                      });
 
-                      const messageCount =
-                        jsonData?.metadata?.total_messages ||
-                        jsonData?.chatData?.messages?.length ||
-                        jsonData?.messageCount ||
-                        0;
-                      const exportType = jsonData?.exportType || 'manual_send';
-                      const fileName = jsonData?.metadata?.fileName || '';
 
                       return (
                         <tr
@@ -3959,6 +3962,22 @@ const HistoryPage: React.FC = () => {
                               >
                                 <Settings className='h-3 w-3' />
                                 編集
+                              </Button>
+                              <Button
+                                variant='outline'
+                                size='sm'
+                                onClick={() => {
+                                  setDeleteConfirm({
+                                    show: true,
+                                    id: item.id,
+                                    title: incidentTitle,
+                                  });
+                                }}
+                                className='flex items-center gap-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50'
+                                title='履歴を削除'
+                              >
+                                <Trash2 className='h-3 w-3' />
+                                削除
                               </Button>
                             </div>
                           </td>
@@ -4289,99 +4308,118 @@ const HistoryPage: React.FC = () => {
                       <label className='block text-sm font-medium mb-2'>
                         機種
                       </label>
-                      {machineDataLoading ? (
-                        <div className='h-10 flex items-center px-3 border border-gray-300 rounded'>
-                          読み込み中...
-                        </div>
-                      ) : (
-                        <Select
-                          value={editingItem.machineType || ''}
-                          onValueChange={value => {
-                            console.log('機種を変更:', value);
-                            setEditingItem({
-                              ...editingItem,
+                      {/* 既存の機種があれば表示、なければ選択肢を提供 */}
+                      <Select
+                        value={editingItem.machineType || ''}
+                        onValueChange={value => {
+                          console.log('機種を変更:', value);
+                          setEditingItem({
+                            ...editingItem,
+                            machineType: value,
+                            jsonData: {
+                              ...editingItem.jsonData,
                               machineType: value,
-                              jsonData: {
-                                ...editingItem.jsonData,
-                                machineType: value,
-                              },
-                            });
-                          }}
-                        >
+                            },
+                          });
+                        }}
+                      >
                           <SelectTrigger>
-                            <SelectValue placeholder='機種を選択' />
+                            <SelectValue 
+                              placeholder={
+                                editingItem.machineType 
+                                  ? editingItem.machineType 
+                                  : '機種を選択'
+                              }
+                            />
                           </SelectTrigger>
                           <SelectContent>
-                            {/* デバッグ: Select要素の値を確認 */}
-                            {(() => {
-                              console.log(
-                                '🔍 機種Select - editingItem.machineType:',
-                                editingItem.machineType
-                              );
-                              console.log(
-                                '🔍 機種Select - machineData.machineTypes:',
-                                machineData.machineTypes
-                              );
-                              return null;
-                            })()}
-                            {machineData.machineTypes.map(machineType => (
-                              <SelectItem
-                                key={machineType.id}
-                                value={machineType.machineTypeName}
-                              >
-                                {machineType.machineTypeName}
+                            {/* 既存の機種がある場合は最初に表示 */}
+                            {editingItem.machineType && (
+                              <SelectItem value={editingItem.machineType}>
+                                {editingItem.machineType} (現在の値)
                               </SelectItem>
-                            ))}
+                            )}
+                            {/* マスターデータからの選択肢 */}
+                            {machineDataLoading ? (
+                              <SelectItem value="loading" disabled>
+                                マスターデータ読み込み中...
+                              </SelectItem>
+                            ) : (
+                              machineData.machineTypes
+                                ?.filter(mt => mt?.machineTypeName && mt.machineTypeName !== editingItem.machineType)
+                                ?.map(machineType => (
+                                  <SelectItem
+                                    key={machineType.id || `machine-type-${Date.now()}-${Math.random()}`}
+                                    value={machineType.machineTypeName || ''}
+                                  >
+                                    {machineType.machineTypeName || '不明'}
+                                  </SelectItem>
+                                )) || []
+                            )}
                           </SelectContent>
                         </Select>
-                      )}
                     </div>
                     <div>
                       <label className='block text-sm font-medium mb-2'>
                         機械番号
                       </label>
-                      {machineDataLoading ? (
-                        <div className='h-10 flex items-center px-3 border border-gray-300 rounded'>
-                          読み込み中...
-                        </div>
-                      ) : (
-                        <Select
-                          value={editingItem.machineNumber || ''}
-                          onValueChange={value => {
-                            console.log('機械番号を変更:', value);
-                            setEditingItem({
-                              ...editingItem,
+                      {/* 既存の機械番号があれば表示、なければ選択肢を提供 */}
+                      <Select
+                        value={editingItem.machineNumber || ''}
+                        onValueChange={value => {
+                          console.log('機械番号を変更:', value);
+                          setEditingItem({
+                            ...editingItem,
+                            machineNumber: value,
+                            jsonData: {
+                              ...editingItem.jsonData,
                               machineNumber: value,
-                              jsonData: {
-                                ...editingItem.jsonData,
-                                machineNumber: value,
-                              },
-                            });
-                          }}
-                        >
+                            },
+                          });
+                        }}
+                      >
                           <SelectTrigger>
-                            <SelectValue placeholder='機械番号を選択' />
+                            <SelectValue 
+                              placeholder={
+                                editingItem.machineNumber 
+                                  ? editingItem.machineNumber 
+                                  : '機械番号を選択'
+                              }
+                            />
                           </SelectTrigger>
                           <SelectContent>
-                            {machineData.machines
-                              .filter(
-                                machine =>
-                                  !editingItem.machineType ||
-                                  machine.machineTypeName ===
-                                    editingItem.machineType
-                              )
-                              .map(machine => (
-                                <SelectItem
-                                  key={machine.id}
-                                  value={machine.machineNumber}
-                                >
-                                  {machine.machineNumber} (
-                                  {machine.machineTypeName})
-                                </SelectItem>
-                              ))}
+                            {/* 既存の機械番号がある場合は最初に表示 */}
+                            {editingItem.machineNumber && (
+                              <SelectItem value={editingItem.machineNumber}>
+                                {editingItem.machineNumber} (現在の値)
+                              </SelectItem>
+                            )}
+                            {/* マスターデータからの選択肢 */}
+                            {machineDataLoading ? (
+                              <SelectItem value="loading" disabled>
+                                マスターデータ読み込み中...
+                              </SelectItem>
+                            ) : (
+                              machineData.machines
+                                ?.filter(
+                                  machine =>
+                                    machine?.machineNumber &&
+                                    machine?.machineTypeName &&
+                                    (!editingItem.machineType ||
+                                      machine.machineTypeName === editingItem.machineType) &&
+                                    machine.machineNumber !== editingItem.machineNumber
+                                )
+                                ?.map(machine => (
+                                  <SelectItem
+                                    key={machine.id || `machine-${Date.now()}-${Math.random()}`}
+                                    value={machine.machineNumber || ''}
+                                  >
+                                    {machine.machineNumber || '不明'} ({machine.machineTypeName || '不明'})
+                                  </SelectItem>
+                                )) || []
+                            )}
                           </SelectContent>
                         </Select>
-                      )}
                     </div>
                     <div>
                       <label className='block text-sm font-medium mb-2'>
@@ -4572,10 +4610,10 @@ const HistoryPage: React.FC = () => {
                           <SelectValue placeholder='ステータスを選択' />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value='報告済み'>報告済み</SelectItem>
-                          <SelectItem value='対応中'>対応中</SelectItem>
-                          <SelectItem value='完了'>完了</SelectItem>
-                          <SelectItem value='保留'>保留</SelectItem>
+                          <SelectItem value="報告済み">報告済み</SelectItem>
+                          <SelectItem value="対応中">対応中</SelectItem>
+                          <SelectItem value="完了">完了</SelectItem>
+                          <SelectItem value="保留">保留</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -4638,6 +4676,44 @@ const HistoryPage: React.FC = () => {
                   </Button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 削除確認ダイアログ */}
+      {deleteConfirm.show && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
+          <div className='bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4'>
+            <h3 className='text-lg font-semibold mb-4 text-red-600'>履歴削除の確認</h3>
+            <p className='text-gray-700 mb-6'>
+              以下の履歴を削除しますか？この操作は取り消せません。
+            </p>
+            <div className='bg-gray-50 p-3 rounded-lg mb-6'>
+              <p className='font-medium text-sm text-gray-800'>
+                {deleteConfirm.title}
+              </p>
+            </div>
+            <div className='flex justify-end gap-3'>
+              <Button
+                variant='outline'
+                onClick={() =>
+                  setDeleteConfirm({
+                    show: false,
+                    id: '',
+                    title: '',
+                  })
+                }
+              >
+                キャンセル
+              </Button>
+              <Button
+                variant='destructive'
+                onClick={() => handleDeleteHistory(deleteConfirm.id)}
+                className='bg-red-600 hover:bg-red-700'
+              >
+                削除する
+              </Button>
             </div>
           </div>
         </div>

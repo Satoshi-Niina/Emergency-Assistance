@@ -43,7 +43,7 @@ export default function SystemDiagnosticPage() {
 
   // APIのベースURLを取得
   const apiBaseUrl =
-    import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+    import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
 
   const checkDatabaseConnection = async () => {
     setIsCheckingDb(true);

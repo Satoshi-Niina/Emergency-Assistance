@@ -27,7 +27,7 @@ import ChatExportReport from '../components/report/chat-export-report';
 
 // 画像ユーティリティ関数
 const API_BASE = import.meta.env.DEV
-  ? 'http://localhost:8000'
+  ? 'http://localhost:8081'
   : import.meta.env.VITE_API_BASE_URL || window.location.origin;
 
 async function fetchDetailFile(name: string) {
@@ -304,13 +304,38 @@ export default function HistoryPage() {
     fetchHistoryData(page);
   };
 
-  const handleDeleteHistory = async (id: string) => {
-    if (window.confirm('この履歴を削除しますか？')) {
+  const handleDeleteHistory = async (id: string, title?: string) => {
+    const displayTitle = title || id;
+    if (window.confirm(`「${displayTitle}」を削除しますか？\n\nこの操作は取り消せません。関連する画像ファイルも同時に削除されます。`)) {
       try {
-        await deleteHistory(id);
-        fetchHistoryData(currentPage);
+        console.log('🗑️ 履歴削除開始:', id);
+        
+        // 統一APIを使用して削除リクエスト
+        const { buildApiUrl } = await import('../lib/api-unified');
+        const response = await fetch(buildApiUrl(`/history/${id}`), {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          console.log('✅ 履歴削除成功:', result);
+          
+          // 成功メッセージを表示
+          alert(`削除が完了しました。\n・JSONファイル: ${result.deletedFile}\n・関連画像: ${result.deletedImages}件`);
+          
+          // 一覧を再読み込み
+          await fetchHistoryData(currentPage);
+        } else {
+          throw new Error(result.error || '削除に失敗しました');
+        }
       } catch (error) {
-        console.error('履歴削除エラー:', error);
+        console.error('❌ 履歴削除エラー:', error);
+        alert(`削除に失敗しました: ${error.message || error}`);
       }
     }
   };
@@ -491,7 +516,8 @@ export default function HistoryPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleDeleteHistory(item.id)}
+                        onClick={() => handleDeleteHistory(item.id, item.title)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
                       >
                         削除
                       </Button>

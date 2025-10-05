@@ -119,29 +119,30 @@ export default function UsersPage() {
     }
   }, [user, authLoading, navigate]);
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setIsLoading(true);
-        setQueryError(null);
-        const userData = await api.get('/users');
-        if (userData.success && userData.data) {
-          setUsers(userData.data);
-          setFilteredUsers(userData.data);
-        } else {
-          console.error('❌ 予期しないユーザーデータ形式:', userData);
-          throw new Error('ユーザーデータの形式が不正です');
-        }
-      } catch (error) {
-        console.error('❌ ユーザー一覧取得エラー:', error);
-        setQueryError(
-          error instanceof Error ? error : new Error('Unknown error')
-        );
-      } finally {
-        setIsLoading(false);
+  // ユーザー一覧取得
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      setQueryError(null);
+      const userData = await api.get('/users');
+      if (userData.success && userData.data) {
+        setUsers(userData.data);
+        setFilteredUsers(userData.data);
+      } else {
+        console.error('❌ 予期しないユーザーデータ形式:', userData);
+        throw new Error('ユーザーデータの形式が不正です');
       }
-    };
+    } catch (error) {
+      console.error('❌ ユーザー一覧取得エラー:', error);
+      setQueryError(
+        error instanceof Error ? error : new Error('Unknown error')
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchUsers();
   }, [user]);
 
@@ -290,10 +291,7 @@ export default function UsersPage() {
         return;
       }
 
-      const result = await api.get(`/users/${editUser.id}`, {
-        method: 'PUT',
-        body: JSON.stringify(editUser),
-      });
+      const result = await api.put(`/users/${editUser.id}`, editUser);
       console.log('✅ ユーザー更新成功:', result);
 
       toast({
@@ -304,10 +302,23 @@ export default function UsersPage() {
       setShowEditUserDialog(false);
       resetEditUserForm();
 
-      // ユーザー一覧を再取得
-      window.location.reload();
+      // ユーザー一覧を再取得（ページリロードではなく状態更新）
+      await fetchUsers();
     } catch (error) {
       console.error('❌ ユーザー更新エラー:', error);
+      
+      // 認証エラーの場合は特別な処理
+      if (error instanceof Error && error.message === 'AUTHENTICATION_ERROR') {
+        toast({
+          title: '認証エラー',
+          description: 'セッションが期限切れです。再度ログインしてください。',
+          variant: 'destructive',
+        });
+        // 認証エラーの場合はログアウトしてログイン画面に遷移
+        navigate('/login');
+        return;
+      }
+      
       toast({
         title: 'エラー',
         description:
@@ -330,9 +341,7 @@ export default function UsersPage() {
     try {
       if (!selectedUserId) return;
 
-      const result = await api.get(`/users/${selectedUserId}`, {
-        method: 'DELETE',
-      });
+      const result = await api.delete(`/users/${selectedUserId}`);
       console.log('✅ ユーザー削除成功:', result);
 
       toast({
@@ -343,8 +352,8 @@ export default function UsersPage() {
       setShowDeleteConfirmDialog(false);
       setSelectedUserId(null);
 
-      // ユーザー一覧を再取得
-      window.location.reload();
+      // ユーザー一覧を再取得（ページリロードではなく状態更新）
+      await fetchUsers();
     } catch (error) {
       console.error('❌ ユーザー削除エラー:', error);
       toast({

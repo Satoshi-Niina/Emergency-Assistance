@@ -28,8 +28,8 @@ export const API_BASE_URL = (() => {
     return 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net';
   }
 
-  // 開発環境でも絶対URLを使用（localhost:8000）
-  return 'http://localhost:8000';
+  // 開発環境でも絶対URLを使用（localhost:8081）
+  return 'http://localhost:8081';
 })();
 
 console.log('🔧 API設定詳細:', {

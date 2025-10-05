@@ -97,9 +97,32 @@ export default function TroubleshootingPage() {
     queryKey: ['/api/emergency-flow/list'],
     queryFn: async () => {
       // emergency-flow APIを使用
-      const response = await fetch('http://localhost:8000/api/emergency-flow/list');
+      const response = await fetch('http://localhost:8081/api/emergency-flow/list');
       const data = await response.json();
-      return data.success ? data.data : [];
+      console.log('🔍 フロー一覧取得結果:', data);
+      
+      if (data.success) {
+        // APIレスポンス形式に対応（flowsキーにデータが入っている）
+        const flowsData = data.flows || data.data || [];
+        console.log('🔍 フローデータ:', flowsData);
+        
+        // データ形式を統一（titleフィールドに統一）
+        const formattedFlows = flowsData.map((flow: any) => ({
+          id: flow.id.toString(),
+          title: flow.name || flow.title,
+          description: flow.description || '',
+          category: flow.category || 'その他',
+          keywords: flow.triggerKeywords || [],
+          steps: flow.steps || [],
+          createdAt: flow.createdAt || new Date().toISOString(),
+          updatedAt: flow.updatedAt || new Date().toISOString()
+        }));
+        
+        console.log('🔍 フォーマット済みフロー:', formattedFlows);
+        return formattedFlows;
+      }
+      
+      return [];
     },
   });
 
@@ -158,7 +181,7 @@ export default function TroubleshootingPage() {
     mutationFn: async (flowId: string) => {
       console.log('🗑️ フロー削除開始:', flowId);
       
-      const response = await fetch(`/api/emergency-flow/${flowId}`, {
+      const response = await fetch(`http://localhost:8081/api/emergency-flow/${flowId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -251,7 +274,7 @@ export default function TroubleshootingPage() {
   };
 
   const handleOpenEditor = (flowId: string) => {
-    apiRequest('GET', `/api/emergency-flow/detail/${flowId}`)
+    fetch(`http://localhost:8081/api/emergency-flow/detail/${flowId}`)
       .then(res => res.json())
       .then(fullFlowData => {
         setSelectedFlow(fullFlowData);

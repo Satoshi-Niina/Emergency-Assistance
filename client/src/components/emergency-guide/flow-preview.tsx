@@ -7,7 +7,7 @@ import {
 } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { ArrowLeft, ArrowRight, X } from 'lucide-react';
-import { convertImageUrl } from '../../lib/image-utils.ts';
+import { convertImageUrl } from '../../lib/image-utils';
 
 interface Step {
   id: string;
@@ -15,7 +15,10 @@ interface Step {
   description: string;
   message: string;
   type: 'step' | 'decision';
-  images?: string[]; // ファイル名の配列
+  images?: Array<{
+    url: string;
+    fileName: string;
+  }>; // 画像オブジェクトの配列
   conditions?: Array<{
     label: string;
     nextId: string;
@@ -74,11 +77,20 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
         console.log('📊 フロープレビューAPIレスポンス:', responseData);
 
         // サーバーからのレスポンス構造に合わせてデータを取得
-        // サーバーが直接フローデータを返すように修正したので、successプロパティをチェック
-        const data = responseData.success ? responseData : responseData;
+        // プレビュー用APIは直接フローデータを返す
+        const data = responseData;
         console.log('📋 フロープレビュー処理対象データ:', data);
 
-        setFlowData(data);
+        // データ構造をFlowDataインターフェースに合わせる
+        const flowData: FlowData = {
+          id: data.id.toString(),
+          title: data.title || data.name,
+          description: data.description || '',
+          steps: data.steps || []
+        };
+        
+        console.log('📋 変換済みフローデータ:', flowData);
+        setFlowData(flowData);
       } catch (err) {
         console.error('Flow data fetch error:', err);
         setError('フローデータの取得に失敗しました');
@@ -253,11 +265,14 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
                     typeof img === 'object' && img !== null
                       ? (img as { url: string; fileName: string }).fileName
                       : String(img);
-                  console.log('🖼️ 画像表示デバッグ:', {
+                  console.log('🖼️ [FlowPreview] 画像表示デバッグ:', {
                     index,
                     fileName: altText,
                     convertedUrl: imageUrl,
                     originalImg: img,
+                    imgType: typeof img,
+                    hasUrl: typeof img === 'object' && img !== null && !!(img as any).url,
+                    urlValue: typeof img === 'object' && img !== null ? (img as any).url : img
                   });
                   return (
                     <div key={index} className='relative'>
@@ -276,9 +291,20 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
                           console.error('❌ 画像読み込みエラー:', {
                             fileName: altText,
                             convertedUrl: imageUrl?.substring(0, 100) + '...',
+                            originalImg: img,
                             error: e,
                             target: e.currentTarget,
                           });
+                          // フォールバック処理
+                          if (typeof img === 'object' && img !== null) {
+                            const imgElement = e.currentTarget;
+                            const fileName = (img as { url: string; fileName: string }).fileName;
+                            if (fileName) {
+                              const fallbackUrl = `http://localhost:8081/api/emergency-flow/image/${fileName}`;
+                              console.log('🔄 フォールバック画像URL:', fallbackUrl);
+                              imgElement.src = fallbackUrl;
+                            }
+                          }
                           const target = e.currentTarget;
                           target.style.display = 'none';
 

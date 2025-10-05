@@ -53,14 +53,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthChecked(true);
         return;
       }
+      
       try {
         setIsLoading(true);
-
-        // 初回起動時は認証状態確認をスキップ（ログイン画面を表示）
-        console.log('ℹ️ 初回起動: ログイン画面を表示');
+        
+        // 開発時は強制的にログイン画面を表示（認証状態をリセット）
+        // console.log('🔐 開発モード: ログイン画面を強制表示');
+        localStorage.removeItem('authToken');
+        sessionStorage.removeItem('authToken');
+        // クッキーもクリア
+        document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
         setUser(null);
+        
+        // 以下のコードは一時的にコメントアウト（自動認証を無効化）
+        /*
+        // localStorageからトークンを確認
+        const token = localStorage.getItem('authToken');
+        if (token) {
+          console.log('🔐 トークンが見つかりました、認証状態を確認中...');
+          try {
+            // トークンが有効かどうか確認
+            const userData = await getCurrentUser();
+            if (userData && userData.success && userData.user) {
+              console.log('✅ トークンが有効、ユーザー情報を復元');
+              setUser({
+                id: userData.user.id,
+                username: userData.user.username,
+                displayName: userData.user.displayName || userData.user.display_name,
+                role: userData.user.role,
+                department: userData.user.department,
+              });
+            } else {
+              console.log('❌ トークンが無効、クリア');
+              localStorage.removeItem('authToken');
+              setUser(null);
+            }
+          } catch (error) {
+            console.log('❌ トークン検証エラー、クリア:', error);
+            localStorage.removeItem('authToken');
+            setUser(null);
+          }
+        } else {
+          console.log('ℹ️ トークンが見つかりません、ログイン画面を表示');
+          setUser(null);
+        }
+        */
       } catch (error) {
-        console.warn('⚠️ 認証状態確認エラー（正常な動作）:', error);
+        console.warn('⚠️ 認証状態確認エラー:', error);
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -93,6 +132,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('🔍 ログインレスポンス:', userData);
 
       if (userData && userData.success && userData.user) {
+        // トークンをlocalStorageに保存
+        if (userData.token) {
+          localStorage.setItem('authToken', userData.token);
+          console.log('✅ トークンをlocalStorageに保存');
+        }
+        
         setUser({
           id: userData.user.id,
           username: userData.user.username,
@@ -122,21 +167,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('❌ ログアウトエラー:', error);
     } finally {
+      // トークンをlocalStorageから削除
+      localStorage.removeItem('authToken');
+      console.log('✅ トークンをlocalStorageから削除');
       setUser(null);
     }
   };
 
-  console.log('🔧 AuthProvider レンダリング:', {
-    user: user ? user.username : null,
-    isLoading,
-    authChecked,
-    authMode,
-    timestamp: new Date().toISOString(),
-  });
+  // console.log('🔧 AuthProvider レンダリング:', {
+  //   user: user ? user.username : null,
+  //   isLoading,
+  //   authChecked,
+  //   authMode,
+  //   timestamp: new Date().toISOString(),
+  // });
 
   // 認証状態確認中は常にローディング画面を表示（nullレンダリング禁止）
   if (isLoading) {
-    console.log('⏳ AuthProvider: 認証状態確認中、ローディング画面を表示');
+    // console.log('⏳ AuthProvider: 認証状態確認中、ローディング画面を表示');
     return (
       <AuthContext.Provider value={{ user, isLoading, login, logout, authMode }}>
         <div className='flex justify-center items-center h-screen'>
@@ -149,7 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  console.log('✅ AuthProvider: 認証状態確認完了、子コンポーネントを表示');
+  // console.log('✅ AuthProvider: 認証状態確認完了、子コンポーネントを表示');
   return (
     <AuthContext.Provider value={{ user, isLoading, login, logout, authMode }}>
       {children}

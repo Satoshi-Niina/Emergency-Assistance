@@ -73,7 +73,7 @@ export async function getImageUrl(imageId: string): Promise<string> {
   } catch (error) {
     console.error('Failed to get image SAS URL:', error);
     // フォールバック: 従来のAPIエンドポイント
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
     return `${API_BASE_URL}/api/images/${imageId}`;
   }
 }

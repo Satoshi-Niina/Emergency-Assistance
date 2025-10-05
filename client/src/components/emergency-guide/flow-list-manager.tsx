@@ -6,17 +6,9 @@ import {
   CardTitle,
 } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../../components/ui/table';
-import { ScrollArea } from '../../components/ui/scroll-area';
+
 import { useToast } from '../../hooks/use-toast.ts';
-import { Edit, Eye, Trash2, RefreshCw, Plus, Loader2 } from 'lucide-react';
+import { Edit, Eye, Trash2, RefreshCw, Loader2 } from 'lucide-react';
 import { buildApiUrl } from '../../lib/api/config.ts';
 import { useAuth } from '../../context/auth-context.tsx';
 import {
@@ -42,13 +34,11 @@ interface FlowData {
 interface FlowListManagerProps {
   onEdit: (flowId: string) => void;
   onPreview: (flowId: string) => void;
-  onNew: () => void;
 }
 
 const FlowListManager: React.FC<FlowListManagerProps> = ({
   onEdit,
   onPreview,
-  onNew,
 }) => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -137,14 +127,30 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       const data = await response.json();
       console.log('📊 取得したデータ:', data);
 
-      // APIレスポンスの構造に合わせてデータを取得
+      // APIレスポンスの構造に合わせてデータを取得  
       let flows = [];
       if (data.success && data.data) {
         console.log('✅ dataプロパティからデータを取得');
-        flows = data.data;
+        flows = data.data.map(flow => ({
+          id: flow.content?.id || flow.id,
+          title: flow.content?.title || flow.title || flow.name || 'タイトルなし',
+          description: flow.content?.description || flow.description,
+          fileName: flow.filename || flow.fileName,
+          createdAt: flow.content?.createdAt || flow.createdAt || new Date().toISOString(),
+          updatedAt: flow.content?.updatedAt || flow.updatedAt,
+          steps: flow.steps
+        }));
       } else if (data.success && data.flows) {
         console.log('✅ flowsプロパティからデータを取得');
-        flows = data.flows;
+        flows = data.flows.map(flow => ({
+          id: flow.content?.id || flow.id,
+          title: flow.content?.title || flow.title || flow.name || 'タイトルなし',
+          description: flow.content?.description || flow.description,
+          fileName: flow.filename || flow.fileName,
+          createdAt: flow.content?.createdAt || flow.createdAt || new Date().toISOString(),
+          updatedAt: flow.content?.updatedAt || flow.updatedAt,
+          steps: flow.steps
+        }));
       } else if (Array.isArray(data)) {
         console.log('✅ 配列として直接データを取得');
         flows = data;
@@ -193,6 +199,8 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
     console.log('🔄 手動更新開始');
     fetchFlowList();
   };
+
+
 
   const handleDeleteClick = (flowId: string) => {
     setFlowToDelete(flowId);
@@ -347,7 +355,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
                       <tr key={flow.id} className='hover:bg-gray-50'>
                         <td className='border border-gray-300 p-2'>
                           <div className='break-words leading-tight text-sm'>
-                            {flow.title || flow.fileName || 'タイトルなし'}
+                            {flow.title || flow.description?.substring(0, 30) + '...' || flow.fileName || flow.id || 'タイトルなし'}
                           </div>
                         </td>
                         <td className='border border-gray-300 p-2 text-xs text-gray-500'>

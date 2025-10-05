@@ -61,17 +61,20 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({
         description: `キーワード「${keywordsInput}」からフローを生成しています...`,
       });
 
-      // まず高度なフロー生成を試行（OpenAI APIキーが必要）
+      // まず統合サーバーのChatGPT APIを使用してフロー生成を試行
       let response;
       try {
         response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL}/api/flow-generator/generate-from-keywords`,
+          `${import.meta.env.VITE_API_BASE_URL}/api/chatgpt`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ keywords: keywordsInput }),
+            body: JSON.stringify({ 
+              message: `以下のキーワードから建設機械の応急処置フローを生成してください：${keywordsInput}`,
+              type: 'flow-generation'
+            }),
           }
         );
       } catch (error) {
@@ -114,13 +117,16 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({
           // 基本的なフロー生成にフォールバック
           try {
             const fallbackResponse = await fetch(
-              `${import.meta.env.VITE_API_BASE_URL}/api/flow-generator/keywords`,
+              `${import.meta.env.VITE_API_BASE_URL}/api/chatgpt`,
               {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ keywords: keywordsInput }),
+                body: JSON.stringify({ 
+                  message: `簡易版：キーワード「${keywordsInput}」の応急処置手順を教えてください`,
+                  type: 'troubleshooting'
+                }),
               }
             );
 

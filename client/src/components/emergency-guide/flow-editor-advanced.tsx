@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -16,9 +16,7 @@ import {
   Trash2,
   X,
   Save,
-  ArrowUp,
-  ArrowDown,
-  Image as ImageIcon,
+
   Upload,
   GripVertical,
 } from 'lucide-react';
@@ -29,10 +27,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from '../../components/ui/context-menu';
-import { convertImageUrl } from '../../lib/image-utils';
-import { buildApiUrl } from '../../lib/api/config.ts';
-import { storage } from '../../lib/api-unified';
-import { saveFlowData, validateAndCleanFlowData, getFlowImageInfo, FlowData } from '../../lib/flow-save-manager';
+import { saveFlowData, FlowData } from '../../lib/flow-save-manager';
 
 interface Step {
   id: string;
@@ -51,14 +46,7 @@ interface Step {
   }>;
 }
 
-interface FlowData {
-  id: string;
-  title: string;
-  description: string;
-  steps: Step[];
-  createdAt?: string;
-  updatedAt?: string;
-}
+// FlowDataは flow-save-manager からimport
 
 interface FlowEditorAdvancedProps {
   flowId?: string;
@@ -76,6 +64,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     id: flowId || uuidv4(),
     title: flowId ? 'フロー編集' : '新規フロー',
     description: '',
+    triggerKeywords: [],
     steps: [],
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -95,7 +84,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
 
       // 統一APIクライアントを使用
       const { buildApiUrl } = await import('../../lib/api-unified');
-      const detailUrl = buildApiUrl(`/emergency-flow/${flowId}`);
+      const detailUrl = buildApiUrl(`/emergency-flow/detail/${flowId}`);
       
       console.log('🌐 フロー詳細API URL:', detailUrl);
       
@@ -122,8 +111,23 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
       const result = await response.json();
       console.log('📊 emergency-flow APIレスポンス:', result);
       
-      // サーバーが直接フローデータを返すように修正したので、successプロパティをチェック
-      const data = result.success ? result : result;
+      // サーバーが success: true, data: {...} 形式で返すように修正されているかチェック
+      const data = result.success ? result.data : result;
+
+      // データの完全性チェック
+      if (!data || !data.id) {
+        throw new Error('不完全なフローデータが返されました');
+      }
+
+      console.log('🔍 受信したデータの構造:', {
+        hasId: !!data.id,
+        hasTitle: !!data.title,
+        hasDescription: !!data.description,
+        hasSteps: !!data.steps,
+        stepsType: Array.isArray(data.steps) ? 'array' : typeof data.steps,
+        stepsLength: data.steps?.length,
+        dataKeys: Object.keys(data)
+      });
 
       // データ構造の正規化
       if (data.steps && Array.isArray(data.steps)) {
@@ -133,6 +137,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
           conditions: step.conditions || [],
         }));
       } else {
+        console.warn('⚠️ stepsが配列ではありません、空配列で初期化します');
         data.steps = [];
       }
 
@@ -519,36 +524,29 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
 
   // 保存処理
   const handleSave = async () => {
+    console.log('🚀 handleSave 関数が呼び出されました');
     try {
       setIsLoading(true);
+      console.log('⏳ isLoading を true に設定');
 
-      console.log('💾 flow-editor-advanced 保存開始:', {
-        flowId: flowData.id,
-        stepsCount: flowData.steps.length,
-        stepsWithImages: flowData.steps.filter(step => step.images && step.images.length > 0).length,
-        allStepsImages: flowData.steps.map(step => ({
-          stepId: step.id,
-          stepTitle: step.title,
-          imagesCount: step.images?.length || 0,
-          images: step.images?.map(img => ({
-            fileName: img.fileName,
-            url: img.url?.substring(0, 50) + '...'
-          })) || []
-        }))
+      console.log('💾 保存開始:', {
+        id: flowData.id,
+        title: flowData.title,
+        stepsCount: flowData.steps.length
       });
-
+      
       // 統一された保存処理を使用
-      const result = await saveFlowData(flowData, {
+      const flowDataForSave = {
+        ...flowData,
+        triggerKeywords: flowData.triggerKeywords || [flowData.title]
+      };
+      const result = await saveFlowData(flowDataForSave, {
         validateImages: true,
         logDetails: true
       });
 
       if (result.success) {
-        console.log('✅ flow-editor-advanced 保存成功:', {
-          flowId: result.data?.id || flowData.id,
-          title: result.data?.title || flowData.title,
-          stepsCount: result.data?.steps?.length || flowData.steps.length,
-        });
+        console.log('✅ 保存成功:', result.data?.title);
 
         // 成功時のコールバック呼び出し
         onSave(result.data || flowData);
@@ -561,7 +559,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
         throw new Error(result.error || '保存に失敗しました');
       }
     } catch (error) {
-      console.error('❌ flow-editor-advanced 保存エラー:', error);
+      console.error('❌ 保存エラー:', error);
       toast({
         title: 'エラー',
         description: `保存に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -591,7 +589,10 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                 <X className='h-4 w-4 mr-1' />
                 キャンセル
               </Button>
-              <Button onClick={handleSave} disabled={isLoading}>
+              <Button onClick={() => {
+                console.log('🔥 保存ボタンがクリックされました！');
+                handleSave();
+              }} disabled={isLoading}>
                 <Save className='h-4 w-4 mr-1' />
                 保存
               </Button>
@@ -754,9 +755,9 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                                         
                                         // APIパスの場合は完全なURLに変換
                                         if (imageUrl.startsWith('/api/')) {
-                                          // 開発環境ではlocalhost:8000を使用
+                                          // 開発環境ではlocalhost:8081を使用
                                           const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                                          const apiBase = isDev ? 'http://localhost:8000' : window.location.origin;
+                                          const apiBase = isDev ? 'http://localhost:8081' : window.location.origin;
                                           imageUrl = `${apiBase}${imageUrl}`;
                                         }
                                         
@@ -764,16 +765,13 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                                           <div key={`${step.id}-${imageIndex}`} className='relative'>
                                             <img
                                               src={imageUrl}
-                                              alt={image.fileName || '画像'}
+                                              alt='画像'
                                               className='w-20 h-20 object-cover rounded border'
                                               onError={e => {
                                                 console.error('画像読み込みエラー:', imageUrl);
                                                 e.currentTarget.style.display = 'none';
                                               }}
                                             />
-                                            <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b">
-                                              {image.fileName || '画像'}
-                                            </div>
                                             <Button
                                               variant='ghost'
                                               size='sm'
@@ -931,6 +929,27 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
           </ScrollArea>
         </CardContent>
       </Card>
+
+      {/* 保存・キャンセルボタン */}
+      <div className='mt-6 flex justify-end gap-4 pt-4 border-t'>
+        <Button
+          variant='outline'
+          onClick={onCancel}
+          className='h-12 px-6'
+        >
+          キャンセル
+        </Button>
+        <Button
+          onClick={() => {
+            console.log('🔥 保存ボタンがクリックされました！');
+            handleSave();
+          }}
+          className='h-12 px-6'
+        >
+          <Save className='w-4 h-4 mr-2' />
+          保存
+        </Button>
+      </div>
     </div>
   );
 };

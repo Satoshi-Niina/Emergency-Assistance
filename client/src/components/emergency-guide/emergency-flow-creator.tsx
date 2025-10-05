@@ -160,13 +160,12 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         // キャッシュバスターパラメータを追加
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2, 15);
-        const url = `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/list?ts=${timestamp}&_r=${randomId}${forceRefresh ? '&force=true' : ''}`;
+        
+        // 統一API設定を使用
+        const { buildApiUrl } = await import('../../lib/api-unified');
+        const url = buildApiUrl(`/emergency-flow/list?ts=${timestamp}&_r=${randomId}${forceRefresh ? '&force=true' : ''}`);
 
         console.log('🌐 フロー一覧API呼び出し:', url);
-        console.log('🔧 API設定:', {
-          VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
-          url: url,
-        });
 
         const response = await fetch(url, {
           method: 'GET',
@@ -369,7 +368,10 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       // 🎯 統一されたAPIエンドポイントで直接取得
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
-      const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${flowId}?ts=${timestamp}&_r=${randomId}`;
+      
+      // 統一API設定を使用
+      const { buildApiUrl } = await import('../../lib/api-unified');
+      const apiUrl = buildApiUrl(`/emergency-flow/${flowId}?ts=${timestamp}&_r=${randomId}`);
 
       console.log('🌐 API呼び出し:', apiUrl);
 

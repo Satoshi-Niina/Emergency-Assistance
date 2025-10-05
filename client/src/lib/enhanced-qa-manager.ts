@@ -43,7 +43,7 @@ async function callOpenAIAPI(
   useKnowledgeBase: boolean = true
 ): Promise<string> {
   try {
-    const response = await fetch('http://localhost:8000/api/chatgpt', {
+    const response = await fetch('http://localhost:8081/api/chatgpt', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

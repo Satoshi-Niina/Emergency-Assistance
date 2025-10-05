@@ -21,8 +21,8 @@ export const API_BASE_URL = (() => {
   
   // フォールバック: ローカル開発環境
   if (isLocalhost) {
-    console.log('✅ ローカル環境: localhost:8080を使用');
-    return 'http://localhost:8080';
+    console.log('✅ ローカル環境: localhost:8081を使用');
+    return 'http://localhost:8081';
   }
 
   // フォールバック: 本番環境
@@ -34,8 +34,29 @@ export const API_BASE_URL = (() => {
 export function buildApiUrl(path: string): string {
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   
-  // すべての環境で絶対URLを使用（プロキシ問題を回避）
-  return `${API_BASE_URL}/api${cleanPath}`;
+  // デバッグログ
+  console.log('🔧 buildApiUrl debug:', {
+    path,
+    cleanPath,
+    API_BASE_URL,
+    includesApi: API_BASE_URL.includes('/api')
+  });
+  
+  // API_BASE_URLに/apiが含まれているかチェック
+  if (API_BASE_URL.includes('/api')) {
+    const result = `${API_BASE_URL}${cleanPath}`;
+    console.log('🔧 Using existing /api:', result);
+    return result;
+  } else {
+    const result = `${API_BASE_URL}/api${cleanPath}`;
+    console.log('🔧 Adding /api:', result);
+    return result;
+  }
+}
+
+// トークン取得関数
+function getAuthToken(): string | null {
+  return localStorage.getItem('authToken');
 }
 
 // 統一APIリクエスト関数
@@ -44,11 +65,13 @@ export async function apiRequest<T = any>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = buildApiUrl(path);
+  const token = getAuthToken();
   
   const config: RequestInit = {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
       ...options.headers,
     },
     credentials: 'include', // セッション維持のため必須
@@ -63,6 +86,15 @@ export async function apiRequest<T = any>(
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ API Error: ${response.status} ${response.statusText}`, errorText);
+      
+      // 401エラーの場合は認証エラーとして処理
+      if (response.status === 401) {
+        console.log('🔐 認証エラー: トークンをクリア');
+        localStorage.removeItem('authToken');
+        // 認証エラーの場合は特別なエラーを投げる
+        throw new Error('AUTHENTICATION_ERROR');
+      }
+      
       throw new Error(`API Error ${response.status}: ${errorText}`);
     }
 

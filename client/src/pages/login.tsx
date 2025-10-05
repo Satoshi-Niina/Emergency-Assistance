@@ -196,14 +196,13 @@ export default function Login() {
                     {errorMessage}
                   </div>
                 )}
-                {/* サーバー状態の説明 */}
+                {/* システム利用の説明 */}
                 <div className='p-3 text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded-md'>
-                  <p className='font-medium mb-1'>ℹ️ 現在の状況</p>
                   <p>
-                    認証サーバーに接続できない状態です。これは正常な動作で、ログイン機能は一時的に利用できません。
+                    ログインユーザーにより「一般ユーザー」と「管理者」で表示メニューは変わります。
                   </p>
-                  <p className='mt-1 text-xs text-blue-500'>
-                    デモユーザー: niina / 0077
+                  <p className='mt-1'>
+                    不具合や修正等の要望がありましたら、新納までご連絡ください。
                   </p>
                 </div>
                 <Button

@@ -45,7 +45,7 @@ import {
   Hash,
   Filter,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 // インターフェース定義
 interface MachineType {
@@ -65,6 +65,7 @@ interface Machine {
 export default function MachineManagementPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -89,9 +90,9 @@ export default function MachineManagementPage() {
   // 認証チェック（一般ユーザーでもアクセス可能）
   useEffect(() => {
     if (!authLoading && !user) {
-      window.location.href = '/chat';
+      navigate('/chat');
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, navigate]);
 
   // データ取得
   useEffect(() => {
@@ -128,7 +129,7 @@ export default function MachineManagementPage() {
 
   const fetchData = async () => {
     try {
-      const API_BASE = 'http://localhost:8000/api';
+      const API_BASE = 'http://localhost:8081/api';
       setIsLoading(true);
       setError(null);
 
@@ -148,12 +149,23 @@ export default function MachineManagementPage() {
         );
       }
       const typesResult = await typesResponse.json();
+      console.log('機種タイプAPIレスポンス:', typesResult);
       if (typesResult.success) {
-        setMachineTypes(typesResult.data);
+        // APIレスポンス形式に対応（machineTypesキーにデータが入っている）
+        const typesData = typesResult.machineTypes || typesResult.data || [];
+        console.log('機種タイプデータ:', typesData);
+        
+        // データ形式を統一（machine_type_nameフィールドに統一）
+        const formattedTypes = typesData.map((type: any) => ({
+          id: type.id,
+          machine_type_name: type.name || type.machine_type_name || type.category
+        }));
+        
+        setMachineTypes(formattedTypes);
       }
 
       // 機械一覧取得
-      const machinesResponse = await fetch(`${API_BASE}/machines/all-machines`);
+      const machinesResponse = await fetch(`${API_BASE}/machines`);
       const contentType2 = machinesResponse.headers.get('content-type') || '';
       if (!machinesResponse.ok || !contentType2.includes('application/json')) {
         const text2 = await machinesResponse.text();
@@ -168,21 +180,21 @@ export default function MachineManagementPage() {
         );
       }
       const machinesResult = await machinesResponse.json();
+      console.log('機械APIレスポンス:', machinesResult);
       if (machinesResult.success) {
-        const flatMachines: Machine[] = [];
-        machinesResult.data.forEach((typeGroup: any) => {
-          if (typeGroup.machines && Array.isArray(typeGroup.machines)) {
-            typeGroup.machines.forEach((machine: any) => {
-              flatMachines.push({
-                id: machine.id,
-                machine_number: machine.machine_number,
-                machine_type_id: typeGroup.type_id,
-                machine_type_name: typeGroup.machine_type_name,
-              });
-            });
-          }
-        });
-        setMachines(flatMachines);
+        // APIレスポンス形式に対応（machinesキーにデータが入っている）
+        const machinesData = machinesResult.machines || machinesResult.data || [];
+        console.log('機械データ:', machinesData);
+        
+        // データ形式を統一（machine_type_nameフィールドを追加）
+        const formattedMachines = machinesData.map((machine: any) => ({
+          id: machine.id,
+          machine_number: machine.machine_number,
+          machine_type_id: machine.machine_type_id,
+          machine_type_name: machine.type || machine.machine_type_name
+        }));
+        
+        setMachines(formattedMachines);
       }
     } catch (error) {
       console.error('データ取得エラー:', error);
@@ -203,18 +215,31 @@ export default function MachineManagementPage() {
 
     try {
       const url = editingType
-        ? `http://localhost:8000/api/machines/machine-types/${editingType.id}`
-        : `http://localhost:8000/api/machines/machine-types`;
+        ? `http://localhost:8081/api/machines/machine-types/${editingType.id}`
+        : `http://localhost:8081/api/machines/machine-types`;
 
       const method = editingType ? 'PUT' : 'POST';
 
+      // 認証トークンを取得
+      const token = localStorage.getItem('authToken');
+      const headers = { 
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      };
+
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ machine_type_name: newTypeName.trim() }),
+        headers,
+        body: JSON.stringify({ 
+          name: newTypeName.trim(), 
+          category: newTypeName.trim(),
+          machine_type_name: newTypeName.trim() // サーバー側の期待フィールド
+        }),
       });
 
       if (response.ok) {
+        const result = await response.json();
+        console.log('機種保存成功:', result);
         toast({
           title: editingType ? '機種を更新しました' : '機種を追加しました',
           description: `${newTypeName} が正常に処理されました`,
@@ -222,8 +247,12 @@ export default function MachineManagementPage() {
         setNewTypeName('');
         setEditingType(null);
         setIsTypeDialogOpen(false);
-        fetchData();
+        console.log('データ再取得を開始...');
+        await fetchData();
+        console.log('データ再取得完了');
       } else {
+        const errorText = await response.text();
+        console.error('機種保存失敗:', response.status, errorText);
         throw new Error('機種の保存に失敗しました');
       }
     } catch (error) {
@@ -242,14 +271,21 @@ export default function MachineManagementPage() {
 
     try {
       const url = editingMachine
-        ? `http://localhost:8000/api/machines/machines/${editingMachine.id}`
-        : `http://localhost:8000/api/machines/machines`;
+        ? `http://localhost:8081/api/machines/${editingMachine.id}`
+        : `http://localhost:8081/api/machines`;
 
       const method = editingMachine ? 'PUT' : 'POST';
 
+      // 認証トークンを取得
+      const token = localStorage.getItem('authToken');
+      const headers = { 
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      };
+
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           machine_number: newMachineNumber.trim(),
           machine_type_id: selectedMachineType,
@@ -291,10 +327,17 @@ export default function MachineManagementPage() {
       return;
 
     try {
+      // 認証トークンを取得
+      const token = localStorage.getItem('authToken');
+      const headers = { 
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      };
+
       const response = await fetch(
-        `http://localhost:8000/api/machines/machine-types/${typeId}`,
+        `http://localhost:8081/api/machines/machine-types/${typeId}`,
         {
           method: 'DELETE',
+          headers,
         }
       );
 
@@ -326,10 +369,17 @@ export default function MachineManagementPage() {
       return;
 
     try {
+      // 認証トークンを取得
+      const token = localStorage.getItem('authToken');
+      const headers = { 
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      };
+
       const response = await fetch(
-        `http://localhost:8000/api/machines/machines/${machineId}`,
+        `http://localhost:8081/api/machines/${machineId}`,
         {
           method: 'DELETE',
+          headers,
         }
       );
 

@@ -348,7 +348,7 @@ function buildApiUrl(path: string): string {
 
   if (isDevelopment) {
     console.log('✅ 開発環境: ポート8000を使用');
-    return `http://localhost:8000${path}`;
+    return `http://localhost:8081${path}`;
   }
 
   // その他の環境では相対パス

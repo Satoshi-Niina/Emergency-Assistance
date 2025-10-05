@@ -39,7 +39,7 @@ import {
   ChevronDown,
   MoreVertical,
 } from 'lucide-react';
-import { convertImageUrl } from '../../lib/image-utils.ts';
+import { convertImageUrl, buildImageUrl } from '../../lib/image-utils.ts';
 
 /**
  * ⚠️ AI編集制限: このファイルはスライド編集UI専用です
@@ -597,26 +597,21 @@ const StepEditor: React.FC<StepEditorProps> = ({
             onDrop={e => handleDrop(step.id, e)}
           >
             <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4'>
-              {console.log(`🖼️ ステップ[${step.id}]の画像レンダリング:`, {
-                stepId: step.id,
-                stepTitle: step.title,
-                imagesCount: step.images?.length || 0,
-                images: step.images,
-              })}
+
               {(step.images ?? []).filter(image => image && image.url && image.url.trim() !== '').map((image, index) => (
                 <div key={index} className='relative group aspect-video'>
                   {(() => {
-                    // 既に完全なURLの場合は再変換しない
-                    const convertedUrl = (image.url?.startsWith('http://') || image.url?.startsWith('https://') || image.url?.startsWith('data:'))
-                      ? image.url
-                      : convertImageUrl(image.url);
-                    console.log(`🖼️ 画像表示デバッグ [${step.id}][${index}]:`, {
-                      originalUrl: image.url?.substring(0, 100) + '...',
-                      convertedUrl: convertedUrl?.substring(0, 100) + '...',
-                      fileName: image.fileName,
-                      isBase64: image.url?.startsWith('data:image/'),
-                      isAlreadyConverted: image.url?.startsWith('http://') || image.url?.startsWith('https://'),
+                    // プレビューと同じ画像URL変換を使用 - buildImageUrl関数を統一使用
+                    const convertedUrl = buildImageUrl(image.url);
+                    
+                    console.log('🖼️ StepEditor画像レンダリング:', {
+                      stepId: step.id,
+                      imageIndex: index,
+                      originalUrl: image.url,
+                      convertedUrl: convertedUrl,
+                      fileName: image.fileName
                     });
+                    
                     return (
                       <img
                         key={`${step.id}-${index}-${image.fileName}`}
@@ -629,27 +624,25 @@ const StepEditor: React.FC<StepEditorProps> = ({
                             : 'anonymous'
                         }
                         onError={e => {
-                          console.error('❌ 画像読み込みエラー (step-editor):', {
-                            originalUrl: image.url?.substring(0, 100) + '...',
-                            convertedUrl:
-                              convertedUrl?.substring(0, 100) + '...',
+                          console.error('❌ StepEditor画像読み込みエラー:', {
+                            originalUrl: image.url,
+                            convertedUrl: convertedUrl,
                             fileName: image.fileName,
-                            isBase64: image.url?.startsWith('data:image/'),
-                            error: e,
                             stepId: step.id,
                             imageIndex: index,
+                            timestamp: new Date().toISOString()
                           });
-                          // 画像読み込みエラー時は非表示にする（サンプル画像を表示しない）
+                          // 画像読み込みエラー時は非表示にする
                           e.currentTarget.style.display = 'none';
                         }}
                         onLoad={() => {
-                          console.log('✅ 画像読み込み成功 (step-editor):', {
-                            originalUrl: image.url?.substring(0, 100) + '...',
-                            convertedUrl:
-                              convertedUrl?.substring(0, 100) + '...',
+                          console.log('✅ StepEditor画像読み込み成功:', {
+                            originalUrl: image.url,
+                            convertedUrl: convertedUrl,
                             fileName: image.fileName,
                             stepId: step.id,
                             imageIndex: index,
+                            timestamp: new Date().toISOString()
                           });
                           // 画像読み込み成功時にエラーフラグをクリア
                           setImageErrors(prev => ({
