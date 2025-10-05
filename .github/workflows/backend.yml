@@ -6,6 +6,7 @@ on:
     paths:
       - 'server/**'
       - '.github/workflows/backend.yml'
+      - 'BACKEND_DEPLOYMENT_TRIGGER.md'
   workflow_dispatch:
 
 env:
@@ -50,28 +51,12 @@ jobs:
         no-cache: true
         pull: true
         
-    - name: Login to Azure
-      uses: azure/login@v1
+    - name: Deploy to Azure App Service (Publish Profile)
+      uses: azure/webapps-deploy@v2
       with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
-        
-    - name: Clean Deploy Container to Azure App Service
-      run: |
-        echo "🚀 Deploying container to Azure App Service..."
-        az webapp config container set \
-          --name emergencyassistance-sv-fbanemhrbshuf9bd \
-          --resource-group emergency-assistance-rg \
-          --docker-custom-image-name ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
-          --docker-registry-server-url https://${{ env.REGISTRY }} \
-          --docker-registry-server-user ${{ github.actor }} \
-          --docker-registry-server-password ${{ secrets.GITHUB_TOKEN }}
-          
-        echo "🔄 Restarting App Service for clean deployment..."
-        az webapp restart \
-          --name emergencyassistance-sv-fbanemhrbshuf9bd \
-          --resource-group emergency-assistance-rg
-          
-        echo "✅ Clean container deployment completed"
+        app-name: 'emergencyassistance-sv-fbanemhrbshuf9bd'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        images: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest'
         
     - name: Verify Clean Deployment
       run: |
