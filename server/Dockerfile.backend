@@ -1,29 +1,32 @@
-# Backend-only Dockerfile for Azure App Service
-FROM node:20-alpine AS production
+# Team-Friendly Backend Docker - Windows/Linux Compatible
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies for health checks and debugging
 RUN apk add --no-cache bash curl
 
-# Copy package files
+# Copy package files first (better Docker caching)
 COPY package*.json ./
 
-# Install production dependencies only
-RUN npm install --omit=dev
+# Install all dependencies (production + dev for compatibility)
+RUN npm install
 
-# Copy server source files
+# Copy all server files
 COPY . ./
 
-# Create logs directory
-RUN mkdir -p logs
+# Create necessary directories
+RUN mkdir -p logs uploads temp
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+# Set permissions (important for Azure App Service)
+RUN chmod +x *.js
+
+# Health check for Azure App Service
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:${PORT:-8080}/api/health || exit 1
 
-# Expose port (Azure App Service will set PORT environment variable)
+# Expose port (Azure will override with dynamic port)
 EXPOSE 8080
 
-# Start command for Azure App Service
+# Use unified-server.js as the main entry point
 CMD ["node", "unified-server.js"]
