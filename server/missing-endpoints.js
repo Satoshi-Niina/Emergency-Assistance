@@ -1,6 +1,8 @@
 // 不足しているエンドポイントを追加
 // ユーザー管理エンドポイント（POST, PUT, DELETE）
 
+export function registerMissingEndpoints(app, dbPool, bcrypt) {
+
 app.post('/api/users', async (req, res) => {
   try {
     const { username, password, display_name, role, department, description } = req.body;
@@ -380,3 +382,5 @@ app.delete('/api/machines/machines/:id', async (req, res) => {
     });
   }
 });
+
+}

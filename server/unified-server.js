@@ -27,7 +27,7 @@ if (fs.existsSync(path.join(__dirname, '.env'))) {
 }
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 8081;
 
 // 開発環境の判定
 const isDevelopment = process.env.NODE_ENV === 'development';
