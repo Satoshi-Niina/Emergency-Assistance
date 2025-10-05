@@ -10,10 +10,10 @@
   let config;
   
   if (isLocalhost) {
-    // ローカル開発環境（Azure Functions Core Tools使用）
+    // ローカル開発環境（Express Server使用）
     config = {
-      "API_BASE_URL": "http://localhost:7071/api",
-      "CORS_ALLOW_ORIGINS": "http://localhost:5173,http://localhost:7071",
+      "API_BASE_URL": "http://localhost:8081/api",
+      "CORS_ALLOW_ORIGINS": "http://localhost:5173,http://localhost:8081",
       "ENVIRONMENT": "development"
     };
   } else if (isAzureStaticWebApp) {
