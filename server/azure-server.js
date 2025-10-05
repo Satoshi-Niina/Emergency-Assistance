@@ -1730,11 +1730,6 @@ app.use((req, res) => {
 });
 
 // Azure App Service用の起動設定
-// 不足エンドポイントをインポート
-import { registerMissingEndpoints } from './missing-endpoints.js';
-
-// エンドポイントを登録
-registerMissingEndpoints(app, dbPool, bcrypt);
 
 const port = process.env.PORT || 8080;
 const host = '0.0.0.0';
