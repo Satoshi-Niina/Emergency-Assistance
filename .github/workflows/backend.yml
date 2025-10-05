@@ -50,13 +50,28 @@ jobs:
         no-cache: true
         pull: true
         
-    - name: Deploy to Azure App Service (Publish Profile)
-      uses: azure/webapps-deploy@v2
+    - name: Login to Azure
+      uses: azure/login@v1
       with:
-        app-name: 'emergencyassistance-sv-fbanemhrbshuf9bd'
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-        images: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest'
-        # Note: slot-name removed as it's causing authentication errors
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Deploy to Azure App Service (Direct)
+      run: |
+        echo "🚀 Deploying container to Azure App Service..."
+        az webapp config container set \
+          --name emergencyassistance-sv-fbanemhrbshuf9bd \
+          --resource-group emergency-assistance-rg \
+          --container-image-name ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
+          --container-registry-url https://${{ env.REGISTRY }} \
+          --container-registry-user ${{ github.actor }} \
+          --container-registry-password ${{ secrets.GITHUB_TOKEN }}
+          
+        echo "⏳ Restarting App Service..."
+        az webapp restart \
+          --name emergencyassistance-sv-fbanemhrbshuf9bd \
+          --resource-group emergency-assistance-rg
+          
+        echo "✅ Deployment completed!"
         
     - name: Verify Clean Deployment
       run: |
