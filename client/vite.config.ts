@@ -23,11 +23,32 @@ export default defineConfig(({ command, mode }) => {
     NODE_ENV: env.NODE_ENV
   });
 
-  // APIのベースURLを環境変数から取得（統合サーバー用）
-  const apiBaseUrl =
-    env.VITE_API_BASE ||
-    env.VITE_API_BASE_URL ||
-    (command === 'serve' ? 'http://localhost:8081' : '/api');
+  // 環境別APIベースURL自動設定
+  const isDev = command === 'serve';
+  const isProd = mode === 'production';
+  
+  const apiBaseUrl = (() => {
+    // 環境変数が設定されている場合は最優先
+    if (env.VITE_API_BASE_URL) {
+      return env.VITE_API_BASE_URL;
+    }
+    if (env.VITE_API_BASE) {
+      return env.VITE_API_BASE;
+    }
+    
+    // 開発環境: ローカルのバックエンドサーバー
+    if (isDev) {
+      return 'http://localhost:8081';
+    }
+    
+    // 本番環境: 相対パス（Static Web Appのリライトルール使用）
+    if (isProd) {
+      return '/api';
+    }
+    
+    // フォールバック
+    return 'http://localhost:8081';
+  })();
   const serverPort = parseInt(env.PORT || '3003');
   const clientPort = parseInt(env.CLIENT_PORT || '5175');
 

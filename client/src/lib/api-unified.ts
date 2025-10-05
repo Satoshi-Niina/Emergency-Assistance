@@ -11,21 +11,30 @@ const isAzureStaticWebApp = /\.azurestaticapps\.net$/i.test(window.location.host
 
 // API Base URLの決定（runtime-config優先）
 export const API_BASE_URL = (() => {
-  const runtimeConfig = getRuntimeConfig();
-  
-  // runtime-configから取得
-  if (runtimeConfig.API_BASE_URL) {
-    console.log('✅ Runtime configからAPI_BASE_URLを取得:', runtimeConfig.API_BASE_URL);
-    return runtimeConfig.API_BASE_URL.replace(/\/$/, '');
+  // まずruntime-configから取得を試行
+  try {
+    const runtimeConfig = getRuntimeConfig();
+    if (runtimeConfig && runtimeConfig.API_BASE_URL) {
+      console.log('✅ Runtime configからAPI_BASE_URLを取得:', runtimeConfig.API_BASE_URL);
+      return runtimeConfig.API_BASE_URL.replace(/\/$/, '');
+    }
+  } catch (error) {
+    console.warn('⚠️ Runtime config取得エラー:', error);
   }
   
-  // フォールバック: ローカル開発環境
+  // 環境変数による設定
+  if (import.meta.env.VITE_API_BASE_URL) {
+    console.log('✅ 環境変数からAPI_BASE_URLを取得:', import.meta.env.VITE_API_BASE_URL);
+    return import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '');
+  }
+  
+  // フォールバック: 環境判定
   if (isLocalhost) {
     console.log('✅ ローカル環境: localhost:8081を使用');
     return 'http://localhost:8081';
   }
 
-  // フォールバック: 本番環境
+  // フォールバック: 本番環境（相対パス）
   console.log('✅ 本番環境: 相対パスを使用');
   return '';
 })();
