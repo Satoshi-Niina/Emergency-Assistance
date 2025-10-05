@@ -10,25 +10,25 @@
   let config;
   
   if (isLocalhost) {
-    // ローカル開発環境
+    // ローカル開発環境（Azure Functions Core Tools使用）
     config = {
-      "API_BASE_URL": "http://localhost:8081/api",
-      "CORS_ALLOW_ORIGINS": "http://localhost:5173,http://localhost:8081",
+      "API_BASE_URL": "http://localhost:7071/api",
+      "CORS_ALLOW_ORIGINS": "http://localhost:5173,http://localhost:7071",
       "ENVIRONMENT": "development"
     };
   } else if (isAzureStaticWebApp) {
-    // Azure Static Web Apps（本番環境）
+    // Azure Static Web Apps（本番環境、統合Functions使用）
     config = {
-      "API_BASE_URL": "/api", // Static Web Appのリライトルールを使用
-      "CORS_ALLOW_ORIGINS": "https://witty-river-012f39e00.1.azurestaticapps.net,https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net",
+      "API_BASE_URL": "/api", // Static Web App統合Functions
+      "CORS_ALLOW_ORIGINS": "https://witty-river-012f39e00.1.azurestaticapps.net",
       "ENVIRONMENT": "production"
     };
   } else {
-    // その他の環境（フォールバック）
+    // その他の環境（Static Web App統合Functions使用）
     config = {
       "API_BASE_URL": "/api",
       "CORS_ALLOW_ORIGINS": "*",
-      "ENVIRONMENT": "unknown"
+      "ENVIRONMENT": "production"
     };
   }
   
