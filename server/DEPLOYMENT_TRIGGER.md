@@ -1,13 +1,14 @@
-# Backend Auto-Deploy
+# Backend Docker Deploy
 
-Deployment timestamp: 2025-10-05 (Simplified Auto-Deploy)
+Deployment timestamp: 2025-10-05 (Back to Docker for Win/Linux compatibility)
 
-## Simple Auto-Deploy Strategy
-- ✅ Push to main → Instant deploy to Azure App Service
-- 🚀 No build steps, no tests, no validations
-- ⚡ Direct server folder deployment  
-- 🎯 Team members just push - everything else is automatic
+## Docker Container Strategy
+- ✅ Push → Docker build → GHCR → Azure App Service
+- � Docker handles Windows/Linux environment differences
+- 🚀 Containerized deployment for consistency
+- 🎯 Node.js v20 Alpine Linux container
 
-## Azure App Service
+## Azure App Service Container
 - App: emergencyassistance-sv-fbanemhrbshuf9bd
-- Runtime: Node.js (Azure handles dependencies)
+- Registry: ghcr.io/emergency-assistance-backend:latest
+- Runtime: Docker Container

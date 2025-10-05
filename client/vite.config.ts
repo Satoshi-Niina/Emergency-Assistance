@@ -86,7 +86,7 @@ export default defineConfig(({ command, mode }) => {
       }
     },
     build: {
-      outDir: '../server/public',
+      outDir: command === 'serve' ? '../server/public' : 'dist',
       assetsDir: 'assets',
       sourcemap: false,
       minify: 'terser',
