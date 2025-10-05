@@ -38,41 +38,7 @@ jobs:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
         
-    - name: Install dependencies
-      run: |
-        echo "Installing client dependencies..."
-        cd client && npm install
-        echo "Installing shared dependencies (if exists)..."
-        if [ -d "shared" ]; then
-          cd ../shared && npm install
-        else
-          echo "Shared directory not found, skipping..."
-        fi
-        
-    - name: Verify vite installation
-      run: |
-        cd client
-        echo "Checking if vite is installed..."
-        if [ -f "node_modules/.bin/vite" ]; then
-          echo "✅ Vite found in node_modules/.bin/"
-          ls -la node_modules/.bin/vite
-        else
-          echo "❌ Vite not found in node_modules/.bin/"
-          echo "Checking if vite is in package.json..."
-          grep -q "vite" package.json && echo "✅ Vite found in package.json" || echo "❌ Vite not found in package.json"
-          echo "Reinstalling dependencies..."
-          npm install
-        fi
-        npx vite --version
-        
-    - name: Build for production
-      run: |
-        cd client && npx vite build
-        
-    - name: Clean Azure Static Web App
-      run: |
-        echo "Cleaning existing Azure Static Web App files..."
-        # Note: Azure Static Web Apps automatically replaces all files on deployment
+
         
     - name: Deploy to Azure Static Web Apps
       uses: Azure/static-web-apps-deploy@v1
@@ -82,31 +48,3 @@ jobs:
         action: "upload"
         app_location: "/client"
         output_location: "dist"
-        skip_app_build: true
-        
-    - name: Health check after deployment
-      run: |
-        echo "Waiting for deployment to complete..."
-        sleep 60
-        echo "🔍 Performing frontend health checks..."
-        
-        # Check if the frontend is accessible
-        echo "Testing frontend accessibility..."
-        curl -f --max-time 30 --connect-timeout 10 https://witty-river-012f39e00.1.azurestaticapps.net/ || {
-          echo "❌ Frontend not accessible"
-          echo "🔍 Checking deployment status..."
-          exit 1
-        }
-        
-        echo "✅ Frontend deployment completed and accessible"
-        
-    - name: Notify deployment status
-      if: always()
-      run: |
-        if [ ${{ job.status }} == 'success' ]; then
-          echo "✅ Frontend deployment successful"
-          echo "🚀 Frontend is ready at: https://witty-river-012f39e00.1.azurestaticapps.net"
-        else
-          echo "❌ Frontend deployment failed"
-          echo "🔍 Check the logs above for detailed error information"
-        fi

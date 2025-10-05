@@ -19,41 +19,6 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20.x'
-        cache: 'npm'
-        cache-dependency-path: server/package-lock.json
-        
-    - name: Install dependencies
-      run: |
-        cd server
-        npm install --omit=dev
-        
-    - name: Create deployment package
-      run: |
-        cd server
-        # Create a clean directory for deployment
-        mkdir -p ../deploy
-        # Copy necessary files
-        cp -r . ../deploy/
-        # Remove unnecessary files
-        rm -rf ../deploy/node_modules
-        rm -rf ../deploy/Dockerfile*
-        rm -rf ../deploy/.env*
-        rm -rf ../deploy/logs
-        rm -rf ../deploy/uploads
-        # Install production dependencies
-        cd ../deploy
-        npm install --omit=dev
-        
-    - name: Run basic tests
-      run: |
-        cd deploy
-        # Test that the server can start
-        timeout 10s node unified-server.js || echo "Server startup test completed"
         
     - name: Deploy to Azure App Service
       uses: azure/webapps-deploy@v2
@@ -61,14 +26,7 @@ jobs:
         app-name: 'emergencyassistance-sv-fbanemhrbshuf9bd'
         slot-name: 'production'
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-        package: './deploy'
-        
-    - name: Health Check
-      run: |
-        echo "Waiting for deployment to complete..."
-        sleep 60
-        curl -f https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/api/health || exit 1
-        echo "✅ Backend deployment successful!"
+        package: './server'
         
     - name: Health Check
       run: |
