@@ -1,16 +1,17 @@
 # Backend Deployment Trigger
 
-Deployment timestamp: 2025-10-05 (Updated for GHCR fix)
+Deployment timestamp: 2025-10-05 (Switched to Zip Deploy)
 
 This file ensures backend workflow triggers on deployment.
 
 ## Azure App Service Configuration
 - App Name: emergencyassistance-sv-fbanemhrbshuf9bd
-- Runtime: Docker Container
-- Node.js: v20
+- Runtime: Node.js v20
 - Startup Command: node unified-server.js
+- Deployment Method: Zip Deploy (no Docker)
 
-## Container Registry Fix
-- Fixed GHCR permissions issue
-- Simplified image naming: emergency-assistance-backend
-- Added proper workflow permissions
+## Deployment Strategy Change
+- Removed Docker containerization to avoid GHCR issues
+- Using direct Node.js deployment with zip package
+- Faster deployment and more reliable
+- Azure App Service native Node.js runtime
