@@ -1,14 +1,14 @@
-# Frontend Auto-Deploy
+# Frontend Clean Auto-Deploy
 
-Deployment timestamp: 2025-10-05 (Fixed dist output)
+Deployment timestamp: 2025-10-05 (SAFE: No risky cache operations)
 
-## Azure Static Web Apps Build
-- ✅ Push → Azure auto-build → Deploy
-- 🚀 Vite builds to 'dist' folder (not '../server/public')
-- ⚡ skip_app_build: false (let Azure handle build)
-- 🎯 Fixed output_location configuration
+## Safe Clean Deployment Strategy
+- 🧹 Clean artifacts: rm -rf dist/ node_modules/
+- ✅ Fresh build: Azure handles clean npm install + vite build
+- � Safe verification: HTTP head check instead of auth purge
+- 🎯 Zero old data issues, zero risky operations
 
-## Azure Static Web Apps
+## Azure Static Web Apps (Safe Clean)
 - URL: https://witty-river-012f39e00.1.azurestaticapps.net
-- Build: Azure handles npm install + vite build
-- Output: client/dist/
+- Strategy: Complete clean deployment with safe verification
+- No risky cache purge calls, just clean builds

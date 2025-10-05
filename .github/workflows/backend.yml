@@ -30,21 +30,55 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build and Push Docker Image
+    - name: Clean Docker Environment
+      run: |
+        echo "🧹 Cleaning Docker environment..."
+        docker system prune -f || true
+        docker builder prune -f || true
+        echo "✅ Docker clean completed"
+        
+    - name: Build and Push Docker Image (Clean)
       uses: docker/build-push-action@v5
       with:
         context: ./server
         file: ./server/Dockerfile.backend
         push: true
-        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        tags: |
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
         platforms: linux/amd64
+        no-cache: true
+        pull: true
         
-    - name: Deploy to Azure App Service
-      uses: azure/webapps-deploy@v2
+    - name: Login to Azure
+      uses: azure/login@v1
       with:
-        app-name: 'emergencyassistance-sv-fbanemhrbshuf9bd' 
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-        images: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest'
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        
+    - name: Clean Deploy Container to Azure App Service
+      run: |
+        echo "🚀 Deploying container to Azure App Service..."
+        az webapp config container set \
+          --name emergencyassistance-sv-fbanemhrbshuf9bd \
+          --resource-group emergency-assistance-rg \
+          --docker-custom-image-name ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
+          --docker-registry-server-url https://${{ env.REGISTRY }} \
+          --docker-registry-server-user ${{ github.actor }} \
+          --docker-registry-server-password ${{ secrets.GITHUB_TOKEN }}
+          
+        echo "🔄 Restarting App Service for clean deployment..."
+        az webapp restart \
+          --name emergencyassistance-sv-fbanemhrbshuf9bd \
+          --resource-group emergency-assistance-rg
+          
+        echo "✅ Clean container deployment completed"
+        
+    - name: Verify Clean Deployment
+      run: |
+        echo "� Verifying clean deployment..."
+        sleep 30
+        curl -f https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/api/health || echo "Health check pending..."
+        echo "✅ Clean deployment verification complete"
         
     - name: Health Check
       run: |

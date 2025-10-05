@@ -1,17 +1,18 @@
-# Backend Docker Deploy
+# Backend Clean Docker Deploy
 
-Deployment timestamp: 2025-10-05 (Fixed GHCR naming)
+Deployment timestamp: 2025-10-05 (FIXED: Azure auth + clean deploy)
 
-## Docker Container Strategy  
-- ✅ Push → Docker build → GHCR → Azure App Service
-- 🐳 Docker handles Windows/Linux environment differences
-- 🚀 Fixed GHCR image naming: satoshi-niina/emergency-assistance-backend
-- 🎯 Node.js v20 Alpine with full dependencies for team compatibility
+## Fixed Azure Authentication
+- ✅ Azure CLI login with AZURE_CREDENTIALS
+- 🔐 Direct container deployment (no publish profile)
+- 🔄 Forced App Service restart for clean state
+- 🎯 Resource group: emergency-assistance-rg
 
-## Azure App Service Container
-- App: emergencyassistance-sv-fbanemhrbshuf9bd
-- Registry: ghcr.io/satoshi-niina/emergency-assistance-backend:latest
-- Runtime: Docker Container (Linux)er Deploy
+## Clean Docker Strategy
+- 🧹 Docker system prune: Remove all cached layers
+- 🐳 no-cache: true - Force complete rebuild
+- 🚀 Container config + restart for clean deployment
+- ✅ ghcr.io/satoshi-niina/emergency-assistance-backender Deploy
 
 Deployment timestamp: 2025-10-05 (Back to Docker for Win/Linux compatibility)
 
