@@ -8,7 +8,8 @@ WORKDIR /app/client
 
 # Copy client package files
 COPY client/package*.json ./
-RUN npm ci --only=production
+# npm install を使用（package-lock.jsonがないため）
+RUN npm install
 
 # Copy client source and build
 COPY client/ ./
@@ -22,12 +23,13 @@ WORKDIR /app
 # Install production dependencies
 RUN apk add --no-cache bash
 
-# Copy built client from client-builder stage
-COPY --from=client-builder /app/client/dist ./public
+# Copy built client from client-builder stage (Vite builds to ../server/public)
+COPY --from=client-builder /app/server/public ./public
 
 # Copy server dependencies
 COPY server/package*.json ./
-RUN npm ci --only=production
+# npm install を使用（--omit=dev で本番用のみ）
+RUN npm install --omit=dev
 
 # Copy unified server
 COPY server/unified-server.js ./

@@ -38,20 +38,16 @@ jobs:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
         
-    - name: Clean install dependencies
+    - name: Install dependencies
       run: |
-        echo "Cleaning all node_modules and package-lock.json files..."
-        rm -rf node_modules package-lock.json
-        rm -rf client/node_modules client/package-lock.json
-        rm -rf shared/node_modules shared/package-lock.json
-        echo "Clearing npm cache..."
-        npm cache clean --force
-        echo "Installing root dependencies..."
-        npm install
         echo "Installing client dependencies..."
         cd client && npm install
-        echo "Installing shared dependencies..."
-        cd ../shared && npm install
+        echo "Installing shared dependencies (if exists)..."
+        if [ -d "shared" ]; then
+          cd ../shared && npm install
+        else
+          echo "Shared directory not found, skipping..."
+        fi
         
     - name: Verify vite installation
       run: |
@@ -69,10 +65,6 @@ jobs:
         fi
         npx vite --version
         
-    - name: Build shared
-      run: |
-        npm run build:shared
-        
     - name: Build for production
       run: |
         cd client && npx vite build
@@ -85,12 +77,12 @@ jobs:
     - name: Deploy to Azure Static Web Apps
       uses: Azure/static-web-apps-deploy@v1
       with:
-        azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_DEPLOYMENT_TOKEN }}
+        azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_WITTY_RIVER_012F39E00 }}
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         action: "upload"
         app_location: "/client"
         output_location: "dist"
-        skip_app_build: false
+        skip_app_build: true
         
     - name: Health check after deployment
       run: |
