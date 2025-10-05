@@ -12,17 +12,19 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 
 // ESM __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // 環境変数の読み込み
-if (fs.existsSync(path.join(__dirname, '.env'))) {
-  dotenv.config();
-  console.log('📄 Loaded .env file');
+const envPath = path.join(__dirname, '.env');
+if (fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+  console.log('📄 Loaded .env file from:', envPath);
+  console.log('📄 DATABASE_URL exists:', !!process.env.DATABASE_URL);
 } else {
+  console.log('📄 .env file not found at:', envPath);
   console.log('📄 Using system environment variables');
 }
 
@@ -37,6 +39,12 @@ let dbPool = null;
 
 // データベース初期化
 function initializeDatabase() {
+  // 明示的に簡易認証が設定されている場合のみ簡易認証を使用
+  if (process.env.BYPASS_DB_FOR_LOGIN === 'true') {
+    console.log('🚀 Using simple authentication (BYPASS_DB_FOR_LOGIN=true)');
+    return;
+  }
+
   if (!process.env.DATABASE_URL) {
     console.warn('⚠️ DATABASE_URL is not set - running without database');
     return;
@@ -94,113 +102,187 @@ app.use(express.static(path.join(__dirname, 'public'), {
   lastModified: true
 }));
 
-// API ルート（既存のAPIロジックをここに統合）
-// ヘルスチェック
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'production'
-  });
-});
+// API router - server/src/api の Azure Functions を統合
+const apiRouter = express.Router();
 
-// 基本的なAPIエンドポイント
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    api: 'running',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// 認証API（実際の実装）
-app.post('/api/auth/login', async (req, res) => {
+// Azure Functions のヘルスチェックを統合
+apiRouter.get('/health', async (req, res) => {
   try {
+    // server/src/api/health/index.js の処理を再現
+    const healthCheck = require('./src/api/health/index.js');
+    const context = {
+      log: console.log,
+      res: null
+    };
+    
+    await healthCheck(context, { method: req.method });
+    
+    if (context.res) {
+      res.status(context.res.status || 200);
+      if (context.res.headers) {
+        Object.keys(context.res.headers).forEach(key => {
+          res.setHeader(key, context.res.headers[key]);
+        });
+      }
+      res.send(context.res.body || '');
+    } else {
+      res.json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({ 
+      status: 'error', 
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 認証API - Azure Functions の auth/login を統合
+apiRouter.post('/auth/login', async (req, res) => {
+  try {
+    console.log('Login attempt received:', req.body);
     const { username, password } = req.body;
     
     if (!username || !password) {
-      return res.status(400).json({ success: false, message: 'Username and password required' });
+      console.log('Missing username or password');
+      return res.status(400).json({ 
+        success: false, 
+        error: 'bad_request',
+        message: 'ユーザー名とパスワードが必要です'
+      });
     }
 
-    // データベース認証
+    console.log(`Attempting login for user: ${username}`);
+    console.log(`Database pool available: ${!!dbPool}`);
+
+    // データベース認証を試行
     if (dbPool) {
-      const result = await dbPool.query(
-        'SELECT id, username, password_hash, role FROM users WHERE username = $1',
-        [username]
-      );
-      
-      if (result.rows.length === 0) {
-        return res.status(401).json({ success: false, message: 'Invalid credentials' });
-      }
-      
-      const user = result.rows[0];
-      const isValidPassword = await bcrypt.compare(password, user.password_hash);
-      
-      if (!isValidPassword) {
-        return res.status(401).json({ success: false, message: 'Invalid credentials' });
-      }
-      
-      // JWTトークン生成
-      const token = jwt.sign(
-        { id: user.id, username: user.username, role: user.role },
-        process.env.JWT_SECRET || 'default-secret',
-        { expiresIn: '24h' }
-      );
-      
-      res.json({ 
-        success: true, 
-        user: { id: user.id, username: user.username, role: user.role },
-        token
-      });
-    } else {
-      // データベースなしの簡易認証
-      if (username === 'admin' && password === 'admin') {
-        const token = jwt.sign(
-          { id: 1, username: 'admin', role: 'admin' },
-          process.env.JWT_SECRET || 'default-secret',
-          { expiresIn: '24h' }
+      try {
+        console.log('Attempting database authentication...');
+        const result = await dbPool.query(
+          'SELECT id, username, password, role, display_name, department FROM users WHERE username = $1 LIMIT 1',
+          [username]
         );
         
+        if (result.rows.length === 0) {
+          console.log('User not found in database');
+          return res.status(401).json({ 
+            success: false, 
+            error: 'invalid_credentials',
+            message: 'ユーザー名またはパスワードが正しくありません'
+          });
+        }
+        
+        const user = result.rows[0];
+        console.log('User found in database:', user.username);
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        
+        if (!isValidPassword) {
+          console.log('Password validation failed');
+          return res.status(401).json({ 
+            success: false, 
+            error: 'invalid_credentials',
+            message: 'ユーザー名またはパスワードが正しくありません'
+          });
+        }
+        
+        console.log('Database authentication successful');
         res.json({ 
           success: true, 
-          user: { id: 1, username: 'admin', role: 'admin' },
-          token
+          user: {
+            id: user.id,
+            username: user.username,
+            role: user.role,
+            displayName: user.display_name,
+            display_name: user.display_name,
+            department: user.department
+          },
+          message: 'ログインに成功しました'
+        });
+      } catch (dbError) {
+        console.error('Database error, falling back to simple auth:', dbError.message);
+        // データベースエラーの場合、簡易認証にフォールバック
+        return handleSimpleAuth(username, password, res);
+      }
+    } else {
+      // データベースなしの簡易認証
+      return handleSimpleAuth(username, password, res);
+    }
+
+    // 簡易認証の処理関数
+    function handleSimpleAuth(username, password, res) {
+      console.log('Using simple authentication without database');
+      console.log(`Provided credentials: username="${username}", password="${password}"`);
+      
+      // 複数のテストユーザーをサポート
+      const testUsers = {
+        'admin': { password: 'admin', role: 'admin', displayName: 'Administrator', department: 'IT' },
+        'niina': { password: 'G&896845', role: 'admin', displayName: 'Satoshi Niina', department: 'IT' }
+      };
+      
+      const user = testUsers[username];
+      if (user && password === user.password) {
+        console.log('Simple authentication successful');
+        return res.json({ 
+          success: true, 
+          user: { 
+            id: 1, 
+            username: username, 
+            role: user.role,
+            displayName: user.displayName,
+            display_name: user.displayName,
+            department: user.department
+          },
+          message: 'ログインに成功しました'
         });
       } else {
-        res.status(401).json({ success: false, message: 'Invalid credentials' });
+        console.log('Simple authentication failed - invalid credentials');
+        return res.status(401).json({ 
+          success: false, 
+          error: 'invalid_credentials',
+          message: 'ユーザー名またはパスワードが正しくありません'
+        });
       }
     }
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    res.status(500).json({ 
+      success: false,
+      error: 'internal_server_error',
+      message: 'サーバーエラーが発生しました'
+    });
   }
 });
 
-app.post('/api/auth/logout', (req, res) => {
+apiRouter.post('/auth/logout', (req, res) => {
   res.json({ 
     success: true, 
-    message: 'Logged out successfully' 
+    message: 'ログアウトしました'
   });
 });
 
-// チャットAPI（簡易版）
-app.post('/api/chatgpt', (req, res) => {
+// その他のAPIエンドポイント（プレースホルダー）
+apiRouter.post('/chatgpt', (req, res) => {
   const { message } = req.body;
-  
-  // 簡易レスポンス（実際の実装ではOpenAI APIを使用）
   res.json({
     response: `Echo: ${message}`,
     timestamp: new Date().toISOString()
   });
 });
 
-// ナレッジベースAPI（簡易版）
-app.get('/api/knowledge-base/*', (req, res) => {
+apiRouter.get('/knowledge-base/*', (req, res) => {
   res.json({ 
     data: [],
     message: 'Knowledge base API placeholder'
   });
 });
+
+// APIルーターをマウント
+app.use('/api', apiRouter);
 
 // SPAルーティング - すべての非APIリクエストをindex.htmlにリダイレクト
 app.get('*', (req, res) => {
@@ -237,8 +319,9 @@ app.listen(PORT, '0.0.0.0', () => {
   
   // runtime-config.jsを生成
   const runtimeConfig = {
-    API_BASE_URL: process.env.API_BASE_URL || '/api',
-    CORS_ALLOW_ORIGINS: process.env.CORS_ALLOW_ORIGINS || '*'
+    API_BASE_URL: '/api',  // 統合サーバーでは相対パスを使用
+    CORS_ALLOW_ORIGINS: process.env.CORS_ALLOW_ORIGINS || '*',
+    ENVIRONMENT: process.env.NODE_ENV || 'production'
   };
   
   const runtimeConfigContent = `window.runtimeConfig = ${JSON.stringify(runtimeConfig, null, 2)};`;

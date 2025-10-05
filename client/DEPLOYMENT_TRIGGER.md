@@ -1,14 +1,13 @@
-# Frontend Clean Auto-Deploy
+# Frontend Auto-Deploy (DISABLED)
 
-Deployment timestamp: 2025-10-05 (SAFE: No risky cache operations)
+Deployment timestamp: 2025-10-05 (DISABLED: No auto-deploy)
 
-## Safe Clean Deployment Strategy
-- 🧹 Clean artifacts: rm -rf dist/ node_modules/
-- ✅ Fresh build: Azure handles clean npm install + vite build
-- � Safe verification: HTTP head check instead of auth purge
-- 🎯 Zero old data issues, zero risky operations
+## Deployment Disabled
+- ❌ Auto-deploy disabled to prevent accidental deployment
+- 🔒 Manual deployment only
+- 📝 Code changes pushed to main branch without triggering deployment
 
-## Azure Static Web Apps (Safe Clean)
+## Azure Static Web Apps (Manual Only)
 - URL: https://witty-river-012f39e00.1.azurestaticapps.net
-- Strategy: Complete clean deployment with safe verification
-- No risky cache purge calls, just clean builds
+- Strategy: Manual deployment required
+- Auto-deploy trigger disabled
