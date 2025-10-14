@@ -1,0 +1,428 @@
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { drizzle as drizzlePg } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+import Database from 'better-sqlite3';
+import { eq, desc, and, sql } from 'drizzle-orm';
+import { faultHistory, faultHistoryImages } from '../db/schema.js';
+import fs from 'fs';
+import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
+import sharp from 'sharp';
+/**
+ * 故障履歴サービス
+ * 環境変数に基づいてデータベースまたはファイルシステムに保存
+ */
+export class FaultHistoryService {
+    constructor() {
+        // 環境変数でデータベース使用を判定
+        this.useDatabase = process.env.FAULT_HISTORY_STORAGE_MODE === 'database' && !!process.env.DATABASE_URL;
+        // 画像保存ディレクトリを設定
+        this.imagesDir = process.env.FAULT_HISTORY_IMAGES_DIR ||
+            path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
+        // ディレクトリが存在しない場合は作成
+        if (!fs.existsSync(this.imagesDir)) {
+            fs.mkdirSync(this.imagesDir, { recursive: true });
+        }
+        if (this.useDatabase) {
+            this.initializeDatabase();
+        }
+        console.log(`🔧 故障履歴サービス初期化: ${this.useDatabase ? 'データベース' : 'ファイル'}モード`);
+    }
+    initializeDatabase() {
+        try {
+            if (process.env.DATABASE_URL?.startsWith('postgres')) {
+                // PostgreSQL
+                const client = postgres(process.env.DATABASE_URL);
+                this.db = drizzlePg(client);
+                console.log('📊 PostgreSQL接続初期化完了');
+            }
+            else {
+                // SQLite (ローカル開発用)
+                const sqlite = new Database(process.env.DATABASE_URL || 'app.db');
+                this.db = drizzle(sqlite);
+                console.log('📊 SQLite接続初期化完了');
+            }
+        }
+        catch (error) {
+            console.error('❌ データベース初期化エラー:', error);
+            console.log('📁 ファイルモードにフォールバック');
+            this.useDatabase = false;
+        }
+    }
+    /**
+     * 故障履歴を保存
+     */
+    async saveFaultHistory(jsonData, options = {}) {
+        const id = uuidv4();
+        const now = new Date();
+        // JSONデータから基本情報を抽出
+        const { title = options.title || this.extractTitle(jsonData), description = options.description || this.extractDescription(jsonData), machineType = this.extractMachineType(jsonData), machineNumber = this.extractMachineNumber(jsonData), office = this.extractOffice(jsonData), category = this.extractCategory(jsonData), keywords = this.extractKeywords(jsonData), emergencyGuideTitle = this.extractEmergencyGuideTitle(jsonData), emergencyGuideContent = this.extractEmergencyGuideContent(jsonData), } = {};
+        // 画像を抽出・保存
+        let imagePaths = [];
+        let imageRecords = [];
+        if (options.extractImages !== false) {
+            const imageExtraction = await this.extractAndSaveImages(jsonData, id);
+            imagePaths = imageExtraction.imagePaths;
+            imageRecords = imageExtraction.imageRecords;
+        }
+        if (this.useDatabase) {
+            // データベースに保存
+            try {
+                const historyRecord = {
+                    id,
+                    title,
+                    description,
+                    machineType,
+                    machineNumber,
+                    office,
+                    category,
+                    keywords: keywords ? JSON.stringify(keywords) : null,
+                    emergencyGuideTitle,
+                    emergencyGuideContent,
+                    jsonData: JSON.stringify(jsonData),
+                    storageMode: 'database',
+                    createdAt: now,
+                    updatedAt: now,
+                };
+                await this.db.insert(faultHistory).values(historyRecord);
+                // 画像レコードを保存
+                if (imageRecords.length > 0) {
+                    await this.db.insert(faultHistoryImages).values(imageRecords);
+                }
+                console.log(`✅ 故障履歴をデータベースに保存: ${id}`);
+            }
+            catch (error) {
+                console.error('❌ データベース保存エラー:', error);
+                throw error;
+            }
+        }
+        else {
+            // ファイルシステムに保存
+            const exportDir = process.env.LOCAL_EXPORT_DIR ||
+                path.join(process.cwd(), 'knowledge-base', 'exports');
+            if (!fs.existsSync(exportDir)) {
+                fs.mkdirSync(exportDir, { recursive: true });
+            }
+            const filePath = path.join(exportDir, `${id}.json`);
+            const fileData = {
+                id,
+                title,
+                description,
+                machineType,
+                machineNumber,
+                office,
+                category,
+                keywords,
+                emergencyGuideTitle,
+                emergencyGuideContent,
+                jsonData,
+                metadata: {
+                    storageMode: 'file',
+                    imagePaths,
+                    imageRecords,
+                },
+                createdAt: now.toISOString(),
+                updatedAt: now.toISOString(),
+            };
+            fs.writeFileSync(filePath, JSON.stringify(fileData, null, 2), 'utf8');
+            console.log(`✅ 故障履歴をファイルに保存: ${filePath}`);
+        }
+        return { id, imagePaths };
+    }
+    /**
+     * 故障履歴一覧を取得
+     */
+    async getFaultHistoryList(options = {}) {
+        const { limit = 20, offset = 0 } = options;
+        if (this.useDatabase) {
+            // データベースから取得
+            try {
+                let query = this.db.select().from(faultHistory);
+                const conditions = [];
+                if (options.machineType) {
+                    conditions.push(eq(faultHistory.machineType, options.machineType));
+                }
+                if (options.machineNumber) {
+                    conditions.push(eq(faultHistory.machineNumber, options.machineNumber));
+                }
+                if (options.category) {
+                    conditions.push(eq(faultHistory.category, options.category));
+                }
+                if (options.office) {
+                    conditions.push(eq(faultHistory.office, options.office));
+                }
+                if (options.keyword) {
+                    conditions.push(sql `${faultHistory.title} ILIKE ${`%${options.keyword}%`} OR 
+                ${faultHistory.description} ILIKE ${`%${options.keyword}%`}`);
+                }
+                if (conditions.length > 0) {
+                    query = query.where(and(...conditions));
+                }
+                const items = await query
+                    .orderBy(desc(faultHistory.createdAt))
+                    .limit(limit)
+                    .offset(offset);
+                // 総数を取得
+                const totalQuery = await this.db
+                    .select({ count: sql `count(*)` })
+                    .from(faultHistory);
+                const total = totalQuery[0]?.count || 0;
+                return { items, total };
+            }
+            catch (error) {
+                console.error('❌ データベース取得エラー:', error);
+                throw error;
+            }
+        }
+        else {
+            // ファイルシステムから取得
+            return this.getFaultHistoryFromFiles(options);
+        }
+    }
+    /**
+     * 故障履歴詳細を取得
+     */
+    async getFaultHistoryById(id) {
+        if (this.useDatabase) {
+            // データベースから取得
+            try {
+                const item = await this.db
+                    .select()
+                    .from(faultHistory)
+                    .where(eq(faultHistory.id, id))
+                    .limit(1);
+                if (!item || item.length === 0) {
+                    return null;
+                }
+                // 関連画像を取得
+                const images = await this.db
+                    .select()
+                    .from(faultHistoryImages)
+                    .where(eq(faultHistoryImages.faultHistoryId, id));
+                return {
+                    ...item[0],
+                    images,
+                };
+            }
+            catch (error) {
+                console.error('❌ データベース取得エラー:', error);
+                throw error;
+            }
+        }
+        else {
+            // ファイルシステムから取得
+            const exportDir = process.env.LOCAL_EXPORT_DIR ||
+                path.join(process.cwd(), 'knowledge-base', 'exports');
+            const filePath = path.join(exportDir, `${id}.json`);
+            if (!fs.existsSync(filePath)) {
+                return null;
+            }
+            const fileContent = fs.readFileSync(filePath, 'utf8');
+            return JSON.parse(fileContent);
+        }
+    }
+    /**
+     * ファイルシステムから故障履歴一覧を取得
+     */
+    async getFaultHistoryFromFiles(options) {
+        const exportDir = process.env.LOCAL_EXPORT_DIR ||
+            path.join(process.cwd(), 'knowledge-base', 'exports');
+        if (!fs.existsSync(exportDir)) {
+            return { items: [], total: 0 };
+        }
+        const files = fs.readdirSync(exportDir)
+            .filter(file => file.endsWith('.json'))
+            .map(file => {
+            try {
+                const filePath = path.join(exportDir, file);
+                const content = fs.readFileSync(filePath, 'utf8');
+                const data = JSON.parse(content);
+                return {
+                    ...data,
+                    id: file.replace('.json', ''),
+                };
+            }
+            catch (error) {
+                console.error(`ファイル読み込みエラー: ${file}`, error);
+                return null;
+            }
+        })
+            .filter(item => item !== null);
+        // フィルタリング
+        let filteredItems = files;
+        if (options.machineType) {
+            filteredItems = filteredItems.filter(item => item.machineType === options.machineType);
+        }
+        if (options.machineNumber) {
+            filteredItems = filteredItems.filter(item => item.machineNumber === options.machineNumber);
+        }
+        if (options.category) {
+            filteredItems = filteredItems.filter(item => item.category === options.category);
+        }
+        if (options.office) {
+            filteredItems = filteredItems.filter(item => item.office === options.office);
+        }
+        if (options.keyword) {
+            filteredItems = filteredItems.filter(item => (item.title?.toLowerCase().includes(options.keyword.toLowerCase())) ||
+                (item.description?.toLowerCase().includes(options.keyword.toLowerCase())));
+        }
+        // ソート
+        filteredItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        // ページング
+        const { limit = 20, offset = 0 } = options;
+        const paginatedItems = filteredItems.slice(offset, offset + limit);
+        return {
+            items: paginatedItems,
+            total: filteredItems.length,
+        };
+    }
+    /**
+     * JSONデータから画像を抽出して保存
+     */
+    async extractAndSaveImages(jsonData, historyId) {
+        const imagePaths = [];
+        const imageRecords = [];
+        try {
+            // 会話履歴から画像を抽出
+            const conversationHistory = jsonData.conversationHistory || [];
+            for (let i = 0; i < conversationHistory.length; i++) {
+                const message = conversationHistory[i];
+                if (message.content && typeof message.content === 'string') {
+                    // Base64画像データを検出
+                    const base64Matches = message.content.match(/data:image\/([^;]+);base64,([^"]+)/g);
+                    if (base64Matches) {
+                        for (let j = 0; j < base64Matches.length; j++) {
+                            const match = base64Matches[j];
+                            const [, mimeType, base64Data] = match.match(/data:image\/([^;]+);base64,(.+)/) || [];
+                            if (mimeType && base64Data) {
+                                const fileName = `${historyId}_${i}_${j}.${mimeType}`;
+                                const filePath = path.join(this.imagesDir, fileName);
+                                try {
+                                    // Base64をデコードして保存
+                                    const buffer = Buffer.from(base64Data, 'base64');
+                                    // 画像を最適化して保存
+                                    await sharp(buffer)
+                                        .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+                                        .jpeg({ quality: 85 })
+                                        .toFile(filePath);
+                                    imagePaths.push(filePath);
+                                    // データベース記録用
+                                    const imageRecord = {
+                                        id: uuidv4(),
+                                        faultHistoryId: historyId,
+                                        originalFileName: `message_${i}_image_${j}.${mimeType}`,
+                                        fileName,
+                                        filePath: path.relative(process.cwd(), filePath),
+                                        relativePath: `images/chat-exports/${fileName}`,
+                                        mimeType: `image/${mimeType}`,
+                                        fileSize: buffer.length.toString(),
+                                        description: `Message ${i + 1} - Image ${j + 1}`,
+                                        createdAt: new Date(),
+                                    };
+                                    imageRecords.push(imageRecord);
+                                    console.log(`📷 画像保存: ${fileName} (${buffer.length} bytes)`);
+                                }
+                                catch (imageError) {
+                                    console.error(`❌ 画像保存エラー: ${fileName}`, imageError);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch (error) {
+            console.error('❌ 画像抽出エラー:', error);
+        }
+        return { imagePaths, imageRecords };
+    }
+    // データ抽出ヘルパーメソッド
+    extractTitle(jsonData) {
+        return jsonData.title ||
+            jsonData.metadata?.title ||
+            jsonData.conversationHistory?.[0]?.content?.substring(0, 50) + '...' ||
+            '故障履歴';
+    }
+    extractDescription(jsonData) {
+        return jsonData.problemDescription || // JSONの"problemDescription"フィールドを優先
+            jsonData.description ||
+            jsonData.metadata?.description ||
+            jsonData.answer || // JSONの"answer"フィールドも考慮
+            '';
+    }
+    extractMachineType(jsonData) {
+        return jsonData.machineType ||
+            jsonData.metadata?.machineType ||
+            this.extractFromContent(jsonData, /機種[：:]\s*([^\s,，]+)/i) ||
+            null;
+    }
+    extractMachineNumber(jsonData) {
+        return jsonData.machineNumber ||
+            jsonData.metadata?.machineNumber ||
+            this.extractFromContent(jsonData, /機械番号[：:]\s*([^\s,，]+)/i) ||
+            null;
+    }
+    extractOffice(jsonData) {
+        return jsonData.office ||
+            jsonData.metadata?.office ||
+            this.extractFromContent(jsonData, /事業所[：:]\s*([^\s,，]+)/i) ||
+            null;
+    }
+    extractCategory(jsonData) {
+        return jsonData.category ||
+            jsonData.metadata?.category ||
+            '故障対応';
+    }
+    extractKeywords(jsonData) {
+        const keywords = jsonData.keywords || jsonData.metadata?.keywords || [];
+        // 会話内容からキーワードを抽出
+        const content = this.getAllTextContent(jsonData);
+        const extractedKeywords = this.extractKeywordsFromText(content);
+        return [...new Set([...keywords, ...extractedKeywords])];
+    }
+    extractEmergencyGuideTitle(jsonData) {
+        return jsonData.emergencyGuideTitle ||
+            jsonData.metadata?.emergencyGuideTitle ||
+            null;
+    }
+    extractEmergencyGuideContent(jsonData) {
+        return jsonData.emergencyGuideContent ||
+            jsonData.metadata?.emergencyGuideContent ||
+            null;
+    }
+    extractFromContent(jsonData, regex) {
+        const content = this.getAllTextContent(jsonData);
+        const match = content.match(regex);
+        return match ? match[1].trim() : null;
+    }
+    getAllTextContent(jsonData) {
+        let content = '';
+        if (jsonData.conversationHistory) {
+            content += jsonData.conversationHistory
+                .map((msg) => msg.content || '')
+                .join(' ');
+        }
+        if (jsonData.title)
+            content += ' ' + jsonData.title;
+        if (jsonData.description)
+            content += ' ' + jsonData.description;
+        return content;
+    }
+    extractKeywordsFromText(text) {
+        const keywords = [];
+        // 技術用語を抽出
+        const technicalTerms = [
+            '故障', 'エラー', '異常', '不具合', '停止', '異音', '振動',
+            '温度', '圧力', '油圧', 'センサー', 'モーター', 'ベルト',
+            '交換', '修理', '調整', '清掃', '点検', '保守'
+        ];
+        technicalTerms.forEach(term => {
+            if (text.includes(term)) {
+                keywords.push(term);
+            }
+        });
+        return keywords;
+    }
+}
+// シングルトンインスタンス
+export const faultHistoryService = new FaultHistoryService();

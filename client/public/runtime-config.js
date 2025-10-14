@@ -10,21 +10,21 @@
   let config;
   
   if (isLocalhost) {
-    // ローカル開発環境（Express Server使用）
+    // ローカル開発環境: ホットリロード統合サーバー使用
     config = {
-      "API_BASE_URL": "http://localhost:8081/api",
-      "CORS_ALLOW_ORIGINS": "http://localhost:5173,http://localhost:8081",
+      "API_BASE_URL": "http://localhost:8080/api",
+      "CORS_ALLOW_ORIGINS": "http://localhost:5173,http://localhost:8080",
       "ENVIRONMENT": "development"
     };
   } else if (isAzureStaticWebApp) {
-    // Azure Static Web Apps（本番環境、統合Functions使用）
+    // Azure Static Web Apps: 本番環境で統合Functions使用
     config = {
-      "API_BASE_URL": "/api", // Static Web App統合Functions
+      "API_BASE_URL": "/api",
       "CORS_ALLOW_ORIGINS": "https://witty-river-012f39e00.1.azurestaticapps.net",
       "ENVIRONMENT": "production"
     };
   } else {
-    // その他の環境（Static Web App統合Functions使用）
+    // その他の環境: Static Web App統合Functions使用
     config = {
       "API_BASE_URL": "/api",
       "CORS_ALLOW_ORIGINS": "*",
@@ -35,7 +35,7 @@
   console.log('🔧 Runtime Config Applied:', {
     hostname: window.location.hostname,
     environment: config.ENVIRONMENT,
-    apiBaseUrl: config.API_BASE_URL
+    "API_BASE_URL": config.API_BASE_URL,
   });
   
   window.runtimeConfig = config;

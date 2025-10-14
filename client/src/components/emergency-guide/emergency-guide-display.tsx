@@ -110,7 +110,7 @@ export default function EmergencyGuideDisplay({
         
         // 統一API設定を使用 - emergency-flow APIを使用
         const { buildApiUrl } = await import('../../lib/api-unified');
-        const apiUrl = buildApiUrl(`/emergency-flow/detail/${guideId}${cacheBuster}`);
+        const apiUrl = buildApiUrl(`/emergency-flow/${guideId}${cacheBuster}`);
         
         console.log('🌐 ガイド詳細API URL:', apiUrl);
         

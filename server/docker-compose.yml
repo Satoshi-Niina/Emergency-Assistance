@@ -3,53 +3,30 @@ version: '3.8'
 services:
   backend:
     build:
-      context: .
+      context: ..
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - PORT=8080
-      - FRONTEND_URL=http://localhost:5173
-    volumes:
-      - .:/app
-      - /app/node_modules  # node_modulesをボリュームで除外
+      - DATABASE_URL=postgresql://postgres:CHANGE_THIS_PASSWORD@postgres:5432/webappdb
+      - API_BASE_URL=http://localhost:8080/api
+      - CORS_ALLOW_ORIGINS=*
+      - BYPASS_DB_FOR_LOGIN=false
+      - PG_SSL=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    # Docker Compose Watch機能で自動更新
-    develop:
-      watch:
-        - action: rebuild
-          path: .
-          ignore:
-            - node_modules/
-            - dist/
-            - logs/
-            - uploads/
-            - temp/
-        - action: sync
-          path: .
-          target: /app
-          ignore:
-            - node_modules/
-            - dist/
-            - logs/
-            - uploads/
-            - temp/
-    # 開発用の設定
-    command: >
-      sh -c "
-        echo '🚀 Starting development server...' &&
-        npm install &&
-        node azure-server.js
-      "
 
-  # ローカル開発用のPostgreSQL（必要に応じて）
+  # PostgreSQLデータベース
   postgres:
     image: postgres:15-alpine
     environment:
@@ -61,6 +38,12 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d webappdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 volumes:
   postgres_data:

@@ -211,7 +211,7 @@ export default function HistoryPage() {
       // 機械故障履歴ファイル一覧を取得
       console.log('🔍 機械故障履歴ファイル一覧取得開始');
       const { buildApiUrl } = await import('../lib/api-unified');
-      const requestUrl = buildApiUrl('/history/machine-data');
+      const requestUrl = buildApiUrl('/history');
       console.log('🔍 APIリクエストURL:', requestUrl);
       
       const response = await fetch(requestUrl);

@@ -115,7 +115,7 @@ export default function TroubleshootingFlow({
 
         // 正しいAPIエンドポイントを使用
         const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${id}`
+          `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${id}`
         );
 
         if (!response.ok) {

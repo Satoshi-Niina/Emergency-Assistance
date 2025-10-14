@@ -20,8 +20,8 @@ FROM node:20-alpine AS runtime
 
 WORKDIR /app
 
-# Install production dependencies
-RUN apk add --no-cache bash
+# Install production dependencies and PostgreSQL client
+RUN apk add --no-cache bash postgresql-client
 
 # Copy built client from client-builder stage (Vite builds to ../server/public)
 COPY --from=client-builder /app/server/public ./public
@@ -31,8 +31,27 @@ COPY server/package*.json ./
 # npm install を使用（--omit=dev で本番用のみ）
 RUN npm install --omit=dev
 
-# Copy unified server
+# Copy unified server and all necessary files and directories
 COPY server/unified-server.js ./
+COPY server/services/ ./services/
+COPY server/routes/ ./routes/
+COPY server/db/ ./db/
+COPY server/src/ ./src/
+COPY server/lib/ ./lib/
+COPY server/middleware/ ./middleware/
+COPY server/migrations/ ./migrations/
+COPY server/types/ ./types/
+COPY server/utils/ ./utils/
+COPY server/config/ ./config/
+COPY server/.env ./
+COPY shared/ ./shared/
+COPY knowledge-base/ ./knowledge-base/
+
+# Copy root level configuration files
+COPY .env .env.example tsconfig.json ./
+
+# Create necessary runtime directories
+RUN mkdir -p /app/app-logs/history /app/app-logs/exports
 
 # Create runtime config generation script
 RUN echo '#!/bin/bash' > /app/generate-runtime-config.sh && \

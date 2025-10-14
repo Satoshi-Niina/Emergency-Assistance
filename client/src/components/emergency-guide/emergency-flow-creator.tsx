@@ -371,7 +371,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       
       // 統一API設定を使用
       const { buildApiUrl } = await import('../../lib/api-unified');
-      const apiUrl = buildApiUrl(`/emergency-flow/${flowId}?ts=${timestamp}&_r=${randomId}`);
+      const apiUrl = buildApiUrl(`/api/emergency-flow/${flowId}?ts=${timestamp}&_r=${randomId}`);
 
       console.log('🌐 API呼び出し:', apiUrl);
 

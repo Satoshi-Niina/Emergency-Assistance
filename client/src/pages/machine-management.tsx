@@ -129,12 +129,14 @@ export default function MachineManagementPage() {
 
   const fetchData = async () => {
     try {
-      const API_BASE = 'http://localhost:8081/api';
       setIsLoading(true);
       setError(null);
 
+      // 統一API設定を使用
+      const { buildApiUrl } = await import('../lib/api-unified');
+
       // 機種一覧取得
-      const typesResponse = await fetch(`${API_BASE}/machines/machine-types`);
+      const typesResponse = await fetch(buildApiUrl('/machines/machine-types'));
       const contentType = typesResponse.headers.get('content-type') || '';
       if (!typesResponse.ok || !contentType.includes('application/json')) {
         const text = await typesResponse.text();
@@ -165,7 +167,7 @@ export default function MachineManagementPage() {
       }
 
       // 機械一覧取得
-      const machinesResponse = await fetch(`${API_BASE}/machines`);
+      const machinesResponse = await fetch(buildApiUrl('/machines'));
       const contentType2 = machinesResponse.headers.get('content-type') || '';
       if (!machinesResponse.ok || !contentType2.includes('application/json')) {
         const text2 = await machinesResponse.text();
@@ -214,9 +216,12 @@ export default function MachineManagementPage() {
     if (!newTypeName.trim()) return;
 
     try {
+      // 統一API設定を使用
+      const { buildApiUrl } = await import('../lib/api-unified');
+      
       const url = editingType
-        ? `http://localhost:8081/api/machines/machine-types/${editingType.id}`
-        : `http://localhost:8081/api/machines/machine-types`;
+        ? buildApiUrl(`/machines/machine-types/${editingType.id}`)
+        : buildApiUrl('/machines/machine-types');
 
       const method = editingType ? 'PUT' : 'POST';
 
@@ -270,9 +275,12 @@ export default function MachineManagementPage() {
     if (!newMachineNumber.trim() || !selectedMachineType) return;
 
     try {
+      // 統一API設定を使用
+      const { buildApiUrl } = await import('../lib/api-unified');
+      
       const url = editingMachine
-        ? `http://localhost:8081/api/machines/${editingMachine.id}`
-        : `http://localhost:8081/api/machines`;
+        ? buildApiUrl(`/machines/${editingMachine.id}`)
+        : buildApiUrl('/machines');
 
       const method = editingMachine ? 'PUT' : 'POST';
 
@@ -333,8 +341,11 @@ export default function MachineManagementPage() {
         ...(token && { 'Authorization': `Bearer ${token}` })
       };
 
+      // 統一API設定を使用
+      const { buildApiUrl } = await import('../lib/api-unified');
+      
       const response = await fetch(
-        `http://localhost:8081/api/machines/machine-types/${typeId}`,
+        buildApiUrl(`/machines/machine-types/${typeId}`),
         {
           method: 'DELETE',
           headers,
@@ -375,8 +386,11 @@ export default function MachineManagementPage() {
         ...(token && { 'Authorization': `Bearer ${token}` })
       };
 
+      // 統一API設定を使用
+      const { buildApiUrl } = await import('../lib/api-unified');
+      
       const response = await fetch(
-        `http://localhost:8081/api/machines/${machineId}`,
+        buildApiUrl(`/machines/${machineId}`),
         {
           method: 'DELETE',
           headers,

@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { z } from 'zod';
 import fs from 'fs';
 import path from 'path';
+import sharp from 'sharp';
 import { db } from '../db/index.js';
 import { findRelevantImages } from '../utils/image-matcher.js';
 import { upload } from '../utils/image-uploader.js';
@@ -10,6 +11,7 @@ import { storage } from '../storage.js';
 import { formatChatHistoryForExternalSystem } from '../lib/chat-export-formatter.js';
 import { exportFileManager } from '../lib/export-file-manager.js';
 import { processOpenAIRequest } from '../lib/openai.js';
+import { faultHistoryService } from '../services/fault-history-service.js';
 import {
   insertMessageSchema,
   insertMediaSchema,
@@ -829,10 +831,9 @@ export function registerChatRoutes(app: any): void {
         });
       }
 
-      // knowledge-base/exports フォルダを作成（ルートディレクトリ）
+      // knowledge-base/exports フォルダを作成（プロジェクトルート）
       const exportsDir = path.join(
         process.cwd(),
-        '..',
         'knowledge-base',
         'exports'
       );
@@ -1012,8 +1013,21 @@ export function registerChatRoutes(app: any): void {
         throw writeError;
       }
 
-      // ファイルベースの保存のみ（DB保存は削除）
-      console.log('チャットエクスポートがファイルに保存されました');
+      // DBにも保存（故障履歴サービス使用）
+      try {
+        console.log('📊 故障履歴をDBに保存中...');
+        const dbSaveResult = await faultHistoryService.saveFaultHistory(exportData, {
+          title: formattedHistoryData.title,
+          description: formattedHistoryData.problem_description,
+          extractImages: true, // 画像も抽出・保存
+        });
+        console.log('✅ 故障履歴をDBに保存完了:', dbSaveResult.id);
+      } catch (dbError) {
+        console.error('❌ DB保存エラー（ファイル保存は成功）:', dbError);
+        // ファイル保存は成功しているので、エラーにはしない
+      }
+
+      console.log('チャットエクスポートがファイルとDBに保存されました');
 
       // 成功レスポンス
       res.json({

@@ -207,15 +207,16 @@ const EmergencyGuidePage: React.FC = () => {
       const randomId = Math.random().toString(36).substring(2);
       const cacheParams = `?_t=${timestamp}&_r=${randomId}&no_cache=true&source=troubleshooting`;
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list${cacheParams}`,
-        {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      // 統一API設定を使用
+      const { buildApiUrl } = await import('../lib/api-unified');
+      const apiUrl = buildApiUrl(`/emergency-flow/list${cacheParams}`);
+      
+      const response = await fetch(apiUrl, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
       if (!response.ok) {
         throw new Error(

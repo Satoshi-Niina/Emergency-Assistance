@@ -36,9 +36,9 @@ export default defineConfig(({ command, mode }) => {
       return env.VITE_API_BASE;
     }
     
-    // 開発環境: ローカルのバックエンドサーバー
+    // 開発環境: 統合サーバーを使用（相対パス）
     if (isDev) {
-      return 'http://localhost:8081';
+      return '/api';
     }
     
     // 本番環境: 相対パス（Static Web Appのリライトルール使用）
@@ -47,7 +47,7 @@ export default defineConfig(({ command, mode }) => {
     }
     
     // フォールバック
-    return 'http://localhost:8081';
+    return 'http://localhost:8080';
   })();
   const serverPort = parseInt(env.PORT || '3003');
   const clientPort = parseInt(env.CLIENT_PORT || '5175');
@@ -84,7 +84,7 @@ export default defineConfig(({ command, mode }) => {
       host: true,
       proxy: {
         '/api': {
-          target: apiBaseUrl,
+          target: 'http://localhost:8080',
           changeOrigin: true,
           secure: false,
           configure: (proxy, _options) => {
@@ -107,7 +107,7 @@ export default defineConfig(({ command, mode }) => {
       }
     },
     build: {
-      outDir: command === 'serve' ? '../server/public' : 'dist',
+      outDir: '../server/public',
       assetsDir: 'assets',
       sourcemap: false,
       minify: 'terser',

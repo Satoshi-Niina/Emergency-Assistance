@@ -28,6 +28,9 @@ export interface SupportHistoryItem {
     machineTypeName?: string;
     machineNumber?: string;
   };
+  hasImage?: boolean;
+  source?: string;
+  problemDescription?: string;
   jsonData: {
     // 新しいフォーマット
     title?: string;

@@ -1,5 +1,5 @@
 import emergencyFlowRoutes from './emergency-flow.js';
-// import { registerChatRoutes } from './chat.js'; // 一時的に無効化（insertChatSchemaエラーのため）
+import { registerChatRoutes } from './chat.js';
 import { techSupportRouter } from './tech-support.js';
 import troubleshootingRouter from './troubleshooting.js';
 import { usersRouter } from './users.js';
@@ -13,6 +13,7 @@ import settingsRouter from './settings.js';
 // machinesRouterはapp.tsで直接マウントされているため、ここでは除外
 import imageStorageRouter from './image-storage.js';
 import systemCheckRouter from './system-check.js';
+import machinesRouter from './machines.js';
 import { flowsRouter } from './flows.js';
 import filesRouter from './files.js';
 import reportsRouter from './reports.js';
@@ -35,6 +36,8 @@ export default function registerRoutes(app: any) {
   mountDiag(app);
   
   // registerChatRoutes(app); // 一時的に無効化
+  registerChatRoutes(app);
+  app.use('/api/flows', flowsRouter);
   app.use('/api/emergency-flow', emergencyFlowRoutes);
   app.use('/api/tech-support', techSupportRouter);
   app.use('/api/troubleshooting', troubleshootingRouter);
@@ -49,7 +52,7 @@ export default function registerRoutes(app: any) {
   // machinesRouterはapp.tsで直接マウントされているため、ここでは除外
   app.use('/api/images', imageStorageRouter);
   app.use('/api/system-check', systemCheckRouter);
-  app.use('/api/flows', flowsRouter);
+  app.use('/api/machines', machinesRouter);
   app.use('/api/files', filesRouter);
   app.use('/api/reports', reportsRouter);
   

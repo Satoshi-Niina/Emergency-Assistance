@@ -94,7 +94,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       setIsLoading(true);
       console.log('🔄 フロー一覧を取得中...');
 
-      const apiUrl = buildApiUrl('/api/emergency-flow/list');
+      const apiUrl = buildApiUrl('/emergency-flow/list');
       console.log('🔗 API URL:', apiUrl);
 
       // キャッシュ無効化のためのタイムスタンプ

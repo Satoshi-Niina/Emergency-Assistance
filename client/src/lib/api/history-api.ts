@@ -9,6 +9,13 @@ import {
   ExportHistoryItem,
 } from '../../types/history';
 import { apiRequest } from '../api-unified';
+import {
+  fetchFaultHistoryList,
+  fetchFaultHistoryDetail,
+  saveFaultHistory,
+  getFaultHistoryImageUrl,
+  type FaultHistoryItem,
+} from './fault-history-api';
 
 // 履歴データから機種・機械番号一覧取得
 export const fetchMachineData = async (): Promise<{
@@ -31,53 +38,138 @@ export const fetchMachineData = async (): Promise<{
   }
 };
 
-// 履歴一覧取得
+// 履歴一覧取得（既存履歴 + 故障履歴DB統合）
 export const fetchHistoryList = async (
   filters: HistorySearchFilters = {}
 ): Promise<HistoryListResponse> => {
   try {
-    const params = new URLSearchParams();
+    // 並行して既存履歴と故障履歴DBから取得
+    const [legacyResponse, faultHistoryResponse] = await Promise.allSettled([
+      fetchLegacyHistoryList(filters),
+      fetchFaultHistoryListInternal(filters)
+    ]);
 
-    if (filters.machineType) params.append('machineType', filters.machineType);
-    if (filters.machineNumber)
-      params.append('machineNumber', filters.machineNumber);
-    if (filters.searchText) params.append('searchText', filters.searchText);
-    if (filters.searchDate) params.append('searchDate', filters.searchDate);
-    if (filters.limit) params.append('limit', filters.limit.toString());
-    if (filters.offset) params.append('offset', filters.offset.toString());
-
-    const response = await apiRequest(`/history?${params.toString()}`);
-
-    if (!response.ok) {
-      console.warn(
-        `履歴一覧取得エラー: ${response.status} ${response.statusText}`
-      );
-      // エラーの場合は空のデータを返す
-      return {
-        success: true,
-        items: [],
-        total: 0,
-        timestamp: new Date().toISOString(),
-      };
+    let allItems: SupportHistoryItem[] = [];
+    
+    // 既存履歴の結果を処理
+    if (legacyResponse.status === 'fulfilled' && legacyResponse.value.items) {
+      allItems = [...allItems, ...legacyResponse.value.items];
     }
 
-    return response.json();
+    // 故障履歴DBの結果を処理（SupportHistoryItem形式に変換）
+    if (faultHistoryResponse.status === 'fulfilled' && faultHistoryResponse.value.data) {
+      const convertedItems = faultHistoryResponse.value.data.map(convertFaultHistoryToSupportHistory);
+      allItems = [...allItems, ...convertedItems];
+    }
+
+    // 作成日時でソート
+    allItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    // ページング適用
+    const limit = filters.limit || 20;
+    const offset = filters.offset || 0;
+    const paginatedItems = allItems.slice(offset, offset + limit);
+
+    return {
+      items: paginatedItems,
+      total: allItems.length,
+      hasMore: offset + limit < allItems.length,
+    };
   } catch (error) {
     console.error('履歴一覧取得エラー:', error);
-    // エラーの場合は空のデータを返す
     return {
-      success: true,
       items: [],
       total: 0,
-      timestamp: new Date().toISOString(),
+      hasMore: false,
     };
   }
 };
 
-// 履歴詳細取得
+// 既存履歴取得（従来の方法）
+const fetchLegacyHistoryList = async (
+  filters: HistorySearchFilters = {}
+): Promise<HistoryListResponse> => {
+  const params = new URLSearchParams();
+
+  if (filters.machineType) params.append('machineType', filters.machineType);
+  if (filters.machineNumber) params.append('machineNumber', filters.machineNumber);
+  if (filters.searchText) params.append('searchText', filters.searchText);
+  if (filters.searchDate) params.append('searchDate', filters.searchDate);
+  if (filters.limit) params.append('limit', filters.limit.toString());
+  if (filters.offset) params.append('offset', filters.offset.toString());
+
+  const response = await apiRequest(`/history?${params.toString()}`);
+
+  if (!response.ok) {
+    return {
+      items: [],
+      total: 0,
+      hasMore: false,
+    };
+  }
+
+  return response.json();
+};
+
+// 故障履歴DB取得（内部用）
+const fetchFaultHistoryListInternal = async (filters: HistorySearchFilters) => {
+  return await fetchFaultHistoryList({
+    machineType: filters.machineType,
+    machineNumber: filters.machineNumber,
+    keyword: filters.searchText,
+    limit: filters.limit,
+    offset: filters.offset,
+  });
+};
+
+// FaultHistoryItemをSupportHistoryItem形式に変換
+const convertFaultHistoryToSupportHistory = (faultItem: FaultHistoryItem): SupportHistoryItem => {
+  // 画像情報を抽出
+  const imageUrl = faultItem.images && faultItem.images.length > 0 
+    ? getFaultHistoryImageUrl(faultItem.images[0].fileName)
+    : undefined;
+
+  return {
+    id: faultItem.id,
+    machineType: faultItem.machineType || '',
+    machineNumber: faultItem.machineNumber || '',
+    title: faultItem.title,
+    jsonData: {
+      ...faultItem.jsonData,
+      title: faultItem.title,
+      problemDescription: faultItem.description,
+      machineType: faultItem.machineType,
+      machineNumber: faultItem.machineNumber,
+      metadata: {
+        office: faultItem.office,
+        category: faultItem.category,
+        keywords: faultItem.keywords,
+        source: 'fault-history-db',
+      },
+    },
+    imagePath: imageUrl,
+    imageUrl: imageUrl,
+    createdAt: faultItem.createdAt,
+    source: 'fault-history-db',
+  };
+};
+
+// 履歴詳細取得（既存履歴 + 故障履歴DB統合）
 export const fetchHistoryDetail = async (
   id: string
 ): Promise<SupportHistoryItem> => {
+  try {
+    // まず故障履歴DBから検索
+    const faultHistoryDetail = await fetchFaultHistoryDetail(id);
+    if (faultHistoryDetail) {
+      return convertFaultHistoryToSupportHistory(faultHistoryDetail);
+    }
+  } catch (error) {
+    // 故障履歴DBにない場合は既存履歴から検索
+    console.warn('故障履歴DBで見つからず、既存履歴を検索:', error);
+  }
+
+  // 既存履歴から取得
   const response = await apiRequest(`/history/${id}`);
 
   if (!response.ok) {
@@ -87,26 +179,42 @@ export const fetchHistoryDetail = async (
   return response.json();
 };
 
-// 履歴作成
+// 履歴作成（故障履歴DBに優先保存）
 export const createHistory = async (data: {
   machineType: string;
   machineNumber: string;
   jsonData: any;
   image?: File;
 }): Promise<SupportHistoryItem> => {
-  const formData = new FormData();
-  formData.append('machineType', data.machineType);
-  formData.append('machineNumber', data.machineNumber);
-  formData.append('jsonData', JSON.stringify(data.jsonData));
+  try {
+    // 故障履歴DBに保存を試行
+    const faultHistoryResult = await saveFaultHistory({
+      jsonData: data.jsonData,
+      title: data.jsonData.title || `${data.machineType} - ${data.machineNumber}`,
+      extractImages: true,
+    });
 
-  if (data.image) {
-    formData.append('image', data.image);
+    // 故障履歴DBから詳細を取得してSupportHistoryItem形式で返す
+    const savedItem = await fetchFaultHistoryDetail(faultHistoryResult.id);
+    return convertFaultHistoryToSupportHistory(savedItem);
+  } catch (error) {
+    console.warn('故障履歴DBへの保存に失敗、従来方式で保存:', error);
+    
+    // 従来の方式で既存履歴に保存
+    const formData = new FormData();
+    formData.append('machineType', data.machineType);
+    formData.append('machineNumber', data.machineNumber);
+    formData.append('jsonData', JSON.stringify(data.jsonData));
+
+    if (data.image) {
+      formData.append('image', data.image);
+    }
+
+    return await apiRequest('/history', {
+      method: 'POST',
+      body: formData,
+    });
   }
-
-  return await apiRequest('/history', {
-    method: 'POST',
-    body: formData,
-  });
 };
 
 // 履歴削除

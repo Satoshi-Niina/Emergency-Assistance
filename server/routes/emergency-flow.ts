@@ -558,6 +558,14 @@ router.get('/', async (_req, res) => {
       'knowledge-base',
       'troubleshooting'
     );
+    
+    // サーバーディレクトリから起動されている場合の代替パス
+    const alternativeDir = path.join(
+      process.cwd(),
+      '..',
+      'knowledge-base',
+      'troubleshooting'
+    );
     console.log(
       '🔍 トラブルシューティングディレクトリパス:',
       troubleshootingDir
@@ -565,41 +573,24 @@ router.get('/', async (_req, res) => {
     console.log('🔍 現在の作業ディレクトリ:', process.cwd());
     console.log('🔍 絶対パス:', path.resolve(troubleshootingDir));
 
+    // ディレクトリの存在確認と適切なパスの選択
+    let targetDir = troubleshootingDir;
     if (!fs.existsSync(troubleshootingDir)) {
-      console.log('❌ トラブルシューティングディレクトリが存在しません');
-      console.log('🔍 代替パスを試行中...');
-
-      // 代替パスを試行
-      const alternativePaths = [
-        path.join(process.cwd(), 'knowledge-base', 'troubleshooting'),
-        path.join(__dirname, '..', '..', 'knowledge-base', 'troubleshooting'),
-        path.join(__dirname, '..', 'knowledge-base', 'troubleshooting'),
-      ];
-
-      for (const altPath of alternativePaths) {
-        console.log(`🔍 代替パスをチェック中: ${altPath}`);
-        if (fs.existsSync(altPath)) {
-          console.log(`✅ 代替パスが見つかりました: ${altPath}`);
-          const fileList = await loadFromDirectory(altPath);
-          return res.json({
-            success: true,
-            data: fileList,
-            total: fileList.length,
-            timestamp: new Date().toISOString(),
-          });
-        }
+      console.log('❌ メインディレクトリが存在しません、代替パスを試行中...');
+      if (fs.existsSync(alternativeDir)) {
+        console.log(`✅ 代替パスが見つかりました: ${alternativeDir}`);
+        targetDir = alternativeDir;
+      } else {
+        console.error('❌ どのパスでもディレクトリが見つかりませんでした');
+        return res.json({
+          success: false,
+          error: 'トラブルシューティングディレクトリが見つかりません',
+          timestamp: new Date().toISOString(),
+        });
       }
-
-      console.error('❌ どのパスでもディレクトリが見つかりませんでした');
-      return res.json({
-        success: true,
-        data: [],
-        total: 0,
-        timestamp: new Date().toISOString(),
-      });
     }
 
-    const fileList = await loadFromDirectory(troubleshootingDir);
+    const fileList = await loadFromDirectory(targetDir);
 
     // 作成日時でソート
     fileList.sort(

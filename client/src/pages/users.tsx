@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api } from '../lib/api-unified';
+import { api, userApi } from '../lib/api-unified';
 import { useAuth } from '../context/auth-context';
 import { useToast } from '../hooks/use-toast';
 import * as XLSX from 'xlsx';
@@ -124,7 +124,7 @@ export default function UsersPage() {
     try {
       setIsLoading(true);
       setQueryError(null);
-      const userData = await api.get('/users');
+      const userData = await userApi.get('/users');
       if (userData.success && userData.data) {
         setUsers(userData.data);
         setFilteredUsers(userData.data);
@@ -237,10 +237,7 @@ export default function UsersPage() {
         return;
       }
 
-      const result = await api.get('/users', {
-        method: 'POST',
-        body: JSON.stringify(newUser),
-      });
+      const result = await userApi.post('/users', newUser);
       console.log('✅ ユーザー作成成功:', result);
 
       toast({
@@ -291,7 +288,7 @@ export default function UsersPage() {
         return;
       }
 
-      const result = await api.put(`/users/${editUser.id}`, editUser);
+      const result = await userApi.put(`/users/${editUser.id}`, editUser);
       console.log('✅ ユーザー更新成功:', result);
 
       toast({
@@ -341,7 +338,7 @@ export default function UsersPage() {
     try {
       if (!selectedUserId) return;
 
-      const result = await api.delete(`/users/${selectedUserId}`);
+      const result = await userApi.delete(`/users/${selectedUserId}`);
       console.log('✅ ユーザー削除成功:', result);
 
       toast({
@@ -385,10 +382,7 @@ export default function UsersPage() {
       const formData = new FormData();
       formData.append('file', importFile);
 
-      const result = await api.get('/users/import', {
-        method: 'POST',
-        body: formData,
-      });
+      const result = await api.post('/users/import', formData);
       setImportResults(result);
 
       toast({
@@ -578,7 +572,7 @@ export default function UsersPage() {
         // ユーザー一覧を再取得
         const fetchUsers = async () => {
           try {
-            const userData = await api.get('/users');
+            const userData = await userApi.get('/users');
             if (userData.success && userData.data) {
               setUsers(userData.data);
               setFilteredUsers(userData.data);

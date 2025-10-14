@@ -323,9 +323,9 @@ export default function ChatPage() {
       setIsLoadingMachineTypes(true);
       console.log('🔍 機種一覧取得開始');
 
-      // 統一API設定を使用
-      const { buildApiUrl } = await import('../lib/api-unified');
-      const apiUrl = buildApiUrl('/machines/machine-types');
+        // 統一API設定を使用
+        const { buildApiUrl } = await import('../lib/api-unified');
+        const apiUrl = buildApiUrl('/machines/machine-types');
       console.log('🔍 機種一覧取得URL:', apiUrl);
       console.log('🔍 現在のURL:', window.location.href);
       console.log('🔍 環境変数:', {
@@ -2204,7 +2204,7 @@ export default function ChatPage() {
             カメラ
           </Button>
 
-          {/* 応急処置ガイドボタン */}
+          {/* 応急復旧マニュアルボタン */}
           <Button
             variant='outline'
             size='lg'
@@ -2213,7 +2213,7 @@ export default function ChatPage() {
             className='bg-red-50 border-red-200 text-red-700 hover:bg-red-100 mr-6 px-8 py-3 text-base font-semibold'
           >
             <Activity className='w-6 h-6 mr-3' />
-            応急処置ガイド
+            応急復旧マニュアル
           </Button>
         </div>
 

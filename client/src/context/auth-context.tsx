@@ -59,14 +59,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // 開発時は強制的にログイン画面を表示（認証状態をリセット）
         // console.log('🔐 開発モード: ログイン画面を強制表示');
-        localStorage.removeItem('authToken');
-        sessionStorage.removeItem('authToken');
+        // localStorage.removeItem('authToken');
+        // sessionStorage.removeItem('authToken');
         // クッキーもクリア
-        document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-        setUser(null);
+        // document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+        // setUser(null);
         
-        // 以下のコードは一時的にコメントアウト（自動認証を無効化）
-        /*
         // localStorageからトークンを確認
         const token = localStorage.getItem('authToken');
         if (token) {
@@ -97,7 +95,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('ℹ️ トークンが見つかりません、ログイン画面を表示');
           setUser(null);
         }
-        */
       } catch (error) {
         console.warn('⚠️ 認証状態確認エラー:', error);
         setUser(null);

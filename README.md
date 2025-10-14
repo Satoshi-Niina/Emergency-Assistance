@@ -111,5 +111,3 @@ npm run docker:build
 ```
 
 ## ライセンス
-
-MIT

@@ -6,17 +6,8 @@ import {
   Calendar,
   MapPin,
   Settings,
-  Filter,
   Download,
   Trash2,
-  FileDown,
-  FileText as FileTextIcon,
-  Table,
-  Grid3X3,
-  List,
-  ClipboardList,
-  FileSpreadsheet,
-  Grid,
   Printer,
 } from 'lucide-react';
 import {
@@ -137,6 +128,9 @@ const HistoryPage: React.FC = () => {
 
   // レポート機能の状態
   const [reportLoading, setReportLoading] = useState(false);
+
+  // 自動ファイル読み込み機能の状態
+  const [fileLoading, setFileLoading] = useState(false);
 
   // 編集・プレビュー機能の状態
   const [editingItem, setEditingItem] = useState<SupportHistoryItem | null>(
@@ -327,12 +321,12 @@ const HistoryPage: React.FC = () => {
       // 機種・機械番号データを専用APIから取得
       console.log('🔍 機種・機械番号データ取得開始');
       const { buildApiUrl } = await import('../lib/api-unified');
-      const response = await fetch(buildApiUrl('/history/machine-data'));
+      const response = await fetch(buildApiUrl('/machines/machine-types'));
       console.log('🔍 APIレスポンス:', response.status, response.statusText);
       const data = await response.json();
       console.log('🔍 APIレスポンスデータ:', data);
 
-      if (data.success && data.machineTypes && data.machines) {
+      if (data.success && data.data) {
         // 機種一覧を構築（重複除去）
         const machineTypeSet = new Set<string>();
         const machineTypes: Array<{ id: string; machineTypeName: string }> = [];
@@ -347,9 +341,20 @@ const HistoryPage: React.FC = () => {
 
         console.log('🔍 機種・機械番号データは専用APIから取得されます');
 
+        // 機種データを処理
+        data.data.forEach((type: any) => {
+          if (type.machine_type_name && !machineTypeSet.has(type.machine_type_name)) {
+            machineTypeSet.add(type.machine_type_name);
+            machineTypes.push({
+              id: type.id,
+              machineTypeName: type.machine_type_name,
+            });
+          }
+        });
+
         const result = {
-          machineTypes: data.machineTypes || [],
-          machines: data.machines || [],
+          machineTypes: machineTypes,
+          machines: [], // 機械番号は別途取得
         };
 
         console.log('🔍 機種・機械番号データ取得結果:', result);
@@ -443,7 +448,7 @@ const HistoryPage: React.FC = () => {
       params.append('offset', ((page - 1) * 20).toString());
 
       const { buildApiUrl } = await import('../lib/api-unified');
-      const requestUrl = buildApiUrl('/history/export-files');
+      const requestUrl = buildApiUrl('/history');
       console.log('🔍 APIリクエストURL:', requestUrl);
       
       const response = await fetch(requestUrl);
@@ -534,20 +539,39 @@ const HistoryPage: React.FC = () => {
           updatedItemsLength: updatedItems.length
         });
         
-        setHistoryItems(updatedItems);
-        setFilteredItems(updatedItems);
-        setTotalPages(Math.ceil(updatedItems.length / 20));
+        // DB専用履歴取得に統一
+        const { loadHistoryFromDB } = await import('../components/db-history-loader');
+        const dbHistoryItems = await loadHistoryFromDB();
+        
+        // DB専用データを統合（従来のupdatedItemsは無視してDB優先）
+        const allItems = dbHistoryItems;
+        
+        setHistoryItems(allItems);
+        setFilteredItems(allItems);
+        setTotalPages(Math.ceil(allItems.length / 20));
         setCurrentPage(page);
         
-        console.log('🔍 設定後の状態:', {
-          updatedItemsLength: updatedItems.length,
-          totalPages: Math.ceil(updatedItems.length / 20)
+        console.log('🔍 DB専用履歴設定完了:', {
+          dbItemsLength: dbHistoryItems.length,
+          totalPages: Math.ceil(allItems.length / 20)
         });
       } else {
         console.log('🔍 データ取得成功せず:', data);
-        setHistoryItems([]);
-        setFilteredItems([]);
-        setTotalPages(1);
+        
+        // サーバーからのデータがない場合でもDB専用履歴取得を実行
+        const { loadHistoryFromDB } = await import('../components/db-history-loader');
+        const dbHistoryItems = await loadHistoryFromDB();
+        
+        if (dbHistoryItems.length > 0) {
+          setHistoryItems(dbHistoryItems);
+          setFilteredItems(dbHistoryItems);
+          setTotalPages(Math.ceil(dbHistoryItems.length / 20));
+          console.log(`🔍 DB専用履歴取得完了: ${dbHistoryItems.length}件`);
+        } else {
+          setHistoryItems([]);
+          setFilteredItems([]);
+          setTotalPages(1);
+        }
       }
     } catch (error) {
       console.error('履歴データの取得に失敗しました:', error);
@@ -555,9 +579,27 @@ const HistoryPage: React.FC = () => {
         message: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined
       });
-      setHistoryItems([]);
-      setFilteredItems([]);
-      setTotalPages(1);
+      
+      // エラーが発生した場合でもDB専用履歴取得を試行
+      try {
+        const { loadHistoryFromDB } = await import('../components/db-history-loader');
+        const dbHistoryItems = await loadHistoryFromDB();
+        if (dbHistoryItems.length > 0) {
+          setHistoryItems(dbHistoryItems);
+          setFilteredItems(dbHistoryItems);
+          setTotalPages(Math.ceil(dbHistoryItems.length / 20));
+          console.log(`🔍 エラー時DB履歴取得完了: ${dbHistoryItems.length}件`);
+        } else {
+          setHistoryItems([]);
+          setFilteredItems([]);
+          setTotalPages(1);
+        }
+      } catch (dbLoadError) {
+        console.error('DB履歴取得もエラー:', dbLoadError);
+        setHistoryItems([]);
+        setFilteredItems([]);
+        setTotalPages(1);
+      }
     } finally {
       setLoading(false);
     }
@@ -568,10 +610,16 @@ const HistoryPage: React.FC = () => {
     if (!isInitialLoadedRef.current) {
       isInitialLoadedRef.current = true;
       fetchHistoryData(1);
-      fetchSearchFilterData(); // 履歴検索用フィルターデータを取得
       // fetchMachineDataFromAPI(); // 機種データは編集時に必要に応じて取得
     }
   }, []); // 初期ロード時のみ実行
+
+  // 履歴データが変更された時にフィルターデータを更新
+  useEffect(() => {
+    if (historyItems.length > 0) {
+      fetchSearchFilterData(); // 履歴データ取得後にフィルターデータを生成
+    }
+  }, [historyItems]); // historyItemsの変更を監視
 
   // フィルター変更時の処理
   useEffect(() => {
@@ -1217,6 +1265,11 @@ const HistoryPage: React.FC = () => {
 
     console.log('レポートが保存されました:', newReport);
   };
+
+  // 【削除済み】破損したautoLoadHistoryFiles関数を削除
+  // 代わりにdb-history-loader.tsxのloadHistoryFromDBを使用
+
+
 
   // 履歴アイテムの編集データをサーバーに保存
   const handleSaveEditedItem = async (editedItem: SupportHistoryItem) => {
@@ -2897,34 +2950,105 @@ const HistoryPage: React.FC = () => {
     `;
   };
 
-  // 画像取得の共通関数（編集対象ファイル内のみで完結）
+  // 画像取得の共通関数（DB画像レコード優先版）
   function pickFirstImage(data: any): string | null {
-    // 1) 直下 or ネスト配列に dataURL があれば優先
-    const dig = (v: any): string | null => {
-      if (!v) return null;
-      if (typeof v === 'string' && v.startsWith('data:image/')) return v;
-      if (Array.isArray(v))
-        for (const x of v) {
-          const r = dig(x);
-          if (r) return r;
+    console.log('🖼️ pickFirstImage - データ分析:', {
+      hasImages: !!data?.images,
+      imagesLength: data?.images?.length || 0,
+      hasSavedImages: !!data?.savedImages,
+      savedImagesLength: data?.savedImages?.length || 0,
+      hasConversationHistory: !!data?.conversationHistory,
+      hasImagePath: !!data?.imagePath,
+      hasImageUrl: !!data?.imageUrl,
+      dataKeys: Object.keys(data || {})
+    });
+
+    // 1) imageUrl を最優先（直接設定された画像URL）
+    if (typeof data?.imageUrl === 'string' && data.imageUrl.trim()) {
+      console.log('🖼️ pickFirstImage - imageUrl:', data.imageUrl);
+      return data.imageUrl.startsWith('http') ? data.imageUrl : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${data.imageUrl}`;
+    }
+
+    // 2) imagePath(URL) を優先
+    if (typeof data?.imagePath === 'string' && data.imagePath.trim()) {
+      console.log('🖼️ pickFirstImage - imagePath:', data.imagePath);
+      return data.imagePath.startsWith('http') ? data.imagePath : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${data.imagePath}`;
+    }
+
+    // 3) savedImages から URL を取得（DB画像レコード優先）
+    if (Array.isArray(data?.savedImages) && data.savedImages.length > 0) {
+      const firstImage = data.savedImages[0];
+      console.log('🖼️ pickFirstImage - savedImages[0]:', firstImage);
+
+      if (typeof firstImage === 'string') {
+        // base64データではない場合のみ返す
+        if (!firstImage.startsWith('data:image/')) {
+          return firstImage.startsWith('http') ? firstImage : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${firstImage}`;
         }
-      if (typeof v === 'object')
-        for (const k of Object.keys(v)) {
-          const r = dig(v[k]);
-          if (r) return r;
+      }
+
+      if (firstImage && typeof firstImage === 'object') {
+        const imageUrl = firstImage.url || firstImage.path || firstImage.fileName;
+        if (imageUrl && !imageUrl.startsWith('data:image/')) {
+          return imageUrl.startsWith('http') ? imageUrl : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${imageUrl}`;
         }
-      return null;
-    };
-    const fromDataUrl = dig(data);
-    if (fromDataUrl) return fromDataUrl;
+      }
+    }
 
-    // 2) savedImages
-    const saved = data?.savedImages;
-    if (Array.isArray(saved) && saved[0]) return saved[0];
+    // 4) images配列から直接ファイル名を取得（DB画像レコード）
+    if (Array.isArray(data?.images) && data.images.length > 0) {
+      const firstImage = data.images[0];
+      console.log('🖼️ pickFirstImage - images[0]:', firstImage);
+      
+      if (firstImage && typeof firstImage === 'object' && firstImage.fileName) {
+        const imagePath = `/api/images/chat-exports/${firstImage.fileName}`;
+        console.log('🖼️ pickFirstImage - DB画像レコードから取得:', imagePath);
+        return `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${imagePath}`;
+      }
+    }
 
-    // 3) imagePath(URL)
-    if (typeof data?.imagePath === 'string') return data.imagePath;
+    // 5) conversationHistory から Base64画像を検索
+    if (Array.isArray(data?.conversationHistory)) {
+      for (const msg of data.conversationHistory) {
+        if (msg.content && typeof msg.content === 'string' && msg.content.startsWith('data:image/')) {
+          console.log('🖼️ pickFirstImage - conversationHistoryからBase64画像を発見');
+          return msg.content;
+        }
+      }
+    }
 
+    // 6) 履歴IDから画像ファイルを推測（最後の手段）
+    if (typeof data?.id === 'string' || typeof data?.chatId === 'string') {
+      const historyId = data.id || data.chatId;
+      console.log('🖼️ pickFirstImage - 履歴IDから画像を推測:', historyId);
+      
+      // 複数のファイル名パターンを試行
+      const possibleFilenames = [
+        `${historyId}_3_0.jpeg`,  // 新しい形式
+        `${historyId}_2_0.jpeg`,
+        `${historyId}_1_0.jpeg`,
+        `${historyId}_0_0.jpeg`,
+        `${historyId}.jpg`,       // シンプル形式
+        `${historyId}.jpeg`,
+        `chat_image_${historyId}_*.jpg`  // 古い形式（ワイルドカードは後で処理）
+      ];
+      
+      // 実際のファイル存在確認はサーバー側で行うため、最初のパターンを返す
+      const imagePath = `/api/images/chat-exports/${possibleFilenames[0]}`;
+      console.log('🖼️ pickFirstImage - 推測された画像パス:', imagePath);
+      return `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${imagePath}`;
+    }
+
+    // 7) fileNameから推測
+    if (typeof data?.fileName === 'string') {
+      const fileName = data.fileName;
+      const baseFileName = fileName.replace(/\.json$/, '');
+      const imagePath = `/api/images/chat-exports/${baseFileName}_3_0.jpeg`;
+      console.log('🖼️ pickFirstImage - fileNameから推測:', imagePath);
+      return `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${imagePath}`;
+    }
+
+    console.log('🖼️ pickFirstImage - 画像が見つかりませんでした');
     return null;
   }
 
@@ -3052,13 +3176,13 @@ const HistoryPage: React.FC = () => {
       </head>
       <body>
         <div class="header">
-          <h1>機械故障履歴一覧</h1>
+          <h1>故障履歴一覧</h1>
           <p>印刷日時: ${new Date().toLocaleString('ja-JP')}</p>
           <p>対象件数: ${targetItems.length}件${selectedItems.size > 0 ? ' (選択された履歴)' : ''}</p>
         </div>
         
         <div class="summary">
-          <strong>印刷対象:</strong> ${selectedItems.size > 0 ? '選択された履歴' : '機械故障履歴一覧'}<br>
+          <strong>印刷対象:</strong> ${selectedItems.size > 0 ? '選択された履歴' : '故障履歴一覧'}<br>
           <strong>印刷日時:</strong> ${new Date().toLocaleString('ja-JP')}<br>
           <strong>対象件数:</strong> ${targetItems.length}件
         </div>
@@ -3748,7 +3872,14 @@ const HistoryPage: React.FC = () => {
           <CardTitle className='flex items-center justify-between'>
             <div className='flex items-center gap-2'>
               <FileText className='h-5 w-5' />
-              機械故障履歴一覧 ({filteredItems.length}件)
+              故障履歴一覧 ({filteredItems.length}件)
+            </div>
+            <div className='flex items-center gap-2'>
+              {fileLoading && (
+                <span className='text-sm text-gray-500'>
+                  ファイル自動読み込み中...
+                </span>
+              )}
             </div>
           </CardTitle>
         </CardHeader>
@@ -3787,9 +3918,6 @@ const HistoryPage: React.FC = () => {
                       </th>
                       <th className='border border-gray-300 px-3 py-2 text-left text-sm font-medium'>
                         事象内容
-                      </th>
-                      <th className='border border-gray-300 px-3 py-2 text-left text-sm font-medium'>
-                        説明/エクスポート種別
                       </th>
                       <th className='border border-gray-300 px-3 py-2 text-left text-sm font-medium'>
                         作成日時
@@ -3840,11 +3968,6 @@ const HistoryPage: React.FC = () => {
                         incidentTitle = '事象なし';
                       }
 
-                      const problemDescription =
-                        jsonData?.problemDescription ||
-                        jsonData?.answer ||
-                        '説明なし';
-
                       // 機種と機械番号を抽出（APIから返されるデータ構造に合わせる）
                       const machineType =
                         jsonData?.machineType ||
@@ -3886,18 +4009,23 @@ const HistoryPage: React.FC = () => {
                           >
                             {incidentTitle}
                           </td>
-                          <td
-                            className='border border-gray-300 px-3 py-2 text-sm max-w-xs truncate'
-                            title={problemDescription}
-                          >
-                            {problemDescription}
-                          </td>
                           <td className='border border-gray-300 px-3 py-2 text-sm'>
                             {formatDate(item.createdAt)}
                           </td>
                           <td className='border border-gray-300 px-3 py-2'>
                             {(() => {
+                              console.log('🖼️ 画像表示処理開始:', {
+                                itemId: item.id,
+                                itemTitle: item.title,
+                                hasImagePath: !!item.imagePath,
+                                hasImageUrl: !!item.imageUrl,
+                                hasJsonData: !!item.jsonData,
+                                jsonDataKeys: Object.keys(item.jsonData || {})
+                              });
+                              
                               const imageUrl = pickFirstImage(item);
+                              console.log('🖼️ pickFirstImage結果:', imageUrl);
+                              
                               if (imageUrl) {
                                 return (
                                   <img
@@ -3906,9 +4034,13 @@ const HistoryPage: React.FC = () => {
                                     className='w-8 h-8 object-cover rounded border'
                                     title='故障画像'
                                     onError={e => {
+                                      console.error('🖼️ 画像読み込みエラー:', imageUrl);
                                       const target =
                                         e.target as HTMLImageElement;
                                       target.style.display = 'none';
+                                    }}
+                                    onLoad={() => {
+                                      console.log('🖼️ 画像読み込み成功:', imageUrl);
                                     }}
                                   />
                                 );

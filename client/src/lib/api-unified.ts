@@ -30,8 +30,8 @@ export const API_BASE_URL = (() => {
   
   // フォールバック: 環境判定
   if (isLocalhost) {
-    console.log('✅ ローカル環境: localhost:8081を使用');
-    return 'http://localhost:8081';
+    console.log('✅ ローカル環境: localhost:8080を使用');
+    return 'http://localhost:8080';
   }
 
   // フォールバック: 本番環境（相対パス）
@@ -66,6 +66,43 @@ export function buildApiUrl(path: string): string {
 // トークン取得関数
 function getAuthToken(): string | null {
   return localStorage.getItem('authToken');
+}
+
+// ユーザー管理API専用のリクエスト関数（認証なし）
+export async function userApiRequest<T = any>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const url = buildApiUrl(path);
+  
+  const config: RequestInit = {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+    credentials: 'include', // セッション維持のため必須
+    mode: 'cors',
+  };
+
+  console.log(`🌐 User API Request (No Auth): ${options.method || 'GET'} ${url}`);
+
+  try {
+    const response = await fetch(url, config);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ User API Error: ${response.status} ${response.statusText}`, errorText);
+      throw new Error(`API Error ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ User API Response: ${options.method || 'GET'} ${url}`, data);
+    return data;
+  } catch (error) {
+    console.error(`❌ User API Request Failed: ${options.method || 'GET'} ${url}`, error);
+    throw error;
+  }
 }
 
 // 統一APIリクエスト関数
@@ -130,6 +167,22 @@ export const api = {
       body: data ? JSON.stringify(data) : undefined 
     }),
   delete: <T = any>(path: string) => apiRequest<T>(path, { method: 'DELETE' }),
+};
+
+// ユーザー管理API専用のヘルパー（認証なし）
+export const userApi = {
+  get: <T = any>(path: string) => userApiRequest<T>(path, { method: 'GET' }),
+  post: <T = any>(path: string, data?: any) => 
+    userApiRequest<T>(path, { 
+      method: 'POST', 
+      body: data ? JSON.stringify(data) : undefined 
+    }),
+  put: <T = any>(path: string, data?: any) => 
+    userApiRequest<T>(path, { 
+      method: 'PUT', 
+      body: data ? JSON.stringify(data) : undefined 
+    }),
+  delete: <T = any>(path: string) => userApiRequest<T>(path, { method: 'DELETE' }),
 };
 
 // 認証関連API

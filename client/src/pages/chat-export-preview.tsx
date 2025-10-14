@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Button } from '../components/ui/button';
+import { toAbsUrl } from '../components/report/chat-export-report';
 import {
   Card,
   CardContent,
@@ -276,7 +277,7 @@ const ChatExportPreview: React.FC = () => {
                 {chatData.savedImages.map((image, index) => (
                   <div key={index} className='border rounded-lg p-3'>
                     <img
-                      src={image.url}
+                      src={toAbsUrl(image.url)}
                       alt={`保存画像 ${index + 1}`}
                       className='w-full h-48 object-cover rounded-lg mb-2'
                     />

@@ -84,7 +84,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
 
       // 統一APIクライアントを使用
       const { buildApiUrl } = await import('../../lib/api-unified');
-      const detailUrl = buildApiUrl(`/emergency-flow/detail/${flowId}`);
+      const detailUrl = buildApiUrl(`/emergency-flow/${flowId}`);
       
       console.log('🌐 フロー詳細API URL:', detailUrl);
       

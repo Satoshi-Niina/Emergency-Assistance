@@ -607,129 +607,7 @@ app.get('/api/ping', (req, res) => {
 });
 
 // 7. Storage endpoints
-app.get('/api/storage/list', (req, res) => {
-  const prefix = req.query.prefix;
-  res.json({
-    success: true,
-    data: [],
-    message: `ストレージファイル一覧を取得しました（本番環境では空です）: ${prefix || 'no prefix'}`
-  });
-});
-
-// 8. Image SAS URL endpoint
-app.get('/api/storage/image-url', (req, res) => {
-  const name = req.query.name;
-  res.json({
-    success: true,
-    url: `https://example.com/images/${name}`,
-    message: `画像URLを取得しました（本番環境ではモック）: ${name || 'no name'}`
-  });
-});
-
-// 9. ユーザー管理API
-app.get('/api/users', async (req, res) => {
-  try {
-    if (!dbPool) {
-      return res.json({
-        success: true,
-        data: [
-          { id: 'admin-001', username: 'admin', role: 'admin', displayName: '管理者' },
-          { id: 'niina-001', username: 'niina', role: 'admin', displayName: 'Niina' },
-          { id: 'takabeni1-001', username: 'takabeni1', role: 'admin', displayName: 'Takabeni1' },
-          { id: 'takabeni2-001', username: 'takabeni2', role: 'employee', displayName: 'Takabeni2' },
-          { id: 'employee-001', username: 'employee', role: 'employee', displayName: '一般ユーザー' }
-        ],
-        message: 'ユーザー一覧を取得しました（データベース未接続）'
-      });
-    }
-
-    const result = await dbPool.query('SELECT id, username, role, display_name FROM users ORDER BY username');
-    res.json({
-      success: true,
-      data: result.rows.map(row => ({
-        id: row.id,
-        username: row.username,
-        role: row.role,
-        displayName: row.display_name || row.username
-      })),
-      message: 'ユーザー一覧を取得しました（データベース接続済み）'
-    });
-  } catch (error) {
-    console.error('[api/users] エラー:', error);
-    res.status(500).json({
-      success: false,
-      error: 'ユーザー一覧の取得に失敗しました',
-      message: error.message
-    });
-  }
-});
-
-// 10. 機種一覧API
-app.get('/api/machines/machine-types', async (req, res) => {
-  try {
-    if (!dbPool) {
-      return res.json({
-        success: true,
-        data: [
-          { id: '1', name: 'ディーゼル機関車', type: 'locomotive' },
-          { id: '2', name: '電車', type: 'train' },
-          { id: '3', name: '保線機械', type: 'maintenance' }
-        ],
-        message: '機種一覧を取得しました（データベース未接続）'
-      });
-    }
-
-    const result = await dbPool.query('SELECT id, machine_type_name as name FROM machine_types ORDER BY machine_type_name');
-    res.json({
-      success: true,
-      data: result.rows,
-      message: '機種一覧を取得しました（データベース接続済み）'
-    });
-  } catch (error) {
-    console.error('[api/machines/machine-types] エラー:', error);
-    res.status(500).json({
-      success: false,
-      error: '機種一覧の取得に失敗しました',
-      message: error.message
-    });
-  }
-});
-
-// 11. 機械番号一覧API（機種ID指定）
-app.get('/api/machines/machines', (req, res) => {
-  const { type_id } = req.query;
-  res.json({
-    success: true,
-    data: [
-      { id: '1', machine_number: '001', type_id: type_id || '1', name: '機械001' },
-      { id: '2', machine_number: '002', type_id: type_id || '1', name: '機械002' }
-    ],
-    message: `機械番号一覧を取得しました（本番環境ではモックデータ）: type_id=${type_id || 'none'}`
-  });
-});
-
-// 12. 全機械データ取得API（機種・機械番号の組み合わせ）
-app.get('/api/machines/all-machines', (req, res) => {
-  res.json({
-    success: true,
-    data: [
-      { id: '1', machine_type: 'ディーゼル機関車', machine_number: '001', name: '機関車001' },
-      { id: '2', machine_type: '電車', machine_number: '002', name: '電車002' },
-      { id: '3', machine_type: '保線機械', machine_number: '003', name: '保線機械003' }
-    ],
-    message: '全機械データを取得しました（本番環境ではモックデータ）'
-  });
-});
-
-// 13. ファイル一覧API（knowledge-base用）
-app.get('/api/blob/list', (req, res) => {
-  res.json({
-    success: true,
-    data: [],
-    message: 'ファイル一覧を取得しました（本番環境では空です）',
-    timestamp: new Date().toISOString()
-  });
-});
+// 旧モックAPI削除：正式なAPIエンドポイントは下記で実装
 
 // 14. トラブルシューティングAPI
 app.get('/api/troubleshooting/list', (req, res) => {
@@ -932,7 +810,7 @@ app.get('/api/machines/machines', async (req, res) => {
 
     const client = await dbPool.connect();
     let query = 'SELECT id, machine_number FROM machines';
-    let params = [];
+    const params = [];
     
     if (type_id) {
       query += ' WHERE machine_type_id = $1';
@@ -1465,6 +1343,143 @@ app.get('/api/history', async (req, res) => {
   }
 });
 
+// ローカルファイル一覧取得API
+app.get('/api/history/local-files', async (req, res) => {
+  try {
+    console.log('[api/history/local-files] ローカルファイル一覧取得リクエスト');
+    
+    const fs = require('fs').promises;
+    const path = require('path');
+    
+    // 履歴ファイルを保存するディレクトリを指定（環境変数対応）
+    const historyDir = process.env.LOCAL_HISTORY_DIR || path.join(__dirname, 'app-logs', 'history');
+    const exportDir = process.env.LOCAL_EXPORT_DIR || path.join(__dirname, 'app-logs', 'exports');
+    
+    let files = [];
+    
+    try {
+      // historyディレクトリから.jsonファイルを取得
+      try {
+        const historyFiles = await fs.readdir(historyDir);
+        const historyJsonFiles = historyFiles.filter(file => file.endsWith('.json'));
+        files = [...files, ...historyJsonFiles.map(file => ({ file, dir: 'history' }))];
+      } catch (error) {
+        console.log('[api/history/local-files] historyディレクトリが存在しません');
+      }
+      
+      // exportsディレクトリから.jsonファイルを取得
+      try {
+        const exportFiles = await fs.readdir(exportDir);
+        const exportJsonFiles = exportFiles.filter(file => file.endsWith('.json'));
+        files = [...files, ...exportJsonFiles.map(file => ({ file, dir: 'exports' }))];
+      } catch (error) {
+        console.log('[api/history/local-files] exportsディレクトリが存在しません');
+      }
+      
+      console.log('[api/history/local-files] ファイル一覧取得成功:', files.length + '件');
+      
+      res.json({
+        success: true,
+        files: files.map(f => f.file),
+        directories: files.map(f => ({ file: f.file, directory: f.dir })),
+        total: files.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[api/history/local-files] ディレクトリ読み込みエラー:', error);
+      res.json({
+        success: true,
+        files: [],
+        total: 0,
+        message: 'ローカルファイルディレクトリが見つかりません',
+        timestamp: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    console.error('[api/history/local-files] ローカルファイル一覧取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ローカルファイル一覧の取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// ローカルファイル内容取得API
+app.get('/api/history/local-files/:filename', async (req, res) => {
+  try {
+    const { filename } = req.params;
+    console.log('[api/history/local-files/:filename] ファイル内容取得リクエスト:', filename);
+    
+    const fs = require('fs').promises;
+    const path = require('path');
+    
+    // セキュリティチェック: ファイル名に不正な文字が含まれていないかチェック
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      return res.status(400).json({
+        success: false,
+        error: '不正なファイル名です',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // 履歴ファイルを保存するディレクトリから検索（環境変数対応）
+    const historyDir = process.env.LOCAL_HISTORY_DIR || path.join(__dirname, 'app-logs', 'history');
+    const exportDir = process.env.LOCAL_EXPORT_DIR || path.join(__dirname, 'app-logs', 'exports');
+    
+    let filePath = null;
+    
+    // historyディレクトリから検索
+    try {
+      const historyPath = path.join(historyDir, filename);
+      await fs.access(historyPath);
+      filePath = historyPath;
+    } catch (error) {
+      // historyディレクトリにない場合、exportsディレクトリから検索
+      try {
+        const exportPath = path.join(exportDir, filename);
+        await fs.access(exportPath);
+        filePath = exportPath;
+      } catch (error) {
+        // どちらにもない場合
+      }
+    }
+    
+    if (!filePath) {
+      return res.status(404).json({
+        success: false,
+        error: 'ファイルが見つかりません',
+        filename: filename,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // ファイル内容を読み込み
+    const fileContent = await fs.readFile(filePath, 'utf8');
+    const jsonData = JSON.parse(fileContent);
+    
+    console.log('[api/history/local-files/:filename] ファイル内容取得成功:', filename);
+    
+    res.json({
+      success: true,
+      filename: filename,
+      content: jsonData,
+      size: fileContent.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/history/local-files/:filename] ファイル内容取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ファイル内容の取得に失敗しました',
+      details: error.message,
+      filename: req.params.filename,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // フロー管理API
 app.get('/api/flows', async (req, res) => {
   try {
@@ -1746,21 +1761,42 @@ app.listen(port, host, () => {
 // グレースフルシャットダウン
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully');
-  process.exit(0);
+  if (dbPool) {
+    dbPool.end(() => {
+      console.log('Database pool closed');
+      process.exit(0);
+    });
+  } else {
+    process.exit(0);
+  }
 });
 
+// 開発環境でのSIGINT処理（本番環境では無視）
 process.on('SIGINT', () => {
-  console.log('SIGINT received, shutting down gracefully');
-  process.exit(0);
+  if (process.env.NODE_ENV === 'development') {
+    console.log('SIGINT received in development, shutting down gracefully');
+    if (dbPool) {
+      dbPool.end(() => {
+        console.log('Database pool closed');
+        process.exit(0);
+      });
+    } else {
+      process.exit(0);
+    }
+  } else {
+    console.log('SIGINT received in production, ignoring (use SIGTERM for graceful shutdown)');
+  }
 });
 
-// 未処理の例外をキャッチ
+// 未処理の例外をキャッチ（ログのみ、プロセスは継続）
 process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
-  process.exit(1);
+  console.error('⚠️ Uncaught Exception (continuing):', err);
+  console.error('Stack trace:', err.stack);
+  // プロセスを終了させない - ログのみ記録
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  process.exit(1);
+  console.error('⚠️ Unhandled Promise Rejection (continuing):', reason);
+  console.error('Promise:', promise);
+  // プロセスを終了させない - ログのみ記録
 });

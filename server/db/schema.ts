@@ -193,6 +193,47 @@ export const images = pgTable('images', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// 故障履歴テーブル（JSON形式データを含む）
+export const faultHistory = pgTable('fault_history', {
+  id: text('id')
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  title: text('title').notNull(),
+  description: text('description'),
+  machineType: text('machine_type'),
+  machineNumber: text('machine_number'),
+  office: text('office'),
+  category: text('category'),
+  keywords: jsonb('keywords'), // string[]
+  emergencyGuideTitle: text('emergency_guide_title'),
+  emergencyGuideContent: text('emergency_guide_content'),
+  jsonData: jsonb('json_data').notNull(), // 元のJSONデータを保存
+  metadata: jsonb('metadata'), // 追加のメタデータ
+  storageMode: text('storage_mode').notNull().default('database'), // 'database' または 'file'
+  filePath: text('file_path'), // ファイルモード時のパス
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// 故障履歴に関連する画像テーブル
+export const faultHistoryImages = pgTable('fault_history_images', {
+  id: text('id')
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  faultHistoryId: text('fault_history_id')
+    .notNull()
+    .references(() => faultHistory.id, { onDelete: 'cascade' }),
+  originalFileName: text('original_file_name'),
+  fileName: text('file_name').notNull(),
+  filePath: text('file_path').notNull(), // knowledge-base/images/chat-exports/ 内のパス
+  relativePath: text('relative_path'), // JSONデータ内の相対パス
+  mimeType: text('mime_type'),
+  fileSize: text('file_size'),
+  description: text('description'),
+  imageData: text('image_data'), // base64形式のデータ（必要に応じて）
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 // 画像データ（別名）
 export const imageData = images;
 
@@ -213,4 +254,6 @@ export const schema = {
   chatExports,
   images,
   imageData,
+  faultHistory,
+  faultHistoryImages,
 };

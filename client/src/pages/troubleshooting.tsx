@@ -97,7 +97,7 @@ export default function TroubleshootingPage() {
     queryKey: ['/api/emergency-flow/list'],
     queryFn: async () => {
       // emergency-flow APIを使用
-      const response = await fetch('http://localhost:8081/api/emergency-flow/list');
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/list`);
       const data = await response.json();
       console.log('🔍 フロー一覧取得結果:', data);
       
