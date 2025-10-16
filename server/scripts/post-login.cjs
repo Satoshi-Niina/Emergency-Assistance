@@ -1,5 +1,13 @@
 const http = require('http');
-const data = JSON.stringify({ username: 'niina', password: 'G&896845' });
+const username = process.env.SEED_LOGIN_USERNAME || 'niina';
+const password = process.env.SEED_NIINA_PASSWORD;
+
+if (!password) {
+  console.error('SEED_NIINA_PASSWORD is not set. Set it in environment to run this script.');
+  process.exit(1);
+}
+
+const data = JSON.stringify({ username, password });
 
 const options = {
   hostname: 'localhost',

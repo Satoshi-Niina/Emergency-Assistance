@@ -106,12 +106,24 @@ module.exports = async (context, request) => {
           };
         }
 
-        context.log('User has no password in DB; BYPASS_DB_FOR_LOGIN=true のため dev fallback を実行します');
+        context.log('User has no password in DB; BYPASS_DB_FOR_LOGIN=true のため dev fallback を検査します');
+        const envAdminPwd = process.env.SEED_ADMIN_PASSWORD || null;
+        const envNiinaPwd = process.env.SEED_NIINA_PASSWORD || null;
+
         const testUsers = {
-          'admin': { password: 'admin', role: 'admin', displayName: 'Administrator', department: 'IT' },
-          'niina': { password: 'G&896845', role: 'admin', displayName: 'Satoshi Niina', department: 'IT' }
+          'admin': { password: envAdminPwd, role: 'admin', displayName: 'Administrator', department: 'IT' },
+          'niina': { password: envNiinaPwd, role: 'admin', displayName: 'Satoshi Niina', department: 'IT' }
         };
         const tuser = testUsers[username];
+        if (!tuser || !tuser.password) {
+          context.log('Dev fallback credentials not configured for user:', username);
+          return {
+            status: 401,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            body: JSON.stringify({ success: false, error: 'invalid_credentials', message: 'ユーザー名またはパスワードが間違っています' })
+          };
+        }
+
         if (tuser && password === tuser.password) {
           const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           const userData = {
