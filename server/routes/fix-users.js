@@ -21,23 +21,23 @@ router.post('/fix-all-users', async (req, res) => {
     await db.insert(users).values([
       {
         username: 'niina',
-        password: 'G&896845',
+  password: process.env.SEED_NIINA_PASSWORD || 'G&896845',
         display_name: '新納 智志',
         role: 'admin',
         department: 'システム管理部',
         description: '運用管理者',
       },
       {
-        username: 'takabeni1',
-        password: 'Takabeni&1',
+  username: 'takabeni1',
+  password: process.env.SEED_TAKABENI1_PASSWORD || 'Takabeni&1',
         display_name: 'タカベニ1',
         role: 'admin',
         department: 'システム管理部',
         description: '運用管理者',
       },
       {
-        username: 'takabeni2',
-        password: 'Takaben&2',
+  username: 'takabeni2',
+  password: process.env.SEED_TAKABENI2_PASSWORD || 'Takaben&2',
         display_name: 'タカベニ2',
         role: 'employee',
         department: '保守部',

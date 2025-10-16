@@ -18,7 +18,7 @@ async function fixUsers() {
     console.log('🔧 takabeni1ユーザーのパスワードを平文にリセット中...');
     await db
       .update(users)
-      .set({ password: 'Takabeni&1' })
+  .set({ password: process.env.SEED_TAKABENI1_PASSWORD || 'Takabeni&1' })
       .where(eq(users.username, 'takabeni1'));
     console.log('✅ takabeni1ユーザーのパスワードを平文にリセットしました');
 

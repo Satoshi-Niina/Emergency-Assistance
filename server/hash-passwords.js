@@ -8,8 +8,8 @@ import bcrypt from 'bcryptjs';
 const users = [
   { username: 'admin', password: 'admin123' },
   { username: 'niina', password: '0077' },
-  { username: 'takabeni1', password: 'Takabeni&1' },
-  { username: 'takabeni2', password: 'Takaben&2' },
+  { username: 'takabeni1', password: process.env.SEED_TAKABENI1_PASSWORD || 'Takabeni&1' },
+  { username: 'takabeni2', password: process.env.SEED_TAKABENI2_PASSWORD || 'Takaben&2' },
   { username: 'employee', password: 'employee123' }
 ];
 

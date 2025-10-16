@@ -78,17 +78,17 @@ router.post('/fix-all-users-direct', async (req, res) => {
           department: 'システム管理部',
           description: '運用管理者',
         },
-        {
-          username: 'takabeni1',
-          password: 'Takabeni&1',
+          {
+            username: 'takabeni1',
+            password: process.env.SEED_TAKABENI1_PASSWORD || 'Takabeni&1',
           display_name: 'タカベニ1',
           role: 'admin',
           department: 'システム管理部',
           description: '運用管理者',
         },
-        {
-          username: 'takabeni2',
-          password: 'Takaben&2',
+          {
+            username: 'takabeni2',
+            password: process.env.SEED_TAKABENI2_PASSWORD || 'Takabeni&2',
           display_name: 'タカベニ2',
           role: 'employee',
           department: '保守部',

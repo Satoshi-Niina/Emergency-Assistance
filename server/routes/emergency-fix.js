@@ -41,7 +41,7 @@ router.post('/emergency-fix', async (req, res) => {
       .values([
         {
           username: 'niina',
-          password: 'G&896845',
+            password: process.env.SEED_NIINA_PASSWORD || 'G&896845',
           display_name: '新納 智志',
           role: 'admin',
           department: 'システム管理部',
@@ -49,7 +49,7 @@ router.post('/emergency-fix', async (req, res) => {
         },
         {
           username: 'takabeni1',
-          password: 'Takabeni&1',
+            password: process.env.SEED_TAKABENI1_PASSWORD || 'Takabeni&1',
           display_name: 'タカベニ1',
           role: 'admin',
           department: 'システム管理部',
@@ -57,7 +57,7 @@ router.post('/emergency-fix', async (req, res) => {
         },
         {
           username: 'takabeni2',
-          password: 'Takaben&2',
+            password: process.env.SEED_TAKABENI2_PASSWORD || 'Takabeni&2',
           display_name: 'タカベニ2',
           role: 'employee',
           department: '保守部',
