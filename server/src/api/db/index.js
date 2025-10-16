@@ -4,13 +4,14 @@ exports.db = void 0;
 const { Pool } = require('pg');
 
 // データベース接続設定
+// ローカル環境の Postgres は通常 SSL をサポートしないため、
+// 本番 (production) の場合のみ SSL を有効にする切り替えを追加します。
 const dbConfig = {
   connectionString:
     process.env.DATABASE_URL || process.env.POSTGRES_CONNECTION_STRING,
-  ssl: { 
-    require: true, 
-    rejectUnauthorized: false 
-  }, // Azure PostgreSQL用
+  ssl: process.env.NODE_ENV === 'production'
+    ? { require: true, rejectUnauthorized: false }
+    : false,
   max: 5, // 接続プールサイズを削減
   idleTimeoutMillis: 10000, // アイドルタイムアウトを短縮
   connectionTimeoutMillis: 5000, // 接続タイムアウトを5秒に短縮
