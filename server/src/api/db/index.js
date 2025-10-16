@@ -3,36 +3,39 @@ Object.defineProperty(exports, '__esModule', { value: true });
 exports.db = void 0;
 const { Pool } = require('pg');
 
-// データベース接続設定
-// ローカル環境の Postgres は通常 SSL をサポートしないため、
-// 本番 (production) の場合のみ SSL を有効にする切り替えを追加します。
-const dbConfig = {
-  connectionString:
-    process.env.DATABASE_URL || process.env.POSTGRES_CONNECTION_STRING,
-  ssl: process.env.NODE_ENV === 'production'
-    ? { require: true, rejectUnauthorized: false }
-    : false,
-  max: 5, // 接続プールサイズを削減
-  idleTimeoutMillis: 10000, // アイドルタイムアウトを短縮
-  connectionTimeoutMillis: 5000, // 接続タイムアウトを5秒に短縮
-  keepAlive: true,
-  keepAliveInitialDelayMillis: 0,
-  // 接続失敗時のリトライ設定
-  retryDelayMs: 1000,
-  maxRetries: 3,
-};
-
 let pool = null;
 
 // データベース接続プールを初期化
 function initializePool() {
   if (!pool) {
-    if (!dbConfig.connectionString) {
-      console.warn(
-        '⚠️ DATABASE_URL または POSTGRES_CONNECTION_STRING が設定されていません。モックデータベースを使用します。'
-      );
-      return null;
+    // 環境変数はモジュールロード時ではなく初期化時に動的に参照する
+    const connectionString =
+      process.env.DATABASE_URL || process.env.POSTGRES_CONNECTION_STRING;
+
+    if (!connectionString) {
+      // 明示的にバイパスが有効でない限り、モックを自動で返さない
+      if (process.env.BYPASS_DB_FOR_LOGIN === 'true') {
+        console.warn('⚠️ DATABASE_URL が設定されていません。BYPASS_DB_FOR_LOGIN=true のためモックデータベースを使用します。');
+        return null;
+      }
+      throw new Error('DATABASE_URL が設定されていません。データベース接続を確認してください。');
     }
+
+    // ローカル Postgres は通常 SSL をサポートしないため、
+    // 本番 (production) の場合のみ SSL を有効にする
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isLocalhost = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+    const sslConfig = isLocalhost ? false : isProduction ? { require: true, rejectUnauthorized: false } : { rejectUnauthorized: false };
+
+    const dbConfig = {
+      connectionString,
+      ssl: sslConfig,
+      max: 5,
+      idleTimeoutMillis: 10000,
+      connectionTimeoutMillis: 5000,
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 0,
+    };
 
     try {
       pool = new Pool(dbConfig);

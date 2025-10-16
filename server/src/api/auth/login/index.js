@@ -88,6 +88,69 @@ module.exports = async (context, request) => {
         username: user.username,
         role: user.role,
       });
+      // 開発モードやモックDBで password フィールドがない場合は、
+      // 明示的に BYPASS_DB_FOR_LOGIN=true のときのみ簡易認証にフォールバックする
+      if (typeof user.password === 'undefined') {
+        if (process.env.BYPASS_DB_FOR_LOGIN !== 'true') {
+          context.log('User has no password in DB and BYPASS_DB_FOR_LOGIN is not true; refusing to fallback');
+          return {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+            },
+            body: JSON.stringify({
+              success: false,
+              error: 'サーバーはモック認証を拒否しました。BYPASS_DB_FOR_LOGIN を確認してください。',
+            }),
+          };
+        }
+
+        context.log('User has no password in DB; BYPASS_DB_FOR_LOGIN=true のため dev fallback を実行します');
+        const testUsers = {
+          'admin': { password: 'admin', role: 'admin', displayName: 'Administrator', department: 'IT' },
+          'niina': { password: 'G&896845', role: 'admin', displayName: 'Satoshi Niina', department: 'IT' }
+        };
+        const tuser = testUsers[username];
+        if (tuser && password === tuser.password) {
+          const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          const userData = {
+            id: user.id || 1,
+            username: username,
+            displayName: tuser.displayName,
+            role: tuser.role,
+            department: tuser.department,
+          };
+          return {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Methods': 'POST, OPTIONS',
+              'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie',
+              'Set-Cookie': `sessionId=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
+            },
+            body: JSON.stringify({
+              success: true,
+              user: userData,
+              message: 'ログインに成功しました (dev fallback)',
+              timestamp: new Date().toISOString(),
+            }),
+          };
+        } else {
+          return {
+            status: 401,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+            },
+            body: JSON.stringify({
+              success: false,
+              error: 'ユーザー名またはパスワードが間違っています',
+            }),
+          };
+        }
+      }
     } catch (dbError) {
       context.log.error('Database query failed:', dbError);
       return {

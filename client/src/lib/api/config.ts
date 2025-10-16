@@ -48,7 +48,23 @@ console.log('🔧 API設定詳細:', {
 
 // APIエンドポイントの構築
 export const buildApiUrl = (endpoint: string): string => {
-  const fullUrl = `${API_BASE_URL}${endpoint}`;
+  if (!endpoint) return API_BASE_URL;
+
+  // If endpoint is already an absolute URL, return it as-is
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+    return endpoint;
+  }
+
+  // Avoid double-prefixing when API_BASE_URL and endpoint both start with '/api'
+  if (API_BASE_URL === '/api' && endpoint.startsWith('/api')) {
+    console.log(`🔗 API URL構築 (no double): ${endpoint} -> ${endpoint}`);
+    return endpoint;
+  }
+
+  // Normalize slashes between base and endpoint
+  const base = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+  const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const fullUrl = `${base}${path}`;
   console.log(`🔗 API URL構築: ${endpoint} -> ${fullUrl}`);
   return fullUrl;
 };
