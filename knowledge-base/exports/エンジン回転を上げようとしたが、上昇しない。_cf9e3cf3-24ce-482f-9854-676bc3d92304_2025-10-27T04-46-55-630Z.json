@@ -1,0 +1,56 @@
+{
+  "chatId": "cf9e3cf3-24ce-482f-9854-676bc3d92304",
+  "userId": "test-user",
+  "exportType": "manual_send",
+  "exportTimestamp": "2025-10-27T04:46:55.631Z",
+  "title": "エンジン回転を上げようとしたが、上昇しない。",
+  "chatData": {
+    "chatId": "cf9e3cf3-24ce-482f-9854-676bc3d92304",
+    "timestamp": "2025-10-27T04:46:55.628Z",
+    "machineInfo": {
+      "selectedMachineType": "2308504f-52a6-4c37-b57d-e4a6154ebf7f",
+      "selectedMachineNumber": "",
+      "machineTypeName": "MC300(松山）",
+      "machineNumber": "1000"
+    },
+    "messages": [
+      {
+        "id": "1761540379108",
+        "content": "何か問題がありましたか？お困りの事象を教えてください！",
+        "isAiResponse": true,
+        "timestamp": "2025-10-27T04:46:19.108Z",
+        "media": []
+      },
+      {
+        "id": "1761540407001",
+        "content": "エンジン回転を上げようとしたが、上昇しない。",
+        "isAiResponse": false,
+        "timestamp": "2025-10-27T04:46:47.001Z",
+        "media": []
+      },
+      {
+        "id": "1761540407007",
+        "content": "具体的な症状を教えてくださいね",
+        "isAiResponse": true,
+        "timestamp": "2025-10-27T04:46:47.006Z",
+        "media": []
+      },
+      {
+        "id": 1761540413326,
+        "content": "",
+        "isAiResponse": false,
+        "timestamp": "2025-10-27T04:46:53.326Z",
+        "media": [
+          {
+            "id": "media_1761540413326_0",
+            "type": "image",
+            "url": "/api/images/chat-exports/chat_image_1761540413318.png",
+            "title": "imageファイル",
+            "fileName": "image_1761540413326_0"
+          }
+        ]
+      }
+    ]
+  },
+  "savedImages": []
+}
