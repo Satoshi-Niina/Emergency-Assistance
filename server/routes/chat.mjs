@@ -168,27 +168,16 @@ export async function registerChatRoutes(app) {
         console.log('画像保存ディレクトリを作成しました:', imagesDir);
       }
 
-      // チャットメッセージから画像を抽出して保存
+      // チャットメッセージから画像を抽出して保存（バッファデータのみ対応）
       const savedImages = [];
       for (const message of chatData.messages) {
-        if (message.content && message.content.startsWith('data:image/')) {
+        if (message.content && Buffer.isBuffer(message.content)) {
           try {
-            // Base64データから画像を抽出
-            const base64Data = message.content.replace(
-              /^data:image\/[a-z]+;base64,/,
-              ''
-            );
-            const buffer = Buffer.from(base64Data, 'base64');
-
-            // ファイル名を生成
-            const timestamp = Date.now();
-            const imageFileName = `chat_image_${chatId}_${timestamp}.jpg`;
+            const ts = Date.now();
+            const imageFileName = `chat_image_${chatId}_${ts}.png`;
             const imagePath = path.join(imagesDir, imageFileName);
-
-            // 画像ファイルを保存
-            fs.writeFileSync(imagePath, buffer);
+            fs.writeFileSync(imagePath, message.content);
             console.log('画像ファイルを保存しました:', imagePath);
-
             savedImages.push({
               messageId: message.id,
               fileName: imageFileName,
@@ -357,27 +346,16 @@ export async function registerChatRoutes(app) {
         console.log('画像保存ディレクトリを作成しました:', imagesDir);
       }
 
-      // チャットメッセージから画像を抽出して保存
+      // チャットメッセージから画像を抽出して保存（バッファデータのみ対応）
       const savedImages = [];
       for (const message of chatData.messages) {
-        if (message.content && message.content.startsWith('data:image/')) {
+        if (message.content && Buffer.isBuffer(message.content)) {
           try {
-            // Base64データから画像を抽出
-            const base64Data = message.content.replace(
-              /^data:image\/[a-z]+;base64,/,
-              ''
-            );
-            const buffer = Buffer.from(base64Data, 'base64');
-
-            // ファイル名を生成
-            const imageTimestamp = Date.now();
-            const imageFileName = `chat_image_${chatId}_${imageTimestamp}.jpg`;
+            const ts = Date.now();
+            const imageFileName = `chat_image_${chatId}_${ts}.png`;
             const imagePath = path.join(imagesDir, imageFileName);
-
-            // 画像ファイルを保存
-            fs.writeFileSync(imagePath, buffer);
+            fs.writeFileSync(imagePath, message.content);
             console.log('画像ファイルを保存しました:', imagePath);
-
             savedImages.push({
               messageId: message.id,
               fileName: imageFileName,

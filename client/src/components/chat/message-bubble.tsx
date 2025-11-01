@@ -478,9 +478,17 @@ export default function MessageBubble({
           }`}
         >
           <div className='relative'>
-            {/* シンプルなコンテンツ表示 */}
+            {/* メディアが最初に表示されるようにする */}
+            {renderMedia()}
+            
+            {/* シンプルなコンテンツ表示 - contentが空でない場合のみ表示 */}
             {(() => {
               const content = message.content || '';
+
+              // contentが空、または"画像"のみの場合は何も表示しない
+              if (!content.trim() || content === '画像') {
+                return null;
+              }
 
               // 画像データの判定
               const isImage =
@@ -520,9 +528,6 @@ export default function MessageBubble({
               </button>
             )}
           </div>
-
-          {/* Display media attachments if any */}
-          {renderMedia()}
         </div>
         <span
           className={`text-xs ${isUserMessage ? 'text-blue-400' : 'text-gray-400'}`}

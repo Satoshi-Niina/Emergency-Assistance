@@ -1,7 +1,7 @@
 const { BlobServiceClient } = require('@azure/storage-blob');
 const { BLOB_CONTAINER, BLOB_PREFIX } = require('../blob-config.js');
 
-module.exports = async (context, request) => {
+export default async function(context, request) {
   const method = request.method;
   const path = request.url || '';
   try {
@@ -145,4 +145,4 @@ module.exports = async (context, request) => {
       }),
     };
   }
-};
+}

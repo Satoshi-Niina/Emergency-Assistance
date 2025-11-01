@@ -181,7 +181,8 @@ export default function TroubleshootingPage() {
     mutationFn: async (flowId: string) => {
       console.log('🗑️ フロー削除開始:', flowId);
       
-      const response = await fetch(`http://localhost:8081/api/emergency-flow/${flowId}`, {
+      const { buildApiUrl } = await import('../lib/api-unified');
+      const response = await fetch(buildApiUrl(`/emergency-flow/${flowId}`), {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -274,19 +275,21 @@ export default function TroubleshootingPage() {
   };
 
   const handleOpenEditor = (flowId: string) => {
-    fetch(`http://localhost:8081/api/emergency-flow/detail/${flowId}`)
-      .then(res => res.json())
-      .then(fullFlowData => {
+    (async () => {
+      try {
+        const { buildApiUrl } = await import('../lib/api-unified');
+        const res = await fetch(buildApiUrl(`/emergency-flow/detail/${flowId}`));
+        const fullFlowData = await res.json();
         setSelectedFlow(fullFlowData);
         setIsEditorOpen(true);
-      })
-      .catch(err =>
+      } catch (err) {
         toast({
           title: 'エラー',
-          description: `ファイルデータの取得に失敗しました: ${err.message}`,
+          description: `ファイルデータの取得に失敗しました: ${err instanceof Error ? err.message : String(err)}`,
           variant: 'destructive',
-        })
-      );
+        });
+      }
+    })();
   };
 
   const handleOpenViewer = (flow: Flow) => {

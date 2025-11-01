@@ -94,7 +94,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       setIsLoading(true);
       console.log('🔄 フロー一覧を取得中...');
 
-      const apiUrl = buildApiUrl('/emergency-flow/list');
+  const apiUrl = buildApiUrl('/api/emergency-flow/list');
       console.log('🔗 API URL:', apiUrl);
 
       // キャッシュ無効化のためのタイムスタンプ
@@ -214,7 +214,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       console.log('🗑️ フロー削除開始:', flowToDelete);
       
       // 削除APIを呼び出し
-      const response = await fetch(`/api/emergency-flow/${flowToDelete}`, {
+  const response = await fetch(buildApiUrl(`/api/emergency-flow/${flowToDelete}`), {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

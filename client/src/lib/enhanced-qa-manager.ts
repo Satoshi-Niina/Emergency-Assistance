@@ -5,6 +5,7 @@ import {
   QAFlow,
   ProblemCategory,
 } from './qa-flow-manager';
+import { buildApiUrl } from './api-unified';
 
 interface EmergencyProcedure {
   id: string;
@@ -43,7 +44,8 @@ async function callOpenAIAPI(
   useKnowledgeBase: boolean = true
 ): Promise<string> {
   try {
-    const response = await fetch('http://localhost:8081/api/chatgpt', {
+  import { buildApiUrl } from './api-unified';
+  const response = await fetch(buildApiUrl('/chatgpt'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

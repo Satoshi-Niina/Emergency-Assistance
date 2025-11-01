@@ -1,5 +1,5 @@
 import { QueryClient, QueryFunction } from '@tanstack/react-query';
-import { buildApiUrl } from './api/config.ts';
+import { buildApiUrl } from './api-unified';
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -322,38 +322,7 @@ export async function processMessage(text: string): Promise<string> {
 }
 // The change request does not directly modify buildApiUrl but it relies on it, keep the original implementation of buildApiUrl function
 
-// Replit環境を考慮したAPI URL構築
-function buildApiUrl(path: string): string {
-  if (path.startsWith('http')) return path;
-
-  // 環境変数が設定されている場合は優先使用
-  const VITE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-  if (VITE_API_BASE_URL && VITE_API_BASE_URL.trim() !== '') {
-    console.log('✅ 環境変数からAPI_BASE_URLを取得:', VITE_API_BASE_URL);
-    return `${VITE_API_BASE_URL}${path}`;
-  }
-
-  // Replit環境では専用ポートを使用
-  const isReplitEnvironment =
-    window.location.hostname.includes('replit.dev') ||
-    window.location.hostname.includes('replit.app');
-
-  if (isReplitEnvironment) {
-    return `${window.location.protocol}//${window.location.hostname}:3000${path}`;
-  }
-
-  // 開発環境ではポート8000を使用
-  const isDevelopment =
-    import.meta.env.DEV || window.location.hostname.includes('localhost');
-
-  if (isDevelopment) {
-    console.log('✅ 開発環境: ポート8000を使用');
-    return `http://localhost:8081${path}`;
-  }
-
-  // その他の環境では相対パス
-  return `${window.location.origin}${path}`;
-}
+// Use unified buildApiUrl from api-unified for consistent URL construction
 // API設定 - VITE_API_BASE_URLのみを使用
 const VITE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 

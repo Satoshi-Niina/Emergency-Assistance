@@ -22,7 +22,7 @@ const EmergencyGuidePage: React.FC = () => {
       setBlobLoading(true);
       try {
         const API_BASE =
-          import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
+          import.meta.env.VITE_API_BASE_URL || '';
         const res = await fetch(
           `${API_BASE}/api/blob/list?container=knowledge`
         );
@@ -104,7 +104,7 @@ const EmergencyGuidePage: React.FC = () => {
     const refreshFlowList = async () => {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list?ts=${Date.now()}`,
+          `${import.meta.env.VITE_API_BASE_URL || ''}/api/troubleshooting/list?ts=${Date.now()}`,
           {
             credentials: 'include',
             headers: {

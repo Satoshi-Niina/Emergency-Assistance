@@ -1788,11 +1788,9 @@ router.get('/image/:fileName', async (req, res) => {
 
     // emergency-flows にファイルがない場合は chat-exports を確認
     if (!fs.existsSync(filePath)) {
-      uploadDir = path.join(
-        process.cwd(),
-        '..',
-        'knowledge-base/images/chat-exports'
-      );
+      uploadDir = process.env.CHAT_IMAGES_PATH
+        ? path.resolve(process.cwd(), process.env.CHAT_IMAGES_PATH)
+        : path.join(process.cwd(), '..', 'knowledge-base/images/chat-exports');
       filePath = path.join(uploadDir, fileName);
 
       console.log(

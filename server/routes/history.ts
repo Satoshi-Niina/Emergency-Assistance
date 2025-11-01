@@ -1123,21 +1123,101 @@ router.get('/export/:sessionId', async (_req, res) => {
  * DELETE /api/history/:sessionId
  * セッションを削除
  */
+// セッション削除＋ファイルベース履歴削除
 router.delete('/:sessionId', async (req, res) => {
   try {
     const { sessionId } = req.params;
     console.log(`📋 セッション削除リクエスト: ${sessionId}`);
 
-    const success = await HistoryService.deleteSession(sessionId);
-    if (!success) {
+    // まずDBセッション削除
+    let dbDeleted = false;
+    try {
+      dbDeleted = await HistoryService.deleteSession(sessionId);
+    } catch (e) {
+      console.warn('DBセッション削除エラー:', e);
+    }
+
+    // ファイルベース削除
+    let fileDeleted = false;
+    let fileDeleteError = null;
+    let deletedFileName = null;
+    try {
+      // ID正規化
+      let normalizedId = sessionId;
+      if (sessionId.startsWith('export_')) {
+        normalizedId = sessionId.replace('export_', '');
+        if (normalizedId.endsWith('.json')) {
+          normalizedId = normalizedId.replace('.json', '');
+        }
+        const parts = normalizedId.split('_');
+        if (parts.length >= 2 && parts[1].match(/^[a-f0-9-]+$/)) {
+          normalizedId = parts[1];
+        }
+      }
+
+      let exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+      if (!fs.existsSync(exportsDir)) {
+        const alternativePath = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+        if (fs.existsSync(alternativePath)) {
+          exportsDir = alternativePath;
+        }
+      }
+      if (fs.existsSync(exportsDir)) {
+        const files = fs.readdirSync(exportsDir);
+        for (const file of files) {
+          if (file.endsWith('.json')) {
+            const filePath = path.join(exportsDir, file);
+            try {
+              const content = fs.readFileSync(filePath, 'utf8');
+              const data = JSON.parse(content);
+              const matches = [
+                data.chatId === sessionId,
+                data.id === sessionId,
+                data.chatId === normalizedId,
+                data.id === normalizedId,
+                file.includes(sessionId),
+                file.includes(normalizedId),
+                data.chat_id === sessionId,
+                data.chat_id === normalizedId,
+                file.split('_').some(part => part === sessionId),
+                file.split('_').some(part => part === normalizedId),
+                sessionId.length > 8 && (data.chatId?.startsWith(sessionId.substring(0, 8)) || data.id?.startsWith(sessionId.substring(0, 8))),
+                normalizedId.length > 8 && (data.chatId?.startsWith(normalizedId.substring(0, 8)) || data.id?.startsWith(normalizedId.substring(0, 8))),
+              ];
+              if (matches.some(Boolean)) {
+                fs.unlinkSync(filePath);
+                fileDeleted = true;
+                deletedFileName = file;
+                console.log('🗑️ ファイル履歴削除:', filePath);
+                break;
+              }
+            } catch (e) {
+              fileDeleteError = e;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      fileDeleteError = e;
+    }
+
+    if (!dbDeleted && !fileDeleted) {
       return res.status(404).json({
-        error: 'セッションが見つかりません',
+        success: false,
+        error: '履歴が見つかりません',
+        dbDeleted,
+        fileDeleted,
+        deletedFileName,
+        fileDeleteError: fileDeleteError ? String(fileDeleteError) : undefined,
       });
     }
 
     res.json({
       success: true,
-      message: 'セッションを削除しました',
+      dbDeleted,
+      fileDeleted,
+      deletedFileName,
+      message: `履歴を削除しました (DB: ${dbDeleted}, File: ${fileDeleted})`,
     });
   } catch (error) {
     console.error('❌ セッション削除エラー:', error);

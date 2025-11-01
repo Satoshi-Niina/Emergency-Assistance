@@ -1,0 +1,55 @@
+{
+  "chatId": "24a1e232-1943-4c31-9d8e-c379a63bd8e9",
+  "userId": "test-user",
+  "exportType": "manual_send",
+  "exportTimestamp": "2025-10-31T02:36:09.033Z",
+  "title": "ブレーキが解放できない",
+  "chatData": {
+    "chatId": "24a1e232-1943-4c31-9d8e-c379a63bd8e9",
+    "timestamp": "2025-10-31T02:36:08.722Z",
+    "machineInfo": {
+      "selectedMachineType": "mc300",
+      "selectedMachineNumber": "",
+      "machineTypeName": "MC300",
+      "machineNumber": "1000"
+    },
+    "messages": [
+      {
+        "id": "1761878138981",
+        "content": "何か問題がありましたか？お困りの事象を教えてください！",
+        "isAiResponse": true,
+        "timestamp": "2025-10-31T02:35:38.981Z",
+        "media": []
+      },
+      {
+        "id": 1761878146436,
+        "content": "",
+        "isAiResponse": false,
+        "timestamp": "2025-10-31T02:35:46.436Z",
+        "media": [
+          {
+            "id": "media_1761878146436_0",
+            "type": "image",
+            "url": "/api/images/chat-exports/chat_image_1761878146432.png",
+            "fileName": "image_1761878146436_0"
+          }
+        ]
+      },
+      {
+        "id": "1761878165406",
+        "content": "ブレーキが解放できない",
+        "isAiResponse": false,
+        "timestamp": "2025-10-31T02:36:05.406Z",
+        "media": []
+      },
+      {
+        "id": "1761878165411",
+        "content": "具体的な症状を教えてくださいね",
+        "isAiResponse": true,
+        "timestamp": "2025-10-31T02:36:05.410Z",
+        "media": []
+      }
+    ]
+  },
+  "savedImages": []
+}

@@ -1,0 +1,1301 @@
+import express from 'express';
+import { HistoryService } from '../services/historyService';
+import { z } from 'zod';
+import { db } from '../db/index.js';
+import { machineTypes, machines } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
+import fs from 'fs';
+import path from 'path';
+import { BackupManager } from '../lib/backup-manager';
+import { faultHistoryService } from '../services/fault-history-service.js';
+const router = express.Router();
+// バックアップマネージャーの設定
+const backupManager = new BackupManager({
+    maxBackups: parseInt(process.env.BACKUP_MAX_FILES || '3'),
+    backupBaseDir: process.env.BACKUP_FOLDER_NAME || 'backups',
+    disabled: process.env.BACKUP_ENABLED === 'false',
+});
+// バリデーションスキーマ
+const saveHistorySchema = z.object({
+    sessionId: z.string().uuid('セッションIDはUUID形式である必要があります'),
+    question: z.string().min(1, '質問は必須です'),
+    answer: z.string().optional(),
+    imageBase64: z.string().optional(),
+    machineType: z.string().optional(),
+    machineNumber: z.string().optional(),
+    metadata: z.any().optional(),
+});
+const createSessionSchema = z.object({
+    title: z.string().optional(),
+    machineType: z.string().optional(),
+    machineNumber: z.string().optional(),
+    metadata: z.any().optional(),
+});
+/**
+ * GET /api/history
+ * 履歴一覧を取得
+ */
+router.get('/', async (req, res) => {
+    try {
+        console.log('📋 履歴一覧取得リクエスト:', req.query);
+        // Content-Typeを明示的に設定
+        res.setHeader('Content-Type', 'application/json');
+        // フィルターパラメータを取得
+        const { machineType, machineNumber, searchText, searchDate, limit = 20, offset = 0, } = req.query;
+        // DBから故障履歴を取得
+        console.log('📊 DB から故障履歴を取得中...');
+        const dbResult = await faultHistoryService.getFaultHistoryList({
+            machineType: machineType,
+            machineNumber: machineNumber,
+            keyword: searchText,
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+        });
+        console.log('📊 DB取得結果:', {
+            items: dbResult.items.length,
+            total: dbResult.total,
+        });
+        // DBのデータを履歴表示フォーマットに変換
+        const convertedItems = dbResult.items.map((dbItem) => {
+            let jsonData;
+            try {
+                jsonData = typeof dbItem.jsonData === 'string'
+                    ? JSON.parse(dbItem.jsonData)
+                    : dbItem.jsonData;
+            }
+            catch (error) {
+                console.warn('JSON解析エラー:', error);
+                jsonData = {};
+            }
+            return {
+                id: dbItem.id,
+                type: 'fault_history',
+                fileName: `${dbItem.title}_${dbItem.id}.json`,
+                chatId: jsonData.chatId || dbItem.id,
+                userId: jsonData.userId || '',
+                exportType: jsonData.exportType || 'db_stored',
+                exportTimestamp: dbItem.createdAt || new Date().toISOString(),
+                messageCount: jsonData.metadata?.total_messages || 0,
+                machineType: dbItem.machineType || '',
+                machineNumber: dbItem.machineNumber || '',
+                machineInfo: {
+                    selectedMachineType: '',
+                    selectedMachineNumber: '',
+                    machineTypeName: dbItem.machineType || '',
+                    machineNumber: dbItem.machineNumber || '',
+                },
+                title: dbItem.title || '',
+                problemDescription: dbItem.description || '',
+                extractedComponents: dbItem.keywords || [],
+                extractedSymptoms: [],
+                possibleModels: [],
+                conversationHistory: jsonData.conversationHistory || jsonData.conversation_history || [],
+                metadata: jsonData.metadata || {},
+                savedImages: jsonData.savedImages || [],
+                fileSize: 0,
+                lastModified: dbItem.updatedAt || dbItem.createdAt,
+                createdAt: dbItem.createdAt,
+                jsonData: {
+                    ...jsonData,
+                    title: dbItem.title,
+                    problemDescription: dbItem.description,
+                    machineType: dbItem.machineType,
+                    machineNumber: dbItem.machineNumber,
+                },
+            };
+        });
+        console.log('📊 変換完了:', convertedItems.length, '件');
+        // レスポンス返却（既存のフォーマットを維持）
+        return res.json(convertedItems);
+    }
+    catch (error) {
+        console.error('❌ 履歴取得エラー:', error);
+        return res.status(500).json({
+            error: 'history_fetch_error',
+            message: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * GET /api/history/search-filters
+ * 履歴検索用のフィルターデータ（保存されたJSONファイルから動的に取得）
+ */
+router.get('/search-filters', async (_req, res) => {
+    try {
+        console.log('📋 履歴検索フィルターデータ取得リクエスト');
+        let exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+        if (!fs.existsSync(exportsDir)) {
+            const alternativePath = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+            if (fs.existsSync(alternativePath)) {
+                exportsDir = alternativePath;
+            }
+        }
+        const machineTypes = new Set();
+        const machineNumbers = new Set();
+        if (fs.existsSync(exportsDir)) {
+            const files = fs.readdirSync(exportsDir);
+            for (const file of files) {
+                if (file.endsWith('.json') && !file.includes('.backup.')) {
+                    try {
+                        const filePath = path.join(exportsDir, file);
+                        const content = fs.readFileSync(filePath, 'utf8');
+                        const data = JSON.parse(content);
+                        // 機種を収集
+                        const machineType = data.machineType ||
+                            data.chatData?.machineInfo?.machineTypeName ||
+                            '';
+                        if (machineType && machineType.trim()) {
+                            machineTypes.add(machineType.trim());
+                        }
+                        // 機械番号を収集
+                        const machineNumber = data.machineNumber ||
+                            data.chatData?.machineInfo?.machineNumber ||
+                            '';
+                        if (machineNumber && machineNumber.trim()) {
+                            machineNumbers.add(machineNumber.trim());
+                        }
+                    }
+                    catch (error) {
+                        console.warn(`JSONファイル読み込みエラー: ${file}`, error);
+                    }
+                }
+            }
+        }
+        const result = {
+            success: true,
+            machineTypes: Array.from(machineTypes).sort(),
+            machineNumbers: Array.from(machineNumbers).sort(),
+        };
+        console.log('📋 履歴検索フィルターデータ:', {
+            machineTypesCount: result.machineTypes.length,
+            machineNumbersCount: result.machineNumbers.length,
+        });
+        res.json(result);
+    }
+    catch (error) {
+        console.error('❌ 履歴検索フィルターデータ取得エラー:', error);
+        res.status(500).json({
+            success: false,
+            error: '履歴検索フィルターデータの取得に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * GET /api/history/machine-data
+ * 機種・機械番号マスターデータを取得（PostgreSQLから）
+ */
+router.get('/machine-data', async (_req, res) => {
+    try {
+        console.log('📋 機種・機械番号データ取得リクエスト（PostgreSQLから）');
+        // Content-Typeを明示的に設定
+        res.setHeader('Content-Type', 'application/json');
+        // PostgreSQLのmachineTypesテーブルから機種一覧を取得
+        const machineTypesData = await db
+            .select({
+            id: machineTypes.id,
+            machineTypeName: machineTypes.machineTypeName,
+        })
+            .from(machineTypes);
+        console.log('📋 PostgreSQLから取得した機種データ:', machineTypesData.length, '件');
+        // PostgreSQLのmachinesテーブルから機械番号一覧を取得（機種名も含む）
+        const machinesData = await db
+            .select({
+            id: machines.id,
+            machineNumber: machines.machineNumber,
+            machineTypeId: machines.machineTypeId,
+            machineTypeName: machineTypes.machineTypeName,
+        })
+            .from(machines)
+            .leftJoin(machineTypes, eq(machines.machineTypeId, machineTypes.id));
+        console.log('📋 PostgreSQLから取得した機械データ:', machinesData.length, '件');
+        const result = {
+            machineTypes: machineTypesData,
+            machines: machinesData,
+        };
+        console.log('📋 機種・機械番号データ取得結果:', {
+            machineTypes: machineTypesData.length,
+            machines: machinesData.length,
+            sampleMachineTypes: machineTypesData.slice(0, 3),
+            sampleMachines: machinesData.slice(0, 3),
+        });
+        res.json({
+            success: true,
+            ...result,
+        });
+    }
+    catch (error) {
+        console.error('❌ 機種・機械番号データ取得エラー:', error);
+        res.status(500).json({
+            error: '機種・機械番号データの取得に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * POST /api/history/save
+ * チャット履歴を保存
+ */
+router.post('/save', async (_req, res) => {
+    try {
+        console.log('📋 履歴保存リクエスト:', req.body);
+        // バリデーション
+        const validationResult = saveHistorySchema.safeParse(req.body);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                error: 'バリデーションエラー',
+                details: validationResult.error.errors,
+            });
+        }
+        const data = validationResult.data;
+        // 履歴を保存
+        const history = await HistoryService.createHistory(data);
+        res.json({
+            success: true,
+            message: '履歴を保存しました',
+            data: history,
+        });
+    }
+    catch (error) {
+        console.error('❌ 履歴保存エラー:', error);
+        res.status(500).json({
+            error: '履歴保存に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * PUT /api/history/update-item/:chatId
+ * 履歴アイテムを更新
+ */
+router.put('/update-item/:chatId', async (req, res) => {
+    try {
+        const { chatId } = req.params;
+        const { updatedData, updatedBy } = req.body;
+        console.log('📋 履歴アイテム更新リクエスト:', {
+            chatId,
+            updatedBy,
+            hasUpdatedData: !!updatedData,
+        });
+        // knowledge-base/exports フォルダ内のJSONファイルを検索
+        const exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+        if (!fs.existsSync(exportsDir)) {
+            return res.status(404).json({
+                error: 'エクスポートディレクトリが見つかりません',
+            });
+        }
+        const files = fs.readdirSync(exportsDir);
+        const jsonFiles = files.filter(file => file.endsWith('.json'));
+        // chatIdを含むJSONファイルを検索
+        const targetFile = jsonFiles.find(file => file.includes(chatId));
+        if (!targetFile) {
+            return res.status(404).json({
+                error: '対象のJSONファイルが見つかりません',
+                availableFiles: jsonFiles.slice(0, 5), // 最初の5ファイルを表示
+            });
+        }
+        const filePath = path.join(exportsDir, targetFile);
+        // 既存のJSONファイルを読み込み
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const jsonData = JSON.parse(fileContent);
+        // 差分データで更新
+        const updatedJsonData = {
+            ...jsonData,
+            ...updatedData,
+            lastUpdated: new Date().toISOString(),
+            updatedBy: updatedBy || 'user',
+        };
+        // 更新されたJSONファイルを保存
+        fs.writeFileSync(filePath, JSON.stringify(updatedJsonData, null, 2));
+        console.log('✅ 履歴アイテム更新完了:', {
+            chatId,
+            fileName: targetFile,
+            updatedFields: Object.keys(updatedData || {}),
+        });
+        res.json({
+            success: true,
+            message: '履歴アイテムを更新しました',
+            data: {
+                chatId,
+                fileName: targetFile,
+                updatedAt: updatedJsonData.lastUpdated,
+            },
+        });
+    }
+    catch (error) {
+        console.error('❌ 履歴アイテム更新エラー:', error);
+        res.status(500).json({
+            error: '履歴アイテムの更新に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * GET /api/history/file
+ * 特定のファイルを取得
+ */
+router.get('/file', async (req, res) => {
+    try {
+        const { name } = req.query;
+        if (!name || typeof name !== 'string') {
+            return res.status(400).json({
+                error: 'ファイル名が指定されていません',
+            });
+        }
+        console.log('📋 ファイル取得リクエスト:', name);
+        // knowledge-base/exports フォルダ内のJSONファイルを検索
+        const exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+        if (!fs.existsSync(exportsDir)) {
+            return res.status(404).json({
+                error: 'エクスポートディレクトリが見つかりません',
+            });
+        }
+        const filePath = path.join(exportsDir, name);
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({
+                error: 'ファイルが見つかりません',
+                fileName: name,
+            });
+        }
+        // JSONファイルを読み込み
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const jsonData = JSON.parse(fileContent);
+        console.log('✅ ファイル取得成功:', {
+            fileName: name,
+            fileSize: fileContent.length,
+            hasData: !!jsonData,
+        });
+        res.json({
+            success: true,
+            data: jsonData,
+            fileName: name,
+            fileSize: fileContent.length,
+        });
+    }
+    catch (error) {
+        console.error('❌ ファイル取得エラー:', error);
+        res.status(500).json({
+            error: 'ファイルの取得に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * POST /api/history/session
+ * 新しいセッションを作成
+ */
+router.post('/session', async (_req, res) => {
+    try {
+        console.log('📋 セッション作成リクエスト:', req.body);
+        // バリデーション
+        const validationResult = createSessionSchema.safeParse(req.body);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                error: 'バリデーションエラー',
+                details: validationResult.error.errors,
+            });
+        }
+        const data = validationResult.data;
+        // セッションを作成
+        const session = await HistoryService.createSession(data);
+        res.json({
+            success: true,
+            message: 'セッションを作成しました',
+            data: session,
+        });
+    }
+    catch (error) {
+        console.error('❌ セッション作成エラー:', error);
+        res.status(500).json({
+            error: 'セッション作成に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * GET /api/history/list
+ * セッション一覧を取得
+ */
+router.get('/list', async (_req, res) => {
+    try {
+        console.log('📋 セッション一覧取得リクエスト');
+        const { machineType, machineNumber, status, limit, offset } = req.query;
+        const params = {
+            machineType: machineType,
+            machineNumber: machineNumber,
+            status: status,
+            limit: limit ? parseInt(limit) : 20,
+            offset: offset ? parseInt(offset) : 0,
+        };
+        const result = await HistoryService.getSessionList(params);
+        res.json({
+            success: true,
+            data: result,
+        });
+    }
+    catch (error) {
+        console.error('❌ セッション一覧取得エラー:', error);
+        res.status(500).json({
+            error: 'セッション一覧取得に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * GET /api/history/view/:sessionId
+ * セッション詳細と履歴を取得
+ */
+router.get('/view/:sessionId', async (_req, res) => {
+    try {
+        const { sessionId } = req.params;
+        console.log(`📋 セッション詳細取得リクエスト: ${sessionId}`);
+        // セッション詳細を取得
+        const session = await HistoryService.getSessionById(sessionId);
+        if (!session) {
+            return res.status(404).json({
+                error: 'セッションが見つかりません',
+            });
+        }
+        // セッション履歴を取得
+        const history = await HistoryService.getSessionHistory(sessionId);
+        res.json({
+            success: true,
+            data: {
+                session,
+                history,
+            },
+        });
+    }
+    catch (error) {
+        console.error('❌ セッション詳細取得エラー:', error);
+        res.status(500).json({
+            error: 'セッション詳細取得に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * GET /api/history/export-history
+ * エクスポート履歴一覧を取得
+ */
+router.get('/export-history', async (_req, res) => {
+    try {
+        console.log('📋 エクスポート履歴取得リクエスト');
+        // エクスポートディレクトリから履歴を取得
+        let exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+        // サーバーディレクトリから起動されている場合の代替パス
+        if (!fs.existsSync(exportsDir)) {
+            const alternativePath = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+            if (fs.existsSync(alternativePath)) {
+                exportsDir = alternativePath;
+            }
+        }
+        let exportHistory = [];
+        if (fs.existsSync(exportsDir)) {
+            const files = fs.readdirSync(exportsDir);
+            exportHistory = files
+                .filter(file => file.endsWith('.json'))
+                .map(file => {
+                const filePath = path.join(exportsDir, file);
+                const stats = fs.statSync(filePath);
+                try {
+                    const content = fs.readFileSync(filePath, 'utf8');
+                    const data = JSON.parse(content);
+                    return {
+                        id: `export_${file.replace('.json', '')}`,
+                        filename: file,
+                        format: 'json',
+                        exportedAt: data.exportTimestamp || stats.mtime.toISOString(),
+                        fileSize: stats.size,
+                        recordCount: data.chatData?.messages?.length || 0,
+                    };
+                }
+                catch (error) {
+                    console.warn(`エクスポートファイルの読み込みエラー: ${filePath}`, error);
+                    return {
+                        id: `export_${file.replace('.json', '')}`,
+                        filename: file,
+                        format: 'json',
+                        exportedAt: stats.mtime.toISOString(),
+                        fileSize: stats.size,
+                        recordCount: 0,
+                    };
+                }
+            })
+                .sort((a, b) => new Date(b.exportedAt).getTime() - new Date(a.exportedAt).getTime());
+        }
+        console.log(`📋 エクスポート履歴取得完了: ${exportHistory.length}件`);
+        res.json(exportHistory);
+    }
+    catch (error) {
+        console.error('❌ エクスポート履歴取得エラー:', error);
+        res.status(500).json({
+            error: 'エクスポート履歴の取得に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * POST /api/history/export-selected
+ * 選択された履歴を一括エクスポート
+ */
+router.post('/export-selected', async (_req, res) => {
+    try {
+        const { ids, format = 'json' } = req.body;
+        console.log(`📋 選択履歴エクスポートリクエスト: ${ids?.length || 0}件, 形式: ${format}`);
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({
+                error: 'エクスポートする履歴IDが指定されていません',
+            });
+        }
+        // 選択された履歴を取得
+        const selectedHistory = await Promise.all(ids.map(async (id) => {
+            try {
+                const response = await fetch(`${req.protocol}://${req.get('host')}/api/history/${id}`);
+                if (response.ok) {
+                    return await response.json();
+                }
+            }
+            catch (error) {
+                console.warn(`履歴取得エラー (ID: ${id}):`, error);
+            }
+            return null;
+        }));
+        const validHistory = selectedHistory.filter(item => item !== null);
+        if (validHistory.length === 0) {
+            return res.status(404).json({
+                error: '有効な履歴が見つかりません',
+            });
+        }
+        let exportData;
+        let contentType;
+        let filename;
+        if (format === 'csv') {
+            // CSV形式でエクスポート
+            const csvData = validHistory.map((item, index) => ({
+                'No.': index + 1,
+                機種: item.machineType || '',
+                機械番号: item.machineNumber || '',
+                作成日時: new Date(item.createdAt).toLocaleString('ja-JP'),
+                JSONデータ: JSON.stringify(item.jsonData),
+            }));
+            const csvContent = [
+                'No.,機種,機械番号,作成日時,JSONデータ',
+                ...csvData.map(row => `${row['No.']},"${row['機種']}","${row['機械番号']}","${row['作成日時']}","${row['JSONデータ']}"`),
+            ].join('\n');
+            exportData = csvContent;
+            contentType = 'text/csv; charset=utf-8';
+            filename = `selected_history_${new Date().toISOString().slice(0, 10)}.csv`;
+        }
+        else {
+            // JSON形式でエクスポート
+            exportData = JSON.stringify(validHistory, null, 2);
+            contentType = 'application/json';
+            filename = `selected_history_${new Date().toISOString().slice(0, 10)}.json`;
+        }
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.send(exportData);
+    }
+    catch (error) {
+        console.error('❌ 選択履歴エクスポートエラー:', error);
+        res.status(500).json({
+            error: '選択履歴のエクスポートに失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * GET /api/history/export-all
+ * 全履歴をエクスポート
+ */
+router.get('/export-all', async (_req, res) => {
+    try {
+        const { format = 'json', machineType, machineNumber } = req.query;
+        console.log(`📋 全履歴エクスポートリクエスト: 形式: ${format}`);
+        // フィルター条件を適用して履歴を取得
+        let exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+        // サーバーディレクトリから起動されている場合の代替パス
+        if (!fs.existsSync(exportsDir)) {
+            const alternativePath = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+            if (fs.existsSync(alternativePath)) {
+                exportsDir = alternativePath;
+            }
+        }
+        let allHistory = [];
+        if (fs.existsSync(exportsDir)) {
+            const files = fs.readdirSync(exportsDir);
+            allHistory = files
+                .filter(file => file.endsWith('.json'))
+                .map(file => {
+                const filePath = path.join(exportsDir, file);
+                try {
+                    const content = fs.readFileSync(filePath, 'utf8');
+                    return JSON.parse(content);
+                }
+                catch (error) {
+                    console.warn(`ファイル読み込みエラー: ${filePath}`, error);
+                    return null;
+                }
+            })
+                .filter(item => item !== null);
+        }
+        // フィルター適用
+        if (machineType) {
+            allHistory = allHistory.filter(item => item.chatData?.machineInfo?.machineTypeName?.includes(machineType) ||
+                item.chatData?.machineInfo?.selectedMachineType?.includes(machineType));
+        }
+        if (machineNumber) {
+            allHistory = allHistory.filter(item => item.chatData?.machineInfo?.machineNumber?.includes(machineNumber) ||
+                item.chatData?.machineInfo?.selectedMachineNumber?.includes(machineNumber));
+        }
+        let exportData;
+        let contentType;
+        let filename;
+        if (format === 'csv') {
+            // CSV形式でエクスポート
+            const csvData = allHistory.map((item, index) => ({
+                'No.': index + 1,
+                チャットID: item.chatId || '',
+                ユーザーID: item.userId || '',
+                機種: item.chatData?.machineInfo?.machineTypeName || '',
+                機械番号: item.chatData?.machineInfo?.machineNumber || '',
+                エクスポート日時: new Date(item.exportTimestamp).toLocaleString('ja-JP'),
+                メッセージ数: item.chatData?.messages?.length || 0,
+            }));
+            const csvContent = [
+                'No.,チャットID,ユーザーID,機種,機械番号,エクスポート日時,メッセージ数',
+                ...csvData.map(row => `${row['No.']},"${row['チャットID']}","${row['ユーザーID']}","${row['機種']}","${row['機械番号']}","${row['エクスポート日時']}","${row['メッセージ数']}"`),
+            ].join('\n');
+            exportData = csvContent;
+            contentType = 'text/csv; charset=utf-8';
+            filename = `all_history_${new Date().toISOString().slice(0, 10)}.csv`;
+        }
+        else {
+            // JSON形式でエクスポート
+            exportData = JSON.stringify(allHistory, null, 2);
+            contentType = 'application/json';
+            filename = `all_history_${new Date().toISOString().slice(0, 10)}.json`;
+        }
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.send(exportData);
+    }
+    catch (error) {
+        console.error('❌ 全履歴エクスポートエラー:', error);
+        res.status(500).json({
+            error: '全履歴のエクスポートに失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * POST /api/history/advanced-search
+ * 高度なテキスト検索
+ */
+router.post('/advanced-search', async (_req, res) => {
+    try {
+        const { searchText, limit = 50 } = req.body;
+        console.log(`📋 高度な検索リクエスト: "${searchText}", 制限: ${limit}`);
+        if (!searchText) {
+            return res.status(400).json({
+                error: '検索テキストが必要です',
+            });
+        }
+        // エクスポートディレクトリから履歴を検索
+        let exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+        // サーバーディレクトリから起動されている場合の代替パス
+        if (!fs.existsSync(exportsDir)) {
+            const alternativePath = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+            if (fs.existsSync(alternativePath)) {
+                exportsDir = alternativePath;
+            }
+        }
+        let searchResults = [];
+        if (fs.existsSync(exportsDir)) {
+            const files = fs.readdirSync(exportsDir);
+            searchResults = files
+                .filter(file => file.endsWith('.json'))
+                .map(file => {
+                const filePath = path.join(exportsDir, file);
+                try {
+                    const content = fs.readFileSync(filePath, 'utf8');
+                    const data = JSON.parse(content);
+                    // 検索テキストでマッチング
+                    const searchLower = searchText.toLowerCase();
+                    const contentStr = JSON.stringify(data).toLowerCase();
+                    if (contentStr.includes(searchLower)) {
+                        return {
+                            id: `export_${file.replace('.json', '')}`,
+                            filename: file,
+                            chatId: data.chatId,
+                            userId: data.userId,
+                            machineInfo: data.chatData?.machineInfo || {},
+                            exportTimestamp: data.exportTimestamp,
+                            messageCount: data.chatData?.messages?.length || 0,
+                            matchScore: contentStr.split(searchLower).length - 1, // マッチ回数
+                        };
+                    }
+                    return null;
+                }
+                catch (error) {
+                    console.warn(`検索ファイル読み込みエラー: ${filePath}`, error);
+                    return null;
+                }
+            })
+                .filter(item => item !== null)
+                .sort((a, b) => b.matchScore - a.matchScore)
+                .slice(0, limit);
+        }
+        console.log(`📋 高度な検索完了: ${searchResults.length}件`);
+        res.json({
+            items: searchResults,
+            total: searchResults.length,
+            searchText,
+            searchTerms: searchText.split(/\s+/).filter(term => term.length > 0),
+        });
+    }
+    catch (error) {
+        console.error('❌ 高度な検索エラー:', error);
+        res.status(500).json({
+            error: '高度な検索に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * POST /api/history/generate-report
+ * レポート生成
+ */
+router.post('/generate-report', async (_req, res) => {
+    try {
+        const { searchFilters, reportTitle, reportDescription } = req.body;
+        console.log('📋 レポート生成リクエスト:', { searchFilters, reportTitle });
+        // フィルター条件を適用して履歴を取得
+        let exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+        // サーバーディレクトリから起動されている場合の代替パス
+        if (!fs.existsSync(exportsDir)) {
+            const alternativePath = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+            if (fs.existsSync(alternativePath)) {
+                exportsDir = alternativePath;
+            }
+        }
+        let reportData = [];
+        if (fs.existsSync(exportsDir)) {
+            const files = fs.readdirSync(exportsDir);
+            reportData = files
+                .filter(file => file.endsWith('.json'))
+                .map(file => {
+                const filePath = path.join(exportsDir, file);
+                try {
+                    const content = fs.readFileSync(filePath, 'utf8');
+                    return JSON.parse(content);
+                }
+                catch (error) {
+                    console.warn(`レポートファイル読み込みエラー: ${filePath}`, error);
+                    return null;
+                }
+            })
+                .filter(item => item !== null);
+            // フィルター適用
+            if (searchFilters) {
+                if (searchFilters.machineType) {
+                    reportData = reportData.filter(item => item.machineType?.includes(searchFilters.machineType) ||
+                        item.originalChatData?.machineInfo?.machineTypeName?.includes(searchFilters.machineType) ||
+                        item.chatData?.machineInfo?.machineTypeName?.includes(searchFilters.machineType) ||
+                        item.chatData?.machineInfo?.selectedMachineType?.includes(searchFilters.machineType));
+                }
+                if (searchFilters.machineNumber) {
+                    reportData = reportData.filter(item => item.machineNumber?.includes(searchFilters.machineNumber) ||
+                        item.originalChatData?.machineInfo?.machineNumber?.includes(searchFilters.machineNumber) ||
+                        item.chatData?.machineInfo?.machineNumber?.includes(searchFilters.machineNumber) ||
+                        item.chatData?.machineInfo?.selectedMachineNumber?.includes(searchFilters.machineNumber));
+                }
+                if (searchFilters.searchText) {
+                    const searchLower = searchFilters.searchText.toLowerCase();
+                    reportData = reportData.filter(item => JSON.stringify(item).toLowerCase().includes(searchLower));
+                }
+            }
+        }
+        // レポートデータを生成
+        const report = {
+            title: reportTitle || '履歴レポート',
+            description: reportDescription || '',
+            generatedAt: new Date().toISOString(),
+            totalCount: reportData.length,
+            items: reportData.map(item => ({
+                chatId: item.chatId,
+                userId: item.userId,
+                machineType: item.machineType ||
+                    item.originalChatData?.machineInfo?.machineTypeName ||
+                    item.chatData?.machineInfo?.machineTypeName ||
+                    '',
+                machineNumber: item.machineNumber ||
+                    item.originalChatData?.machineInfo?.machineNumber ||
+                    item.chatData?.machineInfo?.machineNumber ||
+                    '',
+                exportTimestamp: item.exportTimestamp,
+                messageCount: item.chatData?.messages?.length || 0,
+            })),
+        };
+        // JSON形式でレポートを返す
+        const reportJson = JSON.stringify(report, null, 2);
+        const filename = `report_${new Date().toISOString().slice(0, 10)}.json`;
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.send(reportJson);
+    }
+    catch (error) {
+        console.error('❌ レポート生成エラー:', error);
+        res.status(500).json({
+            error: 'レポート生成に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * GET /api/history/export/:sessionId
+ * セッション履歴をCSVでエクスポート
+ */
+router.get('/export/:sessionId', async (_req, res) => {
+    try {
+        const { sessionId } = req.params;
+        console.log(`📋 CSVエクスポートリクエスト: ${sessionId}`);
+        // エクスポートデータを取得
+        const exportData = await HistoryService.getExportData(sessionId);
+        if (!exportData) {
+            return res.status(404).json({
+                error: 'セッションが見つかりません',
+            });
+        }
+        const { session, history } = exportData;
+        // CSVデータを生成
+        const csvData = history.map((item, index) => ({
+            'No.': index + 1,
+            質問: item.question,
+            回答: item.answer || '',
+            画像URL: item.imageUrl || '',
+            機種: item.machineType || session.machineType || '',
+            機械番号: item.machineNumber || session.machineNumber || '',
+            作成日時: new Date(item.createdAt).toLocaleString('ja-JP'),
+        }));
+        // CSVヘッダーを追加
+        const csvContent = [
+            // セッション情報
+            `セッションID,${session.id}`,
+            `タイトル,${session.title || ''}`,
+            `機種,${session.machineType || ''}`,
+            `機械番号,${session.machineNumber || ''}`,
+            `ステータス,${session.status}`,
+            `作成日時,${new Date(session.createdAt).toLocaleString('ja-JP')}`,
+            `更新日時,${new Date(session.updatedAt).toLocaleString('ja-JP')}`,
+            '', // 空行
+            // 履歴データ
+            'No.,質問,回答,画像URL,機種,機械番号,作成日時',
+            ...csvData.map(row => `${row['No.']},"${row['質問']}","${row['回答']}","${row['画像URL']}","${row['機種']}","${row['機械番号']}","${row['作成日時']}"`),
+        ].join('\n');
+        // レスポンスヘッダーを設定
+        const filename = `emergency_assistance_${sessionId}_${new Date().toISOString().slice(0, 10)}.csv`;
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        // CSVデータを送信
+        res.send(csvContent);
+    }
+    catch (error) {
+        console.error('❌ CSVエクスポートエラー:', error);
+        res.status(500).json({
+            error: 'CSVエクスポートに失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * DELETE /api/history/:sessionId
+ * セッションを削除
+ */
+router.delete('/:sessionId', async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        console.log(`📋 セッション削除リクエスト: ${sessionId}`);
+        const success = await HistoryService.deleteSession(sessionId);
+        if (!success) {
+            return res.status(404).json({
+                error: 'セッションが見つかりません',
+            });
+        }
+        res.json({
+            success: true,
+            message: 'セッションを削除しました',
+        });
+    }
+    catch (error) {
+        console.error('❌ セッション削除エラー:', error);
+        res.status(500).json({
+            error: 'セッション削除に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * PUT /api/history/:sessionId
+ * セッションを更新
+ */
+router.put('/:sessionId', async (_req, res) => {
+    try {
+        const { sessionId } = req.params;
+        console.log(`📋 セッション更新リクエスト: ${sessionId}`, req.body);
+        // バリデーション
+        const validationResult = createSessionSchema.safeParse(req.body);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                error: 'バリデーションエラー',
+                details: validationResult.error.errors,
+            });
+        }
+        const data = validationResult.data;
+        // セッションを更新
+        const session = await HistoryService.updateSession(sessionId, data);
+        if (!session) {
+            return res.status(404).json({
+                error: 'セッションが見つかりません',
+            });
+        }
+        res.json({
+            success: true,
+            message: 'セッションを更新しました',
+            data: session,
+        });
+    }
+    catch (error) {
+        console.error('❌ セッション更新エラー:', error);
+        res.status(500).json({
+            error: 'セッション更新に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * PUT /api/history/update-item
+ * 履歴アイテムの更新（JSONファイルに差分で上書き保存）
+ */
+router.put('/update-item/:id', async (_req, res) => {
+    try {
+        const { id } = req.params;
+        const { updatedData, updatedBy = 'user' } = req.body;
+        console.log('📝 履歴アイテム更新リクエスト:', {
+            id,
+            updatedDataType: typeof updatedData,
+            updatedDataKeys: updatedData ? Object.keys(updatedData) : [],
+            updatedBy,
+        });
+        // IDを正規化（export_プレフィックス除去など）
+        let normalizedId = id;
+        if (id.startsWith('export_')) {
+            normalizedId = id.replace('export_', '');
+            // ファイル名の場合は拡張子も除去
+            if (normalizedId.endsWith('.json')) {
+                normalizedId = normalizedId.replace('.json', '');
+            }
+            // ファイル名からchatIdを抽出（_で区切られた2番目の部分）
+            const parts = normalizedId.split('_');
+            if (parts.length >= 2 && parts[1].match(/^[a-f0-9-]+$/)) {
+                normalizedId = parts[1];
+            }
+        }
+        console.log('📝 正規化されたID:', normalizedId, '元のID:', id);
+        // 元のJSONファイルを検索
+        let exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+        // サーバーディレクトリから起動されている場合の代替パス
+        if (!fs.existsSync(exportsDir)) {
+            const alternativePath = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+            if (fs.existsSync(alternativePath)) {
+                exportsDir = alternativePath;
+                console.log('🔄 代替パスを使用:', alternativePath);
+            }
+        }
+        // ディレクトリが存在しない場合は作成
+        if (!fs.existsSync(exportsDir)) {
+            console.log('📁 exportsディレクトリを作成:', exportsDir);
+            fs.mkdirSync(exportsDir, { recursive: true });
+        }
+        const files = fs.readdirSync(exportsDir);
+        console.log('📂 検索対象ファイル一覧:', files.filter(f => f.endsWith('.json')));
+        let targetFile = null;
+        let originalData = null;
+        // IDに基づいてファイルを検索
+        for (const file of files) {
+            if (file.endsWith('.json')) {
+                const filePath = path.join(exportsDir, file);
+                try {
+                    const content = fs.readFileSync(filePath, 'utf8');
+                    const data = JSON.parse(content);
+                    // IDが一致するかチェック（chatId、id、またはファイル名から）
+                    const matches = [
+                        data.chatId === id,
+                        data.id === id,
+                        data.chatId === normalizedId,
+                        data.id === normalizedId,
+                        file.includes(id),
+                        file.includes(normalizedId),
+                        data.chat_id === id,
+                        data.chat_id === normalizedId,
+                        // ファイル名から抽出したIDと比較
+                        file.split('_').some(part => part === id),
+                        file.split('_').some(part => part === normalizedId),
+                        // 短縮IDと比較
+                        id.length > 8 &&
+                            (data.chatId?.startsWith(id.substring(0, 8)) ||
+                                data.id?.startsWith(id.substring(0, 8))),
+                        normalizedId.length > 8 &&
+                            (data.chatId?.startsWith(normalizedId.substring(0, 8)) ||
+                                data.id?.startsWith(normalizedId.substring(0, 8))),
+                    ];
+                    if (matches.some(Boolean)) {
+                        targetFile = filePath;
+                        originalData = data;
+                        console.log('✅ 対象ファイル発見:', file);
+                        console.log('🔍 マッチした条件:', matches.map((m, i) => (m ? i : null)).filter(x => x !== null));
+                        break;
+                    }
+                }
+                catch (error) {
+                    console.warn(`ファイル読み込みエラー: ${filePath}`, error);
+                }
+            }
+        }
+        if (!targetFile || !originalData) {
+            console.log('❌ 対象ファイルが見つかりません:', {
+                id,
+                exportsDir,
+                filesFound: files.length,
+                jsonFiles: files.filter(f => f.endsWith('.json')).length,
+            });
+            return res.status(404).json({
+                error: '対象の履歴ファイルが見つかりません',
+                id: id,
+                searchedDirectory: exportsDir,
+                availableFiles: files.filter(f => f.endsWith('.json')),
+            });
+        }
+        // 差分を適用して更新（深いマージ）
+        const mergeData = (original, updates) => {
+            const result = { ...original };
+            for (const [key, value] of Object.entries(updates)) {
+                if (value !== null &&
+                    typeof value === 'object' &&
+                    !Array.isArray(value)) {
+                    // オブジェクトの場合は再帰的にマージ
+                    result[key] = mergeData(result[key] || {}, value);
+                }
+                else {
+                    // プリミティブ値や配列は直接代入
+                    result[key] = value;
+                }
+            }
+            return result;
+        };
+        const updatedJsonData = mergeData(originalData, {
+            ...updatedData,
+            lastModified: new Date().toISOString(),
+            // 更新履歴を追加
+            updateHistory: [
+                ...(originalData.updateHistory || []),
+                {
+                    timestamp: new Date().toISOString(),
+                    updatedFields: Object.keys(updatedData),
+                    updatedBy: updatedBy,
+                },
+            ],
+        });
+        // バックアップを作成（BackupManagerを使用）
+        console.log('🔄 バックアップ作成開始:', {
+            targetFile,
+            exists: fs.existsSync(targetFile),
+            fileSize: fs.existsSync(targetFile)
+                ? fs.statSync(targetFile).size
+                : 'N/A',
+        });
+        const backupPath = await backupManager.createBackup(targetFile);
+        console.log('💾 バックアップ作成完了:', {
+            backupPath: backupPath || 'バックアップが無効化されています',
+            success: !!backupPath,
+        });
+        // ファイルに上書き保存
+        fs.writeFileSync(targetFile, JSON.stringify(updatedJsonData, null, 2), 'utf8');
+        console.log('✅ 履歴ファイル更新完了:', targetFile);
+        console.log('📊 更新されたフィールド:', Object.keys(updatedData));
+        res.json({
+            success: true,
+            message: '履歴ファイルが更新されました',
+            updatedFile: path.basename(targetFile),
+            updatedData: updatedJsonData,
+            backupFile: backupPath ? path.basename(backupPath) : null,
+            backupPath: backupPath,
+        });
+    }
+    catch (error) {
+        console.error('❌ 履歴アイテム更新エラー:', error);
+        res.status(500).json({
+            error: '履歴アイテムの更新に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+        });
+    }
+});
+/**
+ * GET /api/history/export-files
+ * エクスポートファイル一覧取得
+ */
+router.get('/export-files', async (_req, res) => {
+    try {
+        let exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+        // サーバーディレクトリから起動されている場合の代替パス
+        if (!fs.existsSync(exportsDir)) {
+            const alternativePath = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+            if (fs.existsSync(alternativePath)) {
+                exportsDir = alternativePath;
+            }
+        }
+        if (!fs.existsSync(exportsDir)) {
+            return res.json([]);
+        }
+        const files = fs.readdirSync(exportsDir);
+        const exportFiles = files
+            .filter(file => file.endsWith('.json'))
+            .filter(file => !file.includes('.backup.')) // バックアップファイルを除外
+            .filter(file => !file.startsWith('test-backup-')) // テストファイルを除外
+            .map(file => {
+            const filePath = path.join(exportsDir, file);
+            try {
+                const content = fs.readFileSync(filePath, 'utf8');
+                const data = JSON.parse(content);
+                return {
+                    fileName: file,
+                    filePath: filePath,
+                    chatId: data.chatId || data.id || 'unknown',
+                    title: data.title || data.problemDescription || 'タイトルなし',
+                    createdAt: data.createdAt ||
+                        data.exportTimestamp ||
+                        new Date().toISOString(),
+                    lastModified: fs.statSync(filePath).mtime.toISOString(),
+                    size: fs.statSync(filePath).size,
+                };
+            }
+            catch (error) {
+                console.warn(`ファイル読み込みエラー: ${filePath}`, error);
+                return null;
+            }
+        })
+            .filter(item => item !== null);
+        res.json(exportFiles);
+    }
+    catch (error) {
+        console.error('❌ エクスポートファイル一覧取得エラー:', error);
+        res.status(500).json({
+            error: 'エクスポートファイル一覧の取得に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * GET /api/history/statistics
+ * 統計情報を取得
+ */
+router.get('/statistics', async (_req, res) => {
+    try {
+        console.log('📋 統計情報取得リクエスト');
+        const statistics = await HistoryService.getStatistics();
+        res.json({
+            success: true,
+            data: statistics,
+        });
+    }
+    catch (error) {
+        console.error('❌ 統計情報取得エラー:', error);
+        res.status(500).json({
+            error: '統計情報取得に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * GET /api/history/backups/:fileName
+ * 指定ファイルのバックアップ一覧取得
+ */
+router.get('/backups/:fileName', async (_req, res) => {
+    try {
+        const { fileName } = req.params;
+        const exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+        const targetFile = path.join(exportsDir, fileName);
+        if (!fs.existsSync(targetFile)) {
+            return res.status(404).json({ error: 'ファイルが見つかりません' });
+        }
+        const backups = backupManager.listBackups(targetFile);
+        res.json(backups);
+    }
+    catch (error) {
+        console.error('バックアップ一覧取得エラー:', error);
+        res.status(500).json({ error: 'バックアップ一覧の取得に失敗しました' });
+    }
+});
+/**
+ * POST /api/history/backups/restore
+ * バックアップから復元
+ */
+router.post('/backups/restore', async (_req, res) => {
+    try {
+        const { backupPath, targetFileName } = req.body;
+        const exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+        const targetFile = path.join(exportsDir, targetFileName);
+        backupManager.restoreFromBackup(backupPath, targetFile);
+        res.json({
+            success: true,
+            message: 'バックアップから復元しました',
+            restoredFile: targetFileName,
+        });
+    }
+    catch (error) {
+        console.error('バックアップ復元エラー:', error);
+        res.status(500).json({
+            error: 'バックアップからの復元に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * GET /api/history/backup-config
+ * バックアップ設定取得
+ */
+router.get('/backup-config', (_req, res) => {
+    try {
+        const config = backupManager.getConfig();
+        res.json(config);
+    }
+    catch (error) {
+        console.error('バックアップ設定取得エラー:', error);
+        res.status(500).json({ error: 'バックアップ設定の取得に失敗しました' });
+    }
+});
+/**
+ * PUT /api/history/backup-config
+ * バックアップ設定更新
+ */
+router.put('/backup-config', (_req, res) => {
+    try {
+        const newConfig = req.body;
+        backupManager.updateConfig(newConfig);
+        res.json({
+            success: true,
+            message: 'バックアップ設定を更新しました',
+            config: backupManager.getConfig(),
+        });
+    }
+    catch (error) {
+        console.error('バックアップ設定更新エラー:', error);
+        res.status(500).json({
+            error: 'バックアップ設定の更新に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+export { router as historyRouter };

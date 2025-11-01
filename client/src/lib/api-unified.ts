@@ -10,13 +10,15 @@ const isLocalhost = window.location.hostname.includes('localhost') || window.loc
 const isAzureStaticWebApp = /\.azurestaticapps\.net$/i.test(window.location.hostname);
 
 // API Base URLの決定（runtime-config優先）
+// NOTE: 常に末尾に '/api' を含めない正規化されたベース URL を返す（後で buildApiUrl が /api を付与する）
 export const API_BASE_URL = (() => {
   // まずruntime-configから取得を試行
   try {
     const runtimeConfig = getRuntimeConfig();
     if (runtimeConfig && runtimeConfig.API_BASE_URL) {
       console.log('✅ Runtime configからAPI_BASE_URLを取得:', runtimeConfig.API_BASE_URL);
-      return runtimeConfig.API_BASE_URL.replace(/\/$/, '');
+      // トレーリングスラッシュと末尾の /api を削る（例: http://localhost:8081/api -> http://localhost:8081）
+      return runtimeConfig.API_BASE_URL.replace(/\/$/, '').replace(/\/api$/, '');
     }
   } catch (error) {
     console.warn('⚠️ Runtime config取得エラー:', error);
@@ -25,13 +27,13 @@ export const API_BASE_URL = (() => {
   // 環境変数による設定
   if (import.meta.env.VITE_API_BASE_URL) {
     console.log('✅ 環境変数からAPI_BASE_URLを取得:', import.meta.env.VITE_API_BASE_URL);
-    return import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '');
+    return import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '').replace(/\/api$/, '');
   }
   
-  // フォールバック: 環境判定
+  // フォールバック: ローカル開発では相対パス (/api) を使う（Viteのプロキシを利用）
   if (isLocalhost) {
-    console.log('✅ ローカル環境: localhost:8080を使用');
-    return 'http://localhost:8080';
+    console.log('✅ ローカル環境: 相対 /api を使用 (Vite proxy)');
+    return '';
   }
 
   // フォールバック: 本番環境（相対パス）
@@ -42,25 +44,24 @@ export const API_BASE_URL = (() => {
 // APIエンドポイントの構築
 export function buildApiUrl(path: string): string {
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  
   // デバッグログ
-  console.log('🔧 buildApiUrl debug:', {
-    path,
-    cleanPath,
-    API_BASE_URL,
-    includesApi: API_BASE_URL.includes('/api')
-  });
-  
-  // API_BASE_URLに/apiが含まれているかチェック
-  if (API_BASE_URL.includes('/api')) {
-    const result = `${API_BASE_URL}${cleanPath}`;
-    console.log('🔧 Using existing /api:', result);
-    return result;
-  } else {
-    const result = `${API_BASE_URL}/api${cleanPath}`;
-    console.log('🔧 Adding /api:', result);
-    return result;
+  console.log('🔧 buildApiUrl debug:', { path, cleanPath, API_BASE_URL });
+
+  // API_BASE_URL は末尾に '/api' を含まないよう正規化されている想定
+  const base = API_BASE_URL || '';
+
+  // クリーンな API パス（先頭が /api でなければ追加）
+  const apiPath = cleanPath.startsWith('/api') ? cleanPath : `/api${cleanPath}`;
+
+  // ベースが空文字（相対パス運用）の場合は相対パスを返す
+  if (!base) {
+    console.log('🔧 buildApiUrl (relative):', apiPath);
+    return apiPath;
   }
+
+  const result = `${base}${apiPath}`;
+  console.log('🔧 buildApiUrl (absolute):', result);
+  return result;
 }
 
 // トークン取得関数
@@ -130,8 +131,22 @@ export async function apiRequest<T = any>(
     const response = await fetch(url, config);
     
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ API Error: ${response.status} ${response.statusText}`, errorText);
+      let errorData: any = null;
+      const contentType = response.headers.get('content-type');
+      
+      try {
+        if (contentType && contentType.includes('application/json')) {
+          errorData = await response.json();
+        } else {
+          const errorText = await response.text();
+          errorData = { message: errorText };
+        }
+      } catch (e) {
+        const errorText = await response.text();
+        errorData = { message: errorText };
+      }
+      
+      console.error(`❌ API Error: ${response.status} ${response.statusText}`, errorData);
       
       // 401エラーの場合は認証エラーとして処理
       if (response.status === 401) {
@@ -141,7 +156,10 @@ export async function apiRequest<T = any>(
         throw new Error('AUTHENTICATION_ERROR');
       }
       
-      throw new Error(`API Error ${response.status}: ${errorText}`);
+      // エラーオブジェクトにレスポンスデータを含める
+      const error = new Error(errorData?.error || errorData?.message || `API Error ${response.status}`);
+      (error as any).response = { status: response.status, data: errorData };
+      throw error;
     }
 
     const data = await response.json();

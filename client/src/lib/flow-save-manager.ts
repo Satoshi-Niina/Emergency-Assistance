@@ -162,7 +162,7 @@ export async function saveFlowData(
     // APIエンドポイントの構築
     const url = cleanedFlowData.id
       ? buildApiUrl(`/emergency-flow/${cleanedFlowData.id}`)
-      : buildApiUrl('/emergency-flow');
+  : buildApiUrl('/api/emergency-flow');
     const method = cleanedFlowData.id ? 'PUT' : 'POST';
 
     console.log('💾 保存リクエスト送信:', {

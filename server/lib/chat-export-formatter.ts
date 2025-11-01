@@ -744,34 +744,6 @@ ${messages
     );
 
     // Base64エンコードした画像データを保持するマップ
-    const base64Images: { [key: string]: string } = {};
-
-    // 各画像パスに対してBase64エンコードを実行
-    for (const imagePath of imagePaths) {
-      try {
-        // パスを正規化
-        const normalizedPath = imagePath.startsWith('./')
-          ? imagePath.slice(2)
-          : imagePath;
-        const fullPath = path.join(__dirname, '../../', normalizedPath);
-
-        if (fs.existsSync(fullPath)) {
-          const imageBuffer = fs.readFileSync(fullPath);
-          const base64Data = imageBuffer.toString('base64');
-          const fileExtension = path.extname(imagePath).slice(1);
-          const mimeType =
-            fileExtension === 'svg'
-              ? 'image/svg+xml'
-              : `image/${fileExtension}`;
-          base64Images[imagePath] = `data:${mimeType};base64,${base64Data}`;
-          console.log(`画像をBase64エンコード: ${imagePath}`);
-        } else {
-          console.warn(`画像ファイルが見つかりません: ${fullPath}`);
-        }
-      } catch (error) {
-        console.error(`画像のBase64エンコード中にエラー: ${imagePath}`, error);
-      }
-    }
 
     // メディア情報を追加
     let mediaInfo = [];
@@ -797,15 +769,14 @@ ${messages
       }));
     }
 
-    return {
-      id: message.id,
-      content: updatedContent,
-      isAiResponse: message.isAiResponse,
-      timestamp: message.createdAt,
-      media: mediaInfo,
-      base64Images:
-        Object.keys(base64Images).length > 0 ? base64Images : undefined,
-    };
+      return {
+        id: message.id,
+        content: updatedContent,
+        isAiResponse: message.isAiResponse,
+        timestamp: message.createdAt,
+        media: mediaInfo,
+        // base64Imagesは廃止。画像はURLで参照する
+      };
   });
 
   // 最終的なエクスポートデータを構築

@@ -8,6 +8,7 @@ import {
 import { Button } from '../../components/ui/button';
 import { ArrowLeft, ArrowRight, X } from 'lucide-react';
 import { convertImageUrl } from '../../lib/image-utils';
+import { buildApiUrl } from '../../lib/api-unified';
 
 interface Step {
   id: string;
@@ -48,9 +49,8 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
       try {
         setLoading(true);
         
-        // 統一APIクライアントを使用
-        const { buildApiUrl } = await import('../../lib/api-unified');
-        const apiUrl = buildApiUrl(`/emergency-flow/${flowId}`);
+        // 統一APIクライアントを使用（トップレベルインポートを使用）
+        const apiUrl = buildApiUrl(`/api/emergency-flow/detail/${flowId}`);
         console.log('🌐 フロープレビューAPI URL:', apiUrl);
         
         const response = await fetch(apiUrl, {
@@ -77,23 +77,47 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
         console.log('📊 フロープレビューAPIレスポンス:', responseData);
 
         // サーバーからのレスポンス構造に合わせてデータを取得
-        // プレビュー用APIは直接フローデータを返す
-        const data = responseData;
+        // プレビュー用APIは直接フローデータを返す、または { data: ... } 形式で返す
+        const data = responseData.data || responseData;
         console.log('📋 フロープレビュー処理対象データ:', data);
 
         // データ構造をFlowDataインターフェースに合わせる
+        if (!data) {
+          throw new Error('APIレスポンスにデータがありません');
+        }
+
+        // idが存在するか確認（idが数値の場合も文字列に変換）
+        const resolvedFlowId = data.id?.toString() || data.flowId?.toString() || flowId?.toString() || '';
+        if (!resolvedFlowId && !data.title && !data.name) {
+          throw new Error('APIレスポンスに有効なフローデータがありません。レスポンス: ' + JSON.stringify(responseData).substring(0, 200));
+        }
+
+        // stepsが配列でない場合の処理
+        let steps = [];
+        if (Array.isArray(data.steps)) {
+          steps = data.steps;
+        } else if (data.flowData?.steps && Array.isArray(data.flowData.steps)) {
+          steps = data.flowData.steps;
+        }
+
         const flowData: FlowData = {
-          id: data.id.toString(),
-          title: data.title || data.name,
-          description: data.description || '',
-          steps: data.steps || []
+          id: resolvedFlowId || data.id?.toString() || 'unknown',
+          title: data.title || data.name || data.flowData?.title || '無題のフロー',
+          description: data.description || data.flowData?.description || '',
+          steps: steps
         };
         
         console.log('📋 変換済みフローデータ:', flowData);
+        
+        if (flowData.steps.length === 0) {
+          console.warn('⚠️ ステップが0件です');
+        }
+        
         setFlowData(flowData);
       } catch (err) {
         console.error('Flow data fetch error:', err);
-        setError('フローデータの取得に失敗しました');
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        setError(`フローデータの取得に失敗しました: ${errorMessage}`);
       } finally {
         setLoading(false);
       }
@@ -265,15 +289,8 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
                     typeof img === 'object' && img !== null
                       ? (img as { url: string; fileName: string }).fileName
                       : String(img);
-                  console.log('🖼️ [FlowPreview] 画像表示デバッグ:', {
-                    index,
-                    fileName: altText,
-                    convertedUrl: imageUrl,
-                    originalImg: img,
-                    imgType: typeof img,
-                    hasUrl: typeof img === 'object' && img !== null && !!(img as any).url,
-                    urlValue: typeof img === 'object' && img !== null ? (img as any).url : img
-                  });
+                  // minimal debug for image URL
+                  console.debug('[FlowPreview] image', { index, fileName: altText, convertedUrl: imageUrl });
                   return (
                     <div key={index} className='relative'>
                       <img
@@ -300,8 +317,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
                             const imgElement = e.currentTarget;
                             const fileName = (img as { url: string; fileName: string }).fileName;
                             if (fileName) {
-                              const fallbackUrl = `http://localhost:8081/api/emergency-flow/image/${fileName}`;
-                              console.log('🔄 フォールバック画像URL:', fallbackUrl);
+                              const fallbackUrl = buildApiUrl(`/api/emergency-flow/image/${fileName}`);
                               imgElement.src = fallbackUrl;
                             }
                           }

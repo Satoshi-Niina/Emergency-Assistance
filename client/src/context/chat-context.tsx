@@ -545,8 +545,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
       mediaUrls?: { type: string; url: string; thumbnail?: string }[],
       isAiResponse: boolean = false
     ) => {
-      // 入力値の検証
-      if (!content || typeof content !== 'string') {
+      // 入力値の検証（空文字列でもメディアがある場合は許可）
+      if (typeof content !== 'string') {
         console.error('無効なメッセージ内容:', content);
         toast({
           title: 'エラー',
@@ -556,7 +556,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
         return;
       }
 
-      if (!content.trim() && (!mediaUrls || mediaUrls.length === 0)) {
+      if (!content && (!mediaUrls || mediaUrls.length === 0)) {
         console.log('空のメッセージのため送信をスキップ');
         return;
       }
@@ -590,12 +590,12 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
           }));
         }
 
-        // メッセージを作成
+        // メッセージを作成（空文字列でも許可）
         const message: Message = {
           id: timestamp,
           chatId: currentChatId,
-          content: content.trim(),
-          text: content.trim(),
+          content: content || '',
+          text: content || '',
           isAiResponse: isAiResponse,
           senderId: isAiResponse ? 'ai' : 'user',
           timestamp: new Date(),

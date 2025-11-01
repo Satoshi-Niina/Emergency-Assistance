@@ -81,7 +81,7 @@ export default function EmergencyFlowGenerator({
       } else {
         // Generate from keywords
         const { buildApiUrl } = await import('../../lib/api-unified');
-        const apiUrl = buildApiUrl('/emergency-flow/generate');
+  const apiUrl = buildApiUrl('/api/emergency-flow/generate');
         
         const response = await fetch(apiUrl, {
           method: 'POST',

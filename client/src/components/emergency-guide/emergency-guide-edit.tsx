@@ -463,7 +463,7 @@ const EmergencyGuideEdit: React.FC = () => {
       // フローの詳細データを取得
       const timestamp = Date.now();
       const { buildApiUrl } = await import('../../lib/api-unified');
-      const apiUrl = buildApiUrl(`/emergency-flow/${flow.id}?_t=${timestamp}`);
+  const apiUrl = buildApiUrl(`/emergency-flow/${flow.id}?_t=${timestamp}`);
       console.log('🌐 API呼び出し:', apiUrl);
 
       const response = await fetch(apiUrl, {
@@ -556,7 +556,7 @@ const EmergencyGuideEdit: React.FC = () => {
       // フローの詳細データを取得 - emergency-flow APIを使用
       const timestamp = Date.now();
       const { buildApiUrl } = await import('../../lib/api-unified');
-      const apiUrl = buildApiUrl(`/emergency-flow/detail/${flow.id}?_t=${timestamp}`);
+  const apiUrl = buildApiUrl(`/emergency-flow/${flow.id}?_t=${timestamp}`);
       
       console.log('🌐 プレビュー用フロー詳細API URL:', apiUrl);
       
@@ -618,7 +618,7 @@ const EmergencyGuideEdit: React.FC = () => {
       });
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${updatedFlowData.id}`,
+  buildApiUrl(`/api/emergency-flow/${updatedFlowData.id}`),
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -661,7 +661,7 @@ const EmergencyGuideEdit: React.FC = () => {
       });
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${flowId}`,
+  buildApiUrl(`/api/emergency-flow/${flowId}`),
         {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },

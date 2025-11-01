@@ -371,7 +371,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       
       // 統一API設定を使用
       const { buildApiUrl } = await import('../../lib/api-unified');
-      const apiUrl = buildApiUrl(`/api/emergency-flow/${flowId}?ts=${timestamp}&_r=${randomId}`);
+  const apiUrl = buildApiUrl(`/api/emergency-flow/${flowId}?ts=${timestamp}&_r=${randomId}`);
 
       console.log('🌐 API呼び出し:', apiUrl);
 
@@ -590,7 +590,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
 
       // 削除APIを呼び出し
       const fileName = targetFlow.fileName || flowId + '.json';
-      const url = `/api/emergency-flow/${flowId}?fileName=${encodeURIComponent(fileName)}`;
+  const url = buildApiUrl(`/api/emergency-flow/${flowId}?fileName=${encodeURIComponent(fileName)}`);
       console.log('🌐 削除API呼び出し:', url);
 
       const response = await fetch(url, {
@@ -794,7 +794,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
 
       // APIにデータを送信
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${updatedFlowData.id}`,
+  buildApiUrl(`/api/emergency-flow/${updatedFlowData.id}`),
         {
           method: 'PUT',
           headers: {
@@ -1077,7 +1077,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       formData.append('stepId', stepId);
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/upload-image`,
+  buildApiUrl(`/api/emergency-flow/upload-image`),
         {
           method: 'POST',
           body: formData,
@@ -1172,7 +1172,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       try {
         // APIを呼び出してサーバーから画像を削除
         const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/image/${imageToRemove.fileName}`,
+          buildApiUrl(`/api/emergency-flow/image/${imageToRemove.fileName}`),
           {
             method: 'DELETE',
           }

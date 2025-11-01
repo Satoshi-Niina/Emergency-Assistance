@@ -44,7 +44,7 @@
           {
             "id": "media_1761540413326_0",
             "type": "image",
-            "url": "/api/images/chat-exports/chat_image_1761540413318.png",
+            "url": "/api/images/chat-exports/chat_image_1761540413322.png",
             "title": "imageファイル",
             "fileName": "image_1761540413326_0"
           }
@@ -52,5 +52,20 @@
       }
     ]
   },
-  "savedImages": []
+  "savedImages": [],
+  "machineType": "MC300(松山）",
+  "machineNumber": "1000",
+  "problemDescription": "最終的にエンジンが停止した",
+  "lastModified": "2025-11-01T06:32:07.938Z",
+  "updateHistory": [
+    {
+      "timestamp": "2025-11-01T06:32:07.938Z",
+      "updatedFields": [
+        "machineType",
+        "machineNumber",
+        "problemDescription"
+      ],
+      "updatedBy": "user"
+    }
+  ]
 }

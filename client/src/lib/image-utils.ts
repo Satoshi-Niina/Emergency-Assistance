@@ -12,13 +12,13 @@ function getApiBaseUrl(): string {
       if (window.runtimeConfig && window.runtimeConfig.API_BASE_URL) {
         const apiBaseUrl = window.runtimeConfig.API_BASE_URL.replace(/\/$/, '');
         console.log('🔧 runtime-configからAPI_BASE_URL取得:', apiBaseUrl);
-        // /apiが含まれている場合は削除（後で適切に追加するため）
+        // 末尾の /api を削除して正規化
         return apiBaseUrl.replace(/\/api$/, '');
       }
       
       // 環境変数が設定されている場合
       if (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.trim() !== '') {
-        return import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '');
+        return import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '').replace(/\/api$/, '');
       }
       
       // 環境判定によるフォールバック
@@ -27,12 +27,12 @@ function getApiBaseUrl(): string {
       
       // Azure Static Web Appの場合は相対パス
       if (isAzureStaticWebApp) {
+        // Azure Static Web App は相対パス運用が期待される
         return '';
       }
       
       // ローカル開発環境 - Viteプロキシを使用するため現在のoriginを使用
       if (isLocalhost) {
-        // 開発環境では現在のoriginを使用（Viteプロキシが適切にルーティング）
         return window.location.origin;
       }
       
@@ -44,7 +44,7 @@ function getApiBaseUrl(): string {
   }
   
   // フォールバック - 現在のoriginを使用
-  return typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+  return typeof window !== 'undefined' ? window.location.origin : '';
 }
 
 /**
@@ -72,9 +72,9 @@ export function convertImageUrl(url: any): string {
   }
 
   // レガシーポート参照の自動修正
-  if (typeof url === 'string' && url.includes('localhost:8000')) {
+    if (typeof url === 'string' && url.includes('localhost:8000')) {
     // 現在のoriginを使用して動的に修正
-    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
     const correctedUrl = url.replace(/http:\/\/localhost:8000/g, currentOrigin);
     console.log('🔧 レガシーポート修正:', { original: url, corrected: correctedUrl, currentOrigin });
     return correctedUrl;
@@ -99,10 +99,11 @@ export function convertImageUrl(url: any): string {
       console.log('✅ 開発環境のAPIパス（プロキシ使用）:', url);
       return url;
     }
-    
+
     // 本番環境や他の環境では完全なURLに変換
     const apiBaseUrl = getApiBaseUrl();
-    const fullUrl = `${apiBaseUrl}${url}`;
+    const base = apiBaseUrl || '';
+    const fullUrl = base ? `${base}${url}` : url;
     console.log('✅ APIパス変換（完全URL）:', { original: url, apiBaseUrl, fullUrl });
     return fullUrl;
   }
@@ -135,9 +136,10 @@ export function convertImageUrl(url: any): string {
       console.log('✅ emergency-flow URL（プロキシ）:', emergencyUrl);
       return emergencyUrl;
     }
-    
+
     // 本番環境では完全URL
-    const emergencyUrl = `${apiBaseUrl}/api/emergency-flow/image/${fileName}`;
+    const base = getApiBaseUrl() || '';
+    const emergencyUrl = base ? `${base}/api/emergency-flow/image/${fileName}` : `/api/emergency-flow/image/${fileName}`;
     console.log('✅ emergency-flow URL:', emergencyUrl);
     return emergencyUrl;
   }
@@ -148,8 +150,9 @@ export function convertImageUrl(url: any): string {
     console.log('✅ troubleshooting URL（プロキシ）:', troubleshootingUrl);
     return troubleshootingUrl;
   }
-  
-  const troubleshootingUrl = `${apiBaseUrl}/api/troubleshooting/image/${fileName}`;
+
+  const base = getApiBaseUrl() || '';
+  const troubleshootingUrl = base ? `${base}/api/troubleshooting/image/${fileName}` : `/api/troubleshooting/image/${fileName}`;
   console.log('✅ troubleshooting URL:', troubleshootingUrl);
   return troubleshootingUrl;
 }

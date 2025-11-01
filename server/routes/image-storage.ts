@@ -2,47 +2,33 @@ import { Router } from 'express';
 import { db } from '../db/index.js';
 import { imageData } from '../db/schema.js';
 import { eq, like } from 'drizzle-orm';
-import path from 'path';
-import fs from 'fs';
+import * as path from 'path';
+import * as fs from 'fs';
 
 const router = Router();
 
 // 画像データをアップロード
-router.post('/upload', async (_req, res) => {
+// multipart/form-data対応の画像アップロード
+import multer from 'multer';
+const upload = multer({ storage: multer.memoryStorage() });
+
+router.post('/upload', upload.single('image'), async (_req, res) => {
   try {
-    const {
-      fileName,
-      originalFileName,
-      mimeType,
-      fileSize,
-      data,
-      category,
-      description,
-    } = req.body;
-
-    if (!fileName || !originalFileName || !mimeType || !fileSize || !data) {
-      return res
-        .status(400)
-        .json({ error: '必要なフィールドが不足しています' });
+    if (!_req.file) {
+      return res.status(400).json({ error: '画像ファイルがありません' });
     }
-
-    const result = await db
-      .insert(imageData)
-      .values({
-        fileName,
-        originalFileName,
-        filePath: `uploads/images/${fileName}`,
-        mimeType,
-        fileSize: fileSize.toString(),
-        data,
-        category,
-        description,
-      })
-      .returning();
-
-    res.json({ success: true, imageId: result[0].id });
+    const imagesDir = process.env.CHAT_IMAGES_PATH
+      ? path.resolve(process.cwd(), process.env.CHAT_IMAGES_PATH)
+      : path.join(__dirname, '../../knowledge-base/images/chat-exports');
+    if (!fs.existsSync(imagesDir)) {
+      fs.mkdirSync(imagesDir, { recursive: true });
+    }
+    const fileName = `chat_image_${Date.now()}.png`;
+    const filePath = path.join(imagesDir, fileName);
+    fs.writeFileSync(filePath, _req.file.buffer);
+    const imageUrl = `/api/images/chat-exports/${fileName}`;
+    res.json({ success: true, url: imageUrl, fileName });
   } catch (error) {
-    console.error('画像アップロードエラー:', error);
     res.status(500).json({ error: '画像のアップロードに失敗しました' });
   }
 });
@@ -50,7 +36,7 @@ router.post('/upload', async (_req, res) => {
 // 画像データを取得
 router.get('/:id', async (_req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = _req.params;
     const result = await db
       .select()
       .from(imageData)
@@ -65,7 +51,6 @@ router.get('/:id', async (_req, res) => {
     res.setHeader('Content-Length', image.fileSize);
     res.send(Buffer.from(image.data, 'base64'));
   } catch (error) {
-    console.error('画像取得エラー:', error);
     res.status(500).json({ error: '画像の取得に失敗しました' });
   }
 });
@@ -73,7 +58,7 @@ router.get('/:id', async (_req, res) => {
 // カテゴリ別の画像一覧を取得
 router.get('/category/:category', async (_req, res) => {
   try {
-    const { category } = req.params;
+    const { category } = _req.params;
     const result = await db
       .select({
         id: imageData.id,
@@ -90,7 +75,6 @@ router.get('/category/:category', async (_req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error('画像一覧取得エラー:', error);
     res.status(500).json({ error: '画像一覧の取得に失敗しました' });
   }
 });
@@ -98,7 +82,7 @@ router.get('/category/:category', async (_req, res) => {
 // 画像データを削除
 router.delete('/:id', async (_req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = _req.params;
     const result = await db
       .delete(imageData)
       .where(eq(imageData.id, id))
@@ -110,7 +94,6 @@ router.delete('/:id', async (_req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('画像削除エラー:', error);
     res.status(500).json({ error: '画像の削除に失敗しました' });
   }
 });
@@ -118,34 +101,28 @@ router.delete('/:id', async (_req, res) => {
 // 画像ファイルを提供（knowledge-base/images/chat-exports/から）
 router.get('/chat-exports/:filename', async (_req, res) => {
   try {
-    const { filename } = req.params;
-    const imagePath = path.join(
-      __dirname,
-      '../../knowledge-base/images/chat-exports',
-      filename
-    );
+    const { filename } = _req.params;
+    const imagesDir = process.env.CHAT_IMAGES_PATH
+      ? path.resolve(process.cwd(), process.env.CHAT_IMAGES_PATH)
+      : path.join(__dirname, '../../knowledge-base/images/chat-exports');
+    const imagePath = path.join(imagesDir, filename);
 
-    // ファイルの存在確認
     if (!fs.existsSync(imagePath)) {
-      console.log('画像ファイルが見つかりません:', imagePath);
       return res.status(404).json({ error: '画像ファイルが見つかりません' });
     }
 
-    // ファイルの拡張子からMIMEタイプを判定
     const ext = path.extname(filename).toLowerCase();
-    let mimeType = 'image/jpeg'; // デフォルト
+    let mimeType = 'image/jpeg';
     if (ext === '.png') mimeType = 'image/png';
     else if (ext === '.gif') mimeType = 'image/gif';
     else if (ext === '.webp') mimeType = 'image/webp';
 
     res.setHeader('Content-Type', mimeType);
-    res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1年間キャッシュ
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
 
-    // ファイルをストリーミングで送信
     const fileStream = fs.createReadStream(imagePath);
     fileStream.pipe(res);
   } catch (error) {
-    console.error('画像ファイル提供エラー:', error);
     res.status(500).json({ error: '画像ファイルの提供に失敗しました' });
   }
 });
@@ -153,7 +130,7 @@ router.get('/chat-exports/:filename', async (_req, res) => {
 // 画像データを検索
 router.get('/search/:query', async (_req, res) => {
   try {
-    const { query } = req.params;
+    const { query } = _req.params;
     const result = await db
       .select({
         id: imageData.id,
@@ -170,9 +147,9 @@ router.get('/search/:query', async (_req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error('画像検索エラー:', error);
     res.status(500).json({ error: '画像の検索に失敗しました' });
   }
 });
 
 export default router;
+module.exports = router;

@@ -1,3 +1,50 @@
+// --- 404ハンドラーより前に移動 ---
+
+// ローカルファイルから個別フロー取得API（troubleshooting/data/emergency-flow両方対応）
+app.get('/api/emergency-flow/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const dataFlowDir = path.join(process.cwd(), 'knowledge-base', 'data', 'emergency-flow');
+    const searchDirs = [troubleshootingDir, dataFlowDir];
+    let flowData = null;
+    let fileName = null;
+    let foundDir = null;
+    let availableFiles = [];
+    for (const dir of searchDirs) {
+      if (!fs.existsSync(dir)) continue;
+      const files = fs.readdirSync(dir);
+      const jsonFiles = files.filter(file => file.endsWith('.json'));
+      availableFiles = availableFiles.concat(jsonFiles.map(f => path.join(dir, f)));
+      for (const file of jsonFiles) {
+        try {
+          const filePath = path.join(dir, file);
+          const fileContent = fs.readFileSync(filePath, 'utf-8');
+          const data = JSON.parse(fileContent);
+          if (data.id === id || file.replace('.json', '') === id) {
+            flowData = data;
+            fileName = file;
+            foundDir = dir;
+            break;
+          }
+        } catch (error) {
+          // 無視
+        }
+      }
+      if (flowData) break;
+    }
+    if (!flowData) {
+      return res.status(404).json({
+        error: 'フローファイルが見つかりません',
+        details: `ID: ${id} のフローデータが見つかりませんでした`,
+        availableFiles
+      });
+    }
+    res.json(flowData);
+  } catch (error) {
+    res.status(500).json({ error: 'フローの取得に失敗しました' });
+  }
+});
 #!/usr/bin/env node
 
 // Azure App Service専用サーバー

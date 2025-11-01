@@ -1,4 +1,4 @@
-module.exports = async (context, request) => {
+export default async function(context, request) {
   try {
     context.log('DB Check HTTP trigger function processed a request.');
 
@@ -77,4 +77,4 @@ module.exports = async (context, request) => {
       }),
     };
   }
-};
+}

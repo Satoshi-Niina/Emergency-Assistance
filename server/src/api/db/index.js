@@ -1,20 +1,18 @@
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 exports.db = void 0;
+import { Pool } from 'pg';
 const { Pool } = require('pg');
 
 let pool = null;
 
+
+import { Pool } from 'pg';
+      process.env.DATABASE_URL || process.env.POSTGRES_CONNECTION_STRING;
+let pool = null;
+    if (!connectionString) {
 // データベース接続プールを初期化
 function initializePool() {
-  if (!pool) {
-    // 環境変数はモジュールロード時ではなく初期化時に動的に参照する
-    const connectionString =
-      process.env.DATABASE_URL || process.env.POSTGRES_CONNECTION_STRING;
-
-    if (!connectionString) {
-      // 明示的にバイパスが有効でない限り、モックを自動で返さない
-      if (process.env.BYPASS_DB_FOR_LOGIN === 'true') {
         console.warn('⚠️ DATABASE_URL が設定されていません。BYPASS_DB_FOR_LOGIN=true のためモックデータベースを使用します。');
         return null;
       }
@@ -55,9 +53,11 @@ function initializePool() {
     }
   }
   return pool;
-}
-
-// データベース実行関数
+const db = {
+  initializePool,
+  // ...existing code...
+};
+export default db;
 exports.db = {
   execute: async function (query, params = []) {
     const pool = initializePool();
@@ -131,8 +131,8 @@ exports.db = {
   },
 };
 
-// プロセス終了時に接続を閉じる（競合回避のため無効化）
-// process.on('SIGINT', async () => {
+};
+export default exports.db;
 //   await exports.db.close();
 //   process.exit(0);
 // });

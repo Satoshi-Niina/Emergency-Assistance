@@ -1,0 +1,16 @@
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Vary: Origin
+Access-Control-Allow-Credentials: true
+Content-Type: image/jpeg
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET, OPTIONS
+Access-Control-Allow-Headers: Content-Type, Authorization
+Cross-Origin-Resource-Policy: cross-origin
+Cache-Control: public, max-age=31536000
+Content-Length: 3678511
+ETag: W/"38212f-aEingoTyzkDOfm938lHhZTOehe0"
+Date: Fri, 17 Oct 2025 04:16:08 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+

@@ -1,3 +1,5 @@
+// 仮の型定義（必要に応じて詳細化）
+type ReportData = any;
 import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -52,92 +54,14 @@ export const getImageSrc = (data: any): string | null => {
   return s3 || null;
 };
 
+
 interface ChatExportData {
   chatId: string;
   userId: string;
   exportType: string;
   exportTimestamp: string;
-  // 新しいフォーマット
-  title?: string;
-  problemDescription?: string;
-  machineType?: string;
-  machineNumber?: string;
-  extractedComponents?: string[];
-  extractedSymptoms?: string[];
-  possibleModels?: string[];
-  conversationHistory?: any[];
-  metadata?: {
-    total_messages?: number;
-    user_messages?: number;
-    ai_messages?: number;
-    total_media?: number;
-    export_format_version?: string;
-    fileName?: string;
-  };
-  // 従来のフォーマット（後方互換性）
-  chatData?: {
-    chatId: string;
-    timestamp: string;
-    machineInfo: {
-      selectedMachineType: string;
-      selectedMachineNumber: string;
-      machineTypeName: string;
-      machineNumber: string;
-    };
-    messages: Array<{
-      id: number;
-      content: string;
-      isAiResponse: boolean;
-      timestamp: string;
-      media: any[];
-    }>;
-  };
-  savedImages?: Array<{
-    messageId: number;
-    fileName: string;
-    path: string;
-    url: string;
-  }>;
-  // 追加の画像ソース用フィールド
-  messages?: Array<{
-    id: number;
-    content: string;
-    isAiResponse: boolean;
-    timestamp: string;
-    media: any[];
-  }>;
-  imagePath?: string;
-  originalChatData?: {
-    messages: Array<{
-      id: number;
-      content: string;
-      isAiResponse: boolean;
-      timestamp: string;
-      media: any[];
-    }>;
-  };
-}
-
-interface ReportData {
-  reportId: string;
-  machineId: string;
-  machineType: string; // 機種を追加
-  machineNumber: string; // 機械番号を追加
-  date: string;
-  location: string;
-  failureCode: string;
-  description: string;
-  status: string;
-  engineer: string;
-  notes: string;
-  repairSchedule: string;
-  repairLocation: string;
-  // 新しいフィールド
-  incidentTitle: string;
-  problemDescription: string;
-  extractedComponents: string[];
-  extractedSymptoms: string[];
-  possibleModels: string[];
+  // 必要に応じて他のプロパティを追加
+  [key: string]: any;
 }
 
 interface ChatExportReportProps {
@@ -203,7 +127,6 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({
       date: '日付',
       location: '場所',
       failureCode: '故障コード',
-      description: '説明',
       status: 'ステータス',
       engineer: '担当エンジニア',
       notes: '備考',
@@ -232,48 +155,6 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({
     return diff;
   };
 
-  const diff = calculateDiff();
-
-  const handleEdit = () => {
-    setIsEditing(true);
-  };
-
-  const handleSave = () => {
-    setReportData(editedData);
-    setIsEditing(false);
-    setShowDiff(false); // 差分表示を非表示にする
-
-    // サーバーに更新リクエストを送信
-    if (data.chatId) {
-      updateReportOnServer(editedData);
-    }
-
-    if (onSave) {
-      onSave(editedData);
-    }
-
-    // 更新された内容を確認
-    const updatedFields = [];
-    if (data.machineType !== editedData.machineType) {
-      updatedFields.push(
-        `機種: ${data.machineType || '未設定'} → ${editedData.machineType || '未設定'}`
-      );
-    }
-    if (data.machineNumber !== editedData.machineNumber) {
-      updatedFields.push(
-        `機械番号: ${data.machineNumber || '未設定'} → ${editedData.machineNumber || '未設定'}`
-      );
-    }
-
-    // 保存完了の通知
-    if (updatedFields.length > 0) {
-      alert(
-        `レポートが保存されました。\n\n更新された内容:\n${updatedFields.join('\n')}`
-      );
-    } else {
-      alert('レポートが保存されました。');
-    }
-  };
 
   // サーバーにレポートデータを更新
   const updateReportOnServer = async (updatedData: ReportData) => {
@@ -483,7 +364,7 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({
     const w = window.open('', '_blank', 'noopener,noreferrer');
     if (!w) return;
 
-    const contentHTML = generateReportPrintHTML(reportData, imageUrl);
+    const contentHTML = generateReportPrintHTML(reportData, imageUrls);
     w.document.write(contentHTML);
     w.document.close();
 
@@ -547,84 +428,107 @@ ${(data.conversationHistory || data.chatData?.messages || [])
     window.URL.revokeObjectURL(url);
   };
 
+
   const currentData = editedData; // 常に編集データを使用
 
-  // return()の直前に追加
-  const imgSrc = getImageSrc(data);
-  console.log('[chat-export] final imgSrc:', imgSrc && imgSrc.slice(0, 60));
 
-  return (
-    <div className='min-h-screen bg-gray-50 p-4'>
-      <div className='max-w-4xl mx-auto'>
-        {/* ヘッダー */}
-        <div className='flex justify-between items-center mb-6'>
-          <h1 className='text-3xl font-bold text-center flex-1'>報告書</h1>
-          <div className='flex gap-2'>
-            {!isEditing ? (
-              <>
-                <Button
-                  onClick={handleEdit}
-                  variant='outline'
-                  className='flex items-center gap-2'
-                >
-                  <Edit className='h-4 w-4' />
-                  レポート編集
-                </Button>
-                {diff.length > 0 && (
-                  <Button
-                    onClick={() => setShowDiff(!showDiff)}
-                    variant='outline'
-                    className='flex items-center gap-2'
-                  >
-                    <span className='text-sm'>差分表示 ({diff.length})</span>
-                  </Button>
-                )}
-                <Button
-                  onClick={() => {
-                    printReport(currentData, imgSrc);
-                  }}
-                  variant='outline'
-                  className='flex items-center gap-2'
-                >
-                  <Printer className='h-4 w-4' />
-                  印刷
-                </Button>
-                <Button
-                  onClick={downloadReport}
-                  variant='outline'
-                  className='flex items-center gap-2'
-                >
-                  <Download className='h-4 w-4' />
-                  ダウンロード
-                </Button>
+  // より多様な画像ソースを再帰的に収集
+
+  const collectImages = (data: any): string[] => {
+    const urls: string[] = [];
+    const seen = new Set<string>();
+
+    // 1) images, savedImages, imagePath
+    if (Array.isArray(data?.images)) {
+      data.images.forEach((img: any) => {
+        const u = img?.url || img?.path;
+        if (u && !seen.has(u)) { urls.push(u); seen.add(u); }
+      });
+    }
+    if (Array.isArray(data?.savedImages)) {
+      data.savedImages.forEach((img: any) => {
+        const u = img?.url || img?.path;
+        if (u && !seen.has(u)) { urls.push(u); seen.add(u); }
+      });
+    }
+    if (Array.isArray(data?.imagePath)) {
+      data.imagePath.forEach((u: any) => {
+        if (u && !seen.has(u)) { urls.push(u); seen.add(u); }
+      });
+    } else if (typeof data?.imagePath === 'string' && !seen.has(data.imagePath)) {
+      urls.push(data.imagePath);
+      seen.add(data.imagePath);
+    }
+
+    // 2) chatData.messages, conversationHistory, originalChatData.messages, messages
+    const scanMessages = (messages: any[]) => {
+      messages.forEach((msg: any) => {
+        // media配列内の画像も抽出
+        if (Array.isArray(msg?.media)) {
+          msg.media.forEach((mediaItem: any) => {
+            if (mediaItem?.type === 'image' && mediaItem?.url && !seen.has(mediaItem.url)) {
+              urls.push(mediaItem.url);
+              seen.add(mediaItem.url);
+            }
+          });
+        }
+        // 旧来のcontentがbase64画像の場合（今は使わないが念のため）
+        if (msg?.content && typeof msg.content === 'string' && msg.content.startsWith('data:image/')) {
+          if (!seen.has(msg.content)) { urls.push(msg.content); seen.add(msg.content); }
+        }
+      });
+    };
+    if (Array.isArray(data?.chatData?.messages)) scanMessages(data.chatData.messages);
+    if (Array.isArray(data?.conversationHistory)) scanMessages(data.conversationHistory);
+    if (Array.isArray(data?.originalChatData?.messages)) scanMessages(data.originalChatData.messages);
+    if (Array.isArray(data?.messages)) scanMessages(data.messages);
+
+    // 3) jsonData.images
+    if (Array.isArray(data?.jsonData?.images)) {
+      data.jsonData.images.forEach((img: any) => {
+        const u = img?.url || img?.path;
+        if (u && !seen.has(u)) { urls.push(u); seen.add(u); }
+      });
+    }
+
+    // 4) 再帰的に子要素も探索（深い構造のため）
+    Object.values(data || {}).forEach((v: any) => {
+      if (v && typeof v === 'object' && !Array.isArray(v)) {
+        try {
+          urls.push(...collectImages(v));
+        } catch {}
+      }
+    });
+
+    // 5) URL正規化
+    return urls
+      .map(u => (typeof u === 'string' && u.startsWith('data:image/') ? u : toAbsUrl(u)))
+      .filter(Boolean);
+  };
+
+  // Base64画像（data:image/）は一切使わず、API画像やパス画像のみを使用
+  const allImageUrls: string[] = collectImages(data);
+  const imageUrls: string[] = allImageUrls
+    .filter(url =>
+      typeof url === 'string' &&
+      !url.startsWith('data:image/') &&
+      (url.startsWith('http') || url.startsWith('/api/') || url.startsWith('/images/') || url.startsWith('/public/'))
+    )
+    .map(url => toAbsUrl(url))
+    .filter(Boolean);
+  // デバッグ用: 画像URLリストを出力
+  if (typeof window !== 'undefined') {
+    console.log('[chat-export-report] print用画像URLリスト:', imageUrls);
+  }
+
+  // 差分データ
+  const diff = calculateDiff();
+
                 <Button onClick={onClose} variant='outline'>
                   閉じる
                 </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  onClick={handleSave}
-                  className='flex items-center gap-2'
-                >
-                  <Save className='h-4 w-4' />
-                  保存
-                </Button>
-                <Button
-                  onClick={handleCancel}
-                  variant='outline'
-                  className='flex items-center gap-2'
-                >
-                  <X className='h-4 w-4' />
-                  キャンセル
-                </Button>
-                <Button onClick={onClose} variant='outline'>
-                  閉じる
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
+              {/* フラグメント閉じタグ削除（構文エラー修正） */}
+
 
         {/* 差分表示 */}
         {showDiff && diff.length > 0 && (
@@ -898,16 +802,24 @@ ${(data.conversationHistory || data.chatData?.messages || [])
           </CardHeader>
           <CardContent>
             <p className='text-sm text-gray-600 mb-4'>機械故障箇所の画像</p>
-            {imgSrc ? (
-              <img
-                key={imgSrc.slice(0, 64)}
-                src={imgSrc}
-                alt='故障箇所画像'
-                style={{ maxWidth: '100%', height: 'auto', display: 'block' }}
-                onError={e => {
-                  (e.currentTarget as HTMLImageElement).style.display = 'none';
-                }}
-              />
+            {/* images配列があれば3列グリッドで全画像を表示 */}
+            {imageUrls.length > 0 ? (
+              <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-4'>
+                {imageUrls.map((url, idx) => (
+                  <div key={url + '-' + idx} className='text-center'>
+                    {/* デバッグ用: URLを小さく表示 */}
+                    <div style={{ fontSize: '10px', wordBreak: 'break-all', color: '#888', marginBottom: 2 }}>{url}</div>
+                    <img
+                      src={url}
+                      alt={`故障画像${idx+1}`}
+                      style={{ maxWidth: '100%', maxHeight: '240px', display: 'block', margin: '0 auto' }}
+                      onError={e => {
+                        (e.currentTarget as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className='text-center text-gray-500'>画像がありません</div>
             )}
@@ -1009,9 +921,7 @@ ${(data.conversationHistory || data.chatData?.messages || [])
         <div className='text-center text-sm text-gray-500 py-4'>
           © 2025 報告書. All rights reserved.
         </div>
-      </div>
-    </div>
-  );
-};
 
+
+}
 export default ChatExportReport;

@@ -27,7 +27,7 @@ import ChatExportReport from '../components/report/chat-export-report';
 
 // 画像ユーティリティ関数
 const API_BASE = import.meta.env.DEV
-  ? 'http://localhost:8081'
+  ? import.meta.env.VITE_API_BASE_URL || ''
   : import.meta.env.VITE_API_BASE_URL || window.location.origin;
 
 async function fetchDetailFile(name: string) {

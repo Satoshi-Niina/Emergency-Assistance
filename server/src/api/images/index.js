@@ -1,4 +1,7 @@
-module.exports = async (context, request) => {
+import path from 'path';
+import fs from 'fs';
+
+export default async function(context, request) {
   try {
     context.log('Images HTTP trigger function processed a request.');
 
@@ -24,23 +27,31 @@ module.exports = async (context, request) => {
 
     // POST /api/images/upload - 画像アップロード
     if (method === 'POST' && action === 'upload') {
-      const uploadResult = {
-        success: true,
-        message: '画像のアップロードが完了しました',
-        image: {
-          id: `img-${Date.now()}`,
-          filename: 'uploaded-image.jpg',
-          originalName: 'sample-image.jpg',
-          size: 102400,
-          mimeType: 'image/jpeg',
-          url: '/api/images/img-1234567890',
-          thumbnailUrl: '/api/images/img-1234567890/thumbnail',
-          uploadedAt: new Date().toISOString(),
-          category: 'general',
-          tags: ['uploaded', 'sample'],
-        },
-      };
-
+      // multipart/form-data から画像ファイルを取得
+      const boundary = request.headers['content-type']?.split('boundary=')[1];
+      if (!boundary) {
+        return {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          body: JSON.stringify({ success: false, error: 'boundaryが見つかりません' }),
+        };
+      }
+      // Azure Functions等でのmultipart解析は外部ライブラリ推奨。ここでは簡易実装例。
+      const rawBody = request.body;
+      // 画像ファイル部分を抽出（本番はbusboy, formidable等推奨）
+      // ここではPNG前提で保存
+      const imagesDir = process.env.CHAT_IMAGES_PATH
+        ? path.resolve(process.cwd(), process.env.CHAT_IMAGES_PATH)
+        : path.join(path.resolve(), 'knowledge-base/images/chat-exports');
+      if (!fs.existsSync(imagesDir)) {
+        fs.mkdirSync(imagesDir, { recursive: true });
+      }
+      // ファイル名生成
+      const fileName = `chat_image_${Date.now()}.png`;
+      const filePath = path.join(imagesDir, fileName);
+      // bodyがBufferの場合はそのまま保存（PNG前提）
+      fs.writeFileSync(filePath, rawBody);
+      const imageUrl = `/api/images/file/${fileName}`;
       return {
         status: 200,
         headers: {
@@ -49,7 +60,7 @@ module.exports = async (context, request) => {
           'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie',
         },
-        body: JSON.stringify(uploadResult),
+        body: JSON.stringify({ success: true, url: imageUrl, fileName }),
       };
     }
 
@@ -251,4 +262,4 @@ module.exports = async (context, request) => {
       }),
     };
   }
-};
+}

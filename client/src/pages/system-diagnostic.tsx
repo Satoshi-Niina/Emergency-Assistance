@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { buildApiUrl } from '../lib/api-unified';
 import { Button } from '../components/ui/button';
 import {
   Card,
@@ -35,33 +36,28 @@ interface CheckResult {
 export default function SystemDiagnosticPage() {
   const { toast } = useToast();
   const [dbCheckResult, setDbCheckResult] = useState<CheckResult | null>(null);
-  const [gptCheckResult, setGptCheckResult] = useState<CheckResult | null>(
-    null
-  );
+  const [gptCheckResult, setGptCheckResult] = useState<CheckResult | null>(null);
   const [isCheckingDb, setIsCheckingDb] = useState(false);
   const [isCheckingGpt, setIsCheckingGpt] = useState(false);
 
-  // APIのベースURLを取得
-  const apiBaseUrl =
-    import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
 
   const checkDatabaseConnection = async () => {
     setIsCheckingDb(true);
     setDbCheckResult(null);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/_diag/postgresql`);
+  const response = await fetch(buildApiUrl('/_diag/postgresql'));
       const result = await response.json();
 
       // サーバーのレスポンス形式に合わせて変換
-      const checkResult = {
-        success: result.success,
+      const checkResult: CheckResult = {
+        success: !!result.success,
         status: result.success ? 'OK' : 'ERROR',
         message: result.message,
         error: result.error,
         current_time: result.data?.current_time,
         version: result.data?.version,
-        timestamp: result.timestamp
+        timestamp: result.timestamp,
       };
       setDbCheckResult(checkResult);
 
@@ -82,6 +78,7 @@ export default function SystemDiagnosticPage() {
       const errorMessage =
         error instanceof Error ? error.message : 'ネットワークエラー';
       setDbCheckResult({
+        success: false,
         status: 'ERROR',
         error: errorMessage,
       });
@@ -101,18 +98,18 @@ export default function SystemDiagnosticPage() {
     setGptCheckResult(null);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/_diag/gpt`);
+  const response = await fetch(buildApiUrl('/_diag/gpt'));
 
       const result = await response.json();
       
       // サーバーのレスポンス形式に合わせて変換
-      const checkResult = {
-        success: result.success,
+      const checkResult: CheckResult = {
+        success: !!result.success,
         status: result.success ? 'OK' : 'ERROR',
         message: result.message,
         error: result.error,
         details: result.details,
-        timestamp: result.timestamp
+        timestamp: result.timestamp,
       };
       setGptCheckResult(checkResult);
 
@@ -133,6 +130,7 @@ export default function SystemDiagnosticPage() {
       const errorMessage =
         error instanceof Error ? error.message : 'ネットワークエラー';
       setGptCheckResult({
+        success: false,
         status: 'ERROR',
         error: errorMessage,
       });

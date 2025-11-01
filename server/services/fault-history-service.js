@@ -13,9 +13,12 @@ import sharp from 'sharp';
  * 環境変数に基づいてデータベースまたはファイルシステムに保存
  */
 export class FaultHistoryService {
+    db;
+    useDatabase;
+    imagesDir;
     constructor() {
-        // 環境変数でデータベース使用を判定
-        this.useDatabase = process.env.FAULT_HISTORY_STORAGE_MODE === 'database' && !!process.env.DATABASE_URL;
+        // 強制的にファイルモードで動作（DB関連を削除）
+        this.useDatabase = false;
         // 画像保存ディレクトリを設定
         this.imagesDir = process.env.FAULT_HISTORY_IMAGES_DIR ||
             path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
@@ -23,10 +26,8 @@ export class FaultHistoryService {
         if (!fs.existsSync(this.imagesDir)) {
             fs.mkdirSync(this.imagesDir, { recursive: true });
         }
-        if (this.useDatabase) {
-            this.initializeDatabase();
-        }
-        console.log(`🔧 故障履歴サービス初期化: ${this.useDatabase ? 'データベース' : 'ファイル'}モード`);
+        console.log('🔧 故障履歴サービス初期化: ファイルモード（強制）');
+        console.log(`📁 画像保存ディレクトリ: ${this.imagesDir}`);
     }
     initializeDatabase() {
         try {
@@ -56,7 +57,17 @@ export class FaultHistoryService {
         const id = uuidv4();
         const now = new Date();
         // JSONデータから基本情報を抽出
-        const { title = options.title || this.extractTitle(jsonData), description = options.description || this.extractDescription(jsonData), machineType = this.extractMachineType(jsonData), machineNumber = this.extractMachineNumber(jsonData), office = this.extractOffice(jsonData), category = this.extractCategory(jsonData), keywords = this.extractKeywords(jsonData), emergencyGuideTitle = this.extractEmergencyGuideTitle(jsonData), emergencyGuideContent = this.extractEmergencyGuideContent(jsonData), } = {};
+        const title = options.title || this.extractTitle(jsonData);
+        const description = options.description || this.extractDescription(jsonData);
+        const machineType = this.extractMachineType(jsonData);
+        const machineNumber = this.extractMachineNumber(jsonData);
+        const office = this.extractOffice(jsonData);
+        const category = this.extractCategory(jsonData);
+        const keywords = this.extractKeywords(jsonData);
+        const emergencyGuideTitle = this.extractEmergencyGuideTitle(jsonData);
+        const emergencyGuideContent = this.extractEmergencyGuideContent(jsonData);
+        
+        console.log('📋 抽出した情報:', { title, machineType, machineNumber, office, category });
         // 画像を抽出・保存
         let imagePaths = [];
         let imageRecords = [];
@@ -213,7 +224,20 @@ export class FaultHistoryService {
             // ファイルシステムから取得
             const exportDir = process.env.LOCAL_EXPORT_DIR ||
                 path.join(process.cwd(), 'knowledge-base', 'exports');
-            const filePath = path.join(exportDir, `${id}.json`);
+            // UUIDで検索する場合、複合ファイル名からUUIDを抽出してファイルを検索
+            let fileName = `${id}.json`;
+            // 複合IDの場合、UUIDを抽出してファイルを検索
+            const uuidMatch = id.match(/_([a-f0-9-]{36})_/);
+            if (uuidMatch) {
+                const uuid = uuidMatch[1];
+                // UUIDから実際のファイル名を検索
+                const files = fs.readdirSync(exportDir);
+                const matchingFile = files.find(file => file.includes(uuid) && file.endsWith('.json'));
+                if (matchingFile) {
+                    fileName = matchingFile;
+                }
+            }
+            const filePath = path.join(exportDir, fileName);
             if (!fs.existsSync(filePath)) {
                 return null;
             }
@@ -237,10 +261,61 @@ export class FaultHistoryService {
                 const filePath = path.join(exportDir, file);
                 const content = fs.readFileSync(filePath, 'utf8');
                 const data = JSON.parse(content);
-                return {
+                // ファイル名からUUIDを抽出（複合ID対応）
+                const fileName = file.replace('.json', '');
+                const uuidMatch = fileName.match(/_([a-f0-9-]{36})_/);
+                const actualId = uuidMatch ? uuidMatch[1] : fileName;
+                
+                // 新構造JSONから機種・機械番号を抽出して既存データに追加
+                let item = {
                     ...data,
-                    id: file.replace('.json', ''),
+                    id: actualId,
+                    originalFileName: fileName,
                 };
+                
+                // chatData構造から情報を抽出（既存データに情報がない場合のみ）
+                if (!item.machineType && data.chatData?.machineInfo?.machineTypeName) {
+                    item.machineType = data.chatData.machineInfo.machineTypeName;
+                    console.log('🔍 機種抽出:', item.machineType);
+                }
+                if (!item.machineNumber && data.chatData?.machineInfo?.machineNumber) {
+                    item.machineNumber = data.chatData.machineInfo.machineNumber;
+                    console.log('🔍 機械番号抽出:', item.machineNumber);
+                }
+                
+                // 画像URLを整理（media配列から取得）
+                if (data.chatData?.messages && !item.images) {
+                    const images = [];
+                    for (const message of data.chatData.messages) {
+                        if (message.media && Array.isArray(message.media)) {
+                            for (const media of message.media) {
+                                if (media.type === 'image' && media.url) {
+                                    // URLからファイル名を抽出
+                                    const fileName = media.url.split('/').pop();
+                                    images.push({
+                                        id: `img_${images.length}`,
+                                        fileName: fileName,
+                                        originalFileName: fileName,
+                                        url: media.url,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    if (images.length > 0) {
+                        item.images = images;
+                    }
+                }
+                
+                // createdAt/updatedAtが存在しない場合は追加
+                if (!item.createdAt && data.exportTimestamp) {
+                    item.createdAt = data.exportTimestamp;
+                }
+                if (!item.updatedAt && data.exportTimestamp) {
+                    item.updatedAt = data.exportTimestamp;
+                }
+                
+                return item;
             }
             catch (error) {
                 console.error(`ファイル読み込みエラー: ${file}`, error);
@@ -295,14 +370,15 @@ export class FaultHistoryService {
                             const match = base64Matches[j];
                             const [, mimeType, base64Data] = match.match(/data:image\/([^;]+);base64,(.+)/) || [];
                             if (mimeType && base64Data) {
-                                const fileName = `${historyId}_${i}_${j}.${mimeType}`;
+                                // sharpでjpeg形式で保存するため、拡張子をjpegに統一
+                                const fileName = `${historyId}_${i}_${j}.jpeg`;
                                 const filePath = path.join(this.imagesDir, fileName);
                                 try {
                                     // Base64をデコードして保存
                                     const buffer = Buffer.from(base64Data, 'base64');
-                                    // 画像を最適化して保存
+                                    // 画像を最適化して保存（150dpi相当サイズ）
                                     await sharp(buffer)
-                                        .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+                                        .resize(620, 437, { fit: 'inside', withoutEnlargement: true })
                                         .jpeg({ quality: 85 })
                                         .toFile(filePath);
                                     imagePaths.push(filePath);
@@ -344,19 +420,27 @@ export class FaultHistoryService {
             '故障履歴';
     }
     extractDescription(jsonData) {
-        return jsonData.problemDescription || // JSONの"problemDescription"フィールドを優先
-            jsonData.description ||
+        return jsonData.description ||
             jsonData.metadata?.description ||
-            jsonData.answer || // JSONの"answer"フィールドも考慮
             '';
     }
     extractMachineType(jsonData) {
+        // 新しいJSON構造に対応: chatData.machineInfo.machineTypeName
+        if (jsonData.chatData?.machineInfo?.machineTypeName) {
+            return jsonData.chatData.machineInfo.machineTypeName;
+        }
+        // 旧構造に対応
         return jsonData.machineType ||
             jsonData.metadata?.machineType ||
             this.extractFromContent(jsonData, /機種[：:]\s*([^\s,，]+)/i) ||
             null;
     }
     extractMachineNumber(jsonData) {
+        // 新しいJSON構造に対応: chatData.machineInfo.machineNumber
+        if (jsonData.chatData?.machineInfo?.machineNumber) {
+            return jsonData.chatData.machineInfo.machineNumber;
+        }
+        // 旧構造に対応
         return jsonData.machineNumber ||
             jsonData.metadata?.machineNumber ||
             this.extractFromContent(jsonData, /機械番号[：:]\s*([^\s,，]+)/i) ||

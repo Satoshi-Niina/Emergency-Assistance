@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { buildApiUrl } from '../../lib/api-unified';
 import {
   Card,
   CardContent,
@@ -82,9 +83,8 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
       setIsLoading(true);
       console.log('🔄 フローデータ読み込み開始:', flowId);
 
-      // 統一APIクライアントを使用
-      const { buildApiUrl } = await import('../../lib/api-unified');
-      const detailUrl = buildApiUrl(`/emergency-flow/${flowId}`);
+  // 統一APIクライアントを使用
+  const detailUrl = buildApiUrl(`/api/emergency-flow/detail/${flowId}`);
       
       console.log('🌐 フロー詳細API URL:', detailUrl);
       
@@ -350,8 +350,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
         const formData = new FormData();
         formData.append('image', file);
 
-        const { buildApiUrl } = await import('../../lib/api-unified');
-        const uploadUrl = buildApiUrl('/emergency-flow/upload-image');
+  const uploadUrl = buildApiUrl('/api/emergency-flow/upload-image');
         
         const response = await fetch(uploadUrl, {
           method: 'POST',
@@ -428,9 +427,8 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
 
     try {
       // サーバーから画像を削除（APIエンドポイントが存在する場合）
-      if (imageToRemove.fileName && !imageToRemove.fileName.startsWith('blob:')) {
-        const { buildApiUrl } = await import('../../lib/api-unified');
-        const deleteUrl = buildApiUrl(`/emergency-flow/image/${imageToRemove.fileName}`);
+  if (imageToRemove.fileName && !imageToRemove.fileName.startsWith('blob:')) {
+  const deleteUrl = buildApiUrl(`/emergency-flow/image/${imageToRemove.fileName}`);
         
         console.log('🗑️ flow-editor-advanced 画像削除URL:', deleteUrl);
         
@@ -752,15 +750,12 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                                       return validImages.map((image, imageIndex) => {
                                         // 画像URLを正しく構築
                                         let imageUrl = image.url;
-                                        
+
                                         // APIパスの場合は完全なURLに変換
                                         if (imageUrl.startsWith('/api/')) {
-                                          // 開発環境ではlocalhost:8081を使用
-                                          const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                                          const apiBase = isDev ? 'http://localhost:8081' : window.location.origin;
-                                          imageUrl = `${apiBase}${imageUrl}`;
+                                          imageUrl = buildApiUrl(imageUrl);
                                         }
-                                        
+
                                         return (
                                           <div key={`${step.id}-${imageIndex}`} className='relative'>
                                             <img

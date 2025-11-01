@@ -305,7 +305,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
       if (flowId) formData.append('flowId', flowId);
 
       const { buildApiUrl } = await import('../../lib/api-unified');
-      const uploadUrl = buildApiUrl('/emergency-flow/upload-image');
+  const uploadUrl = buildApiUrl('/api/emergency-flow/upload-image');
       
       console.log('🖼️ 画像アップロードURL:', uploadUrl);
       

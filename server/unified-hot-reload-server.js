@@ -16,6 +16,8 @@ import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { spawn } from 'child_process';
+import { createProxyMiddleware } from 'http-proxy-middleware';
+import http from 'http';
 
 // UTF-8環境設定
 process.env.NODE_OPTIONS = '--max-old-space-size=4096';
@@ -104,6 +106,7 @@ app.use((req, res, next) => {
 
 // Vite開発サーバーへのプロキシ設定
 let viteServer = null;
+let actualVitePort = CLIENT_PORT; // 実際に使用されているViteポート
 
 function startViteServer() {
   if (viteServer) {
@@ -132,6 +135,19 @@ function startViteServer() {
   viteServer.stdout.on('data', (data) => {
     const output = data.toString('utf8');
     console.log('Vite:', output.trim());
+    
+    // Viteの実際のポートを検出
+    const portMatch = output.match(/Local:\s+http:\/\/localhost:(\d+)/);
+    if (portMatch) {
+      const detectedPort = parseInt(portMatch[1], 10);
+      if (detectedPort !== actualVitePort) {
+        actualVitePort = detectedPort;
+        console.log(`✅ Detected Vite port: ${actualVitePort}`);
+        // ポートが変更された場合はプロキシを再作成
+        viteProxy = createViteProxy();
+      }
+    }
+    
     if (output.includes('Local:') || output.includes('ready')) {
       console.log('✅ Vite server started');
     }
@@ -154,7 +170,28 @@ function startViteServer() {
 // Viteサーバー起動
 startViteServer();
 
-// Vite開発サーバーへのプロキシ（WebSocket対応）
+// Vite開発サーバーへのプロキシ（WebSocket対応）- 動的にポートを更新
+let viteProxy = null;
+
+function createViteProxy() {
+  return createProxyMiddleware({
+    target: `http://localhost:${actualVitePort}`,
+    changeOrigin: true,
+    ws: true, // WebSocket support
+    logLevel: 'debug',
+    onProxyReq: (proxyReq, req, res) => {
+      console.log('Proxying:', req.method, req.url, '->', `http://localhost:${actualVitePort}${req.url}`);
+    },
+    onError: (err, req, res) => {
+      console.error('Proxy error:', err.message);
+      if (!res.headersSent) {
+        res.status(503).send('Vite server not available');
+      }
+    }
+  });
+}
+
+// Viteサーバーが起動するまで待つミドルウェア
 app.use('/', (req, res, next) => {
   // APIルートは除外
   if (req.path.startsWith('/api/')) {
@@ -166,24 +203,13 @@ app.use('/', (req, res, next) => {
     return res.status(503).send('Vite server is starting, please wait...');
   }
   
-  // Viteサーバーへのプロキシ
-  const proxyUrl = `http://localhost:${CLIENT_PORT}${req.path}`;
+  // プロキシがまだ作成されていない場合は作成
+  if (!viteProxy) {
+    viteProxy = createViteProxy();
+  }
   
-  fetch(proxyUrl)
-    .then(response => {
-      if (response.ok) {
-        response.text().then(text => {
-          res.set(response.headers);
-          res.send(text);
-        });
-      } else {
-        res.status(response.status).send(response.statusText);
-      }
-    })
-    .catch(error => {
-      console.error('Proxy error:', error);
-      res.status(503).send('Vite server not available');
-    });
+  // プロキシミドルウェアを適用
+  viteProxy(req, res, next);
 });
 
 // JWT認証ミドルウェア
@@ -1214,8 +1240,12 @@ apiRouter.get('/history', async (req, res) => {
         const data = JSON.parse(content);
         
         const fileName = file.replace('.json', '');
-        const uuidMatch = fileName.match(/_([a-f0-9-]{36})_/);
-        const actualId = uuidMatch ? uuidMatch[1] : fileName;
+        // UUIDを抽出する（DELETEエンドポイントと同じロジック）
+        const uuidPattern1 = /_([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})_/i;
+        const uuidPattern2 = /_([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})(?:_|$)/i;
+        const uuidPattern3 = /([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i;
+        let match = fileName.match(uuidPattern1) || fileName.match(uuidPattern2) || fileName.match(uuidPattern3);
+        const actualId = match ? match[1].toLowerCase() : fileName;
         
         const imageDir = path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
         let hasImages = false;
@@ -1225,7 +1255,11 @@ apiRouter.get('/history', async (req, res) => {
         if (fs.existsSync(imageDir)) {
           const imageFiles = fs.readdirSync(imageDir);
           const matchingImages = imageFiles.filter(imgFile => 
-            imgFile.includes(actualId) && (imgFile.endsWith('.jpg') || imgFile.endsWith('.jpeg'))
+            imgFile.includes(actualId) && (
+              imgFile.endsWith('.jpg') || 
+              imgFile.endsWith('.jpeg') || 
+              imgFile.endsWith('.png')
+            )
           );
           
           if (matchingImages.length > 0) {
@@ -1239,20 +1273,48 @@ apiRouter.get('/history', async (req, res) => {
           }
         }
         
+        // chatData.messagesから画像を取得
+        const chatImages = [];
+        if (data.chatData?.messages) {
+          for (const message of data.chatData.messages) {
+            if (message.media && Array.isArray(message.media)) {
+              for (const media of message.media) {
+                if (media.type === 'image' && media.url) {
+                  chatImages.push({
+                    fileName: media.fileName || media.title || 'image',
+                    url: media.url,
+                    path: media.url
+                  });
+                }
+              }
+            }
+          }
+        }
+        
+        // savedImagesからも画像を取得
+        const savedImages = data.savedImages || [];
+        
+        // すべての画像を統合（重複を避ける）
+        const allImages = [...images, ...chatImages, ...savedImages];
+        const uniqueImages = Array.from(
+          new Map(allImages.map(img => [img.url || img.path, img])).values()
+        );
+        
         return {
           id: actualId,
           fileName: file,
           title: data.title || 'タイトルなし',
-          machineType: data.machineType || 'Unknown',
-          machineNumber: data.machineNumber || 'Unknown',
+          machineType: data.machineType || data.chatData?.machineInfo?.machineTypeName || '',
+          machineNumber: data.machineNumber || data.chatData?.machineInfo?.machineNumber || '',
           description: data.description || data.problemDescription || '',
-          createdAt: data.createdAt || new Date().toISOString(),
-          lastModified: data.lastModified || data.createdAt || new Date().toISOString(),
+          createdAt: data.createdAt || data.exportTimestamp || new Date().toISOString(),
+          lastModified: data.lastModified || data.createdAt || data.exportTimestamp || new Date().toISOString(),
           source: 'files',
-          imageCount: imageCount,
-          images: images,
-          hasImages: hasImages,
-          status: 'active'
+          imageCount: uniqueImages.length,
+          images: uniqueImages,
+          hasImages: uniqueImages.length > 0,
+          status: 'active',
+          jsonData: data // JSONデータ全体を保存
         };
       } catch (error) {
         console.error(`ファイル読み込みエラー: ${file}`, error);
@@ -1395,7 +1457,10 @@ apiRouter.delete('/history/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`🗑️ 履歴削除リクエスト（ファイルベース）: ${id}`);
     
-    const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+    const projectRoot = path.resolve(__dirname, '..');
+    const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
+    
+    console.log(`📁 エクスポートディレクトリ: ${exportsDir}`);
     
     if (!fs.existsSync(exportsDir)) {
       return res.status(404).json({
@@ -1406,25 +1471,68 @@ apiRouter.delete('/history/:id', async (req, res) => {
     }
     
     const files = fs.readdirSync(exportsDir);
-    const jsonFiles = files.filter(file => file.endsWith('.json'));
+    const jsonFiles = files.filter(file => 
+      file.endsWith('.json') && 
+      !file.includes('index') && 
+      !file.includes('railway-maintenance-ai-prompt')
+    );
+    
+    console.log(`📋 JSONファイル数: ${jsonFiles.length}`);
     
     let foundFile = null;
     
     for (const file of jsonFiles) {
       const fileName = file.replace('.json', '');
-      const uuidMatch = fileName.match(/_([a-f0-9-]{36})_/);
-      const fileId = uuidMatch ? uuidMatch[1] : fileName;
+      // UUIDを抽出する（より確実なパターンを使用、大文字小文字を区別しない）
+      // パターン1: _UUID_ 形式（標準的なUUID形式）
+      const uuidPattern1 = /_([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})_/i;
+      // パターン2: _UUID（末尾の_がない場合）
+      const uuidPattern2 = /_([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})(?:_|$)/i;
+      // パターン3: 単純なUUID形式
+      const uuidPattern3 = /([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i;
       
-      if (fileId === id || fileName === id) {
+      let actualId = fileName;
+      let match = fileName.match(uuidPattern1) || fileName.match(uuidPattern2) || fileName.match(uuidPattern3);
+      if (match) {
+        actualId = match[1].toLowerCase(); // 小文字に統一
+      }
+      
+      const requestId = id.toLowerCase(); // 小文字に統一
+      
+      console.log(`🔍 ファイル: ${file}`);
+      console.log(`   ファイル名: ${fileName}`);
+      console.log(`   抽出ID: ${actualId}`);
+      console.log(`   リクエストID: ${requestId}`);
+      
+      // 複数の方法でマッチングを試みる（大文字小文字を区別しない）
+      if (actualId === requestId || 
+          fileName.toLowerCase() === requestId || 
+          file.toLowerCase() === requestId || 
+          fileName.toLowerCase().includes(requestId) || 
+          actualId.includes(requestId) ||
+          file.toLowerCase().includes(requestId)) {
         foundFile = file;
+        console.log(`✅ マッチしたファイル: ${foundFile}`);
         break;
       }
     }
     
     if (!foundFile) {
+      // デバッグ用：実際のファイル一覧とIDをログに出力
+      const fileIds = jsonFiles.map(file => {
+        const fileName = file.replace('.json', '');
+        const uuidMatch = fileName.match(/_([a-f0-9-]{36})_/);
+        const extractedId = uuidMatch ? uuidMatch[1] : fileName;
+        return { file, extractedId };
+      });
+      console.log(`❌ 削除対象のファイルが見つかりませんでした`);
+      console.log(`📋 リクエストID: ${id}`);
+      console.log(`📁 検索されたファイル一覧（最初の5件）:`, fileIds.slice(0, 5));
       return res.status(404).json({
         success: false,
         error: '履歴が見つかりません',
+        requestedId: id,
+        availableFiles: fileIds.slice(0, 10).map(f => ({ fileName: f.file, extractedId: f.extractedId })),
         timestamp: new Date().toISOString()
       });
     }
@@ -1432,11 +1540,11 @@ apiRouter.delete('/history/:id', async (req, res) => {
     const filePath = path.join(exportsDir, foundFile);
     fs.unlinkSync(filePath);
     
-    const imageDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports');
+    const imageDir = path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
     if (fs.existsSync(imageDir)) {
       const imageFiles = fs.readdirSync(imageDir);
       const matchingImages = imageFiles.filter(imgFile => 
-        imgFile.includes(id) && (imgFile.endsWith('.jpg') || imgFile.endsWith('.jpeg'))
+        imgFile.includes(id) && (imgFile.endsWith('.jpg') || imgFile.endsWith('.jpeg') || imgFile.endsWith('.png'))
       );
       
       matchingImages.forEach(imgFile => {
@@ -2123,8 +2231,20 @@ app.use((err, req, res, next) => {
   });
 });
 
+// HTTPサーバーを作成（WebSocket対応のため）
+const server = http.createServer(app);
+
+// WebSocketアップグレードを処理（ViteのHMR用）
+server.on('upgrade', (req, socket, head) => {
+  if (req.url?.startsWith('/')) {
+    if (viteProxy) {
+      viteProxy.upgrade(req, socket, head);
+    }
+  }
+});
+
 // サーバー起動
-app.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Emergency Assistance Unified Development Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🌐 Frontend: http://localhost:${PORT} (proxied to Vite on port ${CLIENT_PORT})`);
@@ -2134,18 +2254,16 @@ app.listen(PORT, '0.0.0.0', () => {
 });
 
 // グレースフルシャットダウン
-process.on('SIGTERM', () => {
-  console.log('🛑 SIGTERM received, shutting down gracefully');
+function gracefulShutdown() {
+  console.log('🛑 Shutting down gracefully...');
   if (viteServer) {
     viteServer.kill();
   }
-  process.exit(0);
-});
+  server.close(() => {
+    console.log('✅ Server closed');
+    process.exit(0);
+  });
+}
 
-process.on('SIGINT', () => {
-  console.log('🛑 SIGINT received, shutting down gracefully');
-  if (viteServer) {
-    viteServer.kill();
-  }
-  process.exit(0);
-});
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);

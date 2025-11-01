@@ -26,7 +26,8 @@ export function getRuntimeConfig(): RuntimeConfig {
      window.location.hostname.includes('127.0.0.1'));
 
   return {
-    API_BASE_URL: isLocalhost ? 'http://localhost:8080/api' : '/api',
+    // 開発時は Vite のプロキシを想定して相対 /api を使う
+    API_BASE_URL: '/api',
     CORS_ALLOW_ORIGINS: '*'
   };
 }
