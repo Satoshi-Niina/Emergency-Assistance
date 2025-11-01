@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { buildApiUrl } from '../../lib/api-unified';
+import { convertImageUrl } from '../../lib/image-utils';
 import {
   Card,
   CardContent,
@@ -745,26 +746,44 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                                   <div className='flex flex-wrap gap-2 mt-2'>
                                     {(() => {
                                       const images = step.images || [];
-                                      const validImages = images.filter(image => image && image.url && image.url.trim() !== '');
+                                      // フロー（json）ファイルにリンクされた画像のみを表示
+                                      const validImages = images.filter(image => 
+                                        image && 
+                                        typeof image === 'object' && 
+                                        image.url && 
+                                        typeof image.url === 'string' && 
+                                        image.url.trim() !== ''
+                                      );
                                       
                                       return validImages.map((image, imageIndex) => {
-                                        // 画像URLを正しく構築
-                                        let imageUrl = image.url;
-
-                                        // APIパスの場合は完全なURLに変換
-                                        if (imageUrl.startsWith('/api/')) {
-                                          imageUrl = buildApiUrl(imageUrl);
-                                        }
+                                        // convertImageUrlを使用して画像URLを正しく変換
+                                        const imageUrl = convertImageUrl(image.url);
 
                                         return (
                                           <div key={`${step.id}-${imageIndex}`} className='relative'>
                                             <img
                                               src={imageUrl}
-                                              alt='画像'
+                                              alt={image.fileName || '画像'}
                                               className='w-20 h-20 object-cover rounded border'
                                               onError={e => {
-                                                console.error('画像読み込みエラー:', imageUrl);
-                                                e.currentTarget.style.display = 'none';
+                                                console.error('画像読み込みエラー:', {
+                                                  originalUrl: image.url,
+                                                  convertedUrl: imageUrl,
+                                                  fileName: image.fileName
+                                                });
+                                                // フォールバック: ファイル名から直接API URLを構築
+                                                if (image.fileName) {
+                                                  const fallbackUrl = buildApiUrl(`/api/emergency-flow/image/${image.fileName}`);
+                                                  e.currentTarget.src = fallbackUrl;
+                                                } else {
+                                                  e.currentTarget.style.display = 'none';
+                                                }
+                                              }}
+                                              onLoad={() => {
+                                                console.log('✅ 編集画面画像読み込み成功:', {
+                                                  fileName: image.fileName,
+                                                  url: imageUrl?.substring(0, 100) + '...'
+                                                });
                                               }}
                                             />
                                             <Button

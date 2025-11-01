@@ -272,71 +272,81 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
               </div>
             )}
 
-          {/* 画像表示エリア */}
-          {currentStep.images && currentStep.images.length > 0 && (
+          {/* 画像表示エリア - フロー（json）ファイルにリンクされた画像のみを表示 */}
+          {currentStep.images && Array.isArray(currentStep.images) && currentStep.images.length > 0 && (
             <div className='space-y-3'>
               <h4 className='font-medium text-gray-900'>画像:</h4>
               <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                {currentStep.images.map((img, index) => {
-                  // 画像情報がオブジェクトの場合はプロパティを参照、文字列の場合はそのまま
-                  const imageUrl =
-                    typeof img === 'object' && img !== null
-                      ? convertImageUrl(
-                          (img as { url: string; fileName: string }).url
-                        )
-                      : convertImageUrl(img);
-                  const altText =
-                    typeof img === 'object' && img !== null
-                      ? (img as { url: string; fileName: string }).fileName
-                      : String(img);
-                  // minimal debug for image URL
-                  console.debug('[FlowPreview] image', { index, fileName: altText, convertedUrl: imageUrl });
-                  return (
-                    <div key={index} className='relative'>
-                      <img
-                        src={imageUrl}
-                        alt={altText}
-                        className='w-full h-48 object-cover rounded-lg border'
-                        crossOrigin="anonymous"
-                        onLoad={() => {
-                          console.log('✅ 画像読み込み成功:', {
-                            fileName: altText,
-                            imageUrl: imageUrl?.substring(0, 100) + '...',
-                          });
-                        }}
-                        onError={e => {
-                          console.error('❌ 画像読み込みエラー:', {
-                            fileName: altText,
-                            convertedUrl: imageUrl?.substring(0, 100) + '...',
-                            originalImg: img,
-                            error: e,
-                            target: e.currentTarget,
-                          });
-                          // フォールバック処理
-                          if (typeof img === 'object' && img !== null) {
-                            const imgElement = e.currentTarget;
-                            const fileName = (img as { url: string; fileName: string }).fileName;
-                            if (fileName) {
-                              const fallbackUrl = buildApiUrl(`/api/emergency-flow/image/${fileName}`);
-                              imgElement.src = fallbackUrl;
+                {currentStep.images
+                  .filter((img) => {
+                    // JSONファイルにリンクされた画像のみを表示
+                    // imgがオブジェクトで、urlとfileNameが存在することを確認
+                    if (typeof img === 'object' && img !== null) {
+                      return img.url && typeof img.url === 'string' && img.url.trim() !== '';
+                    }
+                    // 文字列の場合も有効なURLとして扱う
+                    return typeof img === 'string' && img.trim() !== '';
+                  })
+                  .map((img, index) => {
+                    // 画像情報がオブジェクトの場合はプロパティを参照、文字列の場合はそのまま
+                    const imageUrl =
+                      typeof img === 'object' && img !== null
+                        ? convertImageUrl(
+                            (img as { url: string; fileName: string }).url
+                          )
+                        : convertImageUrl(img);
+                    const altText =
+                      typeof img === 'object' && img !== null
+                        ? (img as { url: string; fileName: string }).fileName || '画像'
+                        : String(img);
+                    // minimal debug for image URL
+                    console.debug('[FlowPreview] image', { index, fileName: altText, convertedUrl: imageUrl });
+                    return (
+                      <div key={index} className='relative'>
+                        <img
+                          src={imageUrl}
+                          alt={altText}
+                          className='w-full h-48 object-cover rounded-lg border'
+                          crossOrigin="anonymous"
+                          onLoad={() => {
+                            console.log('✅ 画像読み込み成功:', {
+                              fileName: altText,
+                              imageUrl: imageUrl?.substring(0, 100) + '...',
+                            });
+                          }}
+                          onError={e => {
+                            console.error('❌ 画像読み込みエラー:', {
+                              fileName: altText,
+                              convertedUrl: imageUrl?.substring(0, 100) + '...',
+                              originalImg: img,
+                              error: e,
+                              target: e.currentTarget,
+                            });
+                            // フォールバック処理
+                            if (typeof img === 'object' && img !== null) {
+                              const imgElement = e.currentTarget;
+                              const fileName = (img as { url: string; fileName: string }).fileName;
+                              if (fileName) {
+                                const fallbackUrl = buildApiUrl(`/api/emergency-flow/image/${fileName}`);
+                                imgElement.src = fallbackUrl;
+                              }
                             }
-                          }
-                          const target = e.currentTarget;
-                          target.style.display = 'none';
+                            const target = e.currentTarget;
+                            target.style.display = 'none';
 
-                          const errorDiv = document.createElement('div');
-                          errorDiv.className =
-                            'w-full h-48 bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded-lg text-sm flex items-center justify-center';
-                          errorDiv.textContent = `画像の読み込みに失敗しました: ${altText}`;
-                          target.parentNode?.appendChild(errorDiv);
-                        }}
-                      />
-                      <div className='mt-2 text-xs text-gray-500 text-center'>
-                        {altText}
+                            const errorDiv = document.createElement('div');
+                            errorDiv.className =
+                              'w-full h-48 bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded-lg text-sm flex items-center justify-center';
+                            errorDiv.textContent = `画像の読み込みに失敗しました: ${altText}`;
+                            target.parentNode?.appendChild(errorDiv);
+                          }}
+                        />
+                        <div className='mt-2 text-xs text-gray-500 text-center'>
+                          {altText}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
             </div>
           )}
