@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import VehicleMaintenanceForm from '../components/maintenance/VehicleMaintenanceForm';
 import { useNavigate } from 'react-router-dom';
+import { FileSelector } from '../components/ui/FileSelector';
 
 interface ImportStatus {
   fileName: string;
@@ -50,10 +51,24 @@ interface ImportStatus {
   message?: string;
 }
 
+interface ExportFile {
+  fileName: string;
+  title: string;
+  createdAt: string;
+  exportTimestamp?: string;
+}
+
 export default function BaseDataPage() {
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [importStatus, setImportStatus] = useState<ImportStatus[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [exportFiles, setExportFiles] = useState<ExportFile[]>([]);
+  const [selectedExportFile, setSelectedExportFile] = useState<string | null>(null);
+  const [isImportingExport, setIsImportingExport] = useState(false);
+  const [exportImportStatus, setExportImportStatus] = useState<{
+    status: 'idle' | 'success' | 'error';
+    message?: string;
+  }>({ status: 'idle' });
   const [ragSettings, setRagSettings] = useState({
     chunkSize: 1000,
     chunkOverlap: 200,
@@ -284,10 +299,115 @@ export default function BaseDataPage() {
     }
   };
 
+  // エクスポートファイル一覧を取得
+  const fetchExportFiles = async () => {
+    try {
+      console.log('📂 エクスポートファイル一覧取得開始');
+      const response = await fetch('/api/history/export-files', {
+        credentials: 'include',
+      });
+      
+      console.log('📡 APIレスポンス:', {
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText,
+        contentType: response.headers.get('content-type'),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ エクスポートファイル一覧取得エラー:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText,
+        });
+        setExportFiles([]);
+        return;
+      }
+
+      const files = await response.json();
+      console.log('📋 APIレスポンス（生データ）:', files);
+      console.log('✅ エクスポートファイル一覧取得成功:', Array.isArray(files) ? files.length : 'not array', '件');
+      
+      if (!Array.isArray(files)) {
+        console.error('❌ レスポンスが配列ではありません:', typeof files, files);
+        setExportFiles([]);
+        return;
+      }
+      
+      // レスポンスをExportFile型に変換
+      const formattedFiles: ExportFile[] = files.map((file: any) => {
+        console.log('🔄 ファイルデータ変換:', file);
+        return {
+          fileName: file.fileName,
+          title: file.title || 'タイトルなし',
+          createdAt: file.createdAt || file.exportTimestamp || new Date().toISOString(),
+          exportTimestamp: file.exportTimestamp || file.createdAt || null,
+        };
+      });
+      
+      console.log('📦 フォーマット済みファイル:', formattedFiles);
+      console.log('📋 ファイル名一覧:', formattedFiles.map(f => f.fileName));
+      setExportFiles(formattedFiles);
+    } catch (error) {
+      console.error('❌ エクスポートファイル一覧の取得に失敗しました:', error);
+      if (error instanceof Error) {
+        console.error('エラー詳細:', error.message, error.stack);
+      }
+      setExportFiles([]);
+    }
+  };
+
+  // エクスポートファイルのインポート
+  const handleImportExport = async () => {
+    if (!selectedExportFile) {
+      alert('ファイルを選択してください');
+      return;
+    }
+
+    setIsImportingExport(true);
+    setExportImportStatus({ status: 'idle' });
+
+    try {
+      const response = await fetch('/api/history/import-export', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fileName: selectedExportFile }),
+        credentials: 'include',
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setExportImportStatus({
+          status: 'success',
+          message: `インポート完了: ${result.message} (画像: ${result.imageCount}件)`,
+        });
+        // ファイル一覧を更新
+        await fetchExportFiles();
+      } else {
+        setExportImportStatus({
+          status: 'error',
+          message: result.error || 'インポートに失敗しました',
+        });
+      }
+    } catch (error) {
+      setExportImportStatus({
+        status: 'error',
+        message: 'ネットワークエラーが発生しました',
+      });
+    } finally {
+      setIsImportingExport(false);
+    }
+  };
+
   // コンポーネントマウント時に設定を読み込み
   useEffect(() => {
     loadRagSettings();
     loadAiAssistSettings();
+    fetchExportFiles();
   }, []);
 
   return (
@@ -323,6 +443,99 @@ export default function BaseDataPage() {
         {/* インポートタブ */}
         <TabsContent value='import' className='space-y-6'>
           <div className='p-6 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl shadow-sm'>
+          {/* 故障情報からのインポート */}
+          <Card className='border-indigo-300 shadow-md'>
+            <CardHeader className='bg-gradient-to-r from-indigo-100 to-purple-100 border-b border-indigo-200'>
+              <CardTitle className='flex items-center gap-2 text-indigo-800'>
+                <FolderOpen className='h-5 w-5 text-indigo-600' />
+                機械故障報告からインポート
+              </CardTitle>
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              <div>
+                <div className='mt-2'>
+                  {exportFiles.length === 0 ? (
+                    <div className='p-3 bg-yellow-50 border border-yellow-200 rounded-md'>
+                      <p className='text-sm text-yellow-800'>
+                        ファイルが見つかりません。knowledge-base/exportsフォルダにJSONファイルがあるか確認してください。
+                      </p>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={fetchExportFiles}
+                        className='mt-2'
+                      >
+                        <RefreshCw className='h-3 w-3 mr-1' />
+                        再読み込み
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <FileSelector
+                        files={exportFiles.map(file => ({
+                          fileName: file.fileName,
+                          exportTimestamp: file.exportTimestamp || file.createdAt || null,
+                        }))}
+                        value={selectedExportFile}
+                        onChange={setSelectedExportFile}
+                      />
+                      <p className='text-xs text-gray-500 mt-1'>
+                        {exportFiles.length}件のファイルが見つかりました
+                      </p>
+                    </>
+                  )}
+                </div>
+                <p className='text-xs text-gray-500 mt-1'>
+                  チャットからエクスポートしたJSONファイルと、そのJSONからリンクされた画像を一緒にインポートします
+                </p>
+              </div>
+
+              {exportImportStatus.status !== 'idle' && (
+                <div
+                  className={`p-3 rounded ${
+                    exportImportStatus.status === 'success'
+                      ? 'bg-green-50 text-green-800 border border-green-200'
+                      : 'bg-red-50 text-red-800 border border-red-200'
+                  }`}
+                >
+                  <div className='flex items-center gap-2'>
+                    {exportImportStatus.status === 'success' ? (
+                      <CheckCircle className='h-4 w-4' />
+                    ) : (
+                      <AlertTriangle className='h-4 w-4' />
+                    )}
+                    <span className='text-sm'>{exportImportStatus.message}</span>
+                  </div>
+                </div>
+              )}
+
+              <Button
+                onClick={handleImportExport}
+                disabled={!selectedExportFile || isImportingExport}
+                className='w-full'
+              >
+                {isImportingExport ? (
+                  <>
+                    <RefreshCw className='mr-2 h-4 w-4 animate-spin' />
+                    インポート中...
+                  </>
+                ) : (
+                  <>
+                    <Upload className='mr-2 h-4 w-4' />
+                    機械故障報告をインポート
+                  </>
+                )}
+              </Button>
+
+              <div className='text-xs text-gray-600 space-y-1'>
+                <p>• 選択したJSONファイルとリンクされた画像が knowledge-base/documents に保存されます</p>
+                <p>• 元データはそのまま保持されます</p>
+                <p>• 画像は documents/images フォルダに保存されます</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ファイルインポート */}
           <Card className='border-indigo-300 shadow-md'>
             <CardHeader className='bg-gradient-to-r from-indigo-100 to-purple-100 border-b border-indigo-200'>
               <CardTitle className='flex items-center gap-2 text-indigo-800'>

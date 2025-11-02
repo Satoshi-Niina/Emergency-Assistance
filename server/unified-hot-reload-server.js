@@ -151,40 +151,85 @@ function startViteServer() {
   });
 }
 
-// Viteサーバー起動
-startViteServer();
+// 環境に応じてViteサーバーを起動または静的ファイルを配信
+if (isDevelopment) {
+  // 開発環境: Viteサーバーを起動
+  startViteServer();
 
-// Vite開発サーバーへのプロキシ（WebSocket対応）
-app.use('/', (req, res, next) => {
-  // APIルートは除外
-  if (req.path.startsWith('/api/')) {
-    return next();
+  // Vite開発サーバーへのプロキシ（WebSocket対応）
+  app.use('/', (req, res, next) => {
+    // APIルートは除外
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
+    
+    // Viteサーバーが起動していない場合は待機
+    if (!viteServer) {
+      return res.status(503).send('Vite server is starting, please wait...');
+    }
+    
+    // Viteサーバーへのプロキシ
+    const proxyUrl = `http://localhost:${CLIENT_PORT}${req.path}`;
+    
+    fetch(proxyUrl)
+      .then(response => {
+        if (response.ok) {
+          response.text().then(text => {
+            res.set(response.headers);
+            res.send(text);
+          });
+        } else {
+          res.status(response.status).send(response.statusText);
+        }
+      })
+      .catch(error => {
+        console.error('Proxy error:', error);
+        res.status(503).send('Vite server not available');
+      });
+  });
+} else {
+  // 本番環境: ビルド済み静的ファイルを配信
+  const publicDir = path.join(__dirname, 'public');
+  const clientDistDir = path.join(__dirname, '..', 'client', 'dist');
+  
+  // publicディレクトリが存在する場合は使用（優先）
+  if (fs.existsSync(publicDir)) {
+    app.use(express.static(publicDir, { maxAge: '1y' }));
+    console.log('✅ 静的ファイル配信: publicディレクトリ');
+  } else if (fs.existsSync(clientDistDir)) {
+    // client/distディレクトリから配信
+    app.use(express.static(clientDistDir, { maxAge: '1y' }));
+    console.log('✅ 静的ファイル配信: client/distディレクトリ');
+  } else {
+    console.warn('⚠️ 静的ファイルディレクトリが見つかりません。publicまたはclient/distが必要です。');
   }
   
-  // Viteサーバーが起動していない場合は待機
-  if (!viteServer) {
-    return res.status(503).send('Vite server is starting, please wait...');
-  }
-  
-  // Viteサーバーへのプロキシ
-  const proxyUrl = `http://localhost:${CLIENT_PORT}${req.path}`;
-  
-  fetch(proxyUrl)
-    .then(response => {
-      if (response.ok) {
-        response.text().then(text => {
-          res.set(response.headers);
-          res.send(text);
-        });
-      } else {
-        res.status(response.status).send(response.statusText);
-      }
-    })
-    .catch(error => {
-      console.error('Proxy error:', error);
-      res.status(503).send('Vite server not available');
-    });
-});
+  // SPAのルーティング対応: すべてのリクエストをindex.htmlにフォールバック
+  app.get('*', (req, res, next) => {
+    // APIルートは除外
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
+    
+    // 静的ファイル（拡張子あり）は除外
+    if (req.path.match(/\.[a-zA-Z0-9]+$/)) {
+      return next();
+    }
+    
+    // index.htmlを配信（SPAルーティング）
+    const indexPath = fs.existsSync(publicDir)
+      ? path.join(publicDir, 'index.html')
+      : fs.existsSync(clientDistDir)
+      ? path.join(clientDistDir, 'index.html')
+      : null;
+    
+    if (indexPath && fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      res.status(404).send('Page not found');
+    }
+  });
+}
 
 // JWT認証ミドルウェア
 function authenticateToken(req, res, next) {
@@ -232,6 +277,88 @@ apiRouter.get('/health', async (req, res) => {
       status: 'error',
       error: error.message,
       timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 現在のユーザー情報取得エンドポイント
+apiRouter.get('/auth/me', async (req, res) => {
+  try {
+    console.log('[auth/me] リクエスト詳細:', {
+      hasSession: !!req.session,
+      sessionId: req.session?.id,
+      sessionUser: req.session?.user,
+      sessionUserId: req.session?.userId,
+      cookies: req.headers.cookie,
+      authHeader: req.headers.authorization
+    });
+    
+    // セッションベースの認証をチェック
+    if (req.session?.user) {
+      console.log('[auth/me] Session-based auth:', req.session.user);
+      return res.json({ 
+        success: true, 
+        user: req.session.user,
+        authenticated: true
+      });
+    }
+
+    // Bearer token認証をチェック
+    const auth = req.headers.authorization;
+    if (auth && auth.startsWith('Bearer ')) {
+      try {
+        const token = auth.slice(7);
+        const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-key-32-characters-long');
+        console.log('[auth/me] Token-based auth:', payload);
+        return res.json({ 
+          success: true, 
+          user: { 
+            id: payload.id || payload.sub, 
+            username: payload.username,
+            role: payload.role
+          },
+          authenticated: true
+        });
+      } catch (tokenError) {
+        console.log('[auth/me] Invalid token:', tokenError.message);
+        return res.status(401).json({ 
+          success: false, 
+          error: 'invalid_token',
+          message: '無効なトークンです'
+        });
+      }
+    }
+
+    // 開発環境ではダミーユーザーを返す
+    if (process.env.NODE_ENV === 'development' || process.env.BYPASS_DB_FOR_LOGIN === 'true') {
+      console.log('[auth/me] Development mode: Returning demo user');
+      return res.json({ 
+        success: true, 
+        user: {
+          id: 'demo',
+          username: 'demo',
+          role: 'user',
+          displayName: 'Demo User'
+        },
+        authenticated: true,
+        demo: true
+      });
+    }
+
+    // 未認証
+    console.log('[auth/me] No authentication found');
+    return res.status(401).json({ 
+      success: false, 
+      error: 'authentication_required',
+      message: '認証が必要です'
+    });
+    
+  } catch (error) {
+    console.error('[auth/me] Unexpected error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'internal_error',
+      message: 'サーバーエラーが発生しました'
     });
   }
 });
@@ -1843,74 +1970,115 @@ apiRouter.get('/images/chat-exports/:filename', async (req, res) => {
     const { filename } = req.params;
     console.log(`🖼️ chat-exports画像ファイル取得: ${filename}`);
     
-    let actualFilename = filename;
-    const uuidMatch = filename.match(/_([a-f0-9-]{36})_/);
-    if (uuidMatch) {
-      const uuid = uuidMatch[1];
-      const patterns = [
-        `${uuid}_3_0.jpeg`,
-        `${uuid}_2_0.jpeg`,
-        `${uuid}_1_0.jpeg`,
-        `${uuid}_0_0.jpeg`,
-        `${uuid}.jpg`,
-        `${uuid}.jpeg`
-      ];
-      
-      const imagesDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports');
-      for (const pattern of patterns) {
-        const testPath = path.join(imagesDir, pattern);
-        if (fs.existsSync(testPath)) {
-          actualFilename = pattern;
-          console.log(`🔍 複合ファイル名から実際のファイルを発見: ${filename} -> ${actualFilename}`);
-          break;
-        }
-      }
-    }
+    // プロジェクトルートを取得（__dirnameベース）
+    const projectRoot = path.resolve(__dirname, '..');
+    const imagesDir = path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
     
-    const imagesDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports');
+    console.log(`🔍 画像検索開始:`, { filename, imagesDir, exists: fs.existsSync(imagesDir) });
     
     let imagePath = null;
-    let patterns = [];
+    let actualFilename = filename;
+    let searchedPatterns = [];
     
-    const directPath = path.join(imagesDir, actualFilename);
+    // 1. 直接ファイル名で検索
+    const directPath = path.join(imagesDir, filename);
     if (fs.existsSync(directPath)) {
       imagePath = directPath;
+      actualFilename = filename;
+      console.log(`✅ 直接ファイル名で発見: ${filename}`);
     } else {
-      const historyId = filename.replace(/\.(jpg|jpeg)$/, '');
-      patterns = [
-        `${historyId}_3_0.jpeg`,
-        `${historyId}_2_0.jpeg`, 
-        `${historyId}_1_0.jpeg`,
-        `${historyId}_0_0.jpeg`,
-        `${historyId}.jpg`,
-        `${historyId}.jpeg`
-      ];
-      
-      for (const pattern of patterns) {
-        const testPath = path.join(imagesDir, pattern);
-        if (fs.existsSync(testPath)) {
-          imagePath = testPath;
-          actualFilename = pattern;
-          console.log(`🖼️ ファイル発見: ${pattern}`);
-          break;
+      // 2. UUIDを抽出してパターンマッチング
+      const uuidMatch = filename.match(/([a-f0-9-]{36})/);
+      if (uuidMatch) {
+        const uuid = uuidMatch[1];
+        console.log(`🔍 UUID抽出: ${uuid}`);
+        
+        // UUIDを含むファイルを検索
+        try {
+          const files = fs.readdirSync(imagesDir);
+          console.log(`📁 ディレクトリ内のファイル数: ${files.length}`);
+          
+          // UUIDを含むファイルを検索（複数のパターンを試行）
+          const patterns = [
+            `${uuid}_3_0.jpeg`,
+            `${uuid}_2_0.jpeg`,
+            `${uuid}_1_0.jpeg`,
+            `${uuid}_0_0.jpeg`,
+            `${uuid}.jpg`,
+            `${uuid}.jpeg`,
+            `chat_image_${uuid}_*.jpg`,
+            `chat_image_${uuid}_*.jpeg`
+          ];
+          searchedPatterns = patterns;
+          
+          // パターンマッチング
+          for (const pattern of patterns) {
+            // ワイルドカードパターンの処理
+            if (pattern.includes('*')) {
+              const prefix = pattern.replace('*', '');
+              const matchingFile = files.find(file => 
+                file.startsWith(prefix.replace('.jpg', '').replace('.jpeg', '')) && 
+                (file.endsWith('.jpg') || file.endsWith('.jpeg'))
+              );
+              
+              if (matchingFile) {
+                imagePath = path.join(imagesDir, matchingFile);
+                actualFilename = matchingFile;
+                console.log(`✅ ワイルドカードパターンで発見: ${matchingFile}`);
+                break;
+              }
+            } else {
+              // 完全一致パターン
+              const testPath = path.join(imagesDir, pattern);
+              if (fs.existsSync(testPath)) {
+                imagePath = testPath;
+                actualFilename = pattern;
+                console.log(`✅ パターンマッチで発見: ${pattern}`);
+                break;
+              }
+            }
+          }
+          
+          // UUIDを含むすべてのファイルを検索（フォールバック）
+          if (!imagePath) {
+            const uuidFiles = files.filter(file => 
+              file.includes(uuid) && 
+              (file.endsWith('.jpg') || file.endsWith('.jpeg') || file.endsWith('.png'))
+            );
+            
+            if (uuidFiles.length > 0) {
+              // 最初に見つかったファイルを使用
+              imagePath = path.join(imagesDir, uuidFiles[0]);
+              actualFilename = uuidFiles[0];
+              console.log(`✅ UUID検索で発見: ${uuidFiles[0]} (他${uuidFiles.length - 1}件)`);
+            }
+          }
+        } catch (dirError) {
+          console.error('❌ ディレクトリ読み込みエラー:', dirError.message);
+          console.error('ディレクトリパス:', imagesDir);
         }
       }
       
+      // 3. ファイル名から履歴IDを抽出して検索
       if (!imagePath) {
-        try {
-          const files = fs.readdirSync(imagesDir);
-          const matchingFile = files.find(file => 
-            file.startsWith(`chat_image_${historyId}_`) && 
-            (file.endsWith('.jpg') || file.endsWith('.jpeg'))
-          );
-          
-          if (matchingFile) {
-            imagePath = path.join(imagesDir, matchingFile);
-            actualFilename = matchingFile;
-            console.log(`🖼️ chat_image_*パターンで発見: ${matchingFile}`);
+        const historyId = filename.replace(/\.(jpg|jpeg|png)$/i, '').replace(/_3_0$|_2_0$|_1_0$|_0_0$/, '');
+        if (historyId && historyId !== filename) {
+          console.log(`🔍 履歴ID抽出: ${historyId}`);
+          try {
+            const files = fs.readdirSync(imagesDir);
+            const matchingFile = files.find(file => 
+              file.includes(historyId) && 
+              (file.endsWith('.jpg') || file.endsWith('.jpeg') || file.endsWith('.png'))
+            );
+            
+            if (matchingFile) {
+              imagePath = path.join(imagesDir, matchingFile);
+              actualFilename = matchingFile;
+              console.log(`✅ 履歴ID検索で発見: ${matchingFile}`);
+            }
+          } catch (dirError) {
+            console.warn('ディレクトリ読み込みエラー:', dirError.message);
           }
-        } catch (dirError) {
-          console.warn('ディレクトリ読み込みエラー:', dirError.message);
         }
       }
     }
@@ -2082,7 +2250,337 @@ apiRouter.get('/emergency-flow/image/:fileName', async (req, res) => {
   }
 });
 
-// APIルーターをマウント
+// 履歴ルート: knowledge-base/exports内のJSONファイルから検索・フィルター
+// TypeScriptファイルを直接インポートできないため、エンドポイントを直接実装
+
+// GET /api/history/export-files - エクスポートファイル一覧取得
+apiRouter.get('/history/export-files', async (req, res) => {
+  try {
+    console.log('📂 エクスポートファイル一覧取得リクエスト受信');
+    const cwd = process.cwd();
+    console.log('📁 現在の作業ディレクトリ:', cwd);
+    
+    // 複数のパス候補を試す
+    const projectRoot = path.resolve(__dirname, '..');
+    const possiblePaths = [
+      // 環境変数が設定されている場合
+      process.env.KNOWLEDGE_EXPORTS_DIR,
+      // プロジェクトルートから
+      path.join(projectRoot, 'knowledge-base', 'exports'),
+      // カレントディレクトリから
+      path.join(cwd, 'knowledge-base', 'exports'),
+      // サーバーディレクトリから起動されている場合
+      path.join(cwd, '..', 'knowledge-base', 'exports'),
+      // __dirnameから
+      path.join(__dirname, '..', 'knowledge-base', 'exports'),
+    ].filter(Boolean); // undefined/nullを除外
+
+    console.log('🔍 パス候補:', possiblePaths);
+    
+    let exportsDir = null;
+    for (const testPath of possiblePaths) {
+      if (!testPath) continue;
+      const normalizedPath = path.resolve(testPath);
+      console.log(`📂 試行パス: ${normalizedPath}, 存在: ${fs.existsSync(normalizedPath)}`);
+      if (fs.existsSync(normalizedPath)) {
+        const stats = fs.statSync(normalizedPath);
+        if (stats.isDirectory()) {
+          exportsDir = normalizedPath;
+          console.log('✅ 有効なディレクトリを発見:', exportsDir);
+          break;
+        } else {
+          console.warn(`⚠️ パスは存在するがディレクトリではありません: ${normalizedPath}`);
+        }
+      }
+    }
+
+    if (!exportsDir) {
+      console.error('❌ エクスポートディレクトリが見つかりません。試行したパス:', possiblePaths);
+      return res.json([]);
+    }
+
+    console.log('✅ エクスポートディレクトリ確認:', exportsDir);
+    
+    // ファイル一覧を取得（日本語ファイル名対応）
+    const files = fs.readdirSync(exportsDir);
+    console.log('📋 ディレクトリ内の全ファイル:', files);
+    console.log('📋 ファイル数:', files.length);
+    
+    const jsonFiles = files.filter(file => file.endsWith('.json'));
+    console.log('📋 JSONファイル数:', jsonFiles.length, 'ファイル:', jsonFiles);
+    
+    const exportFiles = jsonFiles
+      .filter(file => !file.includes('.backup.')) // バックアップファイルを除外
+      .filter(file => !file.startsWith('test-backup-')) // テストファイルを除外
+      .map(file => {
+        const filePath = path.join(exportsDir, file);
+        console.log('🔍 ファイル処理中:', filePath);
+        
+        try {
+          // ファイルの存在確認
+          if (!fs.existsSync(filePath)) {
+            console.warn('❌ ファイルが見つかりません:', filePath);
+            return null;
+          }
+          
+          const stats = fs.statSync(filePath);
+          if (!stats.isFile()) {
+            console.warn('❌ ファイルではありません:', filePath);
+            return null;
+          }
+          
+          const content = fs.readFileSync(filePath, 'utf8');
+          const data = JSON.parse(content);
+          const fileInfo = {
+            fileName: file,
+            filePath: filePath,
+            chatId: data.chatId || data.id || 'unknown',
+            title: data.title || data.problemDescription || 'タイトルなし',
+            createdAt:
+              data.createdAt ||
+              data.exportTimestamp ||
+              new Date().toISOString(),
+            exportTimestamp: data.exportTimestamp || data.createdAt || new Date().toISOString(),
+            lastModified: stats.mtime.toISOString(),
+            size: stats.size,
+          };
+          console.log('✅ ファイル読み込み成功:', file, 'タイトル:', fileInfo.title);
+          return fileInfo;
+        } catch (error) {
+          console.error(`❌ ファイル読み込みエラー: ${filePath}`, error);
+          if (error instanceof Error) {
+            console.error('エラー詳細:', error.message, error.stack);
+          }
+          return null;
+        }
+      })
+      .filter(item => item !== null);
+
+    console.log('📦 最終エクスポートファイル数:', exportFiles.length);
+    console.log('📋 返却ファイル一覧:', exportFiles.map(f => f.fileName));
+
+    res.json(exportFiles);
+  } catch (error) {
+    console.error('❌ エクスポートファイル一覧取得エラー:', error);
+    res.status(500).json({
+      error: 'エクスポートファイル一覧の取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// GET /api/history/exports/search - キーワード検索
+apiRouter.get('/history/exports/search', async (req, res) => {
+  try {
+    const { keyword } = req.query;
+    
+    console.log('🔍 検索リクエスト受信:', { keyword, type: typeof keyword });
+    
+    if (!keyword || typeof keyword !== 'string') {
+      return res.json({
+        success: true,
+        data: [],
+        total: 0,
+        message: 'キーワードが指定されていません',
+      });
+    }
+
+    // 既存のhistoryエンドポイントと同じパス解決ロジックを使用
+    const projectRoot = path.resolve(__dirname, '..');
+    const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
+    
+    if (!fs.existsSync(exportsDir)) {
+      return res.json({
+        success: true,
+        data: [],
+        total: 0,
+        message: 'exportsディレクトリが見つかりません',
+      });
+    }
+
+    const files = fs.readdirSync(exportsDir);
+    const jsonFiles = files.filter(f => f.endsWith('.json'));
+    
+    // 検索語を正規化（小文字化）
+    const keywordLower = keyword.toLowerCase().trim();
+    const searchTerms = keywordLower.split(/\s+/).filter(term => term.length > 0);
+    
+    if (searchTerms.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        total: 0,
+        message: 'キーワードが無効です',
+      });
+    }
+    
+    console.log('🔍 検索開始:', { keyword, keywordLower, searchTerms, totalFiles: jsonFiles.length });
+    
+    const results = [];
+
+    for (const fileName of jsonFiles) {
+      try {
+        const filePath = path.join(exportsDir, fileName);
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        const jsonData = JSON.parse(fileContent);
+        
+        // JSON全体を文字列化して検索対象にする
+        const fullText = JSON.stringify(jsonData).toLowerCase();
+        
+        // すべての検索語が含まれているか確認
+        const matches = searchTerms.every(term => fullText.includes(term));
+        
+        if (matches) {
+          // SupportHistoryItem形式に変換
+          // savedImagesを画像URL形式に変換
+          const processedSavedImages = (jsonData.savedImages || []).map((img) => {
+            if (typeof img === 'string') {
+              return img;
+            }
+            if (img && typeof img === 'object') {
+              // fileNameがある場合は、それをURLとして使用
+              if (img.fileName) {
+                return {
+                  ...img,
+                  url: `/api/images/chat-exports/${img.fileName}`,
+                  fileName: img.fileName
+                };
+              }
+              // urlやpathがある場合はそのまま使用
+              if (img.url || img.path) {
+                return img;
+              }
+            }
+            return img;
+          });
+          
+          const item = {
+            id: jsonData.chatId || fileName.replace('.json', ''),
+            type: 'export',
+            fileName: fileName,
+            chatId: jsonData.chatId || '',
+            userId: jsonData.userId || '',
+            exportType: jsonData.exportType || 'manual_send',
+            exportTimestamp: jsonData.exportTimestamp || new Date().toISOString(),
+            messageCount: jsonData.chatData?.messages?.length || 0,
+            machineType: jsonData.machineType || jsonData.chatData?.machineInfo?.machineTypeName || '',
+            machineNumber: jsonData.machineNumber || jsonData.chatData?.machineInfo?.machineNumber || '',
+            machineInfo: jsonData.chatData?.machineInfo || {},
+            title: jsonData.title || '',
+            problemDescription: jsonData.problemDescription || '',
+            extractedComponents: [],
+            extractedSymptoms: [],
+            possibleModels: [],
+            conversationHistory: jsonData.conversationHistory || [],
+            metadata: {},
+            savedImages: processedSavedImages,
+            images: processedSavedImages.map((img) => ({
+              fileName: typeof img === 'string' ? img : (img.fileName || img.url || img.path || ''),
+              url: typeof img === 'string' ? img : (img.url || `/api/images/chat-exports/${img.fileName || img.path || ''}`),
+              path: typeof img === 'string' ? img : (img.path || img.fileName || '')
+            })),
+            fileSize: 0,
+            lastModified: jsonData.lastModified || jsonData.exportTimestamp || new Date().toISOString(),
+            createdAt: jsonData.exportTimestamp || new Date().toISOString(),
+            jsonData: jsonData,
+          };
+          results.push(item);
+        }
+      } catch (error) {
+        console.warn(`ファイル読み込みエラー: ${fileName}`, error);
+      }
+    }
+
+    console.log('🔍 検索完了:', { 
+      keyword, 
+      totalFiles: jsonFiles.length, 
+      resultsCount: results.length
+    });
+    
+    res.json({
+      success: true,
+      data: results,
+      total: results.length,
+      keyword: keyword,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('❌ エクスポート検索エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'エクスポート検索に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// GET /api/history/exports/filter-data - 機種・機械番号のリスト取得
+apiRouter.get('/history/exports/filter-data', async (req, res) => {
+  try {
+    // 既存のhistoryエンドポイントと同じパス解決ロジックを使用
+    const projectRoot = path.resolve(__dirname, '..');
+    const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
+    
+    if (!fs.existsSync(exportsDir)) {
+      return res.json({
+        success: true,
+        machineTypes: [],
+        machineNumbers: [],
+        message: 'exportsディレクトリが見つかりません',
+      });
+    }
+
+    const files = fs.readdirSync(exportsDir);
+    const jsonFiles = files.filter(f => f.endsWith('.json'));
+    
+    const machineTypeSet = new Set();
+    const machineNumberSet = new Set();
+
+    for (const fileName of jsonFiles) {
+      try {
+        const filePath = path.join(exportsDir, fileName);
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        const jsonData = JSON.parse(fileContent);
+        
+        // 機種を抽出
+        const machineType = jsonData.machineType || jsonData.chatData?.machineInfo?.machineTypeName || '';
+        if (machineType && machineType.trim()) {
+          machineTypeSet.add(machineType.trim());
+        }
+        
+        // 機械番号を抽出
+        const machineNumber = jsonData.machineNumber || jsonData.chatData?.machineInfo?.machineNumber || '';
+        if (machineNumber && machineNumber.trim()) {
+          machineNumberSet.add(machineNumber.trim());
+        }
+      } catch (error) {
+        console.warn(`ファイル読み込みエラー: ${fileName}`, error);
+      }
+    }
+
+    const machineTypes = Array.from(machineTypeSet).sort();
+    const machineNumbers = Array.from(machineNumberSet).sort();
+
+    res.json({
+      success: true,
+      machineTypes: machineTypes,
+      machineNumbers: machineNumbers,
+      total: jsonFiles.length,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('❌ フィルターデータ取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'フィルターデータの取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+console.log('✅ History exports endpoints registered');
+
+// APIルーターをマウント（すべてのエンドポイント定義の後）
 app.use('/api', apiRouter);
 
 // エラーハンドリング
@@ -2096,12 +2594,23 @@ app.use((err, req, res, next) => {
 
 // サーバー起動
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Emergency Assistance Unified Development Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🌐 Frontend: http://localhost:${PORT} (proxied to Vite on port ${CLIENT_PORT})`);
+  const env = process.env.NODE_ENV || 'development';
+  console.log(`🚀 Emergency Assistance Unified Server running on port ${PORT}`);
+  console.log(`📊 Environment: ${env}`);
+  
+  if (isDevelopment) {
+    console.log(`🌐 Frontend: http://localhost:${PORT} (proxied to Vite on port ${CLIENT_PORT})`);
+    console.log(`🔥 Hot reload: Enabled`);
+    console.log(`📁 Source files: Direct from client/src (no build required)`);
+  } else {
+    const publicDir = path.join(__dirname, 'public');
+    const clientDistDir = path.join(__dirname, '..', 'client', 'dist');
+    const staticDir = fs.existsSync(publicDir) ? 'public' : (fs.existsSync(clientDistDir) ? 'client/dist' : 'none');
+    console.log(`🌐 Frontend: http://localhost:${PORT} (static files from ${staticDir})`);
+    console.log(`📦 Production mode: Static files only`);
+  }
+  
   console.log(`🔗 API: http://localhost:${PORT}/api`);
-  console.log(`🔥 Hot reload: Enabled`);
-  console.log(`📁 Source files: Direct from client/src (no build required)`);
 });
 
 // グレースフルシャットダウン
