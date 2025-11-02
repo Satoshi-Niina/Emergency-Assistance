@@ -3,15 +3,15 @@
   "version": "1.0.0",
   "description": "Emergency Assistance System with AI-powered support",
   "type": "module",
-  "main": "server/unified-hot-reload-server.js",
+  "main": "server/unified-server.js",
   "workspaces": [
     "client",
     "server",
     "shared"
   ],
   "scripts": {
-    "dev": "node server/unified-hot-reload-server.js",
-    "dev:hot": "node server/unified-hot-reload-server.js",
+    "dev": "node server/unified-server.js",
+    "dev:hot": "node server/unified-server.js",
     "dev:separate": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "cd server && npm run dev",
     "dev:client": "cd client && npm run dev",
@@ -23,7 +23,7 @@
     "docker:up": "docker-compose -f server/docker-compose.yml up --build -d",
     "docker:down": "docker-compose -f server/docker-compose.yml down",
     "docker:logs": "docker-compose -f server/docker-compose.yml logs -f",
-    "start": "node server/unified-hot-reload-server.js",
+    "start": "node server/unified-server.js",
     "docker:build": "docker build -t emergency-assistance .",
     "docker:run": "docker run -p 8080:8080 emergency-assistance",
     "clean": "npx rimraf client/dist server/dist",

@@ -15,6 +15,8 @@
 ### 1. 統合開発サーバー（推奨）
 ```bash
 npm run dev
+# または直接実行
+node server/unified-server.js
 ```
 
 ### 2. 個別起動（従来方式）

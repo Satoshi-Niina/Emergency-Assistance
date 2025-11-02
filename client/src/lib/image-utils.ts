@@ -92,7 +92,38 @@ export function convertImageUrl(url: any): string {
     return url;
   }
   
-  // APIパスの場合の処理 - Viteのプロキシを使用する場合は相対パスのまま返す
+  // APIパスの場合の処理 - /api/emergency-flow/image/ または /api/troubleshooting/image/ の場合
+  if (url.startsWith('/api/emergency-flow/image/') || url.startsWith('/api/troubleshooting/image/')) {
+    // ファイル名を抽出
+    const fileName = url.split('/').pop() || url.split('\\').pop() || url;
+    
+    // 開発環境でViteプロキシを使用する場合は相対パスを再構築
+    if (import.meta.env.DEV && window.location.hostname.includes('localhost')) {
+      // emergency-flow画像の場合は emergency-flow APIエンドポイントを使用
+      if (url.includes('emergency-flow')) {
+        const emergencyUrl = `/api/emergency-flow/image/${fileName}`;
+        console.log('✅ emergency-flow URL（プロキシ、再構築）:', { original: url, fileName, emergencyUrl });
+        return emergencyUrl;
+      }
+      // troubleshooting画像の場合は troubleshooting APIエンドポイントを使用
+      const troubleshootingUrl = `/api/troubleshooting/image/${fileName}`;
+      console.log('✅ troubleshooting URL（プロキシ、再構築）:', { original: url, fileName, troubleshootingUrl });
+      return troubleshootingUrl;
+    }
+    
+    // 本番環境や他の環境では完全なURLに変換
+    const apiBaseUrl = getApiBaseUrl();
+    if (url.includes('emergency-flow')) {
+      const emergencyUrl = `${apiBaseUrl}/api/emergency-flow/image/${fileName}`;
+      console.log('✅ emergency-flow URL（完全URL）:', { original: url, fileName, apiBaseUrl, emergencyUrl });
+      return emergencyUrl;
+    }
+    const troubleshootingUrl = `${apiBaseUrl}/api/troubleshooting/image/${fileName}`;
+    console.log('✅ troubleshooting URL（完全URL）:', { original: url, fileName, apiBaseUrl, troubleshootingUrl });
+    return troubleshootingUrl;
+  }
+
+  // その他のAPIパスの場合の処理 - Viteのプロキシを使用する場合は相対パスのまま返す
   if (url.startsWith('/api/')) {
     // 開発環境でViteプロキシを使用する場合は相対パスのまま
     if (import.meta.env.DEV && window.location.hostname.includes('localhost')) {
@@ -165,6 +196,10 @@ export function buildImageUrl(imageUrl: string): string {
   return result;
 }
 
+// 画像エラー再試行回数を追跡するMap
+const imageErrorCounts = new Map<string, number>();
+const MAX_RETRY_COUNT = 2;
+
 /**
  * 画像読み込みエラーハンドリング
  * @param e エラーイベント
@@ -175,31 +210,99 @@ export function handleImageError(
   imageUrl: string
 ): void {
   const imgElement = e.currentTarget;
-  console.error('画像表示エラー:', imageUrl);
+  const currentSrc = imgElement.src;
+  
+  // 再試行回数をチェック
+  const retryCount = imageErrorCounts.get(currentSrc) || 0;
+  console.error('画像表示エラー:', {
+    imageUrl,
+    currentSrc,
+    retryCount,
+    maxRetries: MAX_RETRY_COUNT
+  });
 
-  // 元のURLをログ出力
-  console.log('元の画像URL:', imageUrl);
-  console.log('変換後のURL:', imgElement.src);
+  // 最大再試行回数に達した場合はプレースホルダーを表示
+  if (retryCount >= MAX_RETRY_COUNT) {
+    console.error('❌ 最大再試行回数に達しました。プレースホルダー画像を表示します。');
+    imgElement.src =
+      'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMDAgNzBDMTE2LjU2OSA3MCAxMzAgODMuNDMxIDEzMCAxMDBDMTMwIDExNi41NjkgMTE2LjU2OSAxMzAgMTAwIDEzMEM4My40MzEgMTMwIDcwIDExNi41NjkgNzAgMTAwQzcwIDgzLjQzMSA4My40MzEgNzAgMTAwIDcwWiIgZmlsbD0iIzlDQTBBNiIvPgo8cGF0aCBkPSJNMTAwIDE0MEMxMTYuNTY5IDE0MCAxMzAgMTUzLjQzMSAxMzAgMTcwQzEzMCAxODYuNTY5IDExNi41NjkgMjAwIDEwMCAyMDBDODMuNDMxIDIwMCA3MCAxODYuNTY5IDcwIDE3MEM3MCAxNTMuNDMxIDgzLjQzMSAxNDAgMTAwIDE0MFoiIGZpbGw9IiM5Q0EwQTYiLz4KPHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDIwQzIwIDE3LjIzOSAyMi4yMzkgMTUgMjUgMTVIMzVDMzcuNzYxIDE1IDQwIDE3LjIzOSA0MCAyMFYzMEM0MCAzMi43NjEgMzcuNzYxIDM1IDM1IDM1SDI1QzIyLjIzOSAzNSAyMCAzMi43NjEgMjAgMzBWMjBaIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNSAxN0MyNSAxNi40NDc3IDI1LjQ0NzcgMTYgMjYgMTZIMzRDMzQuNTUyMyAxNiAzNSAxNi40NDc3IDM1IDE3VjI5QzM1IDI5LjU1MjMgMzQuNTUyMyAzMCAzNCAzMEgyNkMyNS40NDc3IDMwIDI1IDI5LjU1MjMgMjUgMjlWMTdaIiBmaWxsPSIjOTlBM0Y2Ii8+Cjwvc3ZnPgo8L3N2Zz4K';
+    imageErrorCounts.delete(currentSrc);
+    return;
+  }
+
+  // 再試行回数を増やす
+  imageErrorCounts.set(currentSrc, retryCount + 1);
 
   // エラー時のフォールバック処理
   try {
     const apiBaseUrl = getApiBaseUrl();
 
-    // 1. ファイル名のみで再試行
-    const fileName = imageUrl.split('/').pop()?.split('\\').pop();
-    if (fileName && fileName !== imageUrl) {
-      console.log('ファイル名のみで再試行:', fileName);
-      imgElement.src = `${apiBaseUrl}/api/emergency-flow/image/${fileName}`;
-      return;
+    // ファイル名を抽出（元のimageUrlから、またはcurrentSrcから）
+    let fileName: string | undefined;
+    
+    // まず、currentSrcからファイル名を抽出を試みる（既に変換済みURLの場合）
+    const currentSrcFileName = currentSrc.split('/').pop() || currentSrc.split('\\').pop();
+    if (currentSrcFileName && currentSrcFileName.includes('emergency-flow-step')) {
+      fileName = currentSrcFileName;
+      console.log('📁 currentSrcからファイル名を抽出:', fileName);
+    } else {
+      // 元のimageUrlからファイル名を抽出
+      if (imageUrl.includes('/')) {
+        fileName = imageUrl.split('/').pop();
+      } else if (imageUrl.includes('\\')) {
+        fileName = imageUrl.split('\\').pop();
+      } else {
+        fileName = imageUrl;
+      }
+      console.log('📁 imageUrlからファイル名を抽出:', fileName);
     }
 
-    // 2. 元のURLをそのまま使用
-    console.log('元のURLをそのまま使用');
-    imgElement.src = imageUrl;
-  } catch (error) {
-    console.error('画像エラーハンドリング失敗:', error);
+    // ファイル名が取得できた場合のみ再試行
+    if (fileName && fileName.trim() !== '' && fileName.includes('emergency-flow-step')) {
+      console.log('🔄 画像再試行:', { 
+        original: imageUrl,
+        currentSrc: currentSrc,
+        fileName,
+        retryCount: retryCount + 1,
+        maxRetries: MAX_RETRY_COUNT
+      });
+      
+      // 開発環境では相対パスを優先（Viteプロキシ経由）
+      if (import.meta.env.DEV && window.location.hostname.includes('localhost')) {
+        const newUrl = `/api/emergency-flow/image/${fileName}`;
+        // 現在のURLと異なり、かつ相対パス形式でない場合のみ再試行
+        if (newUrl !== currentSrc && !currentSrc.endsWith(`/api/emergency-flow/image/${fileName}`)) {
+          console.log('✅ 新しいURLで再試行（相対パス）:', newUrl);
+          // 再試行回数をクリアしてから新しいURLで試行
+          imageErrorCounts.delete(currentSrc);
+          imageErrorCounts.set(newUrl, retryCount + 1);
+          imgElement.src = newUrl;
+          return;
+        }
+      } else {
+        // 本番環境では完全URL
+        const newUrl = `${apiBaseUrl}/api/emergency-flow/image/${fileName}`;
+        if (newUrl !== currentSrc && !currentSrc.endsWith(`/api/emergency-flow/image/${fileName}`)) {
+          console.log('✅ 新しいURLで再試行（完全URL）:', newUrl);
+          // 再試行回数をクリアしてから新しいURLで試行
+          imageErrorCounts.delete(currentSrc);
+          imageErrorCounts.set(newUrl, retryCount + 1);
+          imgElement.src = newUrl;
+          return;
+        }
+      }
+    }
+
+    // 再試行できない場合はプレースホルダーを表示
+    console.warn('⚠️ 再試行できません。プレースホルダー画像を表示します。');
     imgElement.src =
       'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMDAgNzBDMTE2LjU2OSA3MCAxMzAgODMuNDMxIDEzMCAxMDBDMTMwIDExNi41NjkgMTE2LjU2OSAxMzAgMTAwIDEzMEM4My40MzEgMTMwIDcwIDExNi41NjkgNzAgMTAwQzcwIDgzLjQzMSA4My40MzEgNzAgMTAwIDcwWiIgZmlsbD0iIzlDQTBBNiIvPgo8cGF0aCBkPSJNMTAwIDE0MEMxMTYuNTY5IDE0MCAxMzAgMTUzLjQzMSAxMzAgMTcwQzEzMCAxODYuNTY5IDExNi41NjkgMjAwIDEwMCAyMDBDODMuNDMxIDIwMCA3MCAxODYuNTY5IDcwIDE3MEM3MCAxNTMuNDMxIDgzLjQzMSAxNDAgMTAwIDE0MFoiIGZpbGw9IiM5Q0EwQTYiLz4KPHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDIwQzIwIDE3LjIzOSAyMi4yMzkgMTUgMjUgMTVIMzVDMzcuNzYxIDE1IDQwIDE3LjIzOSA0MCAyMFYzMEM0MCAzMi43NjEgMzcuNzYxIDM1IDM1IDM1SDI1QzIyLjIzOSAzNSAyMCAzMi43NjEgMjAgMzBWMjBaIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNSAxN0MyNSAxNi40NDc3IDI1LjQ0NzcgMTYgMjYgMTZIMzRDMzQuNTUyMyAxNiAzNSAxNi40NDc3IDM1IDE3VjI5QzM1IDI5LjU1MjMgMzQuNTUyMyAzMCAzNCAzMEgyNkMyNS40NDc3IDMwIDI1IDI5LjU1MjMgMjUgMjlWMTdaIiBmaWxsPSIjOTlBM0Y2Ii8+Cjwvc3ZnPgo8L3N2Zz4K';
+    imageErrorCounts.delete(currentSrc);
+  } catch (error) {
+    console.error('❌ 画像エラーハンドリング失敗:', error);
+    imgElement.src =
+      'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMDAgNzBDMTE2LjU2OSA3MCAxMzAgODMuNDMxIDEzMCAxMDBDMTMwIDExNi41NjkgMTE2LjU2OSAxMzAgMTAwIDEzMEM4My40MzEgMTMwIDcwIDExNi41NjkgNzAgMTAwQzcwIDgzLjQzMSA4My40MzEgNzAgMTAwIDcwWiIgZmlsbD0iIzlDQTBBNiIvPgo8cGF0aCBkPSJNMTAwIDE0MEMxMTYuNTY5IDE0MCAxMzAgMTUzLjQzMSAxMzAgMTcwQzEzMCAxODYuNTY5IDExNi41NjkgMjAwIDEwMCAyMDBDODMuNDMxIDIwMCA3MCAxODYuNTY5IDcwIDE3MEM3MCAxNTMuNDMxIDgzLjQzMSAxNDAgMTAwIDE0MFoiIGZpbGw9IiM5Q0EwQTYiLz4KPHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDIwQzIwIDE3LjIzOSAyMi4yMzkgMTUgMjUgMTVIMzVDMzcuNzYxIDE1IDQwIDE3LjIzOSA0MCAyMFYzMEM0MCAzMi43NjEgMzcuNzYxIDM1IDM1IDM1SDI1QzIyLjIzOSAzNSAyMCAzMi43NjEgMjAgMzBWMjBaIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNSAxN0MyNSAxNi40NDc3IDI1LjQ0NzcgMTYgMjYgMTZIMzRDMzQuNTUyMyAxNiAzNSAxNi40NDc3IDM1IDE3VjI5QzM1IDI5LjU1MjMgMzQuNTUyMyAzMCAzNCAzMEgyNkMyNS40NDc3IDMwIDI1IDI5LjU1MjMgMjUgMjlWMTdaIiBmaWxsPSIjOTlBM0Y2Ii8+Cjwvc3ZnPgo8L3N2Zz4K';
+    imageErrorCounts.delete(currentSrc);
   }
 }
 

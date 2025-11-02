@@ -459,11 +459,6 @@ export default function EmergencyGuideDisplay({
                         });
                       }}
                     />
-                    {image.fileName && (
-                      <div className='text-sm text-gray-600 mt-1'>
-                        {image.fileName}
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>

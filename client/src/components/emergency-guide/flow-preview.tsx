@@ -7,7 +7,7 @@ import {
 } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { ArrowLeft, ArrowRight, X } from 'lucide-react';
-import { convertImageUrl } from '../../lib/image-utils';
+import { convertImageUrl, buildImageUrl, handleImageError } from '../../lib/image-utils';
 
 interface Step {
   id: string;
@@ -48,9 +48,9 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
       try {
         setLoading(true);
         
-        // 統一APIクライアントを使用
+        // 統一APIクライアントを使用 - /detail/:id エンドポイントを使用
         const { buildApiUrl } = await import('../../lib/api-unified');
-        const apiUrl = buildApiUrl(`/emergency-flow/${flowId}`);
+        const apiUrl = buildApiUrl(`/emergency-flow/detail/${flowId}`);
         console.log('🌐 フロープレビューAPI URL:', apiUrl);
         
         const response = await fetch(apiUrl, {
@@ -77,8 +77,8 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
         console.log('📊 フロープレビューAPIレスポンス:', responseData);
 
         // サーバーからのレスポンス構造に合わせてデータを取得
-        // プレビュー用APIは直接フローデータを返す
-        const data = responseData;
+        // /detail/:id エンドポイントは success: true, data: {...} 形式で返す
+        const data = responseData.success && responseData.data ? responseData.data : responseData;
         console.log('📋 フロープレビュー処理対象データ:', data);
 
         // データ構造をFlowDataインターフェースに合わせる
@@ -255,12 +255,13 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
               <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
                 {currentStep.images.map((img, index) => {
                   // 画像情報がオブジェクトの場合はプロパティを参照、文字列の場合はそのまま
+                  // buildImageUrlを使用して統一されたURL変換を適用
                   const imageUrl =
                     typeof img === 'object' && img !== null
-                      ? convertImageUrl(
+                      ? buildImageUrl(
                           (img as { url: string; fileName: string }).url
                         )
-                      : convertImageUrl(img);
+                      : buildImageUrl(img);
                   const altText =
                     typeof img === 'object' && img !== null
                       ? (img as { url: string; fileName: string }).fileName
@@ -288,36 +289,20 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
                           });
                         }}
                         onError={e => {
-                          console.error('❌ 画像読み込みエラー:', {
+                          const originalUrl = typeof img === 'object' && img !== null
+                            ? (img as { url: string; fileName: string }).url
+                            : String(img);
+                          console.error('❌ 画像読み込みエラー (flow-preview):', {
                             fileName: altText,
                             convertedUrl: imageUrl?.substring(0, 100) + '...',
                             originalImg: img,
+                            originalUrl: originalUrl,
                             error: e,
-                            target: e.currentTarget,
                           });
-                          // フォールバック処理
-                          if (typeof img === 'object' && img !== null) {
-                            const imgElement = e.currentTarget;
-                            const fileName = (img as { url: string; fileName: string }).fileName;
-                            if (fileName) {
-                              const fallbackUrl = `http://localhost:8081/api/emergency-flow/image/${fileName}`;
-                              console.log('🔄 フォールバック画像URL:', fallbackUrl);
-                              imgElement.src = fallbackUrl;
-                            }
-                          }
-                          const target = e.currentTarget;
-                          target.style.display = 'none';
-
-                          const errorDiv = document.createElement('div');
-                          errorDiv.className =
-                            'w-full h-48 bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded-lg text-sm flex items-center justify-center';
-                          errorDiv.textContent = `画像の読み込みに失敗しました: ${altText}`;
-                          target.parentNode?.appendChild(errorDiv);
+                          // 統一されたエラーハンドリングを使用
+                          handleImageError(e, originalUrl);
                         }}
                       />
-                      <div className='mt-2 text-xs text-gray-500 text-center'>
-                        {altText}
-                      </div>
                     </div>
                   );
                 })}

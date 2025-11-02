@@ -28,7 +28,7 @@ echo "⚙️ 環境変数設定完了"
 # 統合ホットリロードサーバーを起動
 echo "🚀 統合ホットリロードサーバーを起動中..."
 
-node server/unified-hot-reload-server.js
+node server/unified-server.js
 
 echo "✅ ホットリロード開発環境が起動しました！"
 echo "🌐 アクセス: http://localhost:8080"

@@ -219,12 +219,20 @@ export const createHistory = async (data: {
 
 // 履歴削除
 export const deleteHistory = async (id: string): Promise<void> => {
-  const response = await apiRequest(`/history/${id}`, {
-    method: 'DELETE',
-  });
+  try {
+    const result = await apiRequest<{ success: boolean; message?: string; error?: string }>(`/history/${id}`, {
+      method: 'DELETE',
+    });
 
-  if (!response.ok) {
-    throw new Error(`Failed to delete history: ${response.statusText}`);
+    // apiRequestは成功時にデータを返し、エラー時には例外をthrowする
+    // レスポンスデータをチェック
+    if (result && !result.success) {
+      throw new Error(result.error || result.message || '履歴の削除に失敗しました');
+    }
+  } catch (error) {
+    // apiRequestが既にエラーをthrowしている場合、そのまま再スロー
+    console.error('履歴削除APIエラー:', error);
+    throw error;
   }
 };
 

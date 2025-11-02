@@ -460,10 +460,10 @@ const EmergencyGuideEdit: React.FC = () => {
       console.log('📡 フロー詳細データを取得中:', flow.id);
       console.log('📋 選択されたフロー:', flow);
 
-      // フローの詳細データを取得
+      // フローの詳細データを取得 - /detail/:id エンドポイントを使用
       const timestamp = Date.now();
       const { buildApiUrl } = await import('../../lib/api-unified');
-      const apiUrl = buildApiUrl(`/emergency-flow/${flow.id}?_t=${timestamp}`);
+      const apiUrl = buildApiUrl(`/emergency-flow/detail/${flow.id}?_t=${timestamp}`);
       console.log('🌐 API呼び出し:', apiUrl);
 
       const response = await fetch(apiUrl, {

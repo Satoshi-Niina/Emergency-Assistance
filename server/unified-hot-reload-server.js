@@ -1503,18 +1503,31 @@ apiRouter.delete('/history/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`🗑️ 履歴削除リクエスト（ファイルベース）: ${id}`);
     
-    const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+    // 履歴一覧取得APIと同じパス解決方法を使用
+    const projectRoot = path.resolve(__dirname, '..');
+    const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
+    
+    console.log(`📂 プロジェクトルート: ${projectRoot}`);
+    console.log(`📂 エクスポートディレクトリ: ${exportsDir}`);
+    console.log(`📂 ディレクトリ存在確認: ${fs.existsSync(exportsDir)}`);
     
     if (!fs.existsSync(exportsDir)) {
       return res.status(404).json({
         success: false,
         error: 'エクスポートディレクトリが見つかりません',
+        exportsDir: exportsDir,
         timestamp: new Date().toISOString()
       });
     }
     
     const files = fs.readdirSync(exportsDir);
-    const jsonFiles = files.filter(file => file.endsWith('.json'));
+    const jsonFiles = files.filter(file => 
+      file.endsWith('.json') && 
+      !file.includes('index') && 
+      !file.includes('railway-maintenance-ai-prompt')
+    );
+    
+    console.log(`📋 検出されたJSONファイル数: ${jsonFiles.length}`);
     
     let foundFile = null;
     
@@ -1523,29 +1536,40 @@ apiRouter.delete('/history/:id', async (req, res) => {
       const uuidMatch = fileName.match(/_([a-f0-9-]{36})_/);
       const fileId = uuidMatch ? uuidMatch[1] : fileName;
       
+      console.log(`🔍 ファイルチェック: ${file}, fileName: ${fileName}, fileId: ${fileId}, id: ${id}`);
+      
       if (fileId === id || fileName === id) {
         foundFile = file;
+        console.log(`✅ マッチするファイルを発見: ${foundFile}`);
         break;
       }
     }
     
     if (!foundFile) {
+      console.log(`❌ マッチするファイルが見つかりませんでした。検索ID: ${id}`);
       return res.status(404).json({
         success: false,
         error: '履歴が見つかりません',
+        searchId: id,
+        availableFiles: jsonFiles.slice(0, 10), // デバッグ用に最初の10ファイルを返す
         timestamp: new Date().toISOString()
       });
     }
     
     const filePath = path.join(exportsDir, foundFile);
+    console.log(`🗑️ ファイル削除実行: ${filePath}`);
     fs.unlinkSync(filePath);
+    console.log(`✅ ファイル削除完了: ${foundFile}`);
     
-    const imageDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports');
+    // 画像ディレクトリも同じパス解決方法を使用
+    const imageDir = path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
     if (fs.existsSync(imageDir)) {
       const imageFiles = fs.readdirSync(imageDir);
       const matchingImages = imageFiles.filter(imgFile => 
         imgFile.includes(id) && (imgFile.endsWith('.jpg') || imgFile.endsWith('.jpeg'))
       );
+      
+      console.log(`🖼️ マッチする画像ファイル数: ${matchingImages.length}`);
       
       matchingImages.forEach(imgFile => {
         const imgPath = path.join(imageDir, imgFile);
@@ -1553,9 +1577,11 @@ apiRouter.delete('/history/:id', async (req, res) => {
           fs.unlinkSync(imgPath);
           console.log(`🗑️ 画像ファイル削除: ${imgFile}`);
         } catch (error) {
-          console.warn(`画像ファイル削除エラー: ${imgFile}`, error.message);
+          console.warn(`⚠️ 画像ファイル削除エラー: ${imgFile}`, error.message);
         }
       });
+    } else {
+      console.log(`📂 画像ディレクトリが存在しません: ${imageDir}`);
     }
     
     console.log(`✅ ファイルベース履歴削除完了: ${foundFile}`);
@@ -1573,6 +1599,7 @@ apiRouter.delete('/history/:id', async (req, res) => {
       success: false,
       error: '履歴の削除に失敗しました',
       details: error.message,
+      stack: error.stack,
       timestamp: new Date().toISOString()
     });
   }
@@ -1696,7 +1723,8 @@ apiRouter.get('/emergency-flow/detail/:id', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     }
-    
+
+    // 画像URLを変換
     if (flowData.steps) {
       flowData.steps.forEach((step, index) => {
         if (step.images && Array.isArray(step.images)) {
@@ -1728,6 +1756,115 @@ apiRouter.get('/emergency-flow/detail/:id', async (req, res) => {
       error: '応急処置フロー詳細の取得に失敗しました',
       details: error.message,
       timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// フロー削除エンドポイント
+apiRouter.delete('/emergency-flow/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`🗑️ フロー削除開始: ID=${id}`);
+
+    // 複数のパス候補を試す
+    const cwd = process.cwd();
+    const projectRoot = path.resolve(__dirname, '..');
+    
+    // トラブルシューティングディレクトリのパス候補
+    const troubleshootingPaths = [
+      // プロジェクトルートから
+      path.join(projectRoot, 'knowledge-base', 'troubleshooting'),
+      // カレントディレクトリから
+      path.join(cwd, 'knowledge-base', 'troubleshooting'),
+      // サーバーディレクトリから起動されている場合
+      path.join(cwd, '..', 'knowledge-base', 'troubleshooting'),
+      // __dirnameから
+      path.join(__dirname, '..', 'knowledge-base', 'troubleshooting'),
+    ].map(p => path.resolve(p));
+    
+    console.log('🔍 troubleshooting パス候補:', troubleshootingPaths);
+    console.log('📁 現在の作業ディレクトリ:', cwd);
+    console.log('📁 プロジェクトルート:', projectRoot);
+
+    let targetDir = null;
+    let fileName = null;
+
+    // 各パス候補を試す
+    for (const testDir of troubleshootingPaths) {
+      if (!fs.existsSync(testDir)) {
+        console.log(`⚠️ ディレクトリが存在しません: ${testDir}`);
+        continue;
+      }
+
+      console.log(`🔍 ディレクトリを検索中: ${testDir}`);
+      const files = fs.readdirSync(testDir);
+      const jsonFiles = files.filter(file => file.endsWith('.json'));
+      console.log(`📄 見つかったJSONファイル数: ${jsonFiles.length}`);
+
+      // IDに一致するファイルを検索
+      for (const file of jsonFiles) {
+        try {
+          const filePath = path.join(testDir, file);
+          const fileContent = fs.readFileSync(filePath, 'utf-8');
+          const data = JSON.parse(fileContent);
+
+          if (data.id === id || file.replace('.json', '') === id) {
+            targetDir = testDir;
+            fileName = file;
+            console.log('✅ 削除対象のファイルを発見:', {
+              dir: targetDir,
+              file: fileName,
+              id
+            });
+            break;
+          }
+        } catch (error) {
+          console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
+        }
+      }
+
+      if (fileName) {
+        break;
+      }
+    }
+
+    if (!fileName || !targetDir) {
+      console.error('❌ 削除対象のフローが見つかりません:', {
+        id,
+        searchedPaths: troubleshootingPaths,
+      });
+      return res.status(404).json({
+        success: false,
+        error: '削除対象のフローが見つかりません',
+        id,
+        searchedPaths: troubleshootingPaths.map(p => ({
+          path: p,
+          exists: fs.existsSync(p),
+        })),
+      });
+    }
+
+    // JSONファイルを削除
+    const filePath = path.join(targetDir, fileName);
+    fs.unlinkSync(filePath);
+
+    console.log(`🗑️ フロー削除完了: ${id}, ファイル: ${fileName}, パス: ${filePath}`);
+    res.json({
+      success: true,
+      message: 'フローが削除されました',
+      deletedId: id,
+      deletedFile: fileName,
+    });
+  } catch (error) {
+    console.error('❌ フロー削除エラー:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      id: req.params.id,
+    });
+    res.status(500).json({
+      success: false,
+      error: 'フローの削除に失敗しました',
+      details: error instanceof Error ? error.message : String(error),
     });
   }
 });
@@ -1976,9 +2113,20 @@ apiRouter.get('/images/chat-exports/:filename', async (req, res) => {
     
     console.log(`🔍 画像検索開始:`, { filename, imagesDir, exists: fs.existsSync(imagesDir) });
     
+    // ディレクトリが存在しない場合は404を返す
+    if (!fs.existsSync(imagesDir)) {
+      console.log(`❌ 画像ディレクトリが存在しません: ${imagesDir}`);
+      return res.status(404).json({
+        success: false,
+        error: '画像ディレクトリが見つかりません',
+        imagesDir: imagesDir
+      });
+    }
+    
     let imagePath = null;
     let actualFilename = filename;
     let searchedPatterns = [];
+    let patterns = []; // エラーハンドリング用にスコープ外で定義
     
     // 1. 直接ファイル名で検索
     const directPath = path.join(imagesDir, filename);
@@ -1999,7 +2147,7 @@ apiRouter.get('/images/chat-exports/:filename', async (req, res) => {
           console.log(`📁 ディレクトリ内のファイル数: ${files.length}`);
           
           // UUIDを含むファイルを検索（複数のパターンを試行）
-          const patterns = [
+          patterns = [
             `${uuid}_3_0.jpeg`,
             `${uuid}_2_0.jpeg`,
             `${uuid}_1_0.jpeg`,
@@ -2089,7 +2237,7 @@ apiRouter.get('/images/chat-exports/:filename', async (req, res) => {
         success: false,
         error: '画像ファイルが見つかりません',
         filename: filename,
-        searchedPatterns: patterns || [],
+        searchedPatterns: searchedPatterns || patterns || [],
         imagesDir: imagesDir
       });
     }
@@ -2120,15 +2268,31 @@ apiRouter.get('/images/chat-exports/:filename', async (req, res) => {
     
     console.log(`✅ 画像ファイル配信: ${actualFilename} (${stat.size} bytes)`);
     const readStream = fs.createReadStream(imagePath);
+    
+    // ストリーミングエラーハンドリング
+    readStream.on('error', (streamError) => {
+      console.error('❌ 画像ストリーミングエラー:', streamError);
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          error: '画像ファイルの読み込みに失敗しました',
+          details: streamError.message
+        });
+      }
+    });
+    
     readStream.pipe(res);
     
   } catch (error) {
     console.error('❌ chat-exports画像ファイル取得エラー:', error);
-    res.status(500).json({
-      success: false,
-      error: '画像ファイルの取得に失敗しました',
-      details: error.message
-    });
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        error: '画像ファイルの取得に失敗しました',
+        details: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
   }
 });
 
@@ -2172,32 +2336,105 @@ apiRouter.get('/emergency-flow/image/:fileName', async (req, res) => {
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.header('Cross-Origin-Resource-Policy', 'cross-origin');
 
-    // まず emergency-flows ディレクトリを確認
-    let uploadDir = path.join(
-      process.cwd(),
-      '..',
-      'knowledge-base/images/emergency-flows'
-    );
-    let filePath = path.join(uploadDir, fileName);
+    // 大文字小文字を区別しないファイル検索関数
+    const findFileCaseInsensitive = (dir, targetFileName) => {
+      if (!fs.existsSync(dir)) {
+        return null;
+      }
+      
+      const files = fs.readdirSync(dir);
+      const lowerTarget = targetFileName.toLowerCase();
+      
+      // 完全一致を優先
+      if (files.includes(targetFileName)) {
+        return path.join(dir, targetFileName);
+      }
+      
+      // 大文字小文字を区別しない検索
+      const foundFile = files.find(file => file.toLowerCase() === lowerTarget);
+      if (foundFile) {
+        console.log('✅ 大文字小文字を区別しない検索でファイルを発見:', {
+          requested: targetFileName,
+          found: foundFile
+        });
+        return path.join(dir, foundFile);
+      }
+      
+      return null;
+    };
+
+    // 複数のパス候補を試す
+    const cwd = process.cwd();
+    const projectRoot = path.resolve(__dirname, '..');
+    
+    // emergency-flowsディレクトリのパス候補
+    const emergencyFlowsPaths = [
+      // プロジェクトルートから
+      path.join(projectRoot, 'knowledge-base', 'images', 'emergency-flows'),
+      // カレントディレクトリから
+      path.join(cwd, 'knowledge-base', 'images', 'emergency-flows'),
+      // サーバーディレクトリから起動されている場合
+      path.join(cwd, '..', 'knowledge-base', 'images', 'emergency-flows'),
+      // __dirnameから
+      path.join(__dirname, '..', 'knowledge-base', 'images', 'emergency-flows'),
+    ].map(p => path.resolve(p));
+    
+    console.log('🔍 emergency-flows パス候補:', emergencyFlowsPaths);
+    console.log('📁 現在の作業ディレクトリ:', cwd);
+    console.log('📁 プロジェクトルート:', projectRoot);
+
+    let uploadDir = null;
+    let filePath = null;
+
+    // emergency-flowsディレクトリを検索
+    for (const testDir of emergencyFlowsPaths) {
+      if (!fs.existsSync(testDir)) {
+        console.log(`⚠️ ディレクトリが存在しません: ${testDir}`);
+        continue;
+      }
+      const foundPath = findFileCaseInsensitive(testDir, fileName);
+      if (foundPath) {
+        uploadDir = testDir;
+        filePath = foundPath;
+        console.log('✅ emergency-flowsディレクトリとファイルを発見:', {
+          dir: uploadDir,
+          file: filePath,
+          fileName
+        });
+        break;
+      }
+    }
 
     // emergency-flows にファイルがない場合は chat-exports を確認
-    if (!fs.existsSync(filePath)) {
-      uploadDir = path.join(
-        process.cwd(),
-        '..',
-        'knowledge-base/images/chat-exports'
-      );
-      filePath = path.join(uploadDir, fileName);
-
-      console.log(
-        '🔄 emergency-flows にファイルが見つからないため、chat-exports を確認:',
-        {
-          fileName,
-          chatExportsDir: uploadDir,
-          chatExportsPath: filePath,
-          exists: fs.existsSync(filePath),
+    if (!filePath) {
+      const chatExportsPaths = [
+        path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports'),
+        path.join(cwd, 'knowledge-base', 'images', 'chat-exports'),
+        path.join(cwd, '..', 'knowledge-base', 'images', 'chat-exports'),
+        path.join(__dirname, '..', 'knowledge-base', 'images', 'chat-exports'),
+      ].map(p => path.resolve(p));
+      
+      console.log('🔄 emergency-flows にファイルが見つからないため、chat-exports を確認:', {
+        fileName,
+        chatExportsPaths,
+      });
+      
+      for (const testDir of chatExportsPaths) {
+        if (!fs.existsSync(testDir)) {
+          continue;
         }
-      );
+        const foundPath = findFileCaseInsensitive(testDir, fileName);
+        if (foundPath) {
+          uploadDir = testDir;
+          filePath = foundPath;
+          console.log('✅ chat-exportsディレクトリとファイルを発見:', {
+            dir: uploadDir,
+            file: filePath,
+            fileName
+          });
+          break;
+        }
+      }
     }
 
     // デバッグログ強化
@@ -2205,17 +2442,34 @@ apiRouter.get('/emergency-flow/image/:fileName', async (req, res) => {
       fileName,
       uploadDir,
       filePath,
-      exists: fs.existsSync(filePath),
-      filesInDir: fs.existsSync(uploadDir) ? fs.readdirSync(uploadDir) : [],
+      exists: !!filePath,
+      filesInDir: fs.existsSync(uploadDir) ? fs.readdirSync(uploadDir).slice(0, 10) : [],
     });
 
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({
-        success: false,
-        error: '画像ファイルが見つかりません',
-        details: `ファイル: ${fileName} が ${uploadDir} に見つかりませんでした。`,
-        timestamp: new Date().toISOString(),
-      });
+    if (!filePath) {
+      // デバッグ情報をより詳細に収集
+      const debugInfo = {
+        error: 'ファイルが存在しません',
+        fileName,
+        searchedPaths: {
+          emergencyFlows: emergencyFlowsPaths.map(p => ({
+            path: p,
+            exists: fs.existsSync(p),
+            files: fs.existsSync(p) ? fs.readdirSync(p).slice(0, 10) : [],
+          })),
+          chatExports: chatExportsPaths.map(p => ({
+            path: p,
+            exists: fs.existsSync(p),
+            files: fs.existsSync(p) ? fs.readdirSync(p).slice(0, 10) : [],
+          })),
+        },
+        currentWorkingDirectory: cwd,
+        projectRoot,
+      };
+
+      console.error('❌ 画像ファイルが見つかりません:', debugInfo);
+      
+      return res.status(404).json(debugInfo);
     }
 
     // ファイルのMIMEタイプを判定
@@ -2236,16 +2490,24 @@ apiRouter.get('/emergency-flow/image/:fileName', async (req, res) => {
     res.send(fileBuffer);
 
     console.log('✅ 画像配信成功:', {
-      fileName,
+      requestedFileName: fileName,
+      actualFilePath: filePath,
       contentType,
       fileSize: fileBuffer.length,
+      sourceDir: uploadDir.includes('emergency-flows')
+        ? 'emergency-flows'
+        : 'chat-exports',
     });
   } catch (error) {
-    console.error('❌ 画像配信エラー:', error);
+    console.error('❌ 画像配信エラー:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      fileName: req.params.fileName,
+    });
     res.status(500).json({
       success: false,
-      error: '画像の配信中にエラーが発生しました',
-      details: error instanceof Error ? error.message : 'Unknown error',
+      error: '画像の配信に失敗しました',
+      details: error instanceof Error ? error.message : String(error),
     });
   }
 });

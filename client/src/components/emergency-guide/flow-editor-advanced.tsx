@@ -28,6 +28,7 @@ import {
   ContextMenuTrigger,
 } from '../../components/ui/context-menu';
 import { saveFlowData, FlowData } from '../../lib/flow-save-manager';
+import { buildImageUrl, handleImageError } from '../../lib/image-utils';
 
 interface Step {
   id: string;
@@ -82,9 +83,9 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
       setIsLoading(true);
       console.log('🔄 フローデータ読み込み開始:', flowId);
 
-      // 統一APIクライアントを使用
+      // 統一APIクライアントを使用 - /detail/:id エンドポイントを使用
       const { buildApiUrl } = await import('../../lib/api-unified');
-      const detailUrl = buildApiUrl(`/emergency-flow/${flowId}`);
+      const detailUrl = buildApiUrl(`/emergency-flow/detail/${flowId}`);
       
       console.log('🌐 フロー詳細API URL:', detailUrl);
       
@@ -111,8 +112,8 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
       const result = await response.json();
       console.log('📊 emergency-flow APIレスポンス:', result);
       
-      // サーバーが success: true, data: {...} 形式で返すように修正されているかチェック
-      const data = result.success ? result.data : result;
+      // /detail/:id エンドポイントは success: true, data: {...} 形式で返す
+      const data = result.success && result.data ? result.data : result;
 
       // データの完全性チェック
       if (!data || !data.id) {
@@ -750,26 +751,31 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                                       const validImages = images.filter(image => image && image.url && image.url.trim() !== '');
                                       
                                       return validImages.map((image, imageIndex) => {
-                                        // 画像URLを正しく構築
-                                        let imageUrl = image.url;
-                                        
-                                        // APIパスの場合は完全なURLに変換
-                                        if (imageUrl.startsWith('/api/')) {
-                                          // 開発環境ではlocalhost:8081を使用
-                                          const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                                          const apiBase = isDev ? 'http://localhost:8081' : window.location.origin;
-                                          imageUrl = `${apiBase}${imageUrl}`;
-                                        }
+                                        // 統一された画像URL変換を使用
+                                        const imageUrl = buildImageUrl(image.url);
                                         
                                         return (
                                           <div key={`${step.id}-${imageIndex}`} className='relative'>
                                             <img
                                               src={imageUrl}
-                                              alt='画像'
+                                              alt={image.fileName || '画像'}
                                               className='w-20 h-20 object-cover rounded border'
+                                              crossOrigin="anonymous"
                                               onError={e => {
-                                                console.error('画像読み込みエラー:', imageUrl);
-                                                e.currentTarget.style.display = 'none';
+                                                console.error('❌ 画像読み込みエラー (flow-editor-advanced):', {
+                                                  originalUrl: image.url,
+                                                  convertedUrl: imageUrl,
+                                                  fileName: image.fileName,
+                                                  stepId: step.id,
+                                                  imageIndex
+                                                });
+                                                handleImageError(e, image.url);
+                                              }}
+                                              onLoad={() => {
+                                                console.log('✅ 画像読み込み成功 (flow-editor-advanced):', {
+                                                  fileName: image.fileName,
+                                                  convertedUrl: imageUrl
+                                                });
                                               }}
                                             />
                                             <Button

@@ -26,7 +26,7 @@ Write-Host "⚙️ 環境変数設定完了" -ForegroundColor Green
 # 統合ホットリロードサーバーを起動
 Write-Host "🚀 統合ホットリロードサーバーを起動中..." -ForegroundColor Cyan
 
-node server/unified-hot-reload-server.js
+node server/unified-server.js
 
 Write-Host "✅ ホットリロード開発環境が起動しました！" -ForegroundColor Green
 Write-Host "🌐 アクセス: http://localhost:8080" -ForegroundColor Blue

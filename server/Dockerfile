@@ -8,14 +8,15 @@ RUN apk update && apk upgrade && apk add --no-cache curl
 # 作業ディレクトリを設定
 WORKDIR /app
 
-# package.jsonをコピー
+# package.jsonをコピー（依存関係のキャッシュを最適化）
 COPY server/package.json ./
 
-# 依存関係をインストール（新しいnpm構文を使用）
-RUN npm install --omit=dev
+# 依存関係をインストール（本番用のみ）
+RUN npm install --omit=dev --no-audit --no-fund
 
 # アプリケーションコードをコピー（serverディレクトリから）
 COPY server/unified-server.js ./
+COPY server/unified-hot-reload-server.js ./
 COPY server/services/ ./services/
 COPY server/routes/ ./routes/
 COPY server/db/ ./db/
@@ -26,7 +27,10 @@ COPY server/migrations/ ./migrations/
 COPY server/types/ ./types/
 COPY server/utils/ ./utils/
 COPY server/config/ ./config/
-COPY server/.env ./
+# .envファイルはコピーしない（環境変数はランタイムで設定）
+
+# publicディレクトリをコピー（clientビルド済みの場合）
+# 存在しない場合は空ディレクトリになる
 COPY server/public/ ./public/
 
 # 共有モジュールをコピー
@@ -36,9 +40,16 @@ COPY shared/ ./shared/
 COPY knowledge-base/ ./knowledge-base/
 
 # ログディレクトリを作成
-RUN mkdir -p /app/app-logs/
+RUN mkdir -p /app/app-logs/exports /app/app-logs/history
 
-# 環境変数をセット
+# 非rootユーザーで実行（セキュリティ向上）
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 && \
+    chown -R nodejs:nodejs /app
+
+USER nodejs
+
+# 環境変数をセット（デフォルト値）
 ENV NODE_ENV=production
 ENV PORT=8080
 
