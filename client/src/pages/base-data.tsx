@@ -320,7 +320,12 @@ export default function BaseDataPage() {
           status: response.status,
           statusText: response.statusText,
           body: errorText,
+          url: '/api/history/export-files',
         });
+        // 404エラーの場合は空配列を返す（ファイルが見つからない）
+        if (response.status === 404) {
+          console.warn('⚠️ エクスポートファイルAPIエンドポイントが見つかりません。サーバーのルーティング設定を確認してください。');
+        }
         setExportFiles([]);
         return;
       }
@@ -448,7 +453,7 @@ export default function BaseDataPage() {
             <CardHeader className='bg-gradient-to-r from-indigo-100 to-purple-100 border-b border-indigo-200'>
               <CardTitle className='flex items-center gap-2 text-indigo-800'>
                 <FolderOpen className='h-5 w-5 text-indigo-600' />
-                機械故障報告からインポート
+                機械故障情報インポート
               </CardTitle>
             </CardHeader>
             <CardContent className='space-y-4'>
@@ -1529,55 +1534,6 @@ function KnowledgeLifecycleManagement() {
     }
   };
 
-  // 手動削除（6ヶ月以上経過データ）
-  const handleOldDataCleanup = async () => {
-    if (!confirm('6ヶ月以上経過したナレッジデータを削除しますか？この操作は取り消せません。')) {
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/knowledge-base/cleanup/manual', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          olderThanDays: 180, // 6ヶ月
-        }),
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        const resultsDiv = document.getElementById('cleanup-results');
-        if (resultsDiv) {
-          resultsDiv.innerHTML = `
-            <div class="text-green-600">
-              <strong>削除完了:</strong> ${result.deletedCount}件のファイルを削除しました<br>
-              <small>実行時刻: ${new Date().toLocaleString('ja-JP')}</small>
-            </div>
-          `;
-        }
-        await fetchStorageStats();
-      } else {
-        const error = await response.json();
-        throw new Error(error.error || '削除に失敗しました');
-      }
-    } catch (error) {
-      const resultsDiv = document.getElementById('cleanup-results');
-      if (resultsDiv) {
-        resultsDiv.innerHTML = `
-          <div class="text-red-600">
-            <strong>削除エラー:</strong> ${error.message}<br>
-            <small>実行時刻: ${new Date().toLocaleString('ja-JP')}</small>
-          </div>
-        `;
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   // 全削除
   const handleFullCleanup = async () => {
     const confirmation = prompt('全てのナレッジデータを削除します。この操作は取り消せません。\n「DELETE ALL」と入力して確認してください:');
@@ -1810,17 +1766,6 @@ function KnowledgeLifecycleManagement() {
                 <input
                   type='radio'
                   name='policy'
-                  value='aggressive'
-                  checked={selectedPolicy === 'aggressive'}
-                  onChange={(e) => setSelectedPolicy(e.target.value)}
-                  className='form-radio'
-                />
-                <span className='text-sm'>積極的整理（6ヶ月以上の古いデータ）</span>
-              </label>
-              <label className='flex items-center space-x-2'>
-                <input
-                  type='radio'
-                  name='policy'
                   value='conservative'
                   checked={selectedPolicy === 'conservative'}
                   onChange={(e) => setSelectedPolicy(e.target.value)}
@@ -1907,17 +1852,6 @@ function KnowledgeLifecycleManagement() {
               >
                 <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
                 1年以上経過データを削除
-              </Button>
-              
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={handleOldDataCleanup}
-                disabled={isLoading}
-                className='w-full flex items-center gap-2 text-xs text-orange-700 border-orange-300 hover:bg-orange-50'
-              >
-                <AlertTriangle className='h-3 w-3' />
-                6ヶ月以上経過データを削除
               </Button>
               
               <Button

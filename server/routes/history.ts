@@ -1926,12 +1926,18 @@ router.post('/import-export', async (req, res) => {
     // chatData.messagesから画像を抽出
     if (jsonData.chatData?.messages) {
       for (const message of jsonData.chatData.messages) {
+        // media配列から画像を抽出
         if (message.media && Array.isArray(message.media)) {
           for (const media of message.media) {
             if (media.type === 'image' && media.url) {
               imageUrls.push(media.url);
             }
           }
+        }
+        // contentがbase64画像の場合
+        if (message.content && typeof message.content === 'string' && message.content.startsWith('data:image/')) {
+          // base64画像は既に処理済みの可能性があるので、savedImagesを確認
+          // ここではsavedImagesから処理するのでスキップ
         }
       }
     }
@@ -1940,7 +1946,15 @@ router.post('/import-export', async (req, res) => {
     if (jsonData.savedImages && Array.isArray(jsonData.savedImages)) {
       for (const img of jsonData.savedImages) {
         if (img.url || img.path || img.fileName) {
-          const imgUrl = img.url || img.path || `/api/images/chat-exports/${img.fileName}`;
+          // url、path、fileNameのいずれかを使用
+          let imgUrl: string;
+          if (img.url) {
+            imgUrl = img.url;
+          } else if (img.path) {
+            imgUrl = img.path;
+          } else {
+            imgUrl = `/api/images/chat-exports/${img.fileName}`;
+          }
           if (!imageUrls.includes(imgUrl)) {
             imageUrls.push(imgUrl);
           }
@@ -1960,7 +1974,7 @@ router.post('/import-export', async (req, res) => {
     for (const imageUrl of imageUrls) {
       try {
         // URLパスから実際のファイルパスを取得
-        let imageFilePath: string | null = null;
+        let actualImagePath: string | null = null;
 
         // /api/images/chat-exports/xxx.png 形式の場合
         if (imageUrl.startsWith('/api/images/chat-exports/')) {
@@ -1971,10 +1985,10 @@ router.post('/import-export', async (req, res) => {
             'images',
             'chat-exports'
           );
-          let actualImagePath = path.join(chatExportsDir, imageFileName);
+          let testPath = path.join(chatExportsDir, imageFileName);
           
           // 代替パスを確認
-          if (!fs.existsSync(actualImagePath)) {
+          if (!fs.existsSync(testPath)) {
             const altPath = path.join(
               process.cwd(),
               '..',
@@ -1984,19 +1998,72 @@ router.post('/import-export', async (req, res) => {
               imageFileName
             );
             if (fs.existsSync(altPath)) {
-              actualImagePath = altPath;
+              testPath = altPath;
             } else {
               console.warn(`画像ファイルが見つかりません: ${imageFileName}`);
               continue;
             }
           }
+          actualImagePath = testPath;
+        } 
+        // 直接ファイルパスの場合（knowledge-base/images/chat-exports/...）
+        else if (imageUrl.includes('knowledge-base') && imageUrl.includes('chat-exports')) {
+          // パス文字列から直接ファイルパスを構築
+          let testPath = imageUrl;
+          // 相対パスの場合、絶対パスに変換
+          if (!path.isAbsolute(testPath)) {
+            // knowledge-base/images/chat-exports/file.jpg 形式
+            testPath = path.join(process.cwd(), testPath);
+          }
+          // __dirnameからのパスの可能性も確認
+          if (!fs.existsSync(testPath)) {
+            const altPath = path.join(
+              process.cwd(),
+              '..',
+              imageUrl.replace(/^.*knowledge-base[/\\]/, 'knowledge-base/')
+            );
+            if (fs.existsSync(altPath)) {
+              testPath = altPath;
+            } else {
+              console.warn(`画像ファイルが見つかりません: ${imageUrl}`);
+              continue;
+            }
+          }
+          actualImagePath = testPath;
+        }
+        // ファイル名のみの場合
+        else if (!imageUrl.includes('/') && !imageUrl.includes('\\')) {
+          // ファイル名のみの場合は、chat-exportsディレクトリから検索
+          const possibleDirs = [
+            path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports'),
+            path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports'),
+          ];
+          
+          for (const dir of possibleDirs) {
+            const testPath = path.join(dir, imageUrl);
+            if (fs.existsSync(testPath)) {
+              actualImagePath = testPath;
+              break;
+            }
+          }
+          
+          if (!actualImagePath) {
+            console.warn(`画像ファイルが見つかりません: ${imageUrl}`);
+            continue;
+          }
+        }
 
-          // 画像をdocuments/imagesにコピー
+        // 実際のファイルパスが見つかった場合、documents/imagesにコピー
+        if (actualImagePath && fs.existsSync(actualImagePath)) {
+          const imageFileName = path.basename(actualImagePath);
+          // タイムスタンプとランダム文字列を追加してユニークなファイル名を生成
           const destFileName = `${Date.now()}_${Math.random().toString(36).substring(7)}_${imageFileName}`;
           const destImagePath = path.join(imagesDir, destFileName);
           fs.copyFileSync(actualImagePath, destImagePath);
           savedImagePaths.push(`images/${destFileName}`);
-          console.log(`画像を保存しました: ${destFileName}`);
+          console.log(`画像を保存しました: ${imageFileName} -> ${destFileName}`);
+        } else {
+          console.warn(`画像ファイルのパスを解決できませんでした: ${imageUrl}`);
         }
       } catch (imageError) {
         console.warn(`画像の保存に失敗しました: ${imageUrl}`, imageError);

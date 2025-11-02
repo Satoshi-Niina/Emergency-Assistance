@@ -1285,6 +1285,123 @@ apiRouter.delete('/users/:id', async (req, res) => {
   }
 });
 
+// 履歴関連の具体的なルートを先に定義（/:idパラメータ付きルートより前に）
+// GET /api/history/export-files - エクスポートファイル一覧取得（先に定義）
+apiRouter.get('/history/export-files', async (req, res) => {
+  try {
+    console.log('📂 エクスポートファイル一覧取得リクエスト受信');
+    const cwd = process.cwd();
+    console.log('📁 現在の作業ディレクトリ:', cwd);
+    
+    // 複数のパス候補を試す
+    const projectRoot = path.resolve(__dirname, '..');
+    const possiblePaths = [
+      // 環境変数が設定されている場合
+      process.env.KNOWLEDGE_EXPORTS_DIR,
+      // プロジェクトルートから
+      path.join(projectRoot, 'knowledge-base', 'exports'),
+      // カレントディレクトリから
+      path.join(cwd, 'knowledge-base', 'exports'),
+      // サーバーディレクトリから起動されている場合
+      path.join(cwd, '..', 'knowledge-base', 'exports'),
+      // __dirnameから
+      path.join(__dirname, '..', 'knowledge-base', 'exports'),
+    ].filter(Boolean); // undefined/nullを除外
+
+    console.log('🔍 パス候補:', possiblePaths);
+    
+    let exportsDir = null;
+    for (const testPath of possiblePaths) {
+      if (!testPath) continue;
+      const normalizedPath = path.resolve(testPath);
+      console.log(`📂 試行パス: ${normalizedPath}, 存在: ${fs.existsSync(normalizedPath)}`);
+      if (fs.existsSync(normalizedPath)) {
+        const stats = fs.statSync(normalizedPath);
+        if (stats.isDirectory()) {
+          exportsDir = normalizedPath;
+          console.log('✅ 有効なディレクトリを発見:', exportsDir);
+          break;
+        } else {
+          console.warn(`⚠️ パスは存在するがディレクトリではありません: ${normalizedPath}`);
+        }
+      }
+    }
+
+    if (!exportsDir) {
+      console.error('❌ エクスポートディレクトリが見つかりません。試行したパス:', possiblePaths);
+      return res.json([]);
+    }
+
+    console.log('✅ エクスポートディレクトリ確認:', exportsDir);
+    
+    // ファイル一覧を取得（日本語ファイル名対応）
+    const files = fs.readdirSync(exportsDir);
+    console.log('📋 ディレクトリ内の全ファイル:', files);
+    console.log('📋 ファイル数:', files.length);
+    
+    const jsonFiles = files.filter(file => file.endsWith('.json'));
+    console.log('📋 JSONファイル数:', jsonFiles.length, 'ファイル:', jsonFiles);
+    
+    const exportFiles = jsonFiles
+      .filter(file => !file.includes('.backup.')) // バックアップファイルを除外
+      .filter(file => !file.startsWith('test-backup-')) // テストファイルを除外
+      .map(file => {
+        const filePath = path.join(exportsDir, file);
+        console.log('🔍 ファイル処理中:', filePath);
+        
+        try {
+          // ファイルの存在確認
+          if (!fs.existsSync(filePath)) {
+            console.warn('❌ ファイルが見つかりません:', filePath);
+            return null;
+          }
+          
+          const stats = fs.statSync(filePath);
+          if (!stats.isFile()) {
+            console.warn('❌ ファイルではありません:', filePath);
+            return null;
+          }
+          
+          const content = fs.readFileSync(filePath, 'utf8');
+          const data = JSON.parse(content);
+          const fileInfo = {
+            fileName: file,
+            filePath: filePath,
+            chatId: data.chatId || data.id || 'unknown',
+            title: data.title || data.problemDescription || 'タイトルなし',
+            createdAt:
+              data.createdAt ||
+              data.exportTimestamp ||
+              new Date().toISOString(),
+            exportTimestamp: data.exportTimestamp || data.createdAt || new Date().toISOString(),
+            lastModified: stats.mtime.toISOString(),
+            size: stats.size,
+          };
+          console.log('✅ ファイル読み込み成功:', file, 'タイトル:', fileInfo.title);
+          return fileInfo;
+        } catch (error) {
+          console.error(`❌ ファイル読み込みエラー: ${filePath}`, error);
+          if (error instanceof Error) {
+            console.error('エラー詳細:', error.message, error.stack);
+          }
+          return null;
+        }
+      })
+      .filter(item => item !== null);
+
+    console.log('📦 最終エクスポートファイル数:', exportFiles.length);
+    console.log('📋 返却ファイル一覧:', exportFiles.map(f => f.fileName));
+
+    res.json(exportFiles);
+  } catch (error) {
+    console.error('❌ エクスポートファイル一覧取得エラー:', error);
+    res.status(500).json({
+      error: 'エクスポートファイル一覧の取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
 // 履歴一覧取得API（ファイルベース）
 apiRouter.get('/history', async (req, res) => {
   try {
@@ -1393,6 +1510,7 @@ apiRouter.get('/history', async (req, res) => {
 });
 
 // 履歴詳細取得API（ファイルベース）
+// 注意: export-filesなどの具体的なルートは既に上で定義されているため、ここでは通常のIDのみを処理
 apiRouter.get('/history/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -2514,122 +2632,7 @@ apiRouter.get('/emergency-flow/image/:fileName', async (req, res) => {
 
 // 履歴ルート: knowledge-base/exports内のJSONファイルから検索・フィルター
 // TypeScriptファイルを直接インポートできないため、エンドポイントを直接実装
-
-// GET /api/history/export-files - エクスポートファイル一覧取得
-apiRouter.get('/history/export-files', async (req, res) => {
-  try {
-    console.log('📂 エクスポートファイル一覧取得リクエスト受信');
-    const cwd = process.cwd();
-    console.log('📁 現在の作業ディレクトリ:', cwd);
-    
-    // 複数のパス候補を試す
-    const projectRoot = path.resolve(__dirname, '..');
-    const possiblePaths = [
-      // 環境変数が設定されている場合
-      process.env.KNOWLEDGE_EXPORTS_DIR,
-      // プロジェクトルートから
-      path.join(projectRoot, 'knowledge-base', 'exports'),
-      // カレントディレクトリから
-      path.join(cwd, 'knowledge-base', 'exports'),
-      // サーバーディレクトリから起動されている場合
-      path.join(cwd, '..', 'knowledge-base', 'exports'),
-      // __dirnameから
-      path.join(__dirname, '..', 'knowledge-base', 'exports'),
-    ].filter(Boolean); // undefined/nullを除外
-
-    console.log('🔍 パス候補:', possiblePaths);
-    
-    let exportsDir = null;
-    for (const testPath of possiblePaths) {
-      if (!testPath) continue;
-      const normalizedPath = path.resolve(testPath);
-      console.log(`📂 試行パス: ${normalizedPath}, 存在: ${fs.existsSync(normalizedPath)}`);
-      if (fs.existsSync(normalizedPath)) {
-        const stats = fs.statSync(normalizedPath);
-        if (stats.isDirectory()) {
-          exportsDir = normalizedPath;
-          console.log('✅ 有効なディレクトリを発見:', exportsDir);
-          break;
-        } else {
-          console.warn(`⚠️ パスは存在するがディレクトリではありません: ${normalizedPath}`);
-        }
-      }
-    }
-
-    if (!exportsDir) {
-      console.error('❌ エクスポートディレクトリが見つかりません。試行したパス:', possiblePaths);
-      return res.json([]);
-    }
-
-    console.log('✅ エクスポートディレクトリ確認:', exportsDir);
-    
-    // ファイル一覧を取得（日本語ファイル名対応）
-    const files = fs.readdirSync(exportsDir);
-    console.log('📋 ディレクトリ内の全ファイル:', files);
-    console.log('📋 ファイル数:', files.length);
-    
-    const jsonFiles = files.filter(file => file.endsWith('.json'));
-    console.log('📋 JSONファイル数:', jsonFiles.length, 'ファイル:', jsonFiles);
-    
-    const exportFiles = jsonFiles
-      .filter(file => !file.includes('.backup.')) // バックアップファイルを除外
-      .filter(file => !file.startsWith('test-backup-')) // テストファイルを除外
-      .map(file => {
-        const filePath = path.join(exportsDir, file);
-        console.log('🔍 ファイル処理中:', filePath);
-        
-        try {
-          // ファイルの存在確認
-          if (!fs.existsSync(filePath)) {
-            console.warn('❌ ファイルが見つかりません:', filePath);
-            return null;
-          }
-          
-          const stats = fs.statSync(filePath);
-          if (!stats.isFile()) {
-            console.warn('❌ ファイルではありません:', filePath);
-            return null;
-          }
-          
-          const content = fs.readFileSync(filePath, 'utf8');
-          const data = JSON.parse(content);
-          const fileInfo = {
-            fileName: file,
-            filePath: filePath,
-            chatId: data.chatId || data.id || 'unknown',
-            title: data.title || data.problemDescription || 'タイトルなし',
-            createdAt:
-              data.createdAt ||
-              data.exportTimestamp ||
-              new Date().toISOString(),
-            exportTimestamp: data.exportTimestamp || data.createdAt || new Date().toISOString(),
-            lastModified: stats.mtime.toISOString(),
-            size: stats.size,
-          };
-          console.log('✅ ファイル読み込み成功:', file, 'タイトル:', fileInfo.title);
-          return fileInfo;
-        } catch (error) {
-          console.error(`❌ ファイル読み込みエラー: ${filePath}`, error);
-          if (error instanceof Error) {
-            console.error('エラー詳細:', error.message, error.stack);
-          }
-          return null;
-        }
-      })
-      .filter(item => item !== null);
-
-    console.log('📦 最終エクスポートファイル数:', exportFiles.length);
-    console.log('📋 返却ファイル一覧:', exportFiles.map(f => f.fileName));
-
-    res.json(exportFiles);
-  } catch (error) {
-    console.error('❌ エクスポートファイル一覧取得エラー:', error);
-    res.status(500).json({
-      error: 'エクスポートファイル一覧の取得に失敗しました',
-      details: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-});
+// 注意: /history/export-filesは上で既に定義されているため、ここでは重複しない
 
 // GET /api/history/exports/search - キーワード検索
 apiRouter.get('/history/exports/search', async (req, res) => {
@@ -2841,6 +2844,236 @@ apiRouter.get('/history/exports/filter-data', async (req, res) => {
 });
 
 console.log('✅ History exports endpoints registered');
+
+// Knowledge Base Cleanup Endpoints
+// POST /api/knowledge-base/cleanup/auto - 1年以上経過データを自動削除
+apiRouter.post('/knowledge-base/cleanup/auto', async (req, res) => {
+  try {
+    console.log('🗑️ 自動クリーンアップリクエスト（1年以上経過データ）');
+    
+    const projectRoot = path.resolve(__dirname, '..');
+    const knowledgeBaseDir = path.join(projectRoot, 'knowledge-base');
+    
+    // 削除対象ディレクトリ
+    const directoriesToClean = [
+      'documents',
+      'text',
+      'qa',
+      'troubleshooting'
+    ];
+    
+    const oneYearAgo = Date.now() - (365 * 24 * 60 * 60 * 1000);
+    let deletedCount = 0;
+    let errorCount = 0;
+    
+    for (const dirName of directoriesToClean) {
+      const targetDir = path.join(knowledgeBaseDir, dirName);
+      if (!fs.existsSync(targetDir)) {
+        console.log(`📂 ディレクトリが存在しません: ${targetDir}`);
+        continue;
+      }
+      
+      try {
+        const files = fs.readdirSync(targetDir);
+        for (const file of files) {
+          const filePath = path.join(targetDir, file);
+          try {
+            const stats = fs.statSync(filePath);
+            // 最終更新日時が1年以上前の場合
+            if (stats.mtimeMs < oneYearAgo) {
+              if (stats.isDirectory()) {
+                // ディレクトリの場合は再帰的に削除
+                fs.rmSync(filePath, { recursive: true, force: true });
+                console.log(`🗑️ ディレクトリ削除: ${filePath}`);
+              } else {
+                fs.unlinkSync(filePath);
+                console.log(`🗑️ ファイル削除: ${filePath}`);
+              }
+              deletedCount++;
+            }
+          } catch (fileError) {
+            console.error(`❌ ファイル削除エラー: ${filePath}`, fileError);
+            errorCount++;
+          }
+        }
+        
+        // 空のディレクトリを削除
+        try {
+          const remainingFiles = fs.readdirSync(targetDir);
+          if (remainingFiles.length === 0) {
+            // ディレクトリ自体は残す（削除しない）
+          }
+        } catch (dirCheckError) {
+          // ディレクトリチェックエラーは無視
+        }
+      } catch (dirError) {
+        console.error(`❌ ディレクトリ処理エラー: ${targetDir}`, dirError);
+        errorCount++;
+      }
+    }
+    
+    console.log(`✅ 自動クリーンアップ完了: ${deletedCount}件削除, ${errorCount}件エラー`);
+    
+    res.json({
+      success: true,
+      deletedCount: deletedCount,
+      errorCount: errorCount,
+      message: `${deletedCount}件のファイルを削除しました`,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ 自動クリーンアップエラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '自動クリーンアップに失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// POST /api/knowledge-base/cleanup/manual - 手動クリーンアップ（日数指定または全削除）
+apiRouter.post('/knowledge-base/cleanup/manual', async (req, res) => {
+  try {
+    const { olderThanDays, deleteAll } = req.body;
+    console.log('🗑️ 手動クリーンアップリクエスト:', { olderThanDays, deleteAll });
+    
+    const projectRoot = path.resolve(__dirname, '..');
+    const knowledgeBaseDir = path.join(projectRoot, 'knowledge-base');
+    
+    // 削除対象ディレクトリ
+    const directoriesToClean = [
+      'documents',
+      'text',
+      'qa',
+      'troubleshooting'
+    ];
+    
+    let cutoffTime;
+    if (deleteAll) {
+      cutoffTime = Date.now() + (365 * 24 * 60 * 60 * 1000); // 未来の日時 = すべて削除
+      console.log('⚠️ 全削除モード');
+    } else if (olderThanDays && typeof olderThanDays === 'number') {
+      cutoffTime = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
+      console.log(`📅 ${olderThanDays}日以上経過データを削除`);
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: 'olderThanDaysまたはdeleteAllの指定が必要です',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    let deletedCount = 0;
+    let errorCount = 0;
+    
+    for (const dirName of directoriesToClean) {
+      const targetDir = path.join(knowledgeBaseDir, dirName);
+      if (!fs.existsSync(targetDir)) {
+        console.log(`📂 ディレクトリが存在しません: ${targetDir}`);
+        continue;
+      }
+      
+      try {
+        const files = fs.readdirSync(targetDir);
+        for (const file of files) {
+          const filePath = path.join(targetDir, file);
+          try {
+            const stats = fs.statSync(filePath);
+            // 全削除モードまたは指定日数より古い場合
+            if (deleteAll || stats.mtimeMs < cutoffTime) {
+              if (stats.isDirectory()) {
+                // ディレクトリの場合は再帰的に削除
+                fs.rmSync(filePath, { recursive: true, force: true });
+                console.log(`🗑️ ディレクトリ削除: ${filePath}`);
+              } else {
+                fs.unlinkSync(filePath);
+                console.log(`🗑️ ファイル削除: ${filePath}`);
+              }
+              deletedCount++;
+            }
+          } catch (fileError) {
+            console.error(`❌ ファイル削除エラー: ${filePath}`, fileError);
+            errorCount++;
+          }
+        }
+      } catch (dirError) {
+        console.error(`❌ ディレクトリ処理エラー: ${targetDir}`, dirError);
+        errorCount++;
+      }
+    }
+    
+    console.log(`✅ 手動クリーンアップ完了: ${deletedCount}件削除, ${errorCount}件エラー`);
+    
+    res.json({
+      success: true,
+      deletedCount: deletedCount,
+      errorCount: errorCount,
+      message: `${deletedCount}件のファイルを削除しました`,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ 手動クリーンアップエラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '手動クリーンアップに失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// GET /api/knowledge-base/archives - アーカイブ一覧取得
+apiRouter.get('/knowledge-base/archives', async (req, res) => {
+  try {
+    console.log('📁 アーカイブ一覧取得リクエスト');
+    
+    const projectRoot = path.resolve(__dirname, '..');
+    const archivesDir = path.join(projectRoot, 'knowledge-base', 'archives');
+    
+    if (!fs.existsSync(archivesDir)) {
+      return res.json({
+        success: true,
+        data: [],
+        total: 0,
+        message: 'アーカイブディレクトリが存在しません',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const files = fs.readdirSync(archivesDir);
+    const archiveFiles = files
+      .filter(file => file.endsWith('.zip') || file.endsWith('.tar.gz'))
+      .map(file => {
+        const filePath = path.join(archivesDir, file);
+        const stats = fs.statSync(filePath);
+        return {
+          name: file,
+          size: stats.size,
+          createdAt: stats.birthtime.toISOString(),
+          modifiedAt: stats.mtime.toISOString()
+        };
+      })
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    res.json({
+      success: true,
+      data: archiveFiles,
+      total: archiveFiles.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ アーカイブ一覧取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'アーカイブ一覧の取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+console.log('✅ Knowledge Base cleanup endpoints registered');
 
 // APIルーターをマウント（すべてのエンドポイント定義の後）
 app.use('/api', apiRouter);
