@@ -28,4 +28,200 @@ export default function mountDiag(app) {
       builtAt: process.env.BUILT_AT || new Date().toISOString()
     });
   });
+
+  // PostgreSQL接続確認エンドポイント
+  app.get('/api/_diag/postgresql', async function(_req, res) {
+    try {
+      console.log('[diagnostic] PostgreSQL接続確認リクエスト受信');
+      
+      // postgresモジュールを動的にインポート
+      const postgres = (await import('postgres')).default;
+      
+      // DATABASE_URLから接続を確立
+      const databaseUrl = process.env.DATABASE_URL;
+      if (!databaseUrl) {
+        return res.status(500).json({
+          success: false,
+          message: 'DATABASE_URL環境変数が設定されていません',
+          error: 'DATABASE_URL not configured',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      const isLocalhost = databaseUrl.includes('localhost') || databaseUrl.includes('127.0.0.1');
+      const sslConfig = isLocalhost 
+        ? false
+        : process.env.PG_SSL === 'require' 
+        ? { require: true, rejectUnauthorized: false }
+        : process.env.PG_SSL === 'disable' 
+        ? false 
+        : { require: true, rejectUnauthorized: false };
+      
+      const sql = postgres(databaseUrl, {
+        ssl: sslConfig,
+        max: 1,
+        idle_timeout: 5,
+        connect_timeout: 10,
+      });
+      
+      try {
+        // PostgreSQL接続テスト
+        const result = await sql`SELECT NOW() as current_time, version() as version`;
+        
+        if (result && result.length > 0) {
+          console.log('[diagnostic] PostgreSQL接続成功');
+          const response = {
+            success: true,
+            message: 'PostgreSQL接続が正常です',
+            data: {
+              current_time: result[0].current_time,
+              version: result[0].version
+            },
+            timestamp: new Date().toISOString()
+          };
+          await sql.end();
+          return res.json(response);
+        } else {
+          console.log('[diagnostic] PostgreSQL接続エラー: 結果が空');
+          await sql.end();
+          return res.json({
+            success: false,
+            message: 'PostgreSQL接続は成功しましたが、結果が空です',
+            error: 'Empty result',
+            timestamp: new Date().toISOString()
+          });
+        }
+      } finally {
+        await sql.end();
+      }
+    } catch (error) {
+      console.error('[diagnostic] PostgreSQL接続確認エラー:', error);
+      res.status(500).json({
+        success: false,
+        message: 'PostgreSQL接続エラー',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // GPT接続確認エンドポイント
+  app.get('/api/_diag/gpt', async function(_req, res) {
+    try {
+      console.log('[diagnostic] GPT接続確認リクエスト受信');
+      
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      const apiKey = process.env.OPENAI_API_KEY;
+      
+      // APIキーの状態を確認
+      const apiKeyExists = !!apiKey;
+      const isMockKey = apiKey === 'dev-mock-key' || apiKey === 'your-openai-api-key-here';
+      const startsWithSk = apiKey ? apiKey.startsWith('sk-') : false;
+      const apiKeyPrefix = apiKey ? apiKey.substring(0, 10) + '...' : 'NOT FOUND';
+      
+      const clientStatus = {
+        clientExists: apiKeyExists && !isMockKey && startsWithSk,
+        apiKeyExists: apiKeyExists,
+        apiKeyPrefix: apiKeyPrefix,
+        isMockKey: isMockKey,
+        startsWithSk: startsWithSk
+      };
+      
+      console.log('[diagnostic] OpenAI Client Status:', clientStatus);
+
+      // クライアントが存在しない場合
+      if (!clientStatus.clientExists) {
+        if (!apiKeyExists) {
+          console.log('[diagnostic] OpenAI APIキーが設定されていません');
+          return res.json({
+            success: false,
+            status: 'ERROR',
+            message: 'OpenAI APIキーが設定されていません',
+            error: 'OPENAI_API_KEY環境変数が設定されていません。設定画面でAPIキーを設定してください。',
+            environment: isDevelopment ? 'development' : 'production',
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        if (isMockKey) {
+          console.log('[diagnostic] OpenAI APIキーがモックキーです');
+          return res.json({
+            success: false,
+            status: 'ERROR',
+            message: 'OpenAI APIキーがモックキーです',
+            error: '開発用のモックキーが設定されています。実際のAPIキーを設定してください。',
+            environment: isDevelopment ? 'development' : 'production',
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        if (!startsWithSk) {
+          console.log('[diagnostic] OpenAI APIキーの形式が無効です');
+          return res.json({
+            success: false,
+            status: 'ERROR',
+            message: 'OpenAI APIキーが無効です',
+            error: `OpenAI APIキーの形式が正しくありません。現在の値: ${apiKeyPrefix} (sk-で始まる必要があります)`,
+            environment: isDevelopment ? 'development' : 'production',
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+
+      // 実際のAPI接続テスト
+      try {
+        console.log('[diagnostic] OpenAI API接続テスト開始');
+        
+        // OpenAIクライアントを直接初期化
+        const OpenAI = (await import('openai')).default;
+        const openai = new OpenAI({
+          apiKey: apiKey,
+        });
+        
+        // 簡単なAPI呼び出しでテスト
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o',
+          messages: [
+            { role: 'user', content: 'Hello' }
+          ],
+          max_tokens: 10,
+        });
+        
+        const testResponse = completion.choices[0]?.message?.content || '';
+        console.log('[diagnostic] OpenAI API接続テスト成功');
+
+        res.json({
+          success: true,
+          status: 'OK',
+          message: 'GPT接続が正常です',
+          details: {
+            testResponse: testResponse.substring(0, 100) + '...',
+            apiKeyPrefix: apiKeyPrefix
+          },
+          environment: isDevelopment ? 'development' : 'production',
+          timestamp: new Date().toISOString()
+        });
+      } catch (gptError) {
+        console.error('[diagnostic] GPT接続テストエラー:', gptError);
+        res.json({
+          success: false,
+          status: 'ERROR',
+          message: 'GPT接続に失敗しました',
+          error: gptError instanceof Error ? gptError.message : 'OpenAI APIへの接続に失敗しました',
+          details: gptError.code ? `エラーコード: ${gptError.code}` : undefined,
+          environment: isDevelopment ? 'development' : 'production',
+          timestamp: new Date().toISOString()
+        });
+      }
+    } catch (error) {
+      console.error('[diagnostic] GPT接続チェックエラー:', error);
+      res.status(500).json({
+        success: false,
+        status: 'ERROR',
+        message: 'GPT接続チェック中にエラーが発生しました',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
 }

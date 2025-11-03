@@ -103,8 +103,9 @@ const EmergencyGuidePage: React.FC = () => {
   useEffect(() => {
     const refreshFlowList = async () => {
       try {
+        const { buildApiUrl } = await import('../lib/api-unified');
         const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list?ts=${Date.now()}`,
+          buildApiUrl(`/troubleshooting/list?ts=${Date.now()}`),
           {
             credentials: 'include',
             headers: {

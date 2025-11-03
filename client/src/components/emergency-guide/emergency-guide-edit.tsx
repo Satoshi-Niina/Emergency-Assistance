@@ -617,8 +617,9 @@ const EmergencyGuideEdit: React.FC = () => {
         filePath: updatedFlowData.filePath,
       });
 
+      const { buildApiUrl } = await import('../../lib/api-unified');
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${updatedFlowData.id}`,
+        buildApiUrl(`/emergency-flow/${updatedFlowData.id}`),
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -660,8 +661,9 @@ const EmergencyGuideEdit: React.FC = () => {
         filePath: filePath,
       });
 
+      const { buildApiUrl } = await import('../../lib/api-unified');
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${flowId}`,
+        buildApiUrl(`/emergency-flow/${flowId}`),
         {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },

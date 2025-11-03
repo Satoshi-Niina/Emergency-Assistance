@@ -26,7 +26,8 @@ export function getRuntimeConfig(): RuntimeConfig {
      window.location.hostname.includes('127.0.0.1'));
 
   return {
-    API_BASE_URL: isLocalhost ? 'http://localhost:8080/api' : '/api',
+    // API_BASE_URLには/apiを含めない（buildApiUrlで追加されるため）
+    API_BASE_URL: isLocalhost ? 'http://localhost:8080' : '',
     CORS_ALLOW_ORIGINS: '*'
   };
 }

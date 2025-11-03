@@ -41,26 +41,31 @@ export const API_BASE_URL = (() => {
 
 // APIエンドポイントの構築
 export function buildApiUrl(path: string): string {
+  // パスを正規化（先頭の/を確保）
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   
+  // API_BASE_URLを正規化（末尾の/と/apiを除去）
+  let baseUrl = API_BASE_URL.replace(/\/$/, '').replace(/\/api$/, '');
+  
+  // パスが既に/apiで始まっている場合は重複を避ける
+  const pathWithoutApi = cleanPath.startsWith('/api/') 
+    ? cleanPath.replace(/^\/api/, '') 
+    : cleanPath.startsWith('/api')
+    ? '/' 
+    : cleanPath;
+  
+  // 最終的なURLを構築（必ず/apiを含める）
+  const result = `${baseUrl}/api${pathWithoutApi.startsWith('/') ? pathWithoutApi : '/' + pathWithoutApi}`;
+  
   // デバッグログ
-  console.log('🔧 buildApiUrl debug:', {
-    path,
+  console.log('🔧 buildApiUrl:', {
+    originalPath: path,
     cleanPath,
-    API_BASE_URL,
-    includesApi: API_BASE_URL.includes('/api')
+    baseUrl,
+    finalUrl: result
   });
   
-  // API_BASE_URLに/apiが含まれているかチェック
-  if (API_BASE_URL.includes('/api')) {
-    const result = `${API_BASE_URL}${cleanPath}`;
-    console.log('🔧 Using existing /api:', result);
-    return result;
-  } else {
-    const result = `${API_BASE_URL}/api${cleanPath}`;
-    console.log('🔧 Adding /api:', result);
-    return result;
-  }
+  return result;
 }
 
 // トークン取得関数

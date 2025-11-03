@@ -44,13 +44,24 @@ export default function SystemDiagnosticPage() {
   // APIのベースURLを取得
   const apiBaseUrl =
     import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
+  
+  // API URLを構築（/apiの重複を防ぐ）
+  const buildApiPath = (path: string) => {
+    const base = apiBaseUrl.replace(/\/$/, ''); // 末尾の/を削除
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    // apiBaseUrlに既に/apiが含まれている場合は追加しない
+    if (base.endsWith('/api')) {
+      return `${base}${cleanPath}`;
+    }
+    return `${base}/api${cleanPath}`;
+  };
 
   const checkDatabaseConnection = async () => {
     setIsCheckingDb(true);
     setDbCheckResult(null);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/_diag/postgresql`);
+      const response = await fetch(buildApiPath('/_diag/postgresql'));
       const result = await response.json();
 
       // サーバーのレスポンス形式に合わせて変換
@@ -101,7 +112,7 @@ export default function SystemDiagnosticPage() {
     setGptCheckResult(null);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/_diag/gpt`);
+      const response = await fetch(buildApiPath('/_diag/gpt'));
 
       const result = await response.json();
       

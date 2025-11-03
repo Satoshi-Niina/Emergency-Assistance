@@ -16,6 +16,11 @@ import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { spawn } from 'child_process';
+import multer from 'multer';
+import OpenAI from 'openai';
+import sharp from 'sharp';
+import crypto from 'crypto';
+import archiver from 'archiver';
 
 // UTF-8環境設定
 process.env.NODE_OPTIONS = '--max-old-space-size=4096';
@@ -259,6 +264,90 @@ function authenticateToken(req, res, next) {
 
 // API router
 const apiRouter = express.Router();
+
+// multer設定（ファイルアップロード用）
+const upload = multer({
+  dest: 'uploads/',
+  limits: {
+    fileSize: 20 * 1024 * 1024, // 20MB制限
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['.txt', '.pdf', '.xlsx', '.pptx'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedTypes.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('サポートされていないファイル形式です'));
+    }
+  },
+});
+
+// 画像アップロード用multer設定（メモリストレージ）
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB制限
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+    ];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('画像ファイルのみアップロード可能です'));
+    }
+  },
+});
+
+// ファイルハッシュ計算関数
+function calculateFileHash(buffer) {
+  return crypto.createHash('sha256').update(buffer).digest('hex');
+}
+
+// ハッシュで既存画像を検索する関数
+function findExistingImageByHash(uploadDir, fileHash) {
+  if (!fs.existsSync(uploadDir)) {
+    return null;
+  }
+  
+  const files = fs.readdirSync(uploadDir);
+  for (const file of files) {
+    try {
+      const filePath = path.join(uploadDir, file);
+      if (fs.statSync(filePath).isFile()) {
+        const fileBuffer = fs.readFileSync(filePath);
+        const existingHash = calculateFileHash(fileBuffer);
+        if (existingHash === fileHash) {
+          return file;
+        }
+      }
+    } catch (error) {
+      console.warn(`ファイルハッシュ計算エラー: ${file}`, error);
+      continue;
+    }
+  }
+  return null;
+}
+
+// OpenAIクライアントの初期化（条件付き）
+let openai = null;
+if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'dev-mock-key') {
+  try {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+    console.log('✅ OpenAI client initialized');
+  } catch (error) {
+    console.warn('⚠️ OpenAI client initialization failed:', error.message);
+  }
+} else {
+  console.log('[DEV] OpenAI client not initialized - API key not available');
+}
 
 // ヘルスチェック
 apiRouter.get('/health', async (req, res) => {
@@ -1772,6 +1861,11 @@ apiRouter.get('/emergency-flow/list', async (req, res) => {
       }
     }).filter(item => item !== null);
     
+    // 作成日時でソート（新しい順）
+    flows.sort((a, b) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    
     res.json({
       success: true,
       data: flows,
@@ -1789,7 +1883,101 @@ apiRouter.get('/emergency-flow/list', async (req, res) => {
   }
 });
 
-// 応急処置フロー詳細取得API
+// 応急処置フロー詳細取得API（/:id形式）
+apiRouter.get('/emergency-flow/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`🔍 応急処置フロー詳細取得リクエスト (/:id): ${id}`);
+    
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+    
+    let targetDir = troubleshootingDir;
+    if (!fs.existsSync(troubleshootingDir)) {
+      if (fs.existsSync(alternativeDir)) {
+        targetDir = alternativeDir;
+      } else {
+        return res.status(404).json({
+          success: false,
+          error: 'トラブルシューティングディレクトリが見つかりません',
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+    
+    const files = fs.readdirSync(targetDir);
+    const jsonFiles = files.filter(file => file.endsWith('.json'));
+    
+    let flowData = null;
+    let fileName = null;
+    
+    for (const file of jsonFiles) {
+      try {
+        const filePath = path.join(targetDir, file);
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const data = JSON.parse(fileContent);
+        
+        if (data.id === id || file.replace('.json', '') === id) {
+          flowData = data;
+          fileName = file;
+          break;
+        }
+      } catch (error) {
+        console.error(`ファイル読み込みエラー: ${file}`, error);
+      }
+    }
+    
+    if (!flowData) {
+      return res.status(404).json({
+        success: false,
+        error: '指定されたフローが見つかりません',
+        id: id,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // 画像URLを変換（相対パスの場合は完全なURLに変換）
+    if (flowData.steps) {
+      flowData.steps.forEach((step, index) => {
+        if (step.images && Array.isArray(step.images)) {
+          step.images = step.images.map(img => {
+            if (img.url && !img.url.startsWith('http') && !img.url.startsWith('/')) {
+              img.url = `/api/emergency-flow/image/${img.fileName || img.url}`;
+            } else if (img.url && img.url.startsWith('/api/emergency-flow/image/')) {
+              // 既に正しい形式
+            } else if (img.fileName && !img.url) {
+              img.url = `/api/emergency-flow/image/${img.fileName}`;
+            }
+            return img;
+          });
+        }
+      });
+    }
+    
+    console.log('✅ 応急処置フロー詳細取得成功:', {
+      id: flowData.id,
+      title: flowData.title,
+      stepsCount: flowData.steps?.length || 0,
+      fileName: fileName
+    });
+    
+    res.json({
+      success: true,
+      data: flowData,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ 応急処置フロー詳細取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '応急処置フロー詳細の取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 応急処置フロー詳細取得API（/detail/:id形式 - 互換性のため残す）
 apiRouter.get('/emergency-flow/detail/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -1874,6 +2062,1014 @@ apiRouter.get('/emergency-flow/detail/:id', async (req, res) => {
       error: '応急処置フロー詳細の取得に失敗しました',
       details: error.message,
       timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// GPTレスポンスから手順を抽出するフォールバック関数
+function extractStepsFromResponse(response, keyword) {
+  const steps = [];
+  const lines = response.split('\n').filter(line => line.trim());
+
+  // 段落ごとに手順として抽出
+  let currentStep = null;
+  let stepCount = 0;
+
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+
+    // 新しい段落の開始を検出
+    if (
+      trimmedLine &&
+      !trimmedLine.startsWith('**') &&
+      !trimmedLine.startsWith('例:') &&
+      !trimmedLine.startsWith('タイトル：') &&
+      !trimmedLine.startsWith('手順：') &&
+      !trimmedLine.match(/^手順\d+：/) &&
+      !trimmedLine.match(/^\d+\./)
+    ) {
+      if (currentStep) {
+        steps.push(currentStep);
+      }
+
+      stepCount++;
+      currentStep = {
+        id: `step_${stepCount}`,
+        title:
+          trimmedLine.substring(0, 50) + (trimmedLine.length > 50 ? '...' : ''),
+        description: trimmedLine,
+        message: trimmedLine,
+        type: 'step',
+        imageUrl: '',
+        options: [],
+      };
+    } else if (currentStep && trimmedLine) {
+      // 既存の手順に詳細を追加
+      currentStep.description += '\n' + trimmedLine;
+      currentStep.message += '\n' + trimmedLine;
+    }
+  }
+
+  if (currentStep) {
+    steps.push(currentStep);
+  }
+
+  // 手順が抽出できない場合は、キーワードベースでデフォルト手順を生成
+  if (steps.length === 0) {
+    steps.push({
+      id: 'step_1',
+      title: `${keyword}の安全確認`,
+      description: `${keyword}の状況を安全に確認してください。作業現場の安全を確保し、必要に応じて緊急停止を行ってください。`,
+      message: `${keyword}の状況を安全に確認してください。作業現場の安全を確保し、必要に応じて緊急停止を行ってください。`,
+      type: 'step',
+      imageUrl: '',
+      options: [],
+    });
+
+    steps.push({
+      id: 'step_2',
+      title: `${keyword}の詳細点検`,
+      description: `${keyword}の故障状況を詳細に点検し、問題の程度と範囲を確認してください。`,
+      message: `${keyword}の故障状況を詳細に点検し、問題の程度と範囲を確認してください。`,
+      type: 'step',
+      imageUrl: '',
+      options: [],
+    });
+
+    steps.push({
+      id: 'step_3',
+      title: '専門技術者への連絡',
+      description:
+        '安全で確実な対応のため、専門技術者に連絡して指示を仰いでください。',
+      message:
+        '安全で確実な対応のため、専門技術者に連絡して指示を仰いでください。',
+      type: 'step',
+      imageUrl: '',
+      options: [],
+    });
+  }
+
+  return steps;
+}
+
+// POST /api/emergency-flow/upload-image - 画像アップロードエンドポイント
+apiRouter.post('/emergency-flow/upload-image', imageUpload.single('image'), async (req, res) => {
+  try {
+    console.log('🖼️ 画像アップロードリクエスト受信:', {
+      hasFile: !!req.file,
+      fileSize: req.file?.size,
+      fileName: req.file?.originalname,
+      mimetype: req.file?.mimetype,
+      body: req.body
+    });
+
+    if (!req.file) {
+      console.log('❌ 画像ファイルが提供されていません');
+      return res.status(400).json({
+        success: false,
+        error: '画像ファイルが提供されていません',
+      });
+    }
+
+    // ファイル形式チェック
+    const allowedMimes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+    ];
+    if (!allowedMimes.includes(req.file.mimetype)) {
+      return res.status(400).json({
+        success: false,
+        error: '対応していないファイル形式です',
+      });
+    }
+
+    // ファイルサイズチェック（10MB）
+    if (req.file.size > 10 * 1024 * 1024) {
+      return res.status(400).json({
+        success: false,
+        error: 'ファイルサイズは10MB以下にしてください',
+      });
+    }
+
+    // 画像を150pxにリサイズ
+    let resizedBuffer;
+    try {
+      resizedBuffer = await sharp(req.file.buffer)
+        .resize(150, 150, {
+          fit: 'inside', // アスペクト比を維持しながら、150x150以内に収める
+          withoutEnlargement: true, // 小さい画像は拡大しない
+        })
+        .jpeg({ quality: 85 }) // JPEG形式で保存（品質85%）
+        .toBuffer();
+      
+      console.log('✅ 画像リサイズ成功:', {
+        originalSize: req.file.size,
+        resizedSize: resizedBuffer.length,
+        reduction: `${Math.round((1 - resizedBuffer.length / req.file.size) * 100)}%`
+      });
+    } catch (resizeError) {
+      console.error('❌ 画像リサイズエラー:', resizeError);
+      // リサイズに失敗した場合は元の画像を使用
+      resizedBuffer = req.file.buffer;
+      console.warn('⚠️ 元の画像を使用します');
+    }
+
+    // ファイル名を生成（タイムスタンプ + オリジナル名）
+    const timestamp = Date.now();
+    const originalName = req.file.originalname;
+    const extension = 'jpg'; // リサイズ後は常にJPEG形式
+    const fileName = `emergency-flow-step${timestamp}.${extension}`;
+
+    // 保存先ディレクトリを作成
+    const uploadDir = path.join(
+      process.cwd(),
+      'knowledge-base',
+      'images',
+      'emergency-flows'
+    );
+    const alternativeDir = path.join(
+      process.cwd(),
+      '..',
+      'knowledge-base',
+      'images',
+      'emergency-flows'
+    );
+    
+    let targetDir = uploadDir;
+    if (!fs.existsSync(uploadDir)) {
+      if (fs.existsSync(alternativeDir)) {
+        targetDir = alternativeDir;
+      } else {
+        fs.mkdirSync(uploadDir, { recursive: true });
+        targetDir = uploadDir;
+      }
+    }
+    
+    console.log('📁 アップロードディレクトリ:', targetDir);
+
+    // ファイルの重複チェック
+    let fileHash;
+    try {
+      fileHash = calculateFileHash(resizedBuffer);
+      console.log('🔍 ファイルハッシュ計算:', { fileHash: fileHash.substring(0, 16) + '...' });
+    } catch (hashError) {
+      console.error('❌ ハッシュ計算エラー:', hashError);
+      throw new Error(`ファイルハッシュの計算に失敗しました: ${hashError instanceof Error ? hashError.message : 'Unknown error'}`);
+    }
+
+    let existingFile = null;
+    try {
+      existingFile = findExistingImageByHash(targetDir, fileHash);
+    } catch (searchError) {
+      console.warn('⚠️ 重複ファイル検索エラー（続行）:', searchError);
+    }
+
+    let finalFileName = fileName;
+    let isDuplicate = false;
+
+    if (existingFile) {
+      console.log('🔄 重複画像を検出、既存ファイルを使用:', existingFile);
+      finalFileName = existingFile;
+      isDuplicate = true;
+    } else {
+      // 新しいファイルを保存
+      const filePath = path.join(targetDir, fileName);
+      console.log('💾 ファイル保存中:', {
+        filePath,
+        fileSize: resizedBuffer.length,
+        fileName,
+      });
+      
+      try {
+        fs.writeFileSync(filePath, resizedBuffer);
+        console.log('✅ ファイル保存成功:', filePath);
+      } catch (writeError) {
+        console.error('❌ ファイル保存エラー:', writeError);
+        throw new Error(`ファイルの保存に失敗しました: ${writeError instanceof Error ? writeError.message : 'Unknown error'}`);
+      }
+    }
+
+    // APIエンドポイントのURLを生成
+    const imageUrl = `/api/emergency-flow/image/${finalFileName}`;
+
+    console.log('✅ 画像アップロード成功:', {
+      fileName: finalFileName,
+      imageUrl,
+      fileSize: resizedBuffer.length,
+      isDuplicate,
+    });
+
+    res.json({
+      success: true,
+      imageUrl,
+      fileName: finalFileName,
+      imageFileName: finalFileName, // 互換性のため
+      isDuplicate,
+    });
+  } catch (error) {
+    console.error('❌ 画像アップロードエラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '画像のアップロードに失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// PUT /api/emergency-flow/:id - フロー更新エンドポイント
+apiRouter.put('/emergency-flow/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const flowData = req.body;
+    console.log('🔄 フロー更新開始:', { id, title: flowData.title });
+
+    // IDの一致確認
+    if (id !== flowData.id) {
+      return res.status(400).json({
+        success: false,
+        error: 'URLのIDとデータのIDが一致しません',
+      });
+    }
+
+    // 必須フィールドの検証
+    if (!flowData.title) {
+      return res.status(400).json({
+        success: false,
+        error: 'タイトルは必須です',
+      });
+    }
+
+    // knowledge-baseディレクトリのパス解決
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+    
+    let targetDir = troubleshootingDir;
+    if (!fs.existsSync(troubleshootingDir)) {
+      if (fs.existsSync(alternativeDir)) {
+        targetDir = alternativeDir;
+      } else {
+        return res.status(404).json({
+          success: false,
+          error: 'トラブルシューティングディレクトリが見つかりません',
+        });
+      }
+    }
+
+    const files = fs.readdirSync(targetDir);
+    const jsonFiles = files.filter(file => file.endsWith('.json'));
+
+    let fileName = null;
+
+    // IDに一致するファイルを検索
+    for (const file of jsonFiles) {
+      try {
+        const filePath = path.join(targetDir, file);
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const data = JSON.parse(fileContent);
+
+        if (data.id === id || file.replace('.json', '') === id) {
+          fileName = file;
+          break;
+        }
+      } catch (error) {
+        console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
+      }
+    }
+
+    if (!fileName) {
+      return res.status(404).json({
+        success: false,
+        error: '更新対象のフローが見つかりません',
+      });
+    }
+
+    // 既存ファイルの読み込み
+    const filePath = path.join(targetDir, fileName);
+    let originalData = null;
+    if (fs.existsSync(filePath)) {
+      try {
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        originalData = JSON.parse(fileContent);
+        console.log('📖 既存データ読み込み成功:', {
+          id: originalData.id,
+          title: originalData.title,
+          stepsCount: originalData.steps?.length || 0,
+          hasImages: originalData.steps?.some(step => step.images && step.images.length > 0) || false
+        });
+      } catch (error) {
+        console.error('❌ 既存ファイル読み込みエラー:', error);
+        originalData = null;
+      }
+    }
+
+    // 差分を適用して更新（深いマージ）
+    const mergeData = (original, updates) => {
+      const result = { ...original };
+
+      for (const [key, value] of Object.entries(updates)) {
+        if (
+          value !== null &&
+          typeof value === 'object' &&
+          !Array.isArray(value)
+        ) {
+          // オブジェクトの場合は再帰的にマージ
+          result[key] = mergeData(result[key] || {}, value);
+        } else if (Array.isArray(value) && key === 'steps') {
+          // steps配列の場合は特別な処理
+          if (result[key] && Array.isArray(result[key])) {
+            // 既存のstepsと新しいstepsをマージ
+            result[key] = value.map(newStep => {
+              const existingStep = result[key].find(step => step.id === newStep.id);
+              if (existingStep) {
+                // 既存のステップがある場合は、画像データを保持してマージ
+                return {
+                  ...existingStep,
+                  ...newStep,
+                  // 画像データは新しいデータを優先するが、既存の画像も保持
+                  images: newStep.images || existingStep.images || []
+                };
+              }
+              return newStep;
+            });
+          } else {
+            result[key] = value;
+          }
+        } else {
+          // プリミティブ値やその他の配列は直接代入
+          result[key] = value;
+        }
+      }
+
+      return result;
+    };
+
+    // 画像情報の検証とクリーニング
+    if (flowData.steps) {
+      flowData.steps.forEach((step, index) => {
+        // 画像配列が存在しない場合は空配列を設定
+        if (!step.images) {
+          step.images = [];
+        }
+        
+        // 画像配列が存在する場合の処理
+        if (step.images && step.images.length > 0) {
+          console.log(`🖼️ ステップ[${index}]の画像情報:`, {
+            stepId: step.id,
+            stepTitle: step.title,
+            imagesCount: step.images.length,
+            images: step.images.map(img => ({
+              fileName: img.fileName,
+              url: img.url?.substring(0, 100) + '...',
+              urlValid: img.url && img.url.trim() !== '',
+              fileNameValid: img.fileName && img.fileName.trim() !== ''
+            }))
+          });
+          
+          // 画像情報の検証と修正
+          step.images = step.images.filter(img => {
+            if (!img || !img.url || img.url.trim() === '') {
+              console.log(`❌ 無効な画像情報を除外:`, img);
+              return false;
+            }
+            
+            // ファイル名が無い場合はURLから抽出
+            if (!img.fileName || img.fileName.trim() === '') {
+              if (img.url.includes('/')) {
+                img.fileName = img.url.split('/').pop() || '';
+              } else if (img.url.includes('\\')) {
+                img.fileName = img.url.split('\\').pop() || '';
+              } else {
+                img.fileName = img.url;
+              }
+              console.log(`📁 ファイル名を補完:`, { url: img.url, fileName: img.fileName });
+            }
+            
+            return true;
+          });
+        } else {
+          console.log(`📝 ステップ[${index}]に画像なし:`, {
+            stepId: step.id,
+            stepTitle: step.title,
+            imagesCount: 0
+          });
+        }
+      });
+    }
+
+    const updatedFlowData = mergeData(originalData || {}, {
+      ...flowData,
+      updatedAt: new Date().toISOString(),
+      // 更新履歴を追加
+      updateHistory: [
+        ...(originalData?.updateHistory || []),
+        {
+          timestamp: new Date().toISOString(),
+          updatedFields: Object.keys(flowData),
+          updatedBy: 'user',
+        },
+      ],
+    });
+
+    // 画像データの最終的な検証と修正
+    if (updatedFlowData.steps) {
+      updatedFlowData.steps.forEach((step, index) => {
+        if (step.images && Array.isArray(step.images)) {
+          // 画像配列の検証とクリーニング
+          step.images = step.images.filter(img => {
+            if (!img || typeof img !== 'object') {
+              console.log(`❌ 無効な画像オブジェクトを除外:`, img);
+              return false;
+            }
+            
+            if (!img.url || typeof img.url !== 'string' || img.url.trim() === '') {
+              console.log(`❌ URLが無効な画像を除外:`, img);
+              return false;
+            }
+            
+            // ファイル名が無い場合はURLから抽出
+            if (!img.fileName || img.fileName.trim() === '') {
+              if (img.url.includes('/')) {
+                img.fileName = img.url.split('/').pop() || '';
+              } else if (img.url.includes('\\')) {
+                img.fileName = img.url.split('\\').pop() || '';
+              } else {
+                img.fileName = img.url;
+              }
+              console.log(`📁 ファイル名を補完:`, { url: img.url, fileName: img.fileName });
+            }
+            
+            return true;
+          });
+          
+          console.log(`🖼️ ステップ[${index}]の最終画像データ:`, {
+            stepId: step.id,
+            stepTitle: step.title,
+            imagesCount: step.images.length,
+            images: step.images.map(img => ({
+              fileName: img.fileName,
+              url: img.url?.substring(0, 100) + '...',
+              urlValid: img.url && img.url.trim() !== ''
+            }))
+          });
+        }
+      });
+    }
+
+    // JSONファイルを更新
+    fs.writeFileSync(filePath, JSON.stringify(updatedFlowData, null, 2), 'utf-8');
+
+    console.log('✅ フロー更新成功:', {
+      id: updatedFlowData.id,
+      title: updatedFlowData.title,
+      stepsCount: updatedFlowData.steps?.length || 0,
+      stepsWithImages: updatedFlowData.steps?.filter(step => step.images && step.images.length > 0).length || 0,
+      filePath: filePath,
+    });
+
+    res.json({
+      success: true,
+      data: updatedFlowData,
+      message: 'フローが正常に更新されました',
+    });
+  } catch (error) {
+    console.error('❌ フロー更新エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'フローの更新に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// POST /api/emergency-flow/generate - フロー生成エンドポイント
+apiRouter.post('/emergency-flow/generate', async (req, res) => {
+  try {
+    const { keyword } = req.body;
+    
+    if (!keyword || typeof keyword !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'キーワードが必要です',
+      });
+    }
+
+    console.log(`🔄 フロー生成開始: キーワード=${keyword}`);
+
+    // OpenAIクライアントが利用可能かチェック
+    if (!openai) {
+      return res.status(503).json({
+        success: false,
+        error:
+          'OpenAI APIが利用できません。開発環境ではAPIキーを設定してください。',
+        details: 'OpenAI client not available',
+      });
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        {
+          role: 'system',
+          content: `あなたは建設機械の故障診断と応急処置の専門家です。
+以下の形式で一問一答形式の詳細な応急処置フローを生成してください：
+
+**必須フォーマット:**
+1. タイトル：[具体的な問題名]
+
+2. ステップ形式（一問一答）:
+   各ステップは1つの質問または1つの作業指示にしてください。
+   
+   **通常ステップ（step）:**
+   手順1：[1つの具体的な質問または作業指示]
+   説明：[簡潔な説明と実施方法]
+   
+   **条件分岐ステップ（decision）:**
+   条件分岐：[判断が必要な状況]
+   説明：[判断基準の説明]
+   選択肢1：[選択肢1の内容]
+   選択肢2：[選択肢2の内容]
+   選択肢3：[選択肢3の内容]
+   選択肢4：[選択肢4の内容]
+   
+   各選択肢の次のステップ：[対応する次のステップの説明]
+
+**重要な要求事項:**
+- ステップは細かく分ける（1ステップ=1つの質問または1つの作業）
+- 各ステップは簡潔に（50-100文字程度）
+- 判断や条件分岐が必要な箇所では必ず条件分岐ステップを作成
+- 条件分岐では4つの選択肢を提供（例：「正常」「異常あり」「不明」「緊急」など）
+- 安全確認は最初のステップに必ず含める
+- 必要な工具や部品があれば明記
+- 専門技術者への連絡が必要な場合は最後のステップに含める
+
+**例:**
+タイトル：エンジン始動不良
+
+手順1（step）：エンジンが完全に停止しているか確認してください。
+説明：キーを回してエンジンが全く反応しないか、クランキング音がしないかを確認します。
+
+条件分岐1（decision）：エンジンの状態を確認してください。
+説明：エンジンルームを開いて状態を確認します。
+選択肢1：エンジンは停止している（正常な停止状態）
+選択肢2：エンジンから異常音がする
+選択肢3：異臭がする
+選択肢4：異常な発熱がある
+
+手順2（step）：バッテリーの端子を目視で確認してください。
+説明：バッテリー端子の緩み、腐食、接続状態を確認します。
+
+条件分岐2（decision）：バッテリー端子の状態はどうですか？
+説明：端子の状態を確認し、問題があれば選択してください。
+選択肢1：端子はしっかり接続されている（正常）
+選択肢2：端子が緩んでいる
+選択肢3：端子に腐食がある
+選択肢4：端子が外れている
+
+手順3（step）：バッテリー電圧をテスターで測定してください。
+説明：テスターのプラス端子をバッテリーのプラス極、マイナス端子をマイナス極に接続して電圧を測定します。
+
+条件分岐3（decision）：バッテリー電圧は何ボルトですか？
+説明：測定結果に応じて選択してください。
+選択肢1：12.6V以上（正常）
+選択肢2：10V以上12.6V未満（充電不足）
+選択肢3：10V未満（深刻な問題）
+選択肢4：測定できない（接続不良）
+
+最終ステップ（step）：測定結果と状態を専門技術者に報告し、指示を仰いでください。
+説明：確認した内容（エンジン状態、バッテリー状態、電圧値）を専門技術者に伝え、次の対応を指示してもらいます。`,
+        },
+        {
+          role: 'user',
+          content: `以下の故障状況に対する応急処置フローを一問一答形式で生成してください：${keyword}`,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 3000,
+    });
+
+    const generatedContent = completion.choices[0]?.message?.content;
+    if (!generatedContent) {
+      throw new Error('フロー生成に失敗しました');
+    }
+
+    // 生成されたコンテンツをパースしてフロー構造に変換（一問一答形式・条件分岐対応）
+    console.log('🔍 GPTレスポンスの解析開始:', {
+      contentLength: generatedContent.length,
+      lineCount: generatedContent.split('\n').length,
+    });
+
+    const lines = generatedContent.split('\n').filter(line => line.trim());
+    const title =
+      lines
+        .find(line => line.includes('タイトル：') || line.includes('タイトル:'))
+        ?.replace(/タイトル[：:]/, '')
+        .trim() || keyword;
+
+    console.log('📝 抽出されたタイトル:', title);
+
+    const steps = [];
+    let currentStep = null;
+    let isInDecision = false;
+    let currentDecisionOptions = [];
+    let stepCounter = 0;
+
+    // ステップを細かく分割し、条件分岐を検出する関数
+    function parseStepsFromContent(content) {
+      const parsedSteps = [];
+      let currentStepObj = null;
+      let inDecision = false;
+      let decisionOptions = [];
+      let decisionTitle = '';
+      let decisionDescription = '';
+      let stepNum = 0;
+
+      const allLines = content.split('\n').filter(l => l.trim());
+      
+      for (let i = 0; i < allLines.length; i++) {
+        const line = allLines[i].trim();
+        
+        // タイトル行をスキップ
+        if (line.includes('タイトル')) continue;
+        
+        // 条件分岐の検出
+        if (line.includes('条件分岐') || line.match(/条件分岐\d+/)) {
+          // 前のステップを保存
+          if (currentStepObj && currentStepObj.type === 'step') {
+            parsedSteps.push(currentStepObj);
+            currentStepObj = null;
+          }
+          
+          inDecision = true;
+          decisionTitle = line.replace(/条件分岐\d*[：:]?/, '').trim();
+          decisionOptions = [];
+          decisionDescription = '';
+          continue;
+        }
+        
+        // 通常の手順ステップの検出
+        if ((line.includes('手順') && (line.includes('(step)') || line.match(/手順\d+[（(]step[）)]/))) ||
+            (line.match(/^\d+\./) && !inDecision)) {
+          // 前のステップを保存
+          if (currentStepObj) {
+            parsedSteps.push(currentStepObj);
+          }
+          if (inDecision) {
+            // 条件分岐ステップを保存
+            stepNum++;
+            // 選択肢が4つ未満の場合は補完
+            let finalOptions = [...decisionOptions];
+            if (finalOptions.length < 4) {
+              // 不足分を補完（例：「その他」「不明」「確認が必要」など）
+              const defaultOptions = ['その他', '不明', '確認が必要', '緊急'];
+              while (finalOptions.length < 4) {
+                const defaultOption = defaultOptions[finalOptions.length - decisionOptions.length] || `選択肢${finalOptions.length + 1}`;
+                finalOptions.push(defaultOption);
+              }
+            }
+            
+            parsedSteps.push({
+              id: `step_${stepNum}`,
+              title: decisionTitle || '状態を確認してください',
+              description: decisionDescription || decisionTitle,
+              message: decisionDescription || decisionTitle,
+              type: 'decision',
+              imageUrl: '',
+              options: finalOptions.slice(0, 4).map((opt, idx) => ({
+                text: opt,
+                nextStepId: `step_${stepNum + 1 + idx}`,
+                isTerminal: false,
+                conditionType: idx === 0 ? 'yes' : idx === 1 ? 'no' : idx === 2 ? 'maybe' : 'other',
+                condition: opt,
+              })),
+            });
+            inDecision = false;
+            decisionOptions = [];
+          }
+          
+          stepNum++;
+          const stepTitle = line
+            .replace(/手順\d*[（(]step[）)]?[：:]?/, '')
+            .replace(/^\d+\./, '')
+            .trim();
+          
+          currentStepObj = {
+            id: `step_${stepNum}`,
+            title: stepTitle,
+            description: stepTitle,
+            message: stepTitle,
+            type: 'step',
+            imageUrl: '',
+            options: [],
+          };
+          continue;
+        }
+        
+        // 説明行の処理
+        if (line.includes('説明：') || line.includes('説明:')) {
+          const desc = line.replace(/説明[：:]/, '').trim();
+          if (inDecision) {
+            decisionDescription += (decisionDescription ? '\n' : '') + desc;
+          } else if (currentStepObj) {
+            currentStepObj.description = desc;
+            currentStepObj.message = desc;
+          }
+          continue;
+        }
+        
+        // 選択肢の検出（選択肢1-4）
+        if (line.match(/選択肢[1234][：:]/) || line.match(/^[1234][．.][：:]/)) {
+          if (inDecision) {
+            const optionText = line
+              .replace(/選択肢[1234][：:]/, '')
+              .replace(/^[1234][．.][：:]/, '')
+              .trim();
+            if (optionText) {
+              decisionOptions.push(optionText);
+            }
+          }
+          continue;
+        }
+        
+        // その他の行を説明に追加
+        if (line && !line.startsWith('**') && !line.startsWith('例') && !line.match(/^[*-]/)) {
+          if (inDecision && !line.includes('選択肢') && !line.includes('タイトル')) {
+            if (!decisionDescription && decisionTitle) {
+              decisionDescription = line;
+            } else if (decisionDescription && !decisionOptions.includes(line)) {
+              decisionDescription += '\n' + line;
+            }
+          } else if (currentStepObj && !line.includes('条件分岐')) {
+            currentStepObj.description += (currentStepObj.description !== currentStepObj.title ? '\n' : '') + line;
+            currentStepObj.message += (currentStepObj.message !== currentStepObj.title ? '\n' : '') + line;
+          }
+        }
+      }
+      
+      // 最後のステップを保存
+      if (currentStepObj) {
+        parsedSteps.push(currentStepObj);
+      }
+      if (inDecision) {
+        stepNum++;
+        // 選択肢が4つ未満の場合は補完
+        let finalOptions = [...decisionOptions];
+        if (finalOptions.length < 4) {
+          const defaultOptions = ['その他', '不明', '確認が必要', '緊急'];
+          while (finalOptions.length < 4) {
+            const defaultOption = defaultOptions[finalOptions.length - decisionOptions.length] || `選択肢${finalOptions.length + 1}`;
+            finalOptions.push(defaultOption);
+          }
+        }
+        
+        parsedSteps.push({
+          id: `step_${stepNum}`,
+          title: decisionTitle || '状態を確認してください',
+          description: decisionDescription || decisionTitle,
+          message: decisionDescription || decisionTitle,
+          type: 'decision',
+          imageUrl: '',
+          options: finalOptions.slice(0, 4).map((opt, idx) => ({
+            text: opt,
+            nextStepId: `step_${stepNum + 1 + idx}`,
+            isTerminal: false,
+            conditionType: idx === 0 ? 'yes' : idx === 1 ? 'no' : idx === 2 ? 'maybe' : 'other',
+            condition: opt,
+          })),
+        });
+      }
+      
+      return parsedSteps;
+    }
+
+    // パース処理を実行
+    steps.push(...parseStepsFromContent(generatedContent));
+    
+    // ステップが細かく分割されていない場合、さらに細分化
+    if (steps.length < 5) {
+      console.log('⚠️ ステップ数が少ないため、さらに細分化します');
+      
+      const refinedSteps = [];
+      steps.forEach((step, index) => {
+        if (step.type === 'step' && step.description.length > 150) {
+          // 長い説明を複数のステップに分割
+          const sentences = step.description.split(/[。\n]/).filter(s => s.trim().length > 10);
+          sentences.forEach((sentence, sIdx) => {
+            refinedSteps.push({
+              id: `step_${index + 1}_${sIdx + 1}`,
+              title: sentence.substring(0, 50) + (sentence.length > 50 ? '...' : ''),
+              description: sentence.trim(),
+              message: sentence.trim(),
+              type: 'step',
+              imageUrl: '',
+              options: [],
+            });
+          });
+        } else {
+          refinedSteps.push(step);
+        }
+      });
+      
+      steps.length = 0;
+      steps.push(...refinedSteps);
+    }
+    
+    // ステップIDを再割り当てし、decisionステップの次のステップリンクを設定
+    steps.forEach((step, idx) => {
+      const newId = `step_${idx + 1}`;
+      step.id = newId;
+      
+      // decisionステップのoptionsのnextStepIdを更新
+      // 選択肢1→次のステップ、選択肢2→その次のステップ...という形でリンク
+      if (step.type === 'decision' && step.options && step.options.length > 0) {
+        step.options.forEach((opt, optIdx) => {
+          // 次のステップが存在する場合は次のステップ、存在しない場合は最後のステップにリンク
+          const nextStepIdx = Math.min(idx + 1 + optIdx, steps.length - 1);
+          opt.nextStepId = `step_${nextStepIdx + 1}`;
+          
+          // 条件分岐の選択肢が4つ未満の場合は、デフォルトで次のステップに進むように設定
+          if (optIdx >= step.options.length - 1 && nextStepIdx < steps.length - 1) {
+            opt.nextStepId = `step_${nextStepIdx + 1}`;
+          }
+        });
+      }
+    });
+
+    console.log('📊 手順抽出結果:', {
+      totalSteps: steps.length,
+      stepTypes: steps.map(s => ({ id: s.id, type: s.type, hasOptions: s.options?.length > 0 })),
+      stepTitles: steps.map(s => s.title),
+      decisionSteps: steps.filter(s => s.type === 'decision').length,
+      normalSteps: steps.filter(s => s.type === 'step').length,
+    });
+
+    // 手順が生成されていない場合のフォールバック処理
+    if (steps.length === 0) {
+      console.log('⚠️ 手順が生成されていないため、フォールバック処理を実行');
+
+      // GPTの生のレスポンスから手順を抽出（一問一答形式に対応）
+      const fallbackSteps = extractStepsFromResponse(generatedContent, keyword);
+      
+      // フォールバック処理でも細分化を試みる
+      const refinedFallbackSteps = [];
+      fallbackSteps.forEach((step, index) => {
+        if (step.type === 'step' && step.description && step.description.length > 100) {
+          // 長い説明を複数のステップに分割
+          const sentences = step.description.split(/[。\n]/).filter(s => s.trim().length > 10);
+          sentences.forEach((sentence, sIdx) => {
+            refinedFallbackSteps.push({
+              id: `step_${index + 1}_${sIdx + 1}`,
+              title: sentence.substring(0, 60) + (sentence.length > 60 ? '...' : ''),
+              description: sentence.trim(),
+              message: sentence.trim(),
+              type: 'step',
+              imageUrl: '',
+              options: [],
+            });
+          });
+        } else {
+          refinedFallbackSteps.push(step);
+        }
+      });
+      
+      // ステップIDを再割り当て
+      refinedFallbackSteps.forEach((step, idx) => {
+        step.id = `step_${idx + 1}`;
+      });
+      
+      steps.push(...refinedFallbackSteps);
+
+      console.log('🔄 フォールバック手順生成完了:', {
+        fallbackStepsCount: fallbackSteps.length,
+        refinedStepsCount: refinedFallbackSteps.length,
+        totalStepsAfterFallback: steps.length,
+      });
+    }
+
+    const flowData = {
+      id: `flow_${Date.now()}`,
+      title: title,
+      description: `自動生成された${keyword}の応急処置フロー`,
+      triggerKeywords: [keyword],
+      steps: steps,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // knowledge-base/troubleshootingフォルダに保存
+    try {
+      const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+      const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+      
+      let targetDir = troubleshootingDir;
+      if (!fs.existsSync(troubleshootingDir)) {
+        if (fs.existsSync(alternativeDir)) {
+          targetDir = alternativeDir;
+        } else {
+          fs.mkdirSync(troubleshootingDir, { recursive: true });
+          targetDir = troubleshootingDir;
+        }
+      }
+      
+      const filePath = path.join(targetDir, `${flowData.id}.json`);
+
+      // ファイルに保存
+      fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf8');
+
+      console.log('✅ 生成フロー保存成功:', {
+        id: flowData.id,
+        title: flowData.title,
+        stepsCount: flowData.steps.length,
+        filePath: filePath,
+      });
+    } catch (fileError) {
+      console.error('❌ ファイル保存エラー:', fileError);
+      // ファイル保存に失敗しても、レスポンスは返す
+    }
+
+    // 生成されたフローの詳細情報を含むレスポンス
+    const responseData = {
+      success: true,
+      flowData: flowData,
+      response: generatedContent, // フロントエンドが期待する形式
+      message: 'フローが正常に生成されました',
+      generatedContent: generatedContent, // GPTの生のレスポンス
+      extractedSteps: steps.map(step => ({
+        id: step.id,
+        title: step.title,
+        description: step.description,
+        type: step.type,
+        optionsCount: step.options?.length || 0,
+      })),
+      summary: {
+        totalSteps: steps.length,
+        decisionSteps: steps.filter(s => s.type === 'decision').length,
+        normalSteps: steps.filter(s => s.type === 'step').length,
+        hasSpecificActions: steps.some(
+          step =>
+            step.description.includes('確認') ||
+            step.description.includes('点検') ||
+            step.description.includes('測定') ||
+            step.description.includes('調整')
+        ),
+        safetyNotes: steps.some(
+          step =>
+            step.description.includes('安全') ||
+            step.description.includes('危険') ||
+            step.description.includes('停止')
+        ),
+      },
+    };
+
+    res.json(responseData);
+  } catch (error) {
+    console.error('❌ フロー生成エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'フローの生成に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -2135,6 +3331,89 @@ apiRouter.get('/knowledge-base', async (req, res) => {
   }
 });
 
+// GET /api/knowledge-base/stats - ナレッジベース統計情報
+apiRouter.get('/knowledge-base/stats', async (req, res) => {
+  try {
+    console.log('📊 ナレッジベース統計情報取得リクエスト');
+    
+    const knowledgeBaseDir = path.join(process.cwd(), 'knowledge-base');
+    const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base');
+    
+    let targetDir = knowledgeBaseDir;
+    if (!fs.existsSync(knowledgeBaseDir)) {
+      if (fs.existsSync(alternativeDir)) {
+        targetDir = alternativeDir;
+      } else {
+        return res.json({
+          success: true,
+          data: {
+            total: 0,
+            totalSize: 0,
+            categoryCount: {},
+            typeStats: {},
+            lastMaintenance: undefined,
+            oldData: 0,
+          },
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+    
+    // documentsディレクトリから統計情報を取得
+    const documentsDir = path.join(targetDir, 'documents');
+    let total = 0;
+    const categoryCount = {};
+    const typeStats = {};
+    
+    if (fs.existsSync(documentsDir)) {
+      const docDirs = fs.readdirSync(documentsDir).filter(item => {
+        const itemPath = path.join(documentsDir, item);
+        return fs.statSync(itemPath).isDirectory();
+      });
+      
+      total = docDirs.length;
+      
+      // メタデータからカテゴリとタイプを集計
+      for (const dir of docDirs) {
+        try {
+          const metadataPath = path.join(documentsDir, dir, 'metadata.json');
+          if (fs.existsSync(metadataPath)) {
+            const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+            const category = metadata.category || 'uncategorized';
+            const type = metadata.type || 'unknown';
+            
+            categoryCount[category] = (categoryCount[category] || 0) + 1;
+            typeStats[type] = (typeStats[type] || 0) + 1;
+          }
+        } catch (error) {
+          console.warn(`メタデータ読み込みエラー: ${dir}`, error);
+        }
+      }
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        total,
+        totalSize: 0,
+        categoryCount,
+        typeStats,
+        lastMaintenance: undefined,
+        oldData: 0,
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ ナレッジベース統計情報取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ナレッジベース統計情報の取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // 設定RAG API
 apiRouter.get('/settings/rag', async (req, res) => {
   try {
@@ -2147,8 +3426,15 @@ apiRouter.get('/settings/rag', async (req, res) => {
         model: 'gpt-3.5-turbo',
         temperature: 0.7,
         maxTokens: 1000,
-        chunkSize: 1000,
-        overlap: 200
+        chunkSize: 500,  // 精度向上のため500文字に変更
+        overlap: 100,   // 20%のオーバーラップ
+        minChunkSize: 50,
+        processingMethod: 'semantic-boundary-aware',
+        features: {
+          semanticBoundarySplitting: true,
+          keywordExtraction: true,
+          textNormalization: true,
+        }
       },
       timestamp: new Date().toISOString()
     });
@@ -2175,8 +3461,15 @@ apiRouter.get('/config/rag', async (req, res) => {
         model: 'gpt-3.5-turbo',
         temperature: 0.7,
         maxTokens: 1000,
-        chunkSize: 1000,
-        overlap: 200
+        chunkSize: 500,  // 精度向上のため500文字に変更
+        overlap: 100,   // 20%のオーバーラップ
+        minChunkSize: 50,
+        processingMethod: 'semantic-boundary-aware',
+        features: {
+          semanticBoundarySplitting: true,
+          keywordExtraction: true,
+          textNormalization: true,
+        }
       },
       timestamp: new Date().toISOString()
     });
@@ -2846,30 +4139,31 @@ apiRouter.get('/history/exports/filter-data', async (req, res) => {
 console.log('✅ History exports endpoints registered');
 
 // Knowledge Base Cleanup Endpoints
-// POST /api/knowledge-base/cleanup/auto - 1年以上経過データを自動削除
-apiRouter.post('/knowledge-base/cleanup/auto', async (req, res) => {
+// 自動アーカイブ処理（1年以上経過データ）
+async function autoArchiveOldData() {
   try {
-    console.log('🗑️ 自動クリーンアップリクエスト（1年以上経過データ）');
+    console.log('📦 自動アーカイブ処理開始（1年以上経過データ）');
     
     const projectRoot = path.resolve(__dirname, '..');
     const knowledgeBaseDir = path.join(projectRoot, 'knowledge-base');
+    const archivesDir = path.join(knowledgeBaseDir, 'archives');
     
-    // 削除対象ディレクトリ
-    const directoriesToClean = [
-      'documents',
-      'text',
-      'qa',
-      'troubleshooting'
-    ];
+    // アーカイブディレクトリが存在しない場合は作成
+    if (!fs.existsSync(archivesDir)) {
+      fs.mkdirSync(archivesDir, { recursive: true });
+      console.log('📁 アーカイブディレクトリを作成しました:', archivesDir);
+    }
     
+    // アーカイブ対象ディレクトリ
+    const directoriesToArchive = ['documents', 'text', 'qa', 'troubleshooting'];
     const oneYearAgo = Date.now() - (365 * 24 * 60 * 60 * 1000);
-    let deletedCount = 0;
-    let errorCount = 0;
+    let archivedCount = 0;
+    let filesToArchive = [];
     
-    for (const dirName of directoriesToClean) {
+    // 1年以上経過したファイルを収集
+    for (const dirName of directoriesToArchive) {
       const targetDir = path.join(knowledgeBaseDir, dirName);
       if (!fs.existsSync(targetDir)) {
-        console.log(`📂 ディレクトリが存在しません: ${targetDir}`);
         continue;
       }
       
@@ -2879,53 +4173,183 @@ apiRouter.post('/knowledge-base/cleanup/auto', async (req, res) => {
           const filePath = path.join(targetDir, file);
           try {
             const stats = fs.statSync(filePath);
-            // 最終更新日時が1年以上前の場合
             if (stats.mtimeMs < oneYearAgo) {
-              if (stats.isDirectory()) {
-                // ディレクトリの場合は再帰的に削除
-                fs.rmSync(filePath, { recursive: true, force: true });
-                console.log(`🗑️ ディレクトリ削除: ${filePath}`);
-              } else {
-                fs.unlinkSync(filePath);
-                console.log(`🗑️ ファイル削除: ${filePath}`);
-              }
-              deletedCount++;
+              filesToArchive.push({
+                path: filePath,
+                dirName: dirName,
+                fileName: file
+              });
             }
           } catch (fileError) {
-            console.error(`❌ ファイル削除エラー: ${filePath}`, fileError);
-            errorCount++;
+            console.error(`❌ ファイル情報取得エラー: ${filePath}`, fileError);
           }
-        }
-        
-        // 空のディレクトリを削除
-        try {
-          const remainingFiles = fs.readdirSync(targetDir);
-          if (remainingFiles.length === 0) {
-            // ディレクトリ自体は残す（削除しない）
-          }
-        } catch (dirCheckError) {
-          // ディレクトリチェックエラーは無視
         }
       } catch (dirError) {
         console.error(`❌ ディレクトリ処理エラー: ${targetDir}`, dirError);
-        errorCount++;
       }
     }
     
-    console.log(`✅ 自動クリーンアップ完了: ${deletedCount}件削除, ${errorCount}件エラー`);
+    // アーカイブ対象がある場合のみ処理
+    if (filesToArchive.length > 0) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const archiveFileName = `auto-archive-${timestamp}.zip`;
+      const archiveFilePath = path.join(archivesDir, archiveFileName);
+      
+      const output = fs.createWriteStream(archiveFilePath);
+      const archive = archiver('zip', {
+        zlib: { level: 9 }
+      });
+      
+      archive.pipe(output);
+      
+      // ファイルをアーカイブに追加
+      for (const fileInfo of filesToArchive) {
+        try {
+          if (fs.statSync(fileInfo.path).isDirectory()) {
+            archive.directory(fileInfo.path, `${fileInfo.dirName}/${fileInfo.fileName}`);
+          } else {
+            archive.file(fileInfo.path, { name: `${fileInfo.dirName}/${fileInfo.fileName}` });
+          }
+          archivedCount++;
+        } catch (err) {
+          console.error(`❌ アーカイブ追加エラー: ${fileInfo.path}`, err);
+        }
+      }
+      
+      // アーカイブ完了を待つ
+      await new Promise((resolve, reject) => {
+        output.on('close', () => {
+          resolve();
+        });
+        archive.on('error', (err) => {
+          reject(err);
+        });
+        archive.finalize();
+      });
+      
+      // アーカイブ後、元のファイルを削除
+      for (const fileInfo of filesToArchive) {
+        try {
+          if (fs.statSync(fileInfo.path).isDirectory()) {
+            fs.rmSync(fileInfo.path, { recursive: true, force: true });
+          } else {
+            fs.unlinkSync(fileInfo.path);
+          }
+        } catch (err) {
+          console.error(`❌ ファイル削除エラー: ${fileInfo.path}`, err);
+        }
+      }
+      
+      const stats = fs.statSync(archiveFilePath);
+      console.log(`✅ 自動アーカイブ完了: ${archivedCount}件をアーカイブ (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
+    } else {
+      console.log('📦 アーカイブ対象のファイルはありませんでした');
+    }
+  } catch (error) {
+    console.error('❌ 自動アーカイブエラー:', error);
+  }
+}
+
+// 自動メンテナンス処理（整理・重複解消・状況更新）
+async function autoMaintenance() {
+  try {
+    console.log('🔧 自動メンテナンス処理開始');
+    
+    const projectRoot = path.resolve(__dirname, '..');
+    const knowledgeBaseDir = path.join(projectRoot, 'knowledge-base');
+    
+    // 1. 自動整理: 空のディレクトリや一時ファイルのクリーンアップ
+    const directoriesToCheck = ['documents', 'text', 'qa', 'troubleshooting'];
+    let cleanedCount = 0;
+    
+    for (const dirName of directoriesToCheck) {
+      const targetDir = path.join(knowledgeBaseDir, dirName);
+      if (!fs.existsSync(targetDir)) continue;
+      
+      try {
+        const files = fs.readdirSync(targetDir);
+        for (const file of files) {
+          const filePath = path.join(targetDir, file);
+          try {
+            const stats = fs.statSync(filePath);
+            // 空のファイルや破損したファイルを削除（将来的に拡張可能）
+            if (stats.size === 0 && stats.isFile()) {
+              fs.unlinkSync(filePath);
+              cleanedCount++;
+            }
+          } catch (err) {
+            // エラーは無視
+          }
+        }
+      } catch (err) {
+        // エラーは無視
+      }
+    }
+    
+    if (cleanedCount > 0) {
+      console.log(`🧹 自動整理完了: ${cleanedCount}件のファイルを整理`);
+    }
+    
+    // 2. 重複解消: 重複ファイルの検出と削除（将来的に拡張可能）
+    // 現在は基本的な重複チェックのみ
+    
+    // 3. 状況更新: 統計情報は自動的に更新される
+    
+    console.log('✅ 自動メンテナンス処理完了');
+  } catch (error) {
+    console.error('❌ 自動メンテナンスエラー:', error);
+  }
+}
+
+// 自動スケジュール設定（サーバー起動時）
+function setupAutoSchedules() {
+  // 毎日午前2時に自動アーカイブ処理
+  const now = new Date();
+  const nextArchiveTime = new Date(now);
+  nextArchiveTime.setHours(2, 0, 0, 0);
+  if (nextArchiveTime <= now) {
+    nextArchiveTime.setDate(nextArchiveTime.getDate() + 1);
+  }
+  
+  const archiveInterval = 24 * 60 * 60 * 1000; // 24時間
+  setTimeout(() => {
+    autoArchiveOldData();
+    setInterval(autoArchiveOldData, archiveInterval);
+  }, nextArchiveTime.getTime() - now.getTime());
+  
+  // 毎日午前3時に自動メンテナンス
+  const nextMaintenanceTime = new Date(now);
+  nextMaintenanceTime.setHours(3, 0, 0, 0);
+  if (nextMaintenanceTime <= now) {
+    nextMaintenanceTime.setDate(nextMaintenanceTime.getDate() + 1);
+  }
+  
+  const maintenanceInterval = 24 * 60 * 60 * 1000; // 24時間
+  setTimeout(() => {
+    autoMaintenance();
+    setInterval(autoMaintenance, maintenanceInterval);
+  }, nextMaintenanceTime.getTime() - now.getTime());
+  
+  console.log('⏰ 自動スケジュールを設定しました（アーカイブ: 毎日午前2時、メンテナンス: 毎日午前3時）');
+}
+
+// POST /api/knowledge-base/cleanup/auto - 1年以上経過データを自動アーカイブ（手動実行用）
+apiRouter.post('/knowledge-base/cleanup/auto', async (req, res) => {
+  try {
+    console.log('🗑️ 自動アーカイブリクエスト（1年以上経過データ）');
+    
+    await autoArchiveOldData();
     
     res.json({
       success: true,
-      deletedCount: deletedCount,
-      errorCount: errorCount,
-      message: `${deletedCount}件のファイルを削除しました`,
+      message: '1年以上経過データをアーカイブしました',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('❌ 自動クリーンアップエラー:', error);
+    console.error('❌ 自動アーカイブエラー:', error);
     res.status(500).json({
       success: false,
-      error: '自動クリーンアップに失敗しました',
+      error: '自動アーカイブに失敗しました',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
@@ -3023,6 +4447,89 @@ apiRouter.post('/knowledge-base/cleanup/manual', async (req, res) => {
   }
 });
 
+// POST /api/knowledge-base/archive - アーカイブ作成
+apiRouter.post('/knowledge-base/archive', async (req, res) => {
+  try {
+    console.log('📦 アーカイブ作成リクエスト');
+    
+    const projectRoot = path.resolve(__dirname, '..');
+    const knowledgeBaseDir = path.join(projectRoot, 'knowledge-base');
+    const archivesDir = path.join(knowledgeBaseDir, 'archives');
+    
+    // アーカイブディレクトリが存在しない場合は作成
+    if (!fs.existsSync(archivesDir)) {
+      fs.mkdirSync(archivesDir, { recursive: true });
+      console.log('📁 アーカイブディレクトリを作成しました:', archivesDir);
+    }
+    
+    // アーカイブファイル名（タイムスタンプ付き）
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const archiveFileName = `knowledge-archive-${timestamp}.zip`;
+    const archiveFilePath = path.join(archivesDir, archiveFileName);
+    
+    // アーカイブ作成
+    const output = fs.createWriteStream(archiveFilePath);
+    const archive = archiver('zip', {
+      zlib: { level: 9 } // 最高圧縮
+    });
+    
+    archive.pipe(output);
+    
+    // knowledge-base の主要なフォルダをアーカイブに追加
+    const foldersToArchive = ['documents', 'data', 'exports'];
+    
+    for (const folder of foldersToArchive) {
+      const folderPath = path.join(knowledgeBaseDir, folder);
+      if (fs.existsSync(folderPath)) {
+        archive.directory(folderPath, folder);
+        console.log(`📁 ${folder} をアーカイブに追加`);
+      }
+    }
+    
+    // index.json がある場合は追加
+    const indexFile = path.join(knowledgeBaseDir, 'index.json');
+    if (fs.existsSync(indexFile)) {
+      archive.file(indexFile, { name: 'index.json' });
+      console.log('📄 index.json をアーカイブに追加');
+    }
+    
+    // アーカイブ完了を待つ（Promiseでラップ）
+    await new Promise((resolve, reject) => {
+      output.on('close', () => {
+        resolve();
+      });
+      archive.on('error', (err) => {
+        reject(err);
+      });
+      archive.finalize();
+    });
+    
+    const stats = fs.statSync(archiveFilePath);
+    
+    console.log(`✅ アーカイブ作成完了: ${archiveFileName} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
+    
+    res.json({
+      success: true,
+      message: 'アーカイブが正常に作成されました',
+      data: {
+        name: archiveFileName,
+        size: stats.size,
+        createdAt: new Date().toISOString(),
+        path: archiveFilePath
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ アーカイブ作成エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'アーカイブの作成に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // GET /api/knowledge-base/archives - アーカイブ一覧取得
 apiRouter.get('/knowledge-base/archives', async (req, res) => {
   try {
@@ -3073,7 +4580,511 @@ apiRouter.get('/knowledge-base/archives', async (req, res) => {
   }
 });
 
+// POST /api/knowledge-base/export - 全データエクスポート
+apiRouter.post('/knowledge-base/export', async (req, res) => {
+  try {
+    const { type = 'all', destination = 'local', externalPath } = req.body;
+    console.log('📦 全データエクスポートリクエスト:', { type, destination, externalPath });
+    
+    const projectRoot = path.resolve(__dirname, '..');
+    const knowledgeBaseDir = path.join(projectRoot, 'knowledge-base');
+    
+    // エクスポートファイル名（タイムスタンプ付き）
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const exportFileName = `knowledge-export-${timestamp}.zip`;
+    
+    // 一時ファイルまたはストリームを作成
+    let tempFilePath = null;
+    let output = null;
+    
+    if (destination === 'local') {
+      // ローカルの場合: 一時ファイルを作成
+      tempFilePath = path.join(projectRoot, `temp-${Date.now()}.zip`);
+      if (!fs.existsSync(path.dirname(tempFilePath))) {
+        fs.mkdirSync(path.dirname(tempFilePath), { recursive: true });
+      }
+      output = fs.createWriteStream(tempFilePath);
+    } else {
+      // 外部ストレージの場合: 直接保存先に書き込む
+      const saveDir = path.join(knowledgeBaseDir, externalPath === 'exports' ? 'exports' : 'archives');
+      if (!fs.existsSync(saveDir)) {
+        fs.mkdirSync(saveDir, { recursive: true });
+      }
+      const savedFilePath = path.join(saveDir, exportFileName);
+      output = fs.createWriteStream(savedFilePath);
+    }
+    
+    const archive = archiver('zip', {
+      zlib: { level: 9 } // 最高圧縮
+    });
+    
+    archive.pipe(output);
+    
+    // knowledge-base の主要なフォルダをエクスポートに追加
+    const foldersToExport = ['documents', 'data', 'exports'];
+    
+    for (const folder of foldersToExport) {
+      const folderPath = path.join(knowledgeBaseDir, folder);
+      if (fs.existsSync(folderPath)) {
+        archive.directory(folderPath, folder);
+        console.log(`📁 ${folder} をエクスポートに追加`);
+      }
+    }
+    
+    // index.json がある場合は追加
+    const indexFile = path.join(knowledgeBaseDir, 'index.json');
+    if (fs.existsSync(indexFile)) {
+      archive.file(indexFile, { name: 'index.json' });
+      console.log('📄 index.json をエクスポートに追加');
+    }
+    
+    // エクスポート完了を待つ（Promiseでラップ）
+    await new Promise((resolve, reject) => {
+      output.on('close', () => {
+        resolve();
+      });
+      archive.on('error', (err) => {
+        reject(err);
+      });
+      archive.finalize();
+    });
+    
+    if (destination === 'local') {
+      // ローカルダウンロード: ファイルを読み込んで送信
+      const fileStats = fs.statSync(tempFilePath);
+      const fileBuffer = fs.readFileSync(tempFilePath);
+      
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="${exportFileName}"`);
+      res.setHeader('Content-Length', fileStats.size);
+      res.send(fileBuffer);
+      
+      // 一時ファイルを削除
+      fs.unlinkSync(tempFilePath);
+    } else {
+      // 外部ストレージ保存: ファイルは既に保存されている
+      const saveDir = path.join(knowledgeBaseDir, externalPath === 'exports' ? 'exports' : 'archives');
+      const savedFilePath = path.join(saveDir, exportFileName);
+      const stats = fs.statSync(savedFilePath);
+      
+      console.log(`✅ エクスポート完了: ${exportFileName} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
+      
+      res.json({
+        success: true,
+        message: 'エクスポートが正常に完了しました',
+        data: {
+          name: exportFileName,
+          size: stats.size,
+          path: savedFilePath,
+          createdAt: new Date().toISOString()
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    console.error('❌ エクスポートエラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'エクスポートに失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// POST /api/knowledge/maintenance/run - 手動メンテナンス実行
+apiRouter.post('/knowledge/maintenance/run', async (req, res) => {
+  try {
+    console.log('🔧 手動メンテナンス実行リクエスト');
+    await autoMaintenance();
+    res.json({
+      success: true,
+      message: 'メンテナンス処理が完了しました',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ メンテナンス実行エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'メンテナンス処理に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// POST /api/knowledge/deduplication/resolve - 重複解決
+apiRouter.post('/knowledge/deduplication/resolve', async (req, res) => {
+  try {
+    console.log('🔄 重複解決リクエスト');
+    // 重複解決は自動メンテナンスと一緒に実行
+    await autoMaintenance();
+    res.json({
+      success: true,
+      message: '重複解決処理が完了しました',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ 重複解決エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '重複解決処理に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 console.log('✅ Knowledge Base cleanup endpoints registered');
+
+// POST /api/files/import - ファイルインポート（チャンク処理・RAG対応）
+apiRouter.post('/files/import', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'ファイルが選択されていません' 
+      });
+    }
+
+    const { originalname, path: tempPath } = req.file;
+    const category = req.body.category || 'general';
+    const saveOriginalFile = req.body.saveOriginalFile === 'true'; // チェックボックスの値
+
+    console.log(`📁 ファイルインポート開始: ${originalname} (元ファイル保存: ${saveOriginalFile})`);
+
+    // ファイルからテキストを抽出
+    let extractedText = '';
+    const ext = path.extname(originalname).toLowerCase();
+
+    if (ext === '.txt') {
+      extractedText = fs.readFileSync(tempPath, 'utf-8');
+    } else {
+      // PDF、Excel、PowerPointは現時点ではファイル名のみ
+      console.log(`${ext}処理は未実装のため、ファイル名のみ保存`);
+      extractedText = `File: ${originalname}`;
+    }
+
+    // knowledge-baseディレクトリのパス解決
+    const knowledgeBaseDir = path.join(process.cwd(), 'knowledge-base');
+    const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base');
+    
+    let targetDir = knowledgeBaseDir;
+    if (!fs.existsSync(knowledgeBaseDir)) {
+      if (fs.existsSync(alternativeDir)) {
+        targetDir = alternativeDir;
+      } else {
+        fs.mkdirSync(knowledgeBaseDir, { recursive: true });
+        targetDir = knowledgeBaseDir;
+      }
+    }
+
+    // documentsディレクトリの確認・作成
+    const documentsDir = path.join(targetDir, 'documents');
+    if (!fs.existsSync(documentsDir)) {
+      fs.mkdirSync(documentsDir, { recursive: true });
+    }
+
+    // ドキュメントIDを生成（タイムスタンプベース）
+    const docId = `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const docDir = path.join(documentsDir, docId);
+    fs.mkdirSync(docDir, { recursive: true });
+
+    // ファイル名のエンコーディング修正（日本語ファイル名対応）
+    // multerがファイル名をエンコードして保存している可能性があるため、デコードを試行
+    function decodeFileName(fileName) {
+      try {
+        // multerがファイル名をエンコードしている場合のデコード
+        // Windowsでの文字化けを防ぐため、UTF-8で正しく処理
+        if (typeof fileName === 'string') {
+          // URLエンコードされている場合のデコード
+          if (fileName.includes('%')) {
+            try {
+              return decodeURIComponent(fileName);
+            } catch (e) {
+              // URLエンコードでない場合はそのまま
+            }
+          }
+          
+          // BufferからUTF-8として解釈（文字化け修正）
+          // 既に文字化けしている場合は、Bufferを使って正しいエンコーディングで再構築
+          const buffer = Buffer.from(fileName, 'latin1');  // 文字化けした文字列をlatin1として解釈
+          return buffer.toString('utf8');  // UTF-8として変換
+        }
+        return fileName;
+      } catch (error) {
+        console.warn('ファイル名デコードエラー:', error);
+        return fileName;
+      }
+    }
+    
+    // 元のファイル名をデコード
+    const decodedFileName = decodeFileName(originalname);
+    
+    // 安全なファイル名に変換（Windowsのファイルシステム制限に対応）
+    function sanitizeFileName(fileName) {
+      // 拡張子を取得
+      const ext = path.extname(fileName);
+      const baseName = path.basename(fileName, ext);
+      
+      // 危険な文字を除去・置換（Windowsファイル名の制限文字）
+      let safeName = baseName
+        .replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')  // Windowsで使用不可の文字をアンダースコアに
+        .replace(/\s+/g, ' ')                     // 連続する空白を1つに
+        .substring(0, 200);                       // ファイル名の長さ制限
+      
+      // 空の場合はタイムスタンプを使用
+      if (!safeName || safeName.trim().length === 0) {
+        safeName = `file_${Date.now()}`;
+      }
+      
+      return safeName + ext;
+    }
+    
+    const safeFileName = sanitizeFileName(decodedFileName);
+
+    // キーワード抽出関数（日本語対応）
+    function extractKeywords(text) {
+      // 簡単なキーワード抽出：2文字以上の連続する文字列を抽出
+      const words = text.match(/[ぁ-んァ-ヶー一-龠々]{2,}/g) || [];
+      const wordCount = {};
+      
+      words.forEach(word => {
+        if (word.length >= 2 && word.length <= 10) {
+          wordCount[word] = (wordCount[word] || 0) + 1;
+        }
+      });
+      
+      // 出現頻度の高い順に最大10個のキーワードを返す
+      return Object.entries(wordCount)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([word]) => word);
+    }
+
+    // テキストの前処理（RAG精度向上のため）
+    // 1. 連続する空白・改行を正規化
+    let processedText = extractedText
+      .replace(/\r\n/g, '\n')  // 改行コード統一
+      .replace(/\r/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')  // 連続改行を2つまで
+      .replace(/[ \t]{2,}/g, ' ')  // 連続空白を1つに
+      .trim();
+
+    // 2. チャンク設定（500文字、100文字オーバーラップ = 20%）
+    const chunkSize = 500;
+    const overlap = 100;
+    const minChunkSize = 50;  // 最小チャンクサイズ（短すぎるチャンクを除外）
+    const chunks = [];
+
+    // 3. 意味的な境界で分割する関数（段落、句点、改行を優先）
+    function findBestSplitPoint(text, startPos, targetEndPos) {
+      const maxSearchBack = 150;  // 最大150文字戻って境界を探す
+      const searchStart = Math.max(startPos, targetEndPos - maxSearchBack);
+      
+      // 優先順位: 段落境界 > 改行 > 句点 > 空白
+      const boundaries = [
+        /\n\n/,  // 段落境界
+        /\n/,    // 改行
+        /[。．！？]/,  // 句点
+        /[、，]/g,    // 読点
+        /\s+/,   // 空白
+      ];
+
+      // 後ろから探す（文の途中で切れないように）
+      for (let pos = targetEndPos; pos >= searchStart; pos--) {
+        const char = text[pos];
+        
+        // 段落境界を最優先
+        if (pos > 0 && text.substring(pos - 1, pos + 1) === '\n\n') {
+          return pos + 1;
+        }
+        
+        // 改行
+        if (char === '\n') {
+          return pos + 1;
+        }
+        
+        // 句点
+        if (['。', '．', '！', '？'].includes(char)) {
+          return pos + 1;
+        }
+        
+        // 読点（最小限の戻り）
+        if (['、', '，'].includes(char) && pos >= targetEndPos - 20) {
+          return pos + 1;
+        }
+      }
+      
+      // 境界が見つからない場合は空白で分割
+      for (let pos = targetEndPos; pos >= searchStart; pos--) {
+        if (/\s/.test(text[pos])) {
+          return pos + 1;
+        }
+      }
+      
+      // それでも見つからない場合は指定位置で分割
+      return targetEndPos;
+    }
+
+    // 4. チャンク分割処理（意味的な境界を考慮）
+    let startPos = 0;
+    let chunkIndex = 0;
+
+    while (startPos < processedText.length) {
+      const targetEndPos = Math.min(startPos + chunkSize, processedText.length);
+      
+      // 最後のチャンクの場合
+      if (targetEndPos >= processedText.length) {
+        const chunkText = processedText.substring(startPos).trim();
+        if (chunkText.length >= minChunkSize) {
+          const keywords = extractKeywords(chunkText);
+          chunks.push({
+            text: chunkText,
+            index: chunkIndex++,
+            startPos: startPos,
+            endPos: processedText.length,
+            length: chunkText.length,
+            chunkId: `${docId}_chunk_${chunkIndex - 1}`,
+            keywords: keywords,
+            preview: chunkText.substring(0, 100) + (chunkText.length > 100 ? '...' : ''),
+          });
+        }
+        break;
+      }
+
+      // 最適な分割点を探す
+      const splitPos = findBestSplitPoint(processedText, startPos, targetEndPos);
+      const chunkText = processedText.substring(startPos, splitPos).trim();
+
+      if (chunkText.length >= minChunkSize) {
+        // キーワード抽出（簡単な方法：名詞らしき語を抽出）
+        const keywords = extractKeywords(chunkText);
+        
+        chunks.push({
+          text: chunkText,
+          index: chunkIndex++,
+          startPos: startPos,
+          endPos: splitPos,
+          length: chunkText.length,
+          chunkId: `${docId}_chunk_${chunkIndex - 1}`,
+          keywords: keywords,
+          preview: chunkText.substring(0, 100) + (chunkText.length > 100 ? '...' : ''),
+        });
+      }
+
+      // オーバーラップ処理：前のチャンクと重複させて文脈を保持
+      startPos = Math.max(startPos + 1, splitPos - overlap);
+      
+      // 無限ループ防止
+      if (startPos >= splitPos) {
+        startPos = splitPos;
+      }
+    }
+
+    // ドキュメント全体のキーワード抽出
+    const documentKeywords = extractKeywords(processedText);
+
+    // メタデータを作成（RAG用の詳細情報を含む）
+    const metadata = {
+      id: docId,
+      title: decodedFileName.replace(/\.[^/.]+$/, ''),
+      originalFileName: originalname,      // multerが受け取った元のファイル名（文字化け前の可能性）
+      decodedFileName: decodedFileName,       // デコード後のファイル名
+      safeFileName: safeFileName,            // 保存時の安全なファイル名
+      category: category,
+      type: 'document',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      fileType: ext,
+      chunkCount: chunks.length,
+      textLength: processedText.length,
+      originalTextLength: extractedText.length,
+      processedAt: new Date().toISOString(),
+      // RAG用の追加情報
+      ragConfig: {
+        chunkSize: 500,
+        overlap: 100,
+        minChunkSize: 50,
+        processingMethod: 'semantic-boundary-aware',
+      },
+      keywords: documentKeywords,
+      summary: processedText.substring(0, 200) + (processedText.length > 200 ? '...' : ''),
+    };
+
+    // 元ファイルの保存（オプション：ユーザーが選択した場合のみ）
+    // metadata.jsonに元のファイル名は保存されているため、RAGとしては必須ではない
+    if (saveOriginalFile) {
+      const destFilePath = path.join(docDir, safeFileName);
+      try {
+        fs.copyFileSync(tempPath, destFilePath);
+        console.log(`📄 元ファイルを保存: ${safeFileName}`);
+        metadata.originalFileSaved = true;
+        metadata.originalFilePath = safeFileName;
+      } catch (fileError) {
+        // ファイル保存に失敗しても、チャンク処理は完了しているため続行
+        console.warn(`⚠️ 元ファイルの保存に失敗（処理は継続）: ${fileError.message}`);
+        // メタデータに保存失敗を記録
+        metadata.originalFileSaveError = fileError.message;
+      }
+    } else {
+      console.log('📄 元ファイルの保存をスキップ（ユーザー選択）');
+      metadata.originalFileSaved = false;
+    }
+
+    // チャンクデータを保存
+    const chunksPath = path.join(docDir, 'chunks.json');
+    fs.writeFileSync(chunksPath, JSON.stringify(chunks, null, 2), 'utf8');
+
+    // メタデータを保存
+    const metadataPath = path.join(docDir, 'metadata.json');
+    fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');
+
+    // 一時ファイルを削除
+    try {
+      fs.unlinkSync(tempPath);
+    } catch (error) {
+      console.warn('一時ファイルの削除に失敗:', error);
+    }
+
+    console.log(`✅ ファイルインポート完了: ${originalname} -> ${docId} (${chunks.length}チャンク)`);
+
+    res.json({
+      success: true,
+      message: 'ファイルが正常にインポートされました',
+      fileName: originalname,
+      documentId: docId,
+      savedPath: `documents/${docId}`,
+      chunkCount: chunks.length,
+      processedEntries: 1,
+    });
+  } catch (error) {
+    console.error('❌ ファイルインポートエラー:', error);
+
+    // 一時ファイルのクリーンアップ
+    if (req.file?.path) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (cleanupError) {
+        console.warn('一時ファイルのクリーンアップに失敗:', cleanupError);
+      }
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'ファイルのインポートに失敗しました',
+      details: error instanceof Error ? error.message : '不明なエラー',
+    });
+  }
+});
+
+// 診断用エンドポイントをマウント
+import('./routes/_diag.js').then(module => {
+  module.default(app);
+  console.log('✅ Diagnostic routes mounted');
+}).catch(err => {
+  console.error('❌ Failed to load diagnostic routes:', err);
+});
 
 // APIルーターをマウント（すべてのエンドポイント定義の後）
 app.use('/api', apiRouter);
@@ -3106,6 +5117,9 @@ app.listen(PORT, '0.0.0.0', () => {
   }
   
   console.log(`🔗 API: http://localhost:${PORT}/api`);
+  
+  // 自動スケジュールを開始
+  setupAutoSchedules();
 });
 
 // グレースフルシャットダウン

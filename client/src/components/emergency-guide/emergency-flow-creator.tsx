@@ -106,6 +106,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
 }) => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const hasInitialized = useRef(false);
 
   // 状態管理
   const [activeTab, setActiveTab] = useState<'new' | 'upload' | 'edit'>('new');
@@ -161,9 +162,9 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2, 15);
         
-        // 統一API設定を使用
+        // buildApiUrlを使用して正しいURLを構築
         const { buildApiUrl } = await import('../../lib/api-unified');
-        const url = buildApiUrl(`/emergency-flow/list?ts=${timestamp}&_r=${randomId}${forceRefresh ? '&force=true' : ''}`);
+        const url = `${buildApiUrl('/emergency-flow/list')}?ts=${timestamp}&_r=${randomId}${forceRefresh ? '&force=true' : ''}`;
 
         console.log('🌐 フロー一覧API呼び出し:', url);
 
@@ -235,13 +236,17 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         setIsFetching(false);
       }
     },
-    [toast, isFetching]
+    [toast]
   );
 
   // 初期化時にフロー一覧を取得（一度だけ）
   useEffect(() => {
-    fetchFlowList();
-  }, []); // 依存配列を空にして一度だけ実行
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      fetchFlowList();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 初回のみ実行
 
   // 強制更新イベントリスナー
   useEffect(() => {
@@ -290,8 +295,9 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         setUploadProgress(prev => Math.min(prev + 10, 90));
       }, 100);
 
+      const { buildApiUrl } = await import('../../lib/api-unified');
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/upload`,
+        buildApiUrl('/emergency-flow/upload'),
         {
           method: 'POST',
           body: formData,
@@ -369,9 +375,9 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
       
-      // 統一API設定を使用
+      // buildApiUrlを使用して正しいURLを構築
       const { buildApiUrl } = await import('../../lib/api-unified');
-      const apiUrl = buildApiUrl(`/api/emergency-flow/${flowId}?ts=${timestamp}&_r=${randomId}`);
+      const apiUrl = `${buildApiUrl(`/emergency-flow/${flowId}`)}?ts=${timestamp}&_r=${randomId}`;
 
       console.log('🌐 API呼び出し:', apiUrl);
 
@@ -793,8 +799,9 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       });
 
       // APIにデータを送信
+      const { buildApiUrl } = await import('../../lib/api-unified');
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${updatedFlowData.id}`,
+        buildApiUrl(`/emergency-flow/${updatedFlowData.id}`),
         {
           method: 'PUT',
           headers: {
@@ -1076,8 +1083,9 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       formData.append('image', file);
       formData.append('stepId', stepId);
 
+      const { buildApiUrl } = await import('../../lib/api-unified');
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/upload-image`,
+        buildApiUrl('/emergency-flow/upload-image'),
         {
           method: 'POST',
           body: formData,
@@ -1171,8 +1179,9 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
     if (confirmDelete) {
       try {
         // APIを呼び出してサーバーから画像を削除
+        const { buildApiUrl } = await import('../../lib/api-unified');
         const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/image/${imageToRemove.fileName}`,
+          buildApiUrl(`/emergency-flow/image/${imageToRemove.fileName}`),
           {
             method: 'DELETE',
           }

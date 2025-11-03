@@ -17,10 +17,100 @@ import path from 'path';
 const router = express.Router();
 
 /**
+ * GET /api/knowledge-base/stats
+ * ナレッジベースの統計情報を返す
+ */
+router.get('/stats', async (_req, res) => {
+  try {
+    // 既存のlistKnowledgeDataで全データ取得
+    const result = listKnowledgeData();
+    const total = result.data.length;
+    
+    // カテゴリごとの件数集計
+    const categoryCount: Record<string, number> = {};
+    result.data.forEach((item: any) => {
+      const cat = item.category || 'uncategorized';
+      categoryCount[cat] = (categoryCount[cat] || 0) + 1;
+    });
+    
+    // タイプごとの件数集計
+    const typeStats: Record<string, number> = {};
+    result.data.forEach((item: any) => {
+      const type = item.type || 'unknown';
+      typeStats[type] = (typeStats[type] || 0) + 1;
+    });
+    
+    // 総容量の計算
+    let totalSize = 0;
+    const knowledgeBaseDir = path.join(process.cwd(), 'knowledge-base');
+    const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base');
+    let targetDir = knowledgeBaseDir;
+    
+    if (!fs.existsSync(knowledgeBaseDir)) {
+      if (fs.existsSync(alternativeDir)) {
+        targetDir = alternativeDir;
+      }
+    }
+    
+    // documentsフォルダのサイズを計算
+    const calculateDirSize = (dirPath: string): number => {
+      let size = 0;
+      try {
+        if (fs.existsSync(dirPath)) {
+          const items = fs.readdirSync(dirPath, { withFileTypes: true });
+          for (const item of items) {
+            const itemPath = path.join(dirPath, item.name);
+            if (item.isDirectory()) {
+              size += calculateDirSize(itemPath);
+            } else if (item.isFile()) {
+              try {
+                const stats = fs.statSync(itemPath);
+                size += stats.size;
+              } catch (err) {
+                // ファイルサイズ取得エラーは無視
+              }
+            }
+          }
+        }
+      } catch (err) {
+        // ディレクトリ読み込みエラーは無視
+      }
+      return size;
+    };
+    
+    // 各ディレクトリのサイズを合計
+    const directoriesToCheck = ['documents', 'data', 'text', 'qa', 'troubleshooting'];
+    for (const dirName of directoriesToCheck) {
+      const dirPath = path.join(targetDir, dirName);
+      totalSize += calculateDirSize(dirPath);
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        total,
+        totalSize,
+        categoryCount,
+        typeStats,
+        lastMaintenance: undefined,
+        oldData: 0,
+      },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'ナレッジベース統計情報の取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
  * GET /api/knowledge-base
  * ナレッジデータ一覧を取得
  */
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { type } = req.query;
     const knowledgeType = type ? (type as KnowledgeType) : undefined;
@@ -52,7 +142,7 @@ router.get('/', async (_req, res) => {
  * GET /api/knowledge-base/:id
  * 特定のナレッジデータを取得
  */
-router.get('/:id', async (_req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 

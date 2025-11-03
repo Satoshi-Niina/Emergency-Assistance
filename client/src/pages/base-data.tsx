@@ -17,6 +17,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Slider } from '../components/ui/slider';
+import { Checkbox } from '../components/ui/checkbox';
 import RagPerformanceDisplay from '../components/RagPerformanceDisplay';
 import {
   Database,
@@ -62,6 +63,7 @@ export default function BaseDataPage() {
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [importStatus, setImportStatus] = useState<ImportStatus[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [saveOriginalFile, setSaveOriginalFile] = useState(false); // デフォルトは保存しない
   const [exportFiles, setExportFiles] = useState<ExportFile[]>([]);
   const [selectedExportFile, setSelectedExportFile] = useState<string | null>(null);
   const [isImportingExport, setIsImportingExport] = useState(false);
@@ -144,6 +146,7 @@ export default function BaseDataPage() {
 
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('saveOriginalFile', saveOriginalFile ? 'true' : 'false');
 
         try {
           const response = await fetch('/api/files/import', {
@@ -589,6 +592,26 @@ export default function BaseDataPage() {
                   </div>
                 </div>
               )}
+
+              {/* 元ファイル保存オプション */}
+              <div className='flex items-center space-x-2 p-3 bg-gray-50 rounded border'>
+                <Checkbox
+                  id='save-original-file'
+                  checked={saveOriginalFile}
+                  onCheckedChange={(checked) =>
+                    setSaveOriginalFile(checked === true)
+                  }
+                />
+                <Label
+                  htmlFor='save-original-file'
+                  className='text-sm font-normal cursor-pointer flex-1'
+                >
+                  元のファイルも保存する
+                  <span className='text-xs text-gray-500 block mt-1'>
+                    （チャンク処理は必須ですが、元ファイルは保存を選択できます）
+                  </span>
+                </Label>
+              </div>
 
               <Button
                 onClick={handleImport}
@@ -1405,7 +1428,6 @@ function KnowledgeLifecycleManagement() {
     archivedFiles: 0,
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedPolicy, setSelectedPolicy] = useState('manual');
 
   // ストレージ統計の取得
   const fetchStorageStats = async () => {
@@ -1491,9 +1513,9 @@ function KnowledgeLifecycleManagement() {
     }
   };
 
-  // 自動削除（1年以上経過データ）
-  const handleAutoCleanup = async () => {
-    if (!confirm('1年以上経過したナレッジデータを削除しますか？この操作は取り消せません。')) {
+  // 自動アーカイブ（1年以上経過データ）
+  const handleAutoArchive = async () => {
+    if (!confirm('1年以上経過したナレッジデータをアーカイブしますか？\nデータはknowledge-base/archivesフォルダにZIP形式で保存され、元のデータは削除されます。')) {
       return;
     }
 
@@ -1509,7 +1531,8 @@ function KnowledgeLifecycleManagement() {
         if (resultsDiv) {
           resultsDiv.innerHTML = `
             <div class="text-green-600">
-              <strong>削除完了:</strong> ${result.deletedCount}件のファイルを削除しました<br>
+              <strong>✅ アーカイブ完了:</strong> 1年以上経過データをアーカイブしました<br>
+              📁 保存先: knowledge-base/archives/<br>
               <small>実行時刻: ${new Date().toLocaleString('ja-JP')}</small>
             </div>
           `;
@@ -1517,14 +1540,14 @@ function KnowledgeLifecycleManagement() {
         await fetchStorageStats();
       } else {
         const error = await response.json();
-        throw new Error(error.error || '削除に失敗しました');
+        throw new Error(error.error || 'アーカイブに失敗しました');
       }
-    } catch (error) {
+    } catch (error: any) {
       const resultsDiv = document.getElementById('cleanup-results');
       if (resultsDiv) {
         resultsDiv.innerHTML = `
           <div class="text-red-600">
-            <strong>削除エラー:</strong> ${error.message}<br>
+            <strong>❌ アーカイブエラー:</strong> ${error.message}<br>
             <small>実行時刻: ${new Date().toLocaleString('ja-JP')}</small>
           </div>
         `;
@@ -1584,20 +1607,71 @@ function KnowledgeLifecycleManagement() {
     }
   };
 
-  const handleExport = async (type: string) => {
+  const handleExport = async () => {
     setIsLoading(true);
     try {
+      // エクスポートデータを取得
       const response = await fetch('/api/knowledge-base/export', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ type }),
+        body: JSON.stringify({ 
+          type: 'all',
+          destination: 'local'
+        }),
       });
 
-      if (response.ok) {
-        // ファイルダウンロード処理
-        const blob = await response.blob();
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'エクスポートに失敗しました');
+      }
+
+      const blob = await response.blob();
+      const resultsDiv = document.getElementById('cleanup-results');
+
+      // File System Access APIを使用して保存先を選択
+      if ('showSaveFilePicker' in window) {
+        try {
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+          const fileName = `knowledge-export-${timestamp}.zip`;
+          
+          const fileHandle = await (window as any).showSaveFilePicker({
+            suggestedName: fileName,
+            types: [{
+              description: 'ZIP files',
+              accept: { 'application/zip': ['.zip'] }
+            }]
+          });
+
+          const writable = await fileHandle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+
+          if (resultsDiv) {
+            resultsDiv.innerHTML = `
+              <div class="text-green-600">
+                <strong>📦 エクスポート完了:</strong> ${fileName}<br>
+                <small>実行時刻: ${new Date().toLocaleString('ja-JP')}</small>
+              </div>
+            `;
+          }
+        } catch (saveError: any) {
+          // ユーザーがキャンセルした場合など
+          if (saveError.name !== 'AbortError') {
+            throw saveError;
+          }
+          if (resultsDiv) {
+            resultsDiv.innerHTML = `
+              <div class="text-gray-600">
+                <strong>エクスポートがキャンセルされました</strong><br>
+                <small>実行時刻: ${new Date().toLocaleString('ja-JP')}</small>
+              </div>
+            `;
+          }
+        }
+      } else {
+        // フォールバック: 従来のダウンロード方式
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -1607,7 +1681,6 @@ function KnowledgeLifecycleManagement() {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
         
-        const resultsDiv = document.getElementById('cleanup-results');
         if (resultsDiv) {
           resultsDiv.innerHTML = `
             <div class="text-green-600">
@@ -1616,16 +1689,59 @@ function KnowledgeLifecycleManagement() {
             </div>
           `;
         }
-      } else {
-        const error = await response.json();
-        throw new Error(error.error || 'エクスポートに失敗しました');
       }
-    } catch (error) {
+    } catch (error: any) {
       const resultsDiv = document.getElementById('cleanup-results');
       if (resultsDiv) {
         resultsDiv.innerHTML = `
           <div class="text-red-600">
             <strong>❌ エクスポートエラー:</strong> ${error.message}<br>
+            <small>実行時刻: ${new Date().toLocaleString('ja-JP')}</small>
+          </div>
+        `;
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateArchive = async () => {
+    if (!confirm('ナレッジデータをアーカイブに保存しますか？\nknowledge-base/archives フォルダにZIPファイルとして保存されます。')) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/knowledge-base/archive', {
+        method: 'POST',
+      });
+
+      const resultsDiv = document.getElementById('cleanup-results');
+      if (response.ok) {
+        const data = await response.json();
+        if (resultsDiv) {
+          resultsDiv.innerHTML = `
+            <div class="text-green-600">
+              <strong>✅ アーカイブ作成完了:</strong><br>
+              📦 ${data.data.name}<br>
+              📊 サイズ: ${(data.data.size / 1024 / 1024).toFixed(2)}MB<br>
+              📁 保存先: knowledge-base/archives/<br>
+              <small>実行時刻: ${new Date().toLocaleString('ja-JP')}</small>
+            </div>
+          `;
+        }
+        // アーカイブ作成後に統計を更新
+        await fetchStorageStats();
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || 'アーカイブの作成に失敗しました');
+      }
+    } catch (error: any) {
+      const resultsDiv = document.getElementById('cleanup-results');
+      if (resultsDiv) {
+        resultsDiv.innerHTML = `
+          <div class="text-red-600">
+            <strong>❌ アーカイブ作成エラー:</strong> ${error.message}<br>
             <small>実行時刻: ${new Date().toLocaleString('ja-JP')}</small>
           </div>
         `;
@@ -1644,8 +1760,8 @@ function KnowledgeLifecycleManagement() {
       const resultsDiv = document.getElementById('cleanup-results');
       if (resultsDiv) {
         if (data.success && data.data.length > 0) {
-          const archiveList = data.data.map(archive => 
-            `• ${archive.name} (${(archive.size / 1024).toFixed(1)}KB) - ${new Date(archive.createdAt).toLocaleString('ja-JP')}`
+          const archiveList = data.data.map((archive: any) => 
+            `• ${archive.name} (${(archive.size / 1024 / 1024).toFixed(2)}MB) - ${new Date(archive.createdAt).toLocaleString('ja-JP')}`
           ).join('<br>');
           
           resultsDiv.innerHTML = `
@@ -1664,7 +1780,7 @@ function KnowledgeLifecycleManagement() {
           `;
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       const resultsDiv = document.getElementById('cleanup-results');
       if (resultsDiv) {
         resultsDiv.innerHTML = `
@@ -1718,7 +1834,7 @@ function KnowledgeLifecycleManagement() {
           </div>
           <p className='text-2xl font-bold text-yellow-600'>{storageStats.duplicates}</p>
           <p className='text-xs text-yellow-600 mt-1'>
-            要整理データあり
+            {storageStats.duplicates > 0 ? '要整理データあり' : '重複なし'}
           </p>
         </div>
         
@@ -1740,165 +1856,146 @@ function KnowledgeLifecycleManagement() {
       </div>
 
       {/* ライフサイクル管理操作 */}
-      <div className='bg-gray-50 p-4 rounded-lg'>
-        <h4 className='font-medium text-gray-800 mb-3 flex items-center gap-2'>
+      <div className='bg-blue-50 border border-blue-200 p-4 rounded-lg'>
+        <h4 className='font-medium text-blue-800 mb-3 flex items-center gap-2'>
           <Settings className='h-4 w-4' />
           ライフサイクル管理操作
         </h4>
         
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-          {/* データ整理ポリシー選択 */}
-          <div className='space-y-3'>
-            <Label className='text-sm font-medium'>整理ポリシー</Label>
-            <div className='space-y-2'>
-              <label className='flex items-center space-x-2'>
-                <input
-                  type='radio'
-                  name='policy'
-                  value='manual'
-                  checked={selectedPolicy === 'manual'}
-                  onChange={(e) => setSelectedPolicy(e.target.value)}
-                  className='form-radio'
-                />
-                <span className='text-sm'>手動整理のみ</span>
-              </label>
-              <label className='flex items-center space-x-2'>
-                <input
-                  type='radio'
-                  name='policy'
-                  value='conservative'
-                  checked={selectedPolicy === 'conservative'}
-                  onChange={(e) => setSelectedPolicy(e.target.value)}
-                  className='form-radio'
-                />
-                <span className='text-sm'>保守的整理（1年以上の古いデータ）</span>
-              </label>
-            </div>
-          </div>
-
+        <div className='grid grid-cols-1 gap-4'>
           {/* 管理操作ボタン */}
           <div className='space-y-3'>
-            <Label className='text-sm font-medium'>管理操作</Label>
-            <div className='grid grid-cols-2 gap-2'>
+            <Label className='text-base font-semibold text-gray-900 mb-2'>管理操作</Label>
+            <div className='grid grid-cols-2 gap-3'>
               <Button
-                variant='outline'
-                size='sm'
+                variant='default'
+                size='default'
                 onClick={runMaintenance}
                 disabled={isLoading}
-                className='flex items-center gap-2 text-xs'
+                className='flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md hover:shadow-lg transition-all'
               >
-                <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                 自動整理
               </Button>
               
               <Button
-                variant='outline'
-                size='sm'
+                variant='default'
+                size='default'
                 onClick={resolveDuplicates}
                 disabled={isLoading}
-                className='flex items-center gap-2 text-xs'
+                className='flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-medium shadow-md hover:shadow-lg transition-all'
               >
-                <Target className='h-3 w-3' />
+                <Target className='h-4 w-4' />
                 重複解決
               </Button>
               
               <Button
-                variant='outline'
-                size='sm'
+                variant='default'
+                size='default'
                 onClick={fetchStorageStats}
                 disabled={isLoading}
-                className='flex items-center gap-2 text-xs'
+                className='flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-medium shadow-md hover:shadow-lg transition-all'
               >
-                <Activity className='h-3 w-3' />
+                <Activity className='h-4 w-4' />
                 状況更新
               </Button>
               
               <Button
-                variant='outline'
-                size='sm'
-                onClick={() => {
-                  // アーカイブ表示機能（今後実装予定）
-                  alert('アーカイブ表示機能は準備中です');
-                }}
+                variant='default'
+                size='default'
+                onClick={handleCreateArchive}
                 disabled={isLoading}
-                className='flex items-center gap-2 text-xs'
+                className='flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white font-medium shadow-md hover:shadow-lg transition-all'
               >
-                <Database className='h-3 w-3' />
-                アーカイブ
+                <Database className={`h-4 w-4 ${isLoading ? 'animate-pulse' : ''}`} />
+                アーカイブ作成
               </Button>
+            </div>
+            <div className='mt-2 text-sm text-gray-600 leading-relaxed'>
+              <div className='space-y-1'>
+                <p className='whitespace-nowrap'>• <strong>自動整理</strong>: 毎日午前3時に自動実行されます（手動実行も可能）</p>
+                <p className='whitespace-nowrap'>• <strong>重複解決</strong>: 自動整理と同時に実行されます</p>
+                <p className='whitespace-nowrap'>• <strong>状況更新</strong>: 自動整理と同時に統計情報を更新します</p>
+                <p className='whitespace-nowrap'>• <strong>アーカイブ作成</strong>: ナレッジデータをknowledge-base/archivesフォルダにZIP形式でアーカイブ保存します</p>
+              </div>
+              <div className='mt-2 text-blue-600 whitespace-nowrap'>
+                <strong>💡 自動実行:</strong> 1年以上経過データは毎日午前2時に自動でアーカイブされます
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* 手動削除セクション */}
-      <div className='bg-red-50 border border-red-200 p-4 rounded-lg'>
-        <h4 className='font-medium text-red-800 mb-3 flex items-center gap-2'>
+      <div className='bg-amber-50 border border-amber-200 p-4 rounded-lg'>
+        <h4 className='font-medium text-amber-800 mb-3 flex items-center gap-2'>
           <AlertTriangle className='h-4 w-4' />
-          ナレッジデータ削除
+          手動によるナレッジデータ削除
         </h4>
         
-        <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-          {/* 削除オプション */}
-          <div className='space-y-3'>
-            <Label className='text-sm font-medium'>削除オプション</Label>
-            <div className='space-y-2'>
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={handleAutoCleanup}
-                disabled={isLoading}
-                className='w-full flex items-center gap-2 text-xs text-orange-700 border-orange-300 hover:bg-orange-50'
-              >
-                <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
-                1年以上経過データを削除
-              </Button>
-              
-              <Button
-                variant='destructive'
-                size='sm'
-                onClick={handleFullCleanup}
-                disabled={isLoading}
-                className='w-full flex items-center gap-2 text-xs'
-              >
-                <Database className='h-3 w-3' />
-                全ナレッジデータを削除
-              </Button>
+        <div className='grid grid-cols-1 gap-4'>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+            {/* エクスポートオプション */}
+            <div className='space-y-3'>
+              <Label className='text-base font-semibold text-gray-900 mb-2'>エクスポートオプション</Label>
+              <div className='space-y-2'>
+                <Button
+                  variant='outline'
+                  size='default'
+                  onClick={handleExport}
+                  disabled={isLoading}
+                  className='w-full flex items-center gap-2 text-sm text-green-700 border-green-300 hover:bg-green-50'
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  全データエクスポート
+                </Button>
+                
+                <Button
+                  variant='outline'
+                  size='default'
+                  onClick={handleViewArchives}
+                  disabled={isLoading}
+                  className='w-full flex items-center gap-2 text-sm text-blue-700 border-blue-300 hover:bg-blue-50'
+                >
+                  <Database className='h-4 w-4' />
+                  アーカイブ一覧表示
+                </Button>
+              </div>
             </div>
-          </div>
 
-          {/* エクスポートオプション */}
-          <div className='space-y-3'>
-            <Label className='text-sm font-medium'>エクスポートオプション</Label>
-            <div className='space-y-2'>
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={() => handleExport('all')}
-                disabled={isLoading}
-                className='w-full flex items-center gap-2 text-xs text-green-700 border-green-300 hover:bg-green-50'
-              >
-                <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
-                全データエクスポート
-              </Button>
-              
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={handleViewArchives}
-                disabled={isLoading}
-                className='w-full flex items-center gap-2 text-xs text-blue-700 border-blue-300 hover:bg-blue-50'
-              >
-                <Database className='h-3 w-3' />
-                アーカイブ一覧表示
-              </Button>
+            {/* 削除オプション */}
+            <div className='space-y-3'>
+              <Label className='text-base font-semibold text-gray-900 mb-2'>削除オプション</Label>
+              <div className='space-y-2'>
+                <Button
+                  variant='outline'
+                  size='default'
+                  onClick={handleAutoArchive}
+                  disabled={isLoading}
+                  className='w-full flex items-center gap-2 text-sm text-orange-700 border-orange-300 hover:bg-orange-50'
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  1年以上経過データをアーカイブ
+                </Button>
+                
+                <Button
+                  variant='outline'
+                  size='default'
+                  onClick={handleFullCleanup}
+                  disabled={isLoading}
+                  className='w-full flex items-center gap-2 text-sm text-gray-700 border-gray-300 hover:bg-gray-50'
+                >
+                  <Database className='h-4 w-4' />
+                  全ナレッジデータを削除
+                </Button>
+              </div>
             </div>
           </div>
 
           {/* 操作実行結果 */}
-          <div className='space-y-2'>
-            <Label className='text-sm font-medium'>操作実行結果</Label>
-            <div className='p-3 bg-white rounded border text-xs'>
+          <div className='mt-4'>
+            <Label className='text-base font-semibold text-gray-900 mb-2 block'>操作実行結果</Label>
+            <div className='p-4 bg-white rounded border border-gray-300 text-sm'>
               <div id='cleanup-results' className='text-gray-600'>
                 削除・エクスポート操作を実行するとここに結果が表示されます
               </div>
