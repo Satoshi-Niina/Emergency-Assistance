@@ -9,6 +9,7 @@ import {
   Download,
   Trash2,
   Printer,
+  Wand2,
 } from 'lucide-react';
 import {
   Card,
@@ -36,6 +37,7 @@ import {
   exportAllHistory,
   advancedSearch,
   generateReport,
+  summarizeWithGPT,
 } from '../lib/api/history-api';
 import { storage } from '../lib/api-unified';
 import ChatExportReport from '../components/report/chat-export-report';
@@ -184,6 +186,8 @@ const HistoryPage: React.FC = () => {
   const [searchFilterLoading, setSearchFilterLoading] = useState(false);
   const lastApiCallRef = useRef<number>(0);
   const isInitialLoadedRef = useRef<boolean>(false);
+  // 要約が自動生成済みかどうかを追跡するRef
+  const autoSummaryGenerated = useRef<Set<string>>(new Set());
 
   // アイテム選択ハンドラー
   const handleItemSelect = (itemId: string, isSelected: boolean) => {
@@ -222,10 +226,28 @@ const HistoryPage: React.FC = () => {
       machineType: item.machineType || item.jsonData.machineType || '',
       machineNumber: item.machineNumber || item.jsonData.machineNumber || '',
       jsonData: {
-        ...item.jsonData,
+        ...item.jsonData, // 既存のjsonDataをすべて含める（chatDataも含む）
         // 必要なフィールドを確実に含める
-        title: item.jsonData.title || item.title || '',
-        problemDescription: item.jsonData.problemDescription || '',
+        // 事象タイトル: JSONのtitleから優先的に取得、ファイル名からも抽出
+        title: item.jsonData?.title || (() => {
+          // まずitem.titleをチェック（JSONがルートレベルにある場合）
+          if (item.title) {
+            return item.title;
+          }
+        // ファイル名から日本語部分だけを抽出（例：エンジンが全く始動しない_0a9f4736-82fa... -> エンジンが全く始動しない）
+        if (item.fileName) {
+          // 最初の「_」までが日本語部分
+          const firstUnderscoreIndex = item.fileName.indexOf('_');
+          if (firstUnderscoreIndex > 0) {
+            return item.fileName.substring(0, firstUnderscoreIndex);
+          }
+          // 「_」がない場合は、拡張子を除いた全体を返す（日本語のみの場合）
+          const withoutExtension = item.fileName.replace(/\.json$/, '');
+          return withoutExtension;
+        }
+        return '';
+        })(),
+        problemDescription: item.jsonData?.problemDescription || '',
         machineType: item.machineType || item.jsonData.machineType || '',
         machineNumber: item.machineNumber || item.jsonData.machineNumber || '',
         extractedComponents:
@@ -236,13 +258,15 @@ const HistoryPage: React.FC = () => {
           item.jsonData.possibleModels || item.possibleModels || [],
         conversationHistory: item.jsonData.conversationHistory || [],
         savedImages: item.jsonData.savedImages || [],
+        // chatDataを確実に含める
+        chatData: item.jsonData.chatData || item.jsonData,
       },
     };
 
     // chatDataが存在する場合の追加処理
-    if (item.jsonData.chatData) {
+    if (item.jsonData.chatData || normalizedItem.jsonData.chatData) {
       console.log('chatData形式を検出');
-      const chatData = item.jsonData.chatData;
+      const chatData = item.jsonData.chatData || normalizedItem.jsonData.chatData;
 
       // machineInfoからmachineTypeとmachineNumberを取得
       const machineTypeName = chatData.machineInfo?.machineTypeName || '';
@@ -264,6 +288,188 @@ const HistoryPage: React.FC = () => {
     console.log('正規化後のアイテム:', normalizedItem);
     return normalizedItem;
   };
+
+  // JSONの内容から発生事象から処置までの要約を生成する関数
+  const generateSummaryFromJson = useCallback((jsonData: any): string => {
+    try {
+      const parts: string[] = [];
+
+      // 1. 事象タイトル
+      const title = jsonData?.title || '';
+      if (title) {
+        parts.push(`【事象】${title}`);
+      }
+
+      // 2. 発生事象の詳細（problemDescription + conversationHistory + chatData.messages）
+      const problemDesc = jsonData?.problemDescription || '';
+      const conversationHistory = jsonData?.conversationHistory || [];
+      const chatData = jsonData?.chatData || jsonData;
+      const chatMessages = chatData?.messages || [];
+      
+      // conversationHistoryからテキストメッセージを抽出（画像は除外）
+      const conversationTexts: string[] = [];
+      if (Array.isArray(conversationHistory)) {
+        conversationHistory.forEach((msg: any) => {
+          if (msg && typeof msg === 'object') {
+            const content = msg.content;
+            if (typeof content === 'string' && !content.startsWith('data:image/')) {
+              conversationTexts.push(content);
+            }
+          }
+        });
+      }
+      
+      // chatData.messagesからユーザーメッセージを抽出（画像は除外）
+      const userMessages: string[] = [];
+      if (Array.isArray(chatMessages)) {
+        chatMessages.forEach((msg: any) => {
+          if (msg && typeof msg === 'object' && !msg.isAiResponse) {
+            const content = msg.content;
+            if (typeof content === 'string' && !content.startsWith('data:image/')) {
+              userMessages.push(content);
+            }
+          }
+        });
+      }
+
+      const eventDetails: string[] = [];
+      if (problemDesc) {
+        eventDetails.push(problemDesc);
+      }
+      if (conversationTexts.length > 0) {
+        eventDetails.push(...conversationTexts);
+      }
+      if (userMessages.length > 0) {
+        eventDetails.push(...userMessages);
+      }
+      
+      if (eventDetails.length > 0) {
+        parts.push(`【発生事象の詳細】${eventDetails.join(' ')}`);
+      }
+
+      // 3. 影響コンポーネント
+      const components = jsonData?.extractedComponents || [];
+      if (components.length > 0) {
+        parts.push(`【影響コンポーネント】${components.join(', ')}`);
+      }
+
+      // 4. 症状
+      const symptoms = jsonData?.extractedSymptoms || [];
+      if (symptoms.length > 0) {
+        parts.push(`【症状】${symptoms.join(', ')}`);
+      }
+
+      // 5. 処置内容（answer）
+      const answer = jsonData?.answer || '';
+      if (answer) {
+        parts.push(`【処置内容】${answer}`);
+      }
+
+      // 要約が生成できない場合は空文字を返す
+      if (parts.length === 0) {
+        return '';
+      }
+
+      return parts.join('\n\n');
+    } catch (error) {
+      console.error('要約生成エラー:', error);
+      return '';
+    }
+  }, []);
+
+  // 編集画面が開かれた時にGPT要約を自動生成（一度だけ実行）
+  useEffect(() => {
+    if (showEditDialog && editingItem && editingItem.id) {
+      // 既にこのアイテムの要約を生成済みの場合はスキップ
+      if (autoSummaryGenerated.current.has(editingItem.id)) {
+        return;
+      }
+      
+      // 編集画面を開いたら、既存の説明があってもGPT要約を自動生成して上書き
+      autoSummaryGenerated.current.add(editingItem.id);
+      
+      // GPT要約を非同期で生成
+      (async () => {
+        try {
+          // JSONデータに要約に必要なデータがあるかチェック
+          const chatData = editingItem.jsonData?.chatData || editingItem.jsonData;
+          const hasDataForSummary = 
+            editingItem.jsonData?.title ||
+            editingItem.jsonData?.problemDescription ||
+            (Array.isArray(editingItem.jsonData?.conversationHistory) && editingItem.jsonData.conversationHistory.length > 0) ||
+            (Array.isArray(chatData?.messages) && chatData.messages.length > 0) ||
+            editingItem.jsonData?.answer;
+          
+          if (!hasDataForSummary) {
+            console.log('⚠️ 要約に必要なデータがありません。GPT要約をスキップします。');
+            return;
+          }
+
+          console.log('📝 編集画面を開いた際にGPT要約を自動生成中...');
+          
+          // chatData.messagesからユーザーメッセージを抽出してGPT要約に使用
+          const chatDataForSummary = editingItem.jsonData?.chatData || editingItem.jsonData;
+          let summaryJsonData = { ...editingItem.jsonData };
+          
+          // chatData.messagesが存在する場合は、それを優先してGPT要約に使用
+          if (chatDataForSummary?.messages && Array.isArray(chatDataForSummary.messages)) {
+            const userMessages = chatDataForSummary.messages
+              .filter((msg: any) => !msg.isAiResponse && msg.content && !msg.content.startsWith('data:image/') && !msg.content.startsWith('/api/images/'))
+              .map((msg: any) => msg.content);
+            
+            if (userMessages.length > 0) {
+              // chatData.messagesを確実に含める
+              summaryJsonData = {
+                ...summaryJsonData,
+                chatData: {
+                  ...summaryJsonData.chatData,
+                  messages: chatDataForSummary.messages,
+                },
+              };
+              console.log('🔍 GPT要約に使用するユーザーメッセージ数:', userMessages.length);
+            }
+          }
+          
+          const gptSummary = await summarizeWithGPT(summaryJsonData);
+          if (gptSummary) {
+            console.log('✅ GPT要約生成完了:', gptSummary.substring(0, 100) + '...');
+            setEditingItem({
+              ...editingItem,
+              jsonData: {
+                ...editingItem.jsonData,
+                problemDescription: gptSummary,
+                answer: gptSummary,
+              },
+            });
+          }
+        } catch (error: any) {
+          // 400エラー（要約する内容がない）は静かに処理してフォールバック
+          const isNoContentError = error?.message?.includes('要約する内容がありません') || 
+                                   error?.message?.includes('400');
+          
+          if (!isNoContentError) {
+            console.error('❌ GPT要約自動生成エラー:', error);
+          } else {
+            console.log('⚠️ 要約に必要なデータが不足しています。簡易要約を使用します。');
+          }
+          
+          // GPT要約に失敗した場合は簡易要約をフォールバック
+          const fallbackSummary = generateSummaryFromJson(editingItem.jsonData);
+          if (fallbackSummary) {
+            console.log('📝 簡易要約をフォールバックとして生成:', fallbackSummary);
+            setEditingItem({
+              ...editingItem,
+              jsonData: {
+                ...editingItem.jsonData,
+                problemDescription: fallbackSummary,
+                answer: fallbackSummary,
+              },
+            });
+          }
+        }
+      })();
+    }
+  }, [showEditDialog, editingItem?.id]);
 
   // 履歴データ更新のメッセージリスナー
   useEffect(() => {
@@ -495,8 +701,19 @@ const HistoryPage: React.FC = () => {
                  
                  // JSONデータから詳細情報を取得
                  const content = file.content || {};
-                 const machineType = content.machineType || file.machineType || '';
-                 const machineNumber = content.machineNumber || file.machineNumber || '';
+                 // サーバー側で抽出済みの値を優先使用、なければJSONから抽出
+                 const machineType = 
+                   file.machineType || 
+                   content.machineType || 
+                   content.chatData?.machineInfo?.machineTypeName || 
+                   content.machineInfo?.machineTypeName || 
+                   '';
+                 const machineNumber = 
+                   file.machineNumber || 
+                   content.machineNumber || 
+                   content.chatData?.machineInfo?.machineNumber || 
+                   content.machineInfo?.machineNumber || 
+                   '';
                  const problemDescription = content.problemDescription || content.answer || '';
                  
                  // SupportHistoryItem型に変換
@@ -517,6 +734,7 @@ const HistoryPage: React.FC = () => {
                      machineNumber: machineNumber
                    },
                    jsonData: {
+                     ...content, // 完全なJSONデータを含める
                      title: displayTitle,
                      problemDescription: problemDescription,
                      machineType: machineType,
@@ -524,9 +742,10 @@ const HistoryPage: React.FC = () => {
                      extractedComponents: content.extractedComponents || [],
                      extractedSymptoms: content.extractedSymptoms || [],
                      possibleModels: content.possibleModels || [],
-                     conversationHistory: content.conversationHistory || [],
+                     conversationHistory: content.conversationHistory || content.chatData?.messages || [],
                      savedImages: content.savedImages || [],
-                     fileName: file.fileName
+                     fileName: file.fileName,
+                     chatData: content.chatData || content, // chatDataも含める
                    },
                  };
 
@@ -1390,14 +1609,24 @@ const HistoryPage: React.FC = () => {
         editedItem.id || editedItem.chatId
       );
 
-      // 更新データの準備（editedItemの情報も含める）
+      // 更新データの準備（変更されたフィールドのみを送信）
+      // 既存のデータは保持し、変更された部分だけを更新
       const updatePayload = {
         updatedData: {
-          ...editedItem.jsonData,
-          // 基本情報もJSONデータに含める
-          machineType: editedItem.machineType,
-          machineNumber: editedItem.machineNumber,
-          title: editedItem.jsonData?.title || editedItem.title,
+          // JSONデータの主要フィールドのみ更新（既存のデータは保持）
+          ...(editedItem.jsonData?.title && { title: editedItem.jsonData.title }),
+          ...(editedItem.jsonData?.problemDescription && { problemDescription: editedItem.jsonData.problemDescription }),
+          ...(editedItem.jsonData?.answer && { answer: editedItem.jsonData.answer }),
+          ...(editedItem.jsonData?.machineType && { machineType: editedItem.jsonData.machineType }),
+          ...(editedItem.jsonData?.machineNumber && { machineNumber: editedItem.jsonData.machineNumber }),
+          ...(editedItem.jsonData?.repairSchedule && { repairSchedule: editedItem.jsonData.repairSchedule }),
+          ...(editedItem.jsonData?.location && { location: editedItem.jsonData.location }),
+          ...(editedItem.jsonData?.status && { status: editedItem.jsonData.status }),
+          ...(editedItem.jsonData?.remarks && { remarks: editedItem.jsonData.remarks }),
+          // 基本情報も更新（ルートレベル）
+          ...(editedItem.machineType && { machineType: editedItem.machineType }),
+          ...(editedItem.machineNumber && { machineNumber: editedItem.machineNumber }),
+          ...(editedItem.jsonData?.title && { title: editedItem.jsonData.title }),
           lastModified: new Date().toISOString(),
         },
         updatedBy: 'user',
@@ -3392,6 +3621,15 @@ const HistoryPage: React.FC = () => {
 
   const handlePrintReport = (item: SupportHistoryItem) => {
     console.log('🖨️ 印刷レポート開始:', item);
+    
+    // 編集画面が開いている場合は、編集画面のデータを優先的に使用
+    const sourceItem = showEditDialog && editingItem && editingItem.id === item.id ? editingItem : item;
+    console.log('🔍 印刷データソース:', {
+      fromEditDialog: showEditDialog && editingItem && editingItem.id === item.id,
+      editingItemTitle: editingItem?.jsonData?.title,
+      itemTitle: item.jsonData?.title,
+    });
+    
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       console.error('❌ 印刷ウィンドウを開けませんでした');
@@ -3400,55 +3638,125 @@ const HistoryPage: React.FC = () => {
     }
     console.log('✅ 印刷ウィンドウを開きました');
 
-    const jsonData = item.jsonData;
-
-    // 事象データを抽出（ファイル名から優先的に取得、次にJSONデータから）
-    let incidentTitle = '事象なし';
-
-    // まずファイル名から事象内容を抽出
-    if (item.fileName) {
-      const fileNameParts = item.fileName.split('_');
-      if (fileNameParts.length > 1) {
-        // ファイル名の最初の部分が事象内容
-        incidentTitle = fileNameParts[0];
+    // jsonDataの取得を確実にする（文字列の場合はパース）
+    let jsonData = sourceItem.jsonData;
+    if (typeof jsonData === 'string') {
+      try {
+        jsonData = JSON.parse(jsonData);
+      } catch (e) {
+        console.error('JSONデータのパースに失敗:', e);
+        jsonData = {};
       }
     }
 
-    // ファイル名から取得できない場合は、JSONデータから取得
-    if (incidentTitle === '事象なし') {
-      incidentTitle = jsonData?.title || jsonData?.question || '事象なし';
-      if (incidentTitle === '事象なし' && jsonData?.chatData?.messages) {
-        // 従来フォーマットの場合、ユーザーメッセージから事象を抽出
-        const userMessages = jsonData.chatData.messages.filter(
-          (msg: any) => !msg.isAiResponse
-        );
-        if (userMessages.length > 0) {
-          // 最初のユーザーメッセージを事象として使用
-          incidentTitle = userMessages[0].content || '事象なし';
+    // 事象タイトルを取得（編集画面のロジックと同じ）
+    // 編集画面では: editingItem.jsonData.title を直接使用、なければファイル名から抽出
+    let incidentTitle = sourceItem.jsonData?.title || sourceItem.jsonData?.question || '';
+    
+    // 編集画面と同じロジックでファイル名から抽出
+    if (!incidentTitle || incidentTitle.trim() === '') {
+      if (sourceItem.fileName) {
+        const firstUnderscoreIndex = sourceItem.fileName.indexOf('_');
+        if (firstUnderscoreIndex > 0) {
+          incidentTitle = sourceItem.fileName.substring(0, firstUnderscoreIndex);
+        } else {
+          // 「_」がない場合は、拡張子を除いた全体を返す
+          incidentTitle = sourceItem.fileName.replace(/\.json$/, '');
         }
       }
     }
+    
+    // 最終的に取得できない場合は、chatData.messagesから抽出
+    if ((!incidentTitle || incidentTitle.trim() === '') && jsonData?.chatData?.messages) {
+      const userMessages = jsonData.chatData.messages.filter(
+        (msg: any) => !msg.isAiResponse && msg.content && !msg.content.startsWith('data:image/') && !msg.content.startsWith('/api/images/')
+      );
+      if (userMessages.length > 0) {
+        incidentTitle = userMessages[0].content || '';
+      }
+    }
+    
+    // デバッグ用ログ（詳細版）
+    console.log('🔍 印刷用事象タイトル（詳細）:', {
+      '最終的なincidentTitle': incidentTitle,
+      'incidentTitleの型': typeof incidentTitle,
+      'incidentTitleの長さ': incidentTitle?.length,
+      '編集画面から取得': showEditDialog && editingItem && editingItem.id === item.id,
+      'sourceItem.jsonData.title': sourceItem.jsonData?.title,
+      'sourceItem.jsonData.question': sourceItem.jsonData?.question,
+      'jsonData.title': jsonData?.title,
+      'jsonData.question': jsonData?.question,
+      'sourceItem.title': sourceItem.title,
+      'sourceItem.fileName': sourceItem.fileName,
+      'sourceItem.jsonData全体': JSON.stringify(sourceItem.jsonData || {}, null, 2).substring(0, 500),
+    });
 
-    const problemDescription =
-      jsonData?.problemDescription || jsonData?.answer || '説明なし';
+    // 事象説明を抽出（編集画面から優先的に取得）
+    // 優先順位: 編集画面のjsonData.problemDescription > 編集画面のjsonData.answer > 通常のjsonData > chatData.messages
+    let problemDescription = '';
+    
+    // 1. 編集画面から直接取得（最優先）
+    if (sourceItem.jsonData?.problemDescription && sourceItem.jsonData.problemDescription.trim() !== '') {
+      problemDescription = sourceItem.jsonData.problemDescription;
+    } else if (sourceItem.jsonData?.answer && sourceItem.jsonData.answer.trim() !== '') {
+      problemDescription = sourceItem.jsonData.answer;
+    } else if (jsonData?.problemDescription && jsonData.problemDescription.trim() !== '') {
+      problemDescription = jsonData.problemDescription;
+    } else if (jsonData?.answer && jsonData.answer.trim() !== '') {
+      problemDescription = jsonData.answer;
+    }
+    
+    // 2. 事象説明がない場合は、chatData.messagesからユーザーメッセージを抽出
+    if (!problemDescription && jsonData?.chatData?.messages) {
+      const userMessages = jsonData.chatData.messages
+        .filter((msg: any) => !msg.isAiResponse && msg.content && !msg.content.startsWith('data:image/') && !msg.content.startsWith('/api/images/'))
+        .map((msg: any) => msg.content)
+        .join('\n');
+      if (userMessages) {
+        problemDescription = userMessages;
+      }
+    }
+    
+    if (!problemDescription) {
+      problemDescription = '説明なし';
+    }
 
-    // 機種と機械番号を抽出（APIから返されるデータ構造に合わせる）
+    // 機種と機械番号を抽出（編集画面から優先的に取得）
     const machineType =
-      item.machineInfo?.machineTypeName ||
+      sourceItem.machineInfo?.machineTypeName ||
+      sourceItem.jsonData?.machineType ||
       jsonData?.machineType ||
       jsonData?.chatData?.machineInfo?.machineTypeName ||
+      sourceItem.machineType ||
+      item.machineInfo?.machineTypeName ||
       item.machineType ||
       '';
     const machineNumber =
-      item.machineInfo?.machineNumber ||
+      sourceItem.machineInfo?.machineNumber ||
+      sourceItem.jsonData?.machineNumber ||
       jsonData?.machineNumber ||
       jsonData?.chatData?.machineInfo?.machineNumber ||
+      sourceItem.machineNumber ||
+      item.machineInfo?.machineNumber ||
       item.machineNumber ||
       '';
 
     const extractedComponents = jsonData?.extractedComponents || [];
     const extractedSymptoms = jsonData?.extractedSymptoms || [];
     const possibleModels = jsonData?.possibleModels || [];
+    
+    // 場所を取得（編集画面から優先的に取得）
+    const location = 
+      sourceItem.jsonData?.location ||
+      jsonData?.location ||
+      '○○線';
+    
+    // デバッグ用ログ
+    console.log('🔍 印刷用データ:', {
+      incidentTitle,
+      location,
+      problemDescription: problemDescription.substring(0, 50) + '...',
+    });
 
     // 画像URLを取得（優先順位付き）
     let imageUrl = '';
@@ -3739,8 +4047,12 @@ const HistoryPage: React.FC = () => {
               R${item.id.slice(-5).toUpperCase()}
             </div>
             <div class="info-item">
-              <strong>機械ID</strong>
-              ${item.machineNumber}
+              <strong>機種</strong>
+              ${machineType || '-'}
+            </div>
+            <div class="info-item">
+              <strong>機械番号</strong>
+              ${machineNumber || '-'}
             </div>
             <div class="info-item">
               <strong>日付</strong>
@@ -3748,24 +4060,30 @@ const HistoryPage: React.FC = () => {
             </div>
             <div class="info-item">
               <strong>場所</strong>
-              ○○線
-            </div>
-            <div class="info-item">
-              <strong>故障コード</strong>
-              FC01
+              ${location || '-'}
             </div>
           </div>
         </div>
         
         <div class="section">
-          <h2>事象詳細</h2>
+          <h2>故障詳細</h2>
+          <div class="info-grid">
+            <div class="info-item">
+              <strong>ステータス</strong>
+              ${String(incidentTitle || '').trim() || '-'}
+            </div>
+            <div class="info-item">
+              <strong>責任者</strong>
+              -
+            </div>
+          </div>
           <div class="content-box">
-            <p><strong>事象タイトル:</strong> ${incidentTitle}</p>
-            <p><strong>事象説明:</strong> ${problemDescription}</p>
-            <p><strong>ステータス:</strong> 応急処置完了</p>
-            <p><strong>担当エンジニア:</strong> 担当者</p>
-            <p><strong>機種:</strong> ${machineType}</p>
-            <p><strong>機械番号:</strong> ${machineNumber}</p>
+            <strong>説明</strong>
+            <p>${problemDescription || '説明なし'}</p>
+          </div>
+          <div class="content-box">
+            <strong>備考</strong>
+            <p>${sourceItem.jsonData?.remarks || jsonData?.remarks || '-'}</p>
           </div>
         </div>
         
@@ -4265,6 +4583,39 @@ const HistoryPage: React.FC = () => {
                                     '🔍 正規化後 machineNumber:',
                                     normalizedItem.machineNumber
                                   );
+                                  console.log(
+                                    '🔍 正規化後 jsonData.title:',
+                                    normalizedItem.jsonData?.title
+                                  );
+
+                                  // chatData.messagesからユーザーメッセージを抽出（一時的に保存、GPT要約に使用するため）
+                                  const chatData = normalizedItem.jsonData?.chatData || normalizedItem.jsonData;
+                                  let extractedUserMessages = '';
+                                  if (chatData?.messages && Array.isArray(chatData.messages)) {
+                                    const userMessages = chatData.messages
+                                      .filter((msg: any) => !msg.isAiResponse && msg.content && !msg.content.startsWith('data:image/') && !msg.content.startsWith('/api/images/'))
+                                      .map((msg: any) => msg.content)
+                                      .join('\n');
+                                    if (userMessages) {
+                                      extractedUserMessages = userMessages;
+                                      // problemDescriptionがない場合のみ設定（GPT要約の前に一時的に表示）
+                                      if (!normalizedItem.jsonData?.problemDescription || normalizedItem.jsonData.problemDescription === '') {
+                                        normalizedItem.jsonData.problemDescription = userMessages;
+                                        normalizedItem.jsonData.answer = userMessages;
+                                        console.log('🔍 chatData.messagesから事象説明を抽出:', userMessages);
+                                      }
+                                    }
+                                  }
+                                  
+                                  // 編集画面を開く際に簡易要約を生成（GPT要約が生成されるまでの一時的な表示）
+                                  if (!normalizedItem.jsonData?.problemDescription || normalizedItem.jsonData.problemDescription === '') {
+                                    const autoSummary = generateSummaryFromJson(normalizedItem.jsonData);
+                                    if (autoSummary) {
+                                      normalizedItem.jsonData.problemDescription = autoSummary;
+                                      normalizedItem.jsonData.answer = autoSummary;
+                                      console.log('🔍 自動要約を生成:', autoSummary);
+                                    }
+                                  }
 
                                   setEditingItem(normalizedItem);
                                   setShowEditDialog(true);
@@ -4429,6 +4780,14 @@ const HistoryPage: React.FC = () => {
                   <Button
                     onClick={() => {
                       const normalizedItem = normalizeJsonData(previewItem);
+                      
+                      // 編集画面を開く際に要約を自動生成
+                      const autoSummary = generateSummaryFromJson(normalizedItem.jsonData);
+                      if (autoSummary && (!normalizedItem.jsonData?.problemDescription || normalizedItem.jsonData.problemDescription === '')) {
+                        normalizedItem.jsonData.problemDescription = autoSummary;
+                        normalizedItem.jsonData.answer = autoSummary;
+                      }
+                      
                       setEditingItem(normalizedItem);
                       setShowPreviewDialog(false);
                       setShowEditDialog(true);
@@ -4522,7 +4881,396 @@ const HistoryPage: React.FC = () => {
       {/* 編集ダイアログ */}
       {showEditDialog && editingItem && (
         <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50'>
-          <div className='bg-white rounded-lg max-w-5xl w-full max-h-[95vh] overflow-auto'>
+          <style dangerouslySetInnerHTML={{__html: `
+            @media print {
+              @page {
+                size: A4;
+                margin: 1mm 15mm 2mm 10mm;
+              }
+              * {
+                box-sizing: border-box;
+              }
+              html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                height: auto !important;
+                background: white !important;
+                overflow: visible !important;
+              }
+              body > * {
+                visibility: hidden;
+              }
+              .print-content-wrapper,
+              .print-content-wrapper * {
+                visibility: visible !important;
+              }
+              .print-content-wrapper {
+                position: relative !important;
+                display: block !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                font-size: 8pt !important;
+                line-height: 1.2 !important;
+                border: none !important;
+                box-shadow: none !important;
+              }
+              .print-content-wrapper > div {
+                padding: 2mm !important;
+              }
+              .no-print {
+                display: none !important;
+              }
+              .print-content-wrapper h2,
+              .print-content-wrapper h3 {
+                font-size: 9pt !important;
+                margin: 3pt 0 2pt 0 !important;
+                color: #000 !important;
+                font-weight: bold !important;
+                page-break-after: avoid;
+              }
+              .print-content-wrapper .bg-gray-50,
+              .print-content-wrapper .bg-blue-50,
+              .print-content-wrapper .bg-yellow-50,
+              .print-content-wrapper .bg-purple-50 {
+                background: #f5f5f5 !important;
+                border: 1px solid #ddd !important;
+                border-radius: 3px !important;
+                padding: 4pt !important;
+                margin-bottom: 3pt !important;
+                page-break-inside: avoid;
+              }
+              .print-content-wrapper label {
+                font-size: 7pt !important;
+                font-weight: bold !important;
+                display: block !important;
+                margin-bottom: 2pt !important;
+                color: #000 !important;
+              }
+              .print-content-wrapper input,
+              .print-content-wrapper textarea,
+              .print-content-wrapper select {
+                width: 100% !important;
+                padding: 1pt 2pt !important;
+                border: none !important;
+                border-bottom: 1px solid #ccc !important;
+                border-radius: 0 !important;
+                font-size: 7pt !important;
+                background: transparent !important;
+                color: #000 !important;
+                margin-bottom: 2pt !important;
+                display: block !important;
+              }
+              /* 機種・機械番号・ファイル名を1行表示（ラベルと入力フィールドを横並び） */
+              .print-content-wrapper .print-basic-info-grid {
+                display: flex !important;
+                gap: 4pt !important;
+                margin-bottom: 1pt !important;
+                align-items: center !important;
+              }
+              .print-content-wrapper .print-basic-info-item {
+                display: flex !important;
+                align-items: center !important;
+                gap: 2pt !important;
+                margin-bottom: 0 !important;
+              }
+              .print-content-wrapper .print-basic-info-item .print-inline-label {
+                margin-bottom: 0 !important;
+                font-size: 7pt !important;
+                width: auto !important;
+                min-width: 40pt !important;
+                display: inline-block !important;
+              }
+              .print-content-wrapper .print-basic-info-item input,
+              .print-content-wrapper .print-basic-info-item select,
+              .print-content-wrapper .print-basic-info-item [data-radix-select-trigger]::before,
+              .print-content-wrapper .print-basic-info-item .print-select-trigger::before {
+                border: none !important;
+                border-bottom: 1px solid #ccc !important;
+                padding: 0.5pt 1pt !important;
+                margin-bottom: 0 !important;
+                min-height: auto !important;
+                width: auto !important;
+                flex: 1 !important;
+              }
+              /* 場所の行を詰めて1行で、狭く */
+              .print-content-wrapper .print-location-field {
+                width: 40% !important;
+                margin-top: 1pt !important;
+                display: flex !important;
+                align-items: center !important;
+                gap: 2pt !important;
+              }
+              .print-content-wrapper .print-location-field label {
+                margin-bottom: 0 !important;
+                font-size: 7pt !important;
+                width: auto !important;
+                min-width: 30pt !important;
+                display: inline-block !important;
+              }
+              .print-content-wrapper .print-location-field input {
+                width: auto !important;
+                flex: 1 !important;
+                padding: 0.5pt 1pt !important;
+                border: none !important;
+                border-bottom: 1px solid #ccc !important;
+                margin-bottom: 0 !important;
+              }
+              /* 事象の説明セクション全体のマージンを調整 */
+              .print-content-wrapper .bg-blue-50 {
+                padding: 4pt !important;
+                margin-bottom: 4pt !important;
+              }
+              /* 事象説明のヘッダー（タイトルと補足説明を横並び） */
+              .print-content-wrapper .bg-blue-50 h3 {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                margin-bottom: 3pt !important;
+              }
+              .print-content-wrapper .bg-blue-50 h3 > span:last-child {
+                font-size: 6pt !important;
+                font-weight: normal !important;
+                color: #666 !important;
+                margin-left: auto !important;
+              }
+              .print-content-wrapper [data-radix-select-content],
+              .print-content-wrapper [data-radix-portal] {
+                display: none !important;
+              }
+              .print-content-wrapper .print-select-trigger,
+              .print-content-wrapper [data-radix-select-trigger] {
+                display: block !important;
+              }
+              .print-content-wrapper .print-select-trigger > span,
+              .print-content-wrapper [data-radix-select-trigger] > span {
+                display: none !important;
+              }
+              .print-content-wrapper .print-select-trigger::before,
+              .print-content-wrapper [data-radix-select-trigger]::before {
+                content: attr(data-value) !important;
+                display: block !important;
+                padding: 0.5pt 1pt !important;
+                border: none !important;
+                border-bottom: 1px solid #ccc !important;
+                border-radius: 0 !important;
+                font-size: 7pt !important;
+                background: transparent !important;
+                color: #000 !important;
+                margin-bottom: 0 !important;
+                min-height: auto !important;
+              }
+              .print-content-wrapper .print-select-trigger > *,
+              .print-content-wrapper [data-radix-select-trigger] > * {
+                display: none !important;
+              }
+              .print-content-wrapper textarea {
+                min-height: 25pt !important;
+                max-height: 35pt !important;
+                resize: none !important;
+              }
+              /* 事象説明は1.3倍にする */
+              .print-content-wrapper .bg-blue-50 textarea {
+                min-height: 65pt !important;
+                max-height: 78pt !important;
+              }
+              /* 記事欄は調整可能（A4に収まらない場合は減らす） */
+              .print-content-wrapper .print-remarks-section textarea {
+                min-height: 60pt !important;
+                max-height: 90pt !important;
+              }
+              .print-content-wrapper .bg-gray-50:last-of-type {
+                padding: 3pt !important;
+                margin-bottom: 2pt !important;
+              }
+              .print-content-wrapper .bg-gray-50:last-of-type h3 {
+                margin-bottom: 2pt !important;
+              }
+              /* 記事欄の補足説明をタイトルの右側に移動 */
+              .print-content-wrapper .print-remarks-header {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                margin-bottom: 2pt !important;
+              }
+              .print-content-wrapper .print-remarks-hint {
+                font-size: 6pt !important;
+                font-weight: normal !important;
+                color: #666 !important;
+                margin-left: auto !important;
+              }
+              /* 記事欄に行の下線（細い破線）を表示、外枠の線は不要 */
+              .print-content-wrapper .print-remarks-section {
+                position: relative !important;
+              }
+              .print-content-wrapper .print-remarks-textarea {
+                border: none !important;
+                background: transparent !important;
+                padding: 2pt 0 !important;
+                min-height: 60pt !important;
+                max-height: 90pt !important;
+                line-height: 1.5em !important;
+                position: relative !important;
+                /* 破線パターンで各行の下に細線の灰色破線を引く */
+                background-image: 
+                  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='1.5em'%3E%3Cline x1='0' y1='1.48em' x2='100%25' y2='1.48em' stroke='%23ccc' stroke-width='0.3' stroke-dasharray='2,2'/%3E%3C/svg%3E") !important;
+                background-repeat: repeat-y !important;
+                background-size: 100% 1.5em !important;
+                background-position: 0 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
+              .print-content-wrapper .grid {
+                display: grid !important;
+                gap: 3pt !important;
+                margin-bottom: 3pt !important;
+              }
+              .print-content-wrapper .space-y-4 > * + * {
+                margin-top: 3pt !important;
+              }
+              .print-content-wrapper .space-y-6 > * + * {
+                margin-top: 4pt !important;
+              }
+              /* 全体のコンパクト化 */
+              .print-content-wrapper .bg-gray-50,
+              .print-content-wrapper .bg-blue-50,
+              .print-content-wrapper .bg-yellow-50,
+              .print-content-wrapper .bg-purple-50 {
+                padding: 3pt !important;
+                margin-bottom: 3pt !important;
+              }
+              .print-content-wrapper .bg-gray-50 h3,
+              .print-content-wrapper .bg-blue-50 h3,
+              .print-content-wrapper .bg-yellow-50 h3,
+              .print-content-wrapper .bg-purple-50 h3 {
+                margin-bottom: 2pt !important;
+                font-size: 9pt !important;
+              }
+              .print-content-wrapper .grid.grid-cols-1 {
+                grid-template-columns: 1fr;
+              }
+              .print-content-wrapper .grid.grid-cols-2,
+              .print-content-wrapper .grid.md\\:grid-cols-2 {
+                grid-template-columns: repeat(2, 1fr);
+              }
+              /* 修繕計画の修繕予定日・場所は横1行にする */
+              .print-content-wrapper .print-repair-plan-grid {
+                display: flex !important;
+                gap: 4pt !important;
+                margin-bottom: 2pt !important;
+                align-items: center !important;
+              }
+              .print-content-wrapper .bg-yellow-50 {
+                padding: 3pt !important;
+                margin-bottom: 2pt !important;
+              }
+              .print-content-wrapper .bg-yellow-50 h3 {
+                margin-bottom: 2pt !important;
+              }
+              .print-content-wrapper .print-repair-plan-item {
+                display: flex !important;
+                align-items: center !important;
+                gap: 2pt !important;
+                margin-bottom: 0 !important;
+              }
+              .print-content-wrapper .print-repair-plan-item .print-inline-label {
+                margin-bottom: 0 !important;
+                font-size: 7pt !important;
+                width: auto !important;
+                min-width: 50pt !important;
+                display: inline-block !important;
+              }
+              .print-content-wrapper .print-repair-plan-item input {
+                border: none !important;
+                border-bottom: 1px solid #ccc !important;
+                padding: 0.5pt 1pt !important;
+                margin-bottom: 0 !important;
+                width: auto !important;
+                flex: 1 !important;
+              }
+              .print-content-wrapper .grid.grid-cols-3,
+              .print-content-wrapper .grid.md\\:grid-cols-3 {
+                grid-template-columns: repeat(3, 1fr);
+              }
+              .print-content-wrapper .space-y-4 > * + * {
+                margin-top: 6pt;
+              }
+              .print-content-wrapper img {
+                max-width: 100% !important;
+                max-height: 45pt !important;
+                border: 1px solid #ddd !important;
+                margin: 3pt 0 !important;
+              }
+              .print-content-wrapper .grid.grid-cols-3 img {
+                max-height: 40pt !important;
+              }
+              .print-content-wrapper svg {
+                display: none !important;
+              }
+              .print-content-wrapper .flex {
+                display: flex !important;
+                gap: 3pt !important;
+              }
+              .print-content-wrapper .flex.items-center {
+                align-items: center !important;
+              }
+              .print-content-wrapper button,
+              .print-content-wrapper [role="button"],
+              .print-content-wrapper .no-print {
+                display: none !important;
+              }
+              .print-content-wrapper [data-radix-portal] {
+                display: none !important;
+              }
+              .print-content-wrapper .print-header {
+                display: block !important;
+                margin-bottom: 0.5pt !important;
+                page-break-after: avoid;
+                text-align: center !important;
+              }
+              .print-content-wrapper .print-header h1 {
+                font-size: 15pt !important;
+                font-weight: bold !important;
+                text-align: center !important;
+                margin: 0 0 0.25pt 0 !important;
+                border-bottom: 1px solid #000 !important;
+                padding-bottom: 0.25pt !important;
+                color: #000 !important;
+                line-height: 1.2 !important;
+              }
+              .print-content-wrapper .print-header p {
+                font-size: 5pt !important;
+                text-align: center !important;
+                margin: 0 0 0.25pt 0 !important;
+                color: #666 !important;
+                line-height: 1.2 !important;
+              }
+              .print-content-wrapper .bg-yellow-50 {
+                background: #f5f5f5 !important;
+                border: 1px solid #ddd !important;
+                border-radius: 3px !important;
+                padding: 4pt !important;
+                margin-bottom: 4pt !important;
+                page-break-inside: avoid;
+              }
+              /* 記事欄を確実に表示 */
+              .print-content-wrapper .bg-gray-50:last-of-type,
+              .print-content-wrapper .bg-gray-50.print-remarks-section {
+                background: #f5f5f5 !important;
+                border: 1px solid #ddd !important;
+                border-radius: 3px !important;
+                padding: 4pt !important;
+                margin-bottom: 4pt !important;
+                page-break-inside: avoid;
+                display: block !important;
+              }
+            }
+          `}} />
+          <div className='bg-white rounded-lg max-w-5xl w-full max-h-[95vh] overflow-auto print-content-wrapper'>
             <div className='p-6'>
               {/* 機種・機械番号データが読み込まれていない場合は再取得 */}
               {(() => {
@@ -4547,8 +5295,8 @@ const HistoryPage: React.FC = () => {
               })()}
 
               <div className='flex justify-between items-center mb-4'>
-                <h2 className='text-xl font-bold'>機械故障情報編集</h2>
-                <div className='flex gap-2'>
+                <h2 className='text-xl font-bold no-print'>機械故障情報編集</h2>
+                <div className='flex gap-2 no-print'>
                   <Button
                     onClick={() => {
                       console.log('編集データを保存します:', editingItem);
@@ -4561,34 +5309,9 @@ const HistoryPage: React.FC = () => {
                   </Button>
                   <Button
                     onClick={() => {
-                      console.log('🖨️ 編集ダイアログから印刷を実行:', editingItem);
-                      console.log('🖨️ editingItem.jsonData:', editingItem.jsonData);
-                      console.log('🖨️ editingItem.id:', editingItem.id);
-                      console.log('🖨️ editingItem.fileName:', editingItem.fileName);
-                      
-                      // 編集画面のHTML生成処理を使用
-                      const reportHTML = generateMachineFailureReportHTML(editingItem.jsonData);
-                      console.log('🖨️ 生成されたHTMLの長さ:', reportHTML.length);
-                      
-                      // 新しいウィンドウで編集画面を開く
-                      const editWindow = window.open('', '_blank', 'width=1200,height=800');
-                      if (!editWindow) {
-                        alert('印刷ウィンドウを開けませんでした。ポップアップブロックを無効にしてください。');
-                        return;
-                      }
-                      
-                      editWindow.document.write(reportHTML);
-                      editWindow.document.close();
-                      
-                      // 編集画面が読み込まれた後に印刷ダイアログを表示
-                      editWindow.onload = () => {
-                        console.log('✅ 編集画面が読み込まれました');
-                        editWindow.focus();
-                        setTimeout(() => {
-                          editWindow.print();
-                          console.log('✅ 印刷ダイアログを表示しました');
-                        }, 1000);
-                      };
+                      console.log('🖨️ 編集画面をそのまま印刷します');
+                      // 編集画面をそのまま印刷
+                      window.print();
                     }}
                     className='flex items-center gap-2'
                   >
@@ -4607,17 +5330,23 @@ const HistoryPage: React.FC = () => {
                   </Button>
                 </div>
               </div>
+              
+              <div className='space-y-6 print-content'>
+                {/* 印刷時のタイトル（画面では非表示） */}
+                <div className='print-header no-print' style={{ display: 'none' }}>
+                  <h1>機械故障報告書</h1>
+                  <p>印刷日時: {new Date().toLocaleString('ja-JP')}</p>
+                </div>
 
-              <div className='space-y-6'>
                 {/* 基本情報編集 */}
                 <div className='bg-gray-50 p-4 rounded-lg'>
                   <h3 className='text-lg font-semibold mb-3 flex items-center gap-2'>
                     <Settings className='h-5 w-5' />
                     基本情報
                   </h3>
-                  <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-                    <div>
-                      <label className='block text-sm font-medium mb-2'>
+                  <div className='grid grid-cols-1 md:grid-cols-3 gap-4 print-basic-info-grid'>
+                    <div className='print-basic-info-item'>
+                      <label className='block text-sm font-medium mb-2 print-inline-label'>
                         機種
                       </label>
                       {/* 既存の機種があれば表示、なければ選択肢を提供 */}
@@ -4635,7 +5364,10 @@ const HistoryPage: React.FC = () => {
                           });
                         }}
                       >
-                          <SelectTrigger>
+                          <SelectTrigger 
+                          data-value={editingItem.machineType || '機種を選択'}
+                          className='print-select-trigger'
+                        >
                             <SelectValue 
                               placeholder={
                                 editingItem.machineType 
@@ -4671,8 +5403,8 @@ const HistoryPage: React.FC = () => {
                           </SelectContent>
                         </Select>
                     </div>
-                    <div>
-                      <label className='block text-sm font-medium mb-2'>
+                    <div className='print-basic-info-item'>
+                      <label className='block text-sm font-medium mb-2 print-inline-label'>
                         機械番号
                       </label>
                       {/* 既存の機械番号があれば表示、なければ選択肢を提供 */}
@@ -4690,7 +5422,10 @@ const HistoryPage: React.FC = () => {
                           });
                         }}
                       >
-                          <SelectTrigger>
+                          <SelectTrigger 
+                            data-value={editingItem.machineNumber || '機械番号を選択'}
+                            className='print-select-trigger'
+                          >
                             <SelectValue 
                               placeholder={
                                 editingItem.machineNumber 
@@ -4733,8 +5468,8 @@ const HistoryPage: React.FC = () => {
                           </SelectContent>
                         </Select>
                     </div>
-                    <div>
-                      <label className='block text-sm font-medium mb-2'>
+                    <div className='print-basic-info-item'>
+                      <label className='block text-sm font-medium mb-2 print-inline-label'>
                         ファイル名
                       </label>
                       <Input
@@ -4753,11 +5488,12 @@ const HistoryPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 事象・説明編集 */}
+                {/* 事象の説明編集 */}
                 <div className='bg-blue-50 p-4 rounded-lg'>
                   <h3 className='text-lg font-semibold mb-3 flex items-center gap-2'>
                     <FileText className='h-5 w-5' />
-                    事象・説明
+                    <span>事象の説明</span>
+                    <span className='text-xs font-normal text-gray-600 ml-auto'>事象の詳細説明を入力</span>
                   </h3>
                   <div className='space-y-4'>
                     <div>
@@ -4766,9 +5502,21 @@ const HistoryPage: React.FC = () => {
                       </label>
                       <Input
                         value={
-                          editingItem.jsonData?.title ||
-                          editingItem.jsonData?.question ||
-                          ''
+                          (() => {
+                            // ファイル名から日本語部分だけを抽出して表示
+                            if (editingItem.fileName) {
+                              const firstUnderscoreIndex = editingItem.fileName.indexOf('_');
+                              if (firstUnderscoreIndex > 0) {
+                                return editingItem.fileName.substring(0, firstUnderscoreIndex);
+                              }
+                              // 「_」がない場合は、拡張子を除いた全体を返す
+                              return editingItem.fileName.replace(/\.json$/, '');
+                            }
+                            // ファイル名がない場合はJSONのtitleを使用
+                            return editingItem.jsonData?.title ||
+                              editingItem.jsonData?.question ||
+                              '';
+                          })()
                         }
                         onChange={e => {
                           console.log('事象タイトルを変更:', e.target.value);
@@ -4822,8 +5570,27 @@ const HistoryPage: React.FC = () => {
                             },
                           });
                         }}
-                        className='w-full h-24 p-3 border border-gray-300 rounded-md'
-                        placeholder='事象の詳細説明を入力'
+                        className='w-full h-32 p-3 border border-gray-300 rounded-md'
+                        placeholder=''
+                      />
+                    </div>
+                    <div className='print-location-field'>
+                      <label className='block text-sm font-medium mb-2'>
+                        場所
+                      </label>
+                      <Input
+                        value={editingItem.jsonData?.location || ''}
+                        onChange={e => {
+                          console.log('場所を変更:', e.target.value);
+                          setEditingItem({
+                            ...editingItem,
+                            jsonData: {
+                              ...editingItem.jsonData,
+                              location: e.target.value,
+                            },
+                          });
+                        }}
+                        placeholder='場所を入力（例: ○○線）'
                       />
                     </div>
                   </div>
@@ -4930,9 +5697,9 @@ const HistoryPage: React.FC = () => {
                     <MapPin className='h-5 w-5' />
                     修繕計画
                   </h3>
-                  <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-                    <div>
-                      <label className='block text-sm font-medium mb-2'>
+                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4 print-repair-plan-grid'>
+                    <div className='print-repair-plan-item'>
+                      <label className='block text-sm font-medium mb-2 print-inline-label'>
                         修繕予定月日
                       </label>
                       <Input
@@ -4950,8 +5717,8 @@ const HistoryPage: React.FC = () => {
                         placeholder='修繕予定月日'
                       />
                     </div>
-                    <div>
-                      <label className='block text-sm font-medium mb-2'>
+                    <div className='print-repair-plan-item'>
+                      <label className='block text-sm font-medium mb-2 print-inline-label'>
                         場所
                       </label>
                       <Input
@@ -4968,46 +5735,17 @@ const HistoryPage: React.FC = () => {
                         placeholder='設置場所'
                       />
                     </div>
-                    <div>
-                      <label className='block text-sm font-medium mb-2'>
-                        ステータス
-                      </label>
-                      <Select
-                        value={editingItem.jsonData?.status || ''}
-                        onValueChange={value => {
-                          setEditingItem({
-                            ...editingItem,
-                            jsonData: {
-                              ...editingItem.jsonData,
-                              status: value,
-                            },
-                          });
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder='ステータスを選択' />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="報告済み">報告済み</SelectItem>
-                          <SelectItem value="対応中">対応中</SelectItem>
-                          <SelectItem value="完了">完了</SelectItem>
-                          <SelectItem value="保留">保留</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </div>
                 </div>
 
                 {/* 記事欄（200文字程度） */}
-                <div className='bg-gray-50 p-4 rounded-lg'>
-                  <h3 className='text-lg font-semibold mb-3 flex items-center gap-2'>
+                <div className='bg-gray-50 p-4 rounded-lg print-remarks-section'>
+                  <h3 className='text-lg font-semibold mb-3 flex items-center gap-2 print-remarks-header'>
                     <FileText className='h-5 w-5' />
-                    記事欄
+                    <span>記事欄</span>
+                    <span className='print-remarks-hint'>修繕に関する備考や追加情報を記載してください（200文字以内）</span>
                   </h3>
                   <div>
-                    <label className='block text-sm font-medium mb-2'>
-                      備考・記事 (200文字以内)
-                    </label>
                     <textarea
                       value={editingItem.jsonData?.remarks || ''}
                       onChange={e => {
@@ -5021,18 +5759,18 @@ const HistoryPage: React.FC = () => {
                           });
                         }
                       }}
-                      className='w-full h-24 p-3 border border-gray-300 rounded-md'
-                      placeholder='修繕に関する備考や追加情報を記載してください（200文字以内）'
+                      className='w-full h-24 p-3 border border-gray-300 rounded-md print-remarks-textarea'
+                      placeholder=''
                       maxLength={200}
                     />
-                    <p className='text-xs text-gray-500 mt-1'>
+                    <p className='text-xs text-gray-500 mt-1 no-print'>
                       {editingItem.jsonData?.remarks?.length || 0}/200文字
                     </p>
                   </div>
                 </div>
 
                 {/* 保存ボタン（下部） */}
-                <div className='flex justify-end gap-2 pt-4 border-t'>
+                <div className='flex justify-end gap-2 pt-4 border-t no-print'>
                   <Button
                     variant='outline'
                     onClick={() => {

@@ -341,3 +341,25 @@ export const generateReport = async (
     body: JSON.stringify({ searchFilters, reportTitle, reportDescription }),
   });
 };
+
+// JSONデータをGPTで要約
+export const summarizeWithGPT = async (jsonData: any): Promise<string> => {
+  try {
+    const response = await apiRequest<{ success: boolean; summary: string; error?: string }>(
+      '/history/summarize',
+      {
+        method: 'POST',
+        body: JSON.stringify({ jsonData }),
+      }
+    );
+
+    if (!response.success || !response.summary) {
+      throw new Error(response.error || '要約の生成に失敗しました');
+    }
+
+    return response.summary;
+  } catch (error) {
+    console.error('GPT要約エラー:', error);
+    throw error;
+  }
+};

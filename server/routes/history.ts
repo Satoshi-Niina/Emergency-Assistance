@@ -9,6 +9,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { BackupManager } from '../lib/backup-manager';
 import { faultHistoryService } from '../services/fault-history-service.js';
+import { summarizeText } from '../lib/openai.js';
 
 // ESM用__dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -1322,20 +1323,31 @@ router.put('/update-item/:id', async (_req, res) => {
       });
     }
 
-    // 差分を適用して更新（深いマージ）
+    // 差分を適用して更新（既存データを保持し、変更されたフィールドのみ更新）
     const mergeData = (original: any, updates: any): any => {
       const result = { ...original };
 
       for (const [key, value] of Object.entries(updates)) {
+        // undefinedの値はスキップ（既存の値を保持）
+        if (value === undefined) {
+          continue;
+        }
+
         if (
           value !== null &&
           typeof value === 'object' &&
-          !Array.isArray(value)
+          !Array.isArray(value) &&
+          !(value instanceof Date)
         ) {
-          // オブジェクトの場合は再帰的にマージ
-          result[key] = mergeData(result[key] || {}, value);
+          // オブジェクトの場合は再帰的にマージ（既存の値を保持）
+          if (original[key] && typeof original[key] === 'object' && !Array.isArray(original[key])) {
+            result[key] = mergeData(original[key], value);
+          } else {
+            // 既存のオブジェクトがない場合は、新しい値を設定（既存データがあればマージ）
+            result[key] = { ...(original[key] || {}), ...value };
+          }
         } else {
-          // プリミティブ値や配列は直接代入
+          // プリミティブ値や配列、Dateは直接代入（更新される）
           result[key] = value;
         }
       }
@@ -1343,18 +1355,22 @@ router.put('/update-item/:id', async (_req, res) => {
       return result;
     };
 
+    // 既存のデータを保持しながら、更新データをマージ
     const updatedJsonData = mergeData(originalData, {
       ...updatedData,
       lastModified: new Date().toISOString(),
-      // 更新履歴を追加
-      updateHistory: [
-        ...(originalData.updateHistory || []),
-        {
-          timestamp: new Date().toISOString(),
-          updatedFields: Object.keys(updatedData),
-          updatedBy: updatedBy,
-        },
-      ],
+    });
+
+    // 更新履歴を追加（既存のupdateHistoryは保持）
+    if (!updatedJsonData.updateHistory || !Array.isArray(updatedJsonData.updateHistory)) {
+      updatedJsonData.updateHistory = [];
+    }
+    
+    // 新しい更新履歴を追加（既存の履歴は保持）
+    updatedJsonData.updateHistory.push({
+      timestamp: new Date().toISOString(),
+      updatedFields: Object.keys(updatedData).filter(key => updatedData[key] !== undefined),
+      updatedBy: updatedBy,
     });
 
     // バックアップを作成（BackupManagerを使用）
@@ -1497,11 +1513,26 @@ router.get('/export-files', async (_req, res) => {
           
           const content = fs.readFileSync(filePath, 'utf8');
           const data = JSON.parse(content);
+          
+          // 機種と機械番号を抽出（複数の形式に対応）
+          const machineType = 
+            data.machineType || 
+            data.chatData?.machineInfo?.machineTypeName || 
+            data.machineInfo?.machineTypeName || 
+            '';
+          const machineNumber = 
+            data.machineNumber || 
+            data.chatData?.machineInfo?.machineNumber || 
+            data.machineInfo?.machineNumber || 
+            '';
+          
           const fileInfo = {
             fileName: file,
             filePath: filePath,
             chatId: data.chatId || data.id || 'unknown',
             title: data.title || data.problemDescription || 'タイトルなし',
+            machineType: machineType,
+            machineNumber: machineNumber,
             createdAt:
               data.createdAt ||
               data.exportTimestamp ||
@@ -1509,8 +1540,9 @@ router.get('/export-files', async (_req, res) => {
             exportTimestamp: data.exportTimestamp || data.createdAt || new Date().toISOString(),
             lastModified: stats.mtime.toISOString(),
             size: stats.size,
+            content: data, // 完全なJSONデータも含める
           };
-          console.log('✅ ファイル読み込み成功:', file, 'タイトル:', fileInfo.title);
+          console.log('✅ ファイル読み込み成功:', file, 'タイトル:', fileInfo.title, '機種:', machineType, '機械番号:', machineNumber);
           return fileInfo;
         } catch (error) {
           console.error(`❌ ファイル読み込みエラー: ${filePath}`, error);
@@ -2090,6 +2122,115 @@ router.post('/import-export', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'インポートに失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * POST /api/history/summarize
+ * JSONデータをGPTで要約する
+ */
+router.post('/summarize', async (req, res) => {
+  try {
+    const { jsonData } = req.body;
+
+    if (!jsonData || typeof jsonData !== 'object') {
+      return res.status(400).json({
+        success: false,
+        error: 'JSONデータが必要です',
+      });
+    }
+
+    console.log('📝 GPT要約リクエスト受信');
+
+    // JSONデータから要約用のテキストを構築
+    const summaryParts: string[] = [];
+
+    // 1. 事象タイトル
+    if (jsonData.title) {
+      summaryParts.push(`事象: ${jsonData.title}`);
+    }
+
+    // 2. 発生事象の詳細
+    if (jsonData.problemDescription) {
+      summaryParts.push(`問題説明: ${jsonData.problemDescription}`);
+    }
+
+    // 3. 会話履歴からテキストメッセージを抽出
+    if (Array.isArray(jsonData.conversationHistory)) {
+      const conversationTexts: string[] = [];
+      jsonData.conversationHistory.forEach((msg: any) => {
+        if (msg && typeof msg === 'object' && typeof msg.content === 'string') {
+          // 画像データは除外
+          if (!msg.content.startsWith('data:image/')) {
+            conversationTexts.push(msg.content);
+          }
+        }
+      });
+      if (conversationTexts.length > 0) {
+        summaryParts.push(`会話内容: ${conversationTexts.join(' ')}`);
+      }
+    }
+    
+    // 3-1. chatData.messagesからユーザーメッセージを抽出（最優先 - isAiResponseがfalseのもののみ）
+    const chatData = jsonData?.chatData || jsonData;
+    if (Array.isArray(chatData.messages)) {
+      const userMessages: string[] = [];
+      chatData.messages.forEach((msg: any) => {
+        if (msg && typeof msg === 'object' && msg.isAiResponse === false && typeof msg.content === 'string') {
+          // 画像データとURLは除外
+          if (!msg.content.startsWith('data:image/') && !msg.content.startsWith('/api/images/')) {
+            userMessages.push(msg.content);
+          }
+        }
+      });
+      if (userMessages.length > 0) {
+        // ユーザーメッセージを最優先で追加
+        summaryParts.unshift(`会話内容: ${userMessages.join(' ')}`);
+      }
+    }
+
+    // 4. 影響コンポーネント
+    if (Array.isArray(jsonData.extractedComponents) && jsonData.extractedComponents.length > 0) {
+      summaryParts.push(`影響コンポーネント: ${jsonData.extractedComponents.join(', ')}`);
+    }
+
+    // 5. 症状
+    if (Array.isArray(jsonData.extractedSymptoms) && jsonData.extractedSymptoms.length > 0) {
+      summaryParts.push(`症状: ${jsonData.extractedSymptoms.join(', ')}`);
+    }
+
+    // 6. 処置内容
+    if (jsonData.answer) {
+      summaryParts.push(`処置内容: ${jsonData.answer}`);
+    }
+
+    // 要約用のテキストを作成
+    const textToSummarize = summaryParts.join('\n\n');
+
+    if (!textToSummarize || textToSummarize.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: '要約する内容がありません',
+      });
+    }
+
+    // GPTで要約を生成
+    const summary = await summarizeText(textToSummarize);
+
+    console.log('✅ GPT要約生成完了:', summary.substring(0, 100) + '...');
+
+    res.json({
+      success: true,
+      summary: summary,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('❌ GPT要約エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '要約の生成に失敗しました',
       details: error instanceof Error ? error.message : 'Unknown error',
     });
   }

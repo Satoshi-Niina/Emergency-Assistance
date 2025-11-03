@@ -1453,11 +1453,26 @@ apiRouter.get('/history/export-files', async (req, res) => {
           
           const content = fs.readFileSync(filePath, 'utf8');
           const data = JSON.parse(content);
+          
+          // 機種と機械番号を抽出（複数の形式に対応）
+          const machineType = 
+            data.machineType || 
+            data.chatData?.machineInfo?.machineTypeName || 
+            data.machineInfo?.machineTypeName || 
+            '';
+          const machineNumber = 
+            data.machineNumber || 
+            data.chatData?.machineInfo?.machineNumber || 
+            data.machineInfo?.machineNumber || 
+            '';
+          
           const fileInfo = {
             fileName: file,
             filePath: filePath,
             chatId: data.chatId || data.id || 'unknown',
             title: data.title || data.problemDescription || 'タイトルなし',
+            machineType: machineType,
+            machineNumber: machineNumber,
             createdAt:
               data.createdAt ||
               data.exportTimestamp ||
@@ -1465,8 +1480,9 @@ apiRouter.get('/history/export-files', async (req, res) => {
             exportTimestamp: data.exportTimestamp || data.createdAt || new Date().toISOString(),
             lastModified: stats.mtime.toISOString(),
             size: stats.size,
+            content: data, // 完全なJSONデータも含める
           };
-          console.log('✅ ファイル読み込み成功:', file, 'タイトル:', fileInfo.title);
+          console.log('✅ ファイル読み込み成功:', file, 'タイトル:', fileInfo.title, '機種:', machineType, '機械番号:', machineNumber);
           return fileInfo;
         } catch (error) {
           console.error(`❌ ファイル読み込みエラー: ${filePath}`, error);
@@ -1553,15 +1569,27 @@ apiRouter.get('/history', async (req, res) => {
           }
         }
         
+        // 機種と機械番号を抽出（複数の形式に対応）
+        const machineType = 
+          data.machineType || 
+          data.chatData?.machineInfo?.machineTypeName || 
+          data.machineInfo?.machineTypeName || 
+          'Unknown';
+        const machineNumber = 
+          data.machineNumber || 
+          data.chatData?.machineInfo?.machineNumber || 
+          data.machineInfo?.machineNumber || 
+          'Unknown';
+        
         return {
           id: actualId,
           fileName: file,
           title: data.title || 'タイトルなし',
-          machineType: data.machineType || 'Unknown',
-          machineNumber: data.machineNumber || 'Unknown',
+          machineType: machineType,
+          machineNumber: machineNumber,
           description: data.description || data.problemDescription || '',
-          createdAt: data.createdAt || new Date().toISOString(),
-          lastModified: data.lastModified || data.createdAt || new Date().toISOString(),
+          createdAt: data.createdAt || data.exportTimestamp || new Date().toISOString(),
+          lastModified: data.lastModified || data.createdAt || data.exportTimestamp || new Date().toISOString(),
           source: 'files',
           imageCount: imageCount,
           images: images,
@@ -3183,6 +3211,228 @@ apiRouter.delete('/emergency-flow/:id', async (req, res) => {
   }
 });
 
+// チャット送信API（テスト用 - 認証不要）
+apiRouter.post('/chats/:id/send-test', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { chatData, exportType } = req.body;
+
+    console.log('🔍 テスト用チャット送信リクエスト受信:', {
+      chatId: id,
+      exportType,
+      messageCount: chatData?.messages?.length || 0,
+      machineInfo: chatData?.machineInfo,
+    });
+
+    // チャットデータの検証
+    if (!chatData || !chatData.messages || !Array.isArray(chatData.messages)) {
+      return res.status(400).json({
+        error: 'Invalid chat data format',
+        details: 'chatData.messages must be an array',
+      });
+    }
+
+    // プロジェクトルートの取得
+    const projectRoot = path.resolve(__dirname, '..');
+    const cwd = process.cwd();
+
+    // knowledge-base/exports フォルダを作成（複数のパスを試す）
+    const possibleExportsDirs = [
+      path.join(projectRoot, 'knowledge-base', 'exports'),
+      path.join(cwd, 'knowledge-base', 'exports'),
+      path.join(cwd, '..', 'knowledge-base', 'exports'),
+      path.join(__dirname, '..', 'knowledge-base', 'exports'),
+    ];
+
+    let exportsDir = null;
+    for (const testDir of possibleExportsDirs) {
+      if (!fs.existsSync(testDir)) {
+        try {
+          fs.mkdirSync(testDir, { recursive: true });
+          exportsDir = testDir;
+          console.log('exports フォルダを作成しました:', exportsDir);
+          break;
+        } catch (err) {
+          continue;
+        }
+      } else {
+        exportsDir = testDir;
+        break;
+      }
+    }
+
+    if (!exportsDir) {
+      // 最後の手段として、プロジェクトルートを使用
+      exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
+      fs.mkdirSync(exportsDir, { recursive: true });
+      console.log('exports フォルダを作成しました（フォールバック）:', exportsDir);
+    }
+
+    // チャットデータをJSONファイルとして保存
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+    // ユーザーメッセージから事象情報を抽出してファイル名に使用
+    const userMessages = chatData.messages.filter((m) => !m.isAiResponse);
+    console.log('🔍 事象抽出 - ユーザーメッセージ:', userMessages);
+
+    const textMessages = userMessages
+      .map((m) => m.content)
+      .filter((content) => content && !content.trim().startsWith('data:image/'))
+      .join('\n')
+      .trim();
+    console.log('🔍 事象抽出 - テキストメッセージ:', textMessages);
+
+    let incidentTitle = '事象なし';
+
+    if (textMessages) {
+      // テキストがある場合は最初の行を使用
+      incidentTitle = textMessages.split('\n')[0].trim();
+      console.log('🔍 事象抽出 - 抽出されたタイトル:', incidentTitle);
+    } else {
+      // テキストがない場合（画像のみ）は、デフォルトタイトルを使用
+      incidentTitle = '画像による故障報告';
+      console.log('🔍 事象抽出 - デフォルトタイトル使用:', incidentTitle);
+    }
+
+    // ファイル名用に事象内容をサニタイズ（特殊文字を除去）
+    const sanitizedTitle = incidentTitle
+      .replace(/[<>:"/\\|?*]/g, '') // ファイル名に使用できない文字を除去
+      .replace(/\s+/g, '_') // スペースをアンダースコアに変換
+      .substring(0, 50); // 長さを制限
+
+    const fileName = `${sanitizedTitle}_${id}_${timestamp}.json`;
+    const filePath = path.join(exportsDir, fileName);
+
+    const exportData = {
+      chatId: id,
+      userId: 'test-user',
+      exportType: exportType || 'manual_send',
+      exportTimestamp: new Date().toISOString(),
+      title: incidentTitle, // 事象情報をタイトルとして追加
+      chatData: chatData,
+    };
+
+    // 画像を個別ファイルとして保存（emergency-flowsディレクトリに保存）
+    const possibleImagesDirs = [
+      path.join(projectRoot, 'knowledge-base', 'images', 'emergency-flows'),
+      path.join(cwd, 'knowledge-base', 'images', 'emergency-flows'),
+      path.join(cwd, '..', 'knowledge-base', 'images', 'emergency-flows'),
+      path.join(__dirname, '..', 'knowledge-base', 'images', 'emergency-flows'),
+    ];
+
+    let imagesDir = null;
+    for (const testDir of possibleImagesDirs) {
+      if (!fs.existsSync(testDir)) {
+        try {
+          fs.mkdirSync(testDir, { recursive: true });
+          imagesDir = testDir;
+          console.log('画像保存ディレクトリを作成しました:', imagesDir);
+          break;
+        } catch (err) {
+          continue;
+        }
+      } else {
+        imagesDir = testDir;
+        break;
+      }
+    }
+
+    if (!imagesDir) {
+      // 最後の手段として、プロジェクトルートを使用
+      imagesDir = path.join(projectRoot, 'knowledge-base', 'images', 'emergency-flows');
+      fs.mkdirSync(imagesDir, { recursive: true });
+      console.log('画像保存ディレクトリを作成しました（フォールバック）:', imagesDir);
+    }
+
+    // チャットメッセージから画像を抽出して保存し、base64をURLに置き換え
+    const savedImages = [];
+    for (const message of chatData.messages) {
+      if (message.content && message.content.startsWith('data:image/')) {
+        try {
+          // Base64データから画像を抽出
+          const base64Data = message.content.replace(/^data:image\/[a-z]+;base64,/, '');
+          const buffer = Buffer.from(base64Data, 'base64');
+
+          // ファイル名を生成
+          const imageTimestamp = Date.now();
+          const imageFileName = `chat_image_${id}_${imageTimestamp}.jpg`;
+          const imagePath = path.join(imagesDir, imageFileName);
+
+          // 画像を150pxにリサイズして保存
+          const resizedBuffer = await sharp(buffer)
+            .resize(150, 150, {
+              fit: 'inside', // アスペクト比を維持しながら、150x150以内に収める
+              withoutEnlargement: true, // 拡大しない
+            })
+            .jpeg({ quality: 85 })
+            .toBuffer();
+
+          fs.writeFileSync(imagePath, resizedBuffer);
+          console.log('画像ファイルを保存しました（150pxにリサイズ）:', imagePath);
+
+          const imageUrl = `/api/images/emergency-flows/${imageFileName}`;
+          
+          // JSON内のbase64データをURLに置き換え
+          message.content = imageUrl;
+
+          savedImages.push({
+            messageId: message.id,
+            fileName: imageFileName,
+            path: imagePath,
+            url: imageUrl,
+          });
+        } catch (imageError) {
+          console.warn('画像保存エラー:', imageError);
+        }
+      }
+    }
+
+    // 保存した画像情報をエクスポートデータに追加
+    exportData.savedImages = savedImages;
+
+    // titleフィールドの値でファイル名を再生成
+    const finalSanitizedTitle = exportData.title
+      .replace(/[<>:"/\\|?*]/g, '') // ファイル名に使用できない文字を除去
+      .replace(/\s+/g, '_') // スペースをアンダースコアに変換
+      .substring(0, 50); // 長さを制限
+    console.log('🔍 事象抽出 - 最終サニタイズ済みタイトル:', finalSanitizedTitle);
+
+    const finalFileName = `${finalSanitizedTitle}_${id}_${timestamp}.json`;
+    const finalFilePath = path.join(exportsDir, finalFileName);
+    console.log('🔍 事象抽出 - 最終ファイル名:', finalFileName);
+
+    // UTF-8エンコーディングでJSONファイルを保存（BOMなし）
+    const jsonString = JSON.stringify(exportData, null, 2);
+    try {
+      // UTF-8 BOMなしで保存
+      fs.writeFileSync(finalFilePath, jsonString, 'utf8');
+      console.log('チャットデータを保存しました:', finalFilePath);
+      console.log('保存されたデータサイズ:', Buffer.byteLength(jsonString, 'utf8'), 'bytes');
+    } catch (writeError) {
+      console.error('ファイル保存エラー:', writeError);
+      throw writeError;
+    }
+
+    // ファイルベースの保存のみ（DB保存は削除）
+    console.log('チャットエクスポートがファイルに保存されました');
+
+    // 成功レスポンス
+    res.json({
+      success: true,
+      message: 'チャットデータが正常に保存されました（テスト用）',
+      filePath: finalFilePath,
+      fileName: finalFileName,
+      messageCount: chatData.messages.length,
+    });
+  } catch (error) {
+    console.error('Error sending chat data:', error);
+    res.status(500).json({
+      error: 'Failed to send chat data',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
 // チャット送信API
 apiRouter.post('/chats/:id/send', (req, res) => {
   const { id } = req.params;
@@ -3190,10 +3440,40 @@ apiRouter.post('/chats/:id/send', (req, res) => {
   
   console.log('📤 チャット送信リクエスト:', { id, messageCount: chatData?.messages?.length || 0 });
   
-  const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
-  if (!fs.existsSync(exportsDir)) {
+  // プロジェクトルートの取得
+  const projectRoot = path.resolve(__dirname, '..');
+  const cwd = process.cwd();
+
+  // knowledge-base/exports フォルダを作成（複数のパスを試す）
+  const possibleExportsDirs = [
+    path.join(projectRoot, 'knowledge-base', 'exports'),
+    path.join(cwd, 'knowledge-base', 'exports'),
+    path.join(cwd, '..', 'knowledge-base', 'exports'),
+    path.join(__dirname, '..', 'knowledge-base', 'exports'),
+  ];
+
+  let exportsDir = null;
+  for (const testDir of possibleExportsDirs) {
+    if (!fs.existsSync(testDir)) {
+      try {
+        fs.mkdirSync(testDir, { recursive: true });
+        exportsDir = testDir;
+        console.log('exports フォルダを作成しました:', exportsDir);
+        break;
+      } catch (err) {
+        continue;
+      }
+    } else {
+      exportsDir = testDir;
+      break;
+    }
+  }
+
+  if (!exportsDir) {
+    // 最後の手段として、プロジェクトルートを使用
+    exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
     fs.mkdirSync(exportsDir, { recursive: true });
-    console.log('exports フォルダを作成しました:', exportsDir);
+    console.log('exports フォルダを作成しました（フォールバック）:', exportsDir);
   }
   
   const fileName = `chat_${id}_${Date.now()}.json`;
@@ -3509,6 +3789,46 @@ apiRouter.get('/admin/dashboard', async (req, res) => {
       details: error.message,
       timestamp: new Date().toISOString()
     });
+  }
+});
+
+// emergency-flows画像ファイル取得エンドポイント
+apiRouter.get('/images/emergency-flows/:filename', async (req, res) => {
+  try {
+    const { filename } = req.params;
+    console.log(`🖼️ emergency-flows画像ファイル取得: ${filename}`);
+    
+    const projectRoot = path.resolve(__dirname, '..');
+    const imagesDir = path.join(projectRoot, 'knowledge-base', 'images', 'emergency-flows');
+    
+    const imagePath = path.resolve(imagesDir, filename);
+    
+    if (!fs.existsSync(imagePath)) {
+      console.log(`❌ 画像ファイルが見つかりません: ${imagePath}`);
+      return res.status(404).json({
+        success: false,
+        error: '画像ファイルが見つかりません',
+      });
+    }
+    
+    // Content-Typeを設定
+    const ext = path.extname(filename).toLowerCase();
+    let contentType = 'image/jpeg';
+    if (ext === '.png') contentType = 'image/png';
+    else if (ext === '.gif') contentType = 'image/gif';
+    else if (ext === '.webp') contentType = 'image/webp';
+    
+    res.setHeader('Content-Type', contentType);
+    res.sendFile(imagePath);
+  } catch (error) {
+    console.error('❌ emergency-flows画像ファイル取得エラー:', error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        error: '画像ファイルの取得に失敗しました',
+        details: error.message,
+      });
+    }
   }
 });
 
@@ -4132,6 +4452,305 @@ apiRouter.get('/history/exports/filter-data', async (req, res) => {
       success: false,
       error: 'フィルターデータの取得に失敗しました',
       details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// POST /api/history/summarize - JSONデータをGPTで要約する
+apiRouter.post('/history/summarize', async (req, res) => {
+  try {
+    const { jsonData } = req.body;
+
+    if (!jsonData || typeof jsonData !== 'object') {
+      return res.status(400).json({
+        success: false,
+        error: 'JSONデータが必要です',
+      });
+    }
+
+    console.log('📝 GPT要約リクエスト受信（統一サーバー）');
+
+    // OpenAIクライアントが利用可能かチェック
+    if (!openai) {
+      return res.status(503).json({
+        success: false,
+        error: 'OpenAI APIが利用できません。OPENAI_API_KEY環境変数を設定してください。',
+      });
+    }
+
+    // JSONデータから要約用のテキストを構築
+    const summaryParts = [];
+
+    // 1. 事象タイトル
+    if (jsonData.title) {
+      summaryParts.push(`事象: ${jsonData.title}`);
+    }
+
+    // 2. 発生事象の詳細
+    if (jsonData.problemDescription) {
+      summaryParts.push(`問題説明: ${jsonData.problemDescription}`);
+    }
+
+    // 3. 会話履歴からテキストメッセージを抽出
+    if (Array.isArray(jsonData.conversationHistory)) {
+      const conversationTexts = [];
+      jsonData.conversationHistory.forEach((msg) => {
+        if (msg && typeof msg === 'object' && typeof msg.content === 'string') {
+          // 画像データは除外
+          if (!msg.content.startsWith('data:image/')) {
+            conversationTexts.push(msg.content);
+          }
+        }
+      });
+      if (conversationTexts.length > 0) {
+        summaryParts.push(`会話内容: ${conversationTexts.join(' ')}`);
+      }
+    }
+
+    // 4. 影響コンポーネント
+    if (Array.isArray(jsonData.extractedComponents) && jsonData.extractedComponents.length > 0) {
+      summaryParts.push(`影響コンポーネント: ${jsonData.extractedComponents.join(', ')}`);
+    }
+
+    // 5. 症状
+    if (Array.isArray(jsonData.extractedSymptoms) && jsonData.extractedSymptoms.length > 0) {
+      summaryParts.push(`症状: ${jsonData.extractedSymptoms.join(', ')}`);
+    }
+
+    // 6. 処置内容
+    if (jsonData.answer) {
+      summaryParts.push(`処置内容: ${jsonData.answer}`);
+    }
+
+    // 要約用のテキストを作成
+    const textToSummarize = summaryParts.join('\n\n');
+
+    if (!textToSummarize || textToSummarize.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: '要約する内容がありません',
+      });
+    }
+
+    // 長すぎるテキストを切り詰める
+    const truncatedText = textToSummarize.length > 4000 ? textToSummarize.substring(0, 4000) + '...' : textToSummarize;
+
+    // GPTで要約を生成
+    const response = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: 'あなたは技術文書の要約を行う専門家です。文章の要点を保ちながら、簡潔に要約してください。',
+        },
+        {
+          role: 'user',
+          content: `以下のテキストを100語程度に要約してください:\n\n${truncatedText}`,
+        },
+      ],
+      temperature: 0.3,
+    });
+
+    const summary = response.choices[0].message.content || '';
+
+    console.log('✅ GPT要約生成完了:', summary.substring(0, 100) + '...');
+
+    res.json({
+      success: true,
+      summary: summary,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('❌ GPT要約エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '要約の生成に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// PUT /api/history/update-item/:id - 履歴アイテムの更新（JSONファイルに差分で上書き保存）
+apiRouter.put('/history/update-item/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { updatedData, updatedBy = 'user' } = req.body;
+
+    console.log('📝 履歴アイテム更新リクエスト（統一サーバー）:', {
+      id,
+      updatedDataType: typeof updatedData,
+      updatedDataKeys: updatedData ? Object.keys(updatedData) : [],
+      updatedBy,
+    });
+
+    // IDを正規化（export_プレフィックス除去など）
+    let normalizedId = id;
+    if (id.startsWith('export_')) {
+      normalizedId = id.replace('export_', '');
+      // ファイル名の場合は拡張子も除去
+      if (normalizedId.endsWith('.json')) {
+        normalizedId = normalizedId.replace('.json', '');
+      }
+      // ファイル名からchatIdを抽出（_で区切られた2番目の部分）
+      const parts = normalizedId.split('_');
+      if (parts.length >= 2 && parts[1].match(/^[a-f0-9-]+$/)) {
+        normalizedId = parts[1];
+      }
+    }
+
+    console.log('📝 正規化されたID:', normalizedId, '元のID:', id);
+
+    // 元のJSONファイルを検索
+    const projectRoot = path.resolve(__dirname, '..');
+    let exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
+
+    // ディレクトリが存在しない場合は作成
+    if (!fs.existsSync(exportsDir)) {
+      console.log('📁 exportsディレクトリを作成:', exportsDir);
+      fs.mkdirSync(exportsDir, { recursive: true });
+    }
+
+    const files = fs.readdirSync(exportsDir);
+    const jsonFiles = files.filter(f => f.endsWith('.json'));
+    
+    console.log('📂 検索対象ファイル数:', jsonFiles.length);
+
+    let targetFile = null;
+    let originalData = null;
+
+    // ファイルを検索（chatIdを含むファイルを探す）
+    for (const file of jsonFiles) {
+      const filePath = path.join(exportsDir, file);
+      
+      // ファイル名にIDが含まれているかチェック
+      if (file.includes(normalizedId)) {
+        try {
+          const content = fs.readFileSync(filePath, 'utf8');
+          const data = JSON.parse(content);
+          
+          // chatIdで確認
+          if (data.chatId === normalizedId || data.id === normalizedId || file.includes(normalizedId)) {
+            targetFile = filePath;
+            originalData = data;
+            console.log('✅ 対象ファイルを発見:', file);
+            break;
+          }
+        } catch (error) {
+          console.warn(`ファイル読み込みエラー: ${filePath}`, error);
+        }
+      }
+    }
+
+    if (!targetFile || !originalData) {
+      console.log('❌ 対象ファイルが見つかりません:', {
+        id,
+        normalizedId,
+        exportsDir,
+        filesFound: jsonFiles.length,
+      });
+
+      return res.status(404).json({
+        success: false,
+        error: '対象の履歴ファイルが見つかりません',
+        id: id,
+        normalizedId: normalizedId,
+        searchedDirectory: exportsDir,
+        availableFiles: jsonFiles.slice(0, 10),
+      });
+    }
+
+    // 差分を適用して更新（既存データを保持し、変更されたフィールドのみ更新）
+    const mergeData = (original, updates) => {
+      const result = { ...original };
+
+      for (const [key, value] of Object.entries(updates)) {
+        // undefinedの値はスキップ（既存の値を保持）
+        if (value === undefined) {
+          continue;
+        }
+
+        if (
+          value !== null &&
+          typeof value === 'object' &&
+          !Array.isArray(value) &&
+          !(value instanceof Date)
+        ) {
+          // オブジェクトの場合は再帰的にマージ（既存の値を保持）
+          if (original[key] && typeof original[key] === 'object' && !Array.isArray(original[key])) {
+            result[key] = mergeData(original[key], value);
+          } else {
+            // 既存のオブジェクトがない場合は、新しい値を設定（既存データがあればマージ）
+            result[key] = { ...(original[key] || {}), ...value };
+          }
+        } else {
+          // プリミティブ値や配列、Dateは直接代入（更新される）
+          result[key] = value;
+        }
+      }
+
+      return result;
+    };
+
+    // 既存のデータを保持しながら、更新データをマージ
+    const updatedJsonData = mergeData(originalData, {
+      ...updatedData,
+      lastModified: new Date().toISOString(),
+    });
+
+    // 更新履歴を追加（既存のupdateHistoryは保持）
+    if (!updatedJsonData.updateHistory || !Array.isArray(updatedJsonData.updateHistory)) {
+      updatedJsonData.updateHistory = [];
+    }
+    
+    // 新しい更新履歴を追加（既存の履歴は保持）
+    updatedJsonData.updateHistory.push({
+      timestamp: new Date().toISOString(),
+      updatedFields: Object.keys(updatedData).filter(key => updatedData[key] !== undefined),
+      updatedBy: updatedBy,
+    });
+
+    // バックアップを作成（簡易版：タイムスタンプ付きファイル名）
+    let backupPath = null;
+    try {
+      const backupDir = path.join(exportsDir, 'backups');
+      if (!fs.existsSync(backupDir)) {
+        fs.mkdirSync(backupDir, { recursive: true });
+      }
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupFileName = `${timestamp}_${path.basename(targetFile)}`;
+      backupPath = path.join(backupDir, backupFileName);
+      fs.copyFileSync(targetFile, backupPath);
+      console.log('💾 バックアップ作成完了:', backupPath);
+    } catch (backupError) {
+      console.warn('⚠️ バックアップ作成に失敗:', backupError);
+      // バックアップに失敗しても続行
+    }
+
+    // ファイルに上書き保存
+    fs.writeFileSync(
+      targetFile,
+      JSON.stringify(updatedJsonData, null, 2),
+      'utf8'
+    );
+
+    console.log('✅ 履歴ファイル更新完了:', targetFile);
+    console.log('📊 更新されたフィールド:', Object.keys(updatedData).filter(key => updatedData[key] !== undefined));
+
+    res.json({
+      success: true,
+      message: '履歴ファイルが更新されました',
+      updatedFile: path.basename(targetFile),
+      updatedData: updatedJsonData,
+      backupFile: backupPath ? path.basename(backupPath) : null,
+      backupPath: backupPath,
+    });
+  } catch (error) {
+    console.error('❌ 履歴アイテム更新エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '履歴アイテムの更新に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
     });
   }
 });
