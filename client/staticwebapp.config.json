@@ -67,7 +67,6 @@
     "exclude": [
       "/runtime-config.js",
       "/assets/*",
-      "/assets/**",
       "/images/*",
       "/*.js",
       "/*.mjs",
@@ -117,7 +116,6 @@
       "exclude": [
         "/runtime-config.js",
         "/assets/*",
-        "/assets/**",
         "/*.js",
         "/*.mjs",
         "/*.css",
