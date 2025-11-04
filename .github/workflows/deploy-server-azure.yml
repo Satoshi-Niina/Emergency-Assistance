@@ -32,11 +32,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set image name (lowercase)
+        id: image
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "image_name=ghcr.io/${REPO_LOWER}/server" >> $GITHUB_OUTPUT
+          echo "Image name: ghcr.io/${REPO_LOWER}/server"
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}/server
+          images: ${{ steps.image.outputs.image_name }}
           tags: |
             type=sha,prefix=azure-
             type=ref,event=branch
@@ -50,8 +57,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}/server:buildcache
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}/server:buildcache,mode=max
+          cache-from: type=registry,ref=${{ steps.image.outputs.image_name }}:buildcache
+          cache-to: type=registry,ref=${{ steps.image.outputs.image_name }}:buildcache,mode=max
           platforms: linux/amd64
 
       - name: Azure Login
@@ -91,12 +98,14 @@ jobs:
 
       - name: Configure Azure App Service for Docker
         run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_NAME="ghcr.io/${REPO_LOWER}/server:azure-${{ github.sha }}"
           # GitHub Container Registryがプライベートの場合、認証情報を設定
           if [ -n "${{ secrets.GITHUB_REGISTRY_TOKEN }}" ]; then
             az webapp config container set \
               --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
               --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-              --docker-custom-image-name ghcr.io/${{ github.repository }}/server:azure-${{ github.sha }} \
+              --docker-custom-image-name "${IMAGE_NAME}" \
               --docker-registry-server-url https://ghcr.io \
               --docker-registry-server-user ${{ secrets.GITHUB_REGISTRY_USERNAME || github.repository_owner }} \
               --docker-registry-server-password "${{ secrets.GITHUB_REGISTRY_TOKEN }}"
@@ -105,7 +114,7 @@ jobs:
             az webapp config container set \
               --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
               --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-              --docker-custom-image-name ghcr.io/${{ github.repository }}/server:azure-${{ github.sha }} \
+              --docker-custom-image-name "${IMAGE_NAME}" \
               --docker-registry-server-url https://ghcr.io
           fi
 
@@ -117,8 +126,9 @@ jobs:
 
       - name: Deploy summary
         run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           echo "✅ Docker image built and pushed to GitHub Container Registry"
-          echo "📦 Image: ghcr.io/${{ github.repository }}/server:azure-${{ github.sha }}"
+          echo "📦 Image: ghcr.io/${REPO_LOWER}/server:azure-${{ github.sha }}"
           echo "🚀 Server deployed to Azure App Service"
           echo "🌐 Backend URL: https://${{ secrets.AZURE_APP_SERVICE_NAME }}.azurewebsites.net"
 
