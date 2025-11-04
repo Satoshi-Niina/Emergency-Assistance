@@ -48,15 +48,25 @@ jobs:
           cp staticwebapp.config.json dist/
           echo "✅ Copied staticwebapp.config.json to dist"
 
-      - name: Verify runtime-config.js exists
+      - name: Verify and copy runtime-config.js
         working-directory: ./client
         run: |
+          echo "📁 Checking dist directory:"
+          ls -la dist/ | head -20
           if [ -f "dist/runtime-config.js" ]; then
             echo "✅ runtime-config.js exists in dist"
             ls -la dist/runtime-config.js
+            cat dist/runtime-config.js | head -5
           else
             echo "⚠️ runtime-config.js not found in dist, copying from public"
-            cp public/runtime-config.js dist/ || echo "⚠️ public/runtime-config.js also not found"
+            if [ -f "public/runtime-config.js" ]; then
+              cp public/runtime-config.js dist/
+              echo "✅ Copied runtime-config.js from public to dist"
+              ls -la dist/runtime-config.js
+            else
+              echo "❌ ERROR: public/runtime-config.js not found"
+              exit 1
+            fi
           fi
 
       - name: Deploy to Azure Static Web Apps

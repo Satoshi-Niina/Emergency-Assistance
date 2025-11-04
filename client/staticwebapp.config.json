@@ -1,6 +1,13 @@
 {
   "routes": [
     {
+      "route": "/runtime-config.js",
+      "serve": "/runtime-config.js",
+      "headers": {
+        "Content-Type": "application/javascript"
+      }
+    },
+    {
       "route": "/login",
       "rewrite": "/index.html"
     },
@@ -54,21 +61,29 @@
     "rewrite": "/index.html",
     "exclude": [
       "/runtime-config.js",
-      "/images/*.{png,jpg,jpeg,gif,svg}",
       "/assets/*",
-      "*.{js,css,png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf,eot}"
+      "/images/*",
+      "/*.js",
+      "/*.css",
+      "/*.mjs",
+      "/*.json"
     ]
   },
   "mimeTypes": {
     ".json": "application/json",
     ".js": "application/javascript",
+    ".mjs": "application/javascript",
     ".css": "text/css",
     ".html": "text/html",
     ".png": "image/png",
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
     ".gif": "image/gif",
-    ".svg": "image/svg+xml"
+    ".svg": "image/svg+xml",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+    ".ttf": "font/ttf",
+    ".eot": "application/vnd.ms-fontobject"
   },
   "globalHeaders": {
     "Content-Security-Policy": "default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https: wss: ws:; font-src 'self' https://fonts.gstatic.com;",
@@ -81,7 +96,10 @@
       "exclude": [
         "/runtime-config.js",
         "/assets/*",
-        "*.{js,css,png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf,eot}"
+        "/*.js",
+        "/*.css",
+        "/*.mjs",
+        "/*.json"
       ]
     }
   }
