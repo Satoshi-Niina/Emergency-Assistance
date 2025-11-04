@@ -40,7 +40,34 @@ jobs:
         env:
           NODE_ENV: production
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || '/api' }}
-        run: npm run build
+        run: |
+          echo "🔨 Building client..."
+          npm run build
+          echo "✅ Build completed"
+          
+          # Verify build output
+          if [ ! -d "dist" ]; then
+            echo "❌ ERROR: dist directory not found after build"
+            exit 1
+          fi
+          
+          if [ ! -f "dist/index.html" ]; then
+            echo "❌ ERROR: dist/index.html not found after build"
+            exit 1
+          fi
+          
+          # Check if /src/main.tsx is still referenced (should be replaced by Vite)
+          if grep -q "/src/main.tsx" dist/index.html; then
+            echo "❌ ERROR: /src/main.tsx still found in dist/index.html!"
+            echo "Vite build failed to replace module script reference"
+            echo "This will cause 404 errors and 'Unexpected token <' error"
+            echo ""
+            echo "Current index.html script tags:"
+            grep -i "script" dist/index.html
+            exit 1
+          fi
+          
+          echo "✅ Build verification passed"
 
       - name: Verify build output
         working-directory: ./client
@@ -110,6 +137,9 @@ jobs:
               echo "This should have been replaced by Vite with /assets/main-*.js"
               echo "Vite build may have failed or index.html was not processed correctly"
               echo "⚠️ This will cause 404 errors - /src/main.tsx will be rewritten to index.html"
+              echo ""
+              echo "Full script section:"
+              grep -A 2 -B 2 "script" dist/index.html | head -20
             else
               echo "✅ No /src/main.tsx reference found (correctly replaced)"
             fi
