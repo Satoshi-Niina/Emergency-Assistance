@@ -107,7 +107,7 @@ export default defineConfig(({ command, mode }) => {
       }
     },
     build: {
-      outDir: '../server/public',
+      outDir: 'dist',
       assetsDir: 'assets',
       sourcemap: false,
       minify: 'terser',
@@ -118,7 +118,8 @@ export default defineConfig(({ command, mode }) => {
             ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu']
           }
         }
-      }
+      },
+      copyPublicDir: true
     }
   };
 });
