@@ -1,6 +1,18 @@
 {
   "routes": [
     {
+      "route": "/assets/*.js",
+      "headers": {
+        "Content-Type": "application/javascript; charset=utf-8"
+      }
+    },
+    {
+      "route": "/assets/*.mjs",
+      "headers": {
+        "Content-Type": "application/javascript; charset=utf-8"
+      }
+    },
+    {
       "route": "/login",
       "rewrite": "/index.html"
     },
@@ -55,19 +67,34 @@
     "exclude": [
       "/runtime-config.js",
       "/assets/*",
+      "/assets/**",
       "/images/*",
       "/*.js",
-      "/*.css",
       "/*.mjs",
-      "/*.json"
+      "/*.css",
+      "/*.json",
+      "/*.wasm",
+      "/*.woff",
+      "/*.woff2",
+      "/*.ttf",
+      "/*.eot",
+      "/*.png",
+      "/*.jpg",
+      "/*.jpeg",
+      "/*.gif",
+      "/*.svg",
+      "/*.ico"
     ]
   },
   "mimeTypes": {
     ".json": "application/json",
-    ".js": "application/javascript",
-    ".mjs": "application/javascript",
-    ".css": "text/css",
-    ".html": "text/html",
+    ".js": "application/javascript; charset=utf-8",
+    ".mjs": "application/javascript; charset=utf-8",
+    ".jsx": "application/javascript; charset=utf-8",
+    ".ts": "application/javascript; charset=utf-8",
+    ".tsx": "application/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".html": "text/html; charset=utf-8",
     ".png": "image/png",
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
@@ -76,7 +103,8 @@
     ".woff": "font/woff",
     ".woff2": "font/woff2",
     ".ttf": "font/ttf",
-    ".eot": "application/vnd.ms-fontobject"
+    ".eot": "application/vnd.ms-fontobject",
+    ".wasm": "application/wasm"
   },
   "globalHeaders": {
     "Content-Security-Policy": "default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https: wss: ws:; font-src 'self' https://fonts.gstatic.com;",
@@ -89,10 +117,22 @@
       "exclude": [
         "/runtime-config.js",
         "/assets/*",
+        "/assets/**",
         "/*.js",
-        "/*.css",
         "/*.mjs",
-        "/*.json"
+        "/*.css",
+        "/*.json",
+        "/*.wasm",
+        "/*.woff",
+        "/*.woff2",
+        "/*.ttf",
+        "/*.eot",
+        "/*.png",
+        "/*.jpg",
+        "/*.jpeg",
+        "/*.gif",
+        "/*.svg",
+        "/*.ico"
       ]
     }
   }

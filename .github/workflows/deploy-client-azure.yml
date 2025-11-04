@@ -75,10 +75,14 @@ jobs:
             cp staticwebapp.config.json dist/
             echo "✅ Copied staticwebapp.config.json to dist"
             ls -la dist/staticwebapp.config.json
+            echo "📄 Verifying staticwebapp.config.json content:"
+            cat dist/staticwebapp.config.json | head -20
           else
             echo "❌ ERROR: staticwebapp.config.json not found"
             exit 1
           fi
+          # Ensure staticwebapp.config.json is valid JSON
+          python3 -m json.tool dist/staticwebapp.config.json > /dev/null && echo "✅ JSON is valid" || echo "❌ ERROR: Invalid JSON"
 
       - name: Final verification before deploy
         working-directory: ./client
@@ -91,6 +95,27 @@ jobs:
           [ -f "dist/runtime-config.js" ] && echo "✅ runtime-config.js" || echo "❌ runtime-config.js missing"
           [ -f "dist/staticwebapp.config.json" ] && echo "✅ staticwebapp.config.json" || echo "❌ staticwebapp.config.json missing"
           [ -d "dist/assets" ] && echo "✅ assets directory" || echo "⚠️ assets directory missing"
+          echo ""
+          echo "📄 Checking index.html content:"
+          if [ -f "dist/index.html" ]; then
+            echo "--- index.html content (last 20 lines) ---"
+            tail -20 dist/index.html
+            echo ""
+            echo "🔍 Checking for script tags:"
+            grep -i "script" dist/index.html || echo "⚠️ No script tags found"
+            echo ""
+            echo "🔍 Checking for /src/main.tsx reference:"
+            if grep -q "/src/main.tsx" dist/index.html; then
+              echo "❌ ERROR: /src/main.tsx still referenced in built index.html!"
+              echo "This should have been replaced by Vite with /assets/main-*.js"
+              echo "Vite build may have failed or index.html was not processed correctly"
+            else
+              echo "✅ No /src/main.tsx reference found (correctly replaced)"
+            fi
+          fi
+          echo ""
+          echo "📁 Assets directory contents:"
+          ls -la dist/assets/ 2>/dev/null | head -10 || echo "⚠️ assets directory not found or empty"
 
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
