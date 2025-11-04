@@ -10,218 +10,35 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  build_and_deploy:
     runs-on: ubuntu-latest
-    name: Build and Deploy Static Web App
-    
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: true
 
-      - name: Setup Node.js
+      - name: Use Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Clean previous build
-        working-directory: ./client
-        run: |
-          echo "🧹 Cleaning previous build artifacts..."
-          rm -rf dist
-          rm -rf node_modules/.vite
-          rm -rf .vite
-          rm -rf node_modules/.cache
-          echo "✅ Cleaned previous build artifacts"
+      - name: Install deps
+        working-directory: client
+        run: npm ci
 
-      - name: Install dependencies
-        working-directory: ./client
-        run: |
-          echo "📦 Installing dependencies..."
-          npm ci --prefer-offline --no-audit
-          echo "✅ Dependencies installed"
-
-      - name: Build client
-        working-directory: ./client
+      - name: Build
+        working-directory: client
         env:
           NODE_ENV: production
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || '/api' }}
-        run: |
-          echo "🔨 Building client..."
-          echo "NODE_ENV: $NODE_ENV"
-          echo "VITE_API_BASE_URL: $VITE_API_BASE_URL"
-          
-          # Clean build - Vite doesn't support --force flag, use emptyOutDir instead
-          npm run build 2>&1 || {
-            echo "❌ Build failed. Checking for errors..."
-            exit 1
-          }
-          
-          echo "✅ Build completed"
-          
-          # Verify build output
-          echo "📁 Checking build output..."
-          if [ ! -d "dist" ]; then
-            echo "❌ ERROR: dist directory not found after build"
-            exit 1
-          fi
-          
-          if [ ! -f "dist/index.html" ]; then
-            echo "❌ ERROR: dist/index.html not found after build"
-            exit 1
-          fi
-          
-          echo "📄 Build output directory contents:"
-          ls -la dist/
-          
-          echo ""
-          echo "📄 dist/index.html content:"
-          cat dist/index.html
-          
-          echo ""
-          echo "🔍 Checking for /src/main.tsx reference:"
-          if grep -q "/src/main.tsx" dist/index.html; then
-            echo "❌ ERROR: /src/main.tsx still found in dist/index.html!"
-            echo "Vite build failed to replace module script reference"
-            echo "This will cause 404 errors and 'Unexpected token <' error"
-            echo ""
-            echo "Current index.html script tags:"
-            grep -i "script" dist/index.html
-            exit 1
-          fi
-          
-          echo "✅ No /src/main.tsx found - build is correct"
-          
-          # Check for actual asset references
-          echo ""
-          echo "🔍 Checking for asset references:"
-          if grep -q "/assets/" dist/index.html; then
-            echo "✅ Found /assets/ references (correct)"
-            grep -o '/assets/[^"]*' dist/index.html | head -5
-          else
-            echo "⚠️ No /assets/ references found in index.html"
-          fi
-          
-          echo "✅ Build verification passed"
-
-      - name: Verify build output
-        working-directory: ./client
-        run: |
-          echo "📁 Build output directory contents:"
-          ls -la dist/ || echo "❌ dist directory not found"
-          echo ""
-          echo "📁 Checking for runtime-config.js:"
-          if [ -f "dist/runtime-config.js" ]; then
-            echo "✅ runtime-config.js found in dist"
-            ls -la dist/runtime-config.js
-            echo "📄 First 10 lines:"
-            head -10 dist/runtime-config.js
-          else
-            echo "⚠️ runtime-config.js NOT found in dist"
-            echo "📁 Checking public directory:"
-            ls -la public/ || echo "❌ public directory not found"
-            if [ -f "public/runtime-config.js" ]; then
-              echo "✅ Found in public, copying to dist..."
-              cp public/runtime-config.js dist/
-              ls -la dist/runtime-config.js
-            else
-              echo "❌ ERROR: runtime-config.js not found in public/"
-              exit 1
-            fi
-          fi
-
-      - name: Copy staticwebapp.config.json to dist
-        working-directory: ./client
-        run: |
-          if [ -f "staticwebapp.config.json" ]; then
-            cp staticwebapp.config.json dist/
-            echo "✅ Copied staticwebapp.config.json to dist"
-            ls -la dist/staticwebapp.config.json
-            echo "📄 Verifying staticwebapp.config.json content:"
-            cat dist/staticwebapp.config.json | head -20
-          else
-            echo "❌ ERROR: staticwebapp.config.json not found"
-            exit 1
-          fi
-          # Ensure staticwebapp.config.json is valid JSON
-          python3 -m json.tool dist/staticwebapp.config.json > /dev/null && echo "✅ JSON is valid" || echo "❌ ERROR: Invalid JSON"
-
-      - name: Final verification before deploy
-        working-directory: ./client
-        run: |
-          echo "📦 Final dist directory contents:"
-          ls -la dist/
-          echo ""
-          echo "🔍 Checking critical files:"
-          [ -f "dist/index.html" ] && echo "✅ index.html" || echo "❌ index.html missing"
-          [ -f "dist/runtime-config.js" ] && echo "✅ runtime-config.js" || echo "❌ runtime-config.js missing"
-          [ -f "dist/staticwebapp.config.json" ] && echo "✅ staticwebapp.config.json" || echo "❌ staticwebapp.config.json missing"
-          [ -d "dist/assets" ] && echo "✅ assets directory" || echo "⚠️ assets directory missing"
-          echo ""
-          echo "📄 Checking index.html content:"
-          if [ -f "dist/index.html" ]; then
-            echo "--- index.html content (last 20 lines) ---"
-            tail -20 dist/index.html
-            echo ""
-            echo "🔍 Checking for script tags:"
-            grep -i "script" dist/index.html || echo "⚠️ No script tags found"
-            echo ""
-            echo "🔍 Checking for /src/main.tsx reference:"
-            if grep -q "/src/main.tsx" dist/index.html; then
-              echo "❌ ERROR: /src/main.tsx still referenced in built index.html!"
-              echo "This should have been replaced by Vite with /assets/main-*.js"
-              echo "Vite build may have failed or index.html was not processed correctly"
-              echo "⚠️ This will cause 404 errors - /src/main.tsx will be rewritten to index.html"
-              echo ""
-              echo "Full script section:"
-              grep -A 2 -B 2 "script" dist/index.html | head -20
-            else
-              echo "✅ No /src/main.tsx reference found (correctly replaced)"
-            fi
-            echo ""
-            echo "🔍 Checking actual script references in index.html:"
-            grep -o 'src="[^"]*"' dist/index.html || echo "No script src found"
-          fi
-          echo ""
-          echo "📁 Assets directory contents:"
-          ls -la dist/assets/ 2>/dev/null | head -10 || echo "⚠️ assets directory not found or empty"
-
-      - name: Verify dist/index.html before deploy
-        working-directory: ./client
-        run: |
-          echo "🔍 Final verification of dist/index.html:"
-          if [ -f "dist/index.html" ]; then
-            echo "📄 Full content of dist/index.html:"
-            cat dist/index.html
-            echo ""
-            echo "🔍 Script tags found:"
-            grep -i "script" dist/index.html || echo "No script tags found"
-            echo ""
-            echo "🔍 Checking for /src/main.tsx:"
-            if grep -q "/src/main.tsx" dist/index.html; then
-              echo "❌ CRITICAL ERROR: /src/main.tsx still in dist/index.html!"
-              echo "Build verification failed - deployment will fail"
-              exit 1
-            fi
-            echo "✅ Verification passed - /src/main.tsx not found"
-          else
-            echo "❌ ERROR: dist/index.html not found"
-            exit 1
-          fi
+        run: npm run build
 
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          action: "upload"
-          app_location: "/client"
-          output_location: "dist"
-          skip_app_build: true
-
-      - name: Deploy summary
-        run: |
-          echo "✅ Client deployed to Azure Static Web Apps"
-          echo "🌐 Frontend URL: https://witty-river-012f39e00.1.azurestaticapps.net"
-
+          action: upload
+          app_location: /client
+          output_location: dist
+          skip_app_build: false
+          app_build_command: "npm run build"

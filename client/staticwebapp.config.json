@@ -1,18 +1,6 @@
 {
   "routes": [
     {
-      "route": "/assets/*.js",
-      "headers": {
-        "Content-Type": "application/javascript; charset=utf-8"
-      }
-    },
-    {
-      "route": "/assets/*.mjs",
-      "headers": {
-        "Content-Type": "application/javascript; charset=utf-8"
-      }
-    },
-    {
       "route": "/login",
       "rewrite": "/index.html"
     },
@@ -65,34 +53,28 @@
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": [
-      "/runtime-config.js",
       "/assets/*",
-      "/src/*",
-      "/images/*",
-      "/*.js",
-      "/*.mjs",
-      "/*.css",
-      "/*.json",
-      "/*.wasm",
-      "/*.woff",
-      "/*.woff2",
-      "/*.ttf",
-      "/*.eot",
-      "/*.png",
-      "/*.jpg",
-      "/*.jpeg",
-      "/*.gif",
-      "/*.svg",
-      "/*.ico"
+      "*.js",
+      "*.css",
+      "*.map",
+      "*.png",
+      "*.jpg",
+      "*.jpeg",
+      "*.gif",
+      "*.svg",
+      "*.ico",
+      "*.woff",
+      "*.woff2",
+      "*.ttf",
+      "*.eot",
+      "*.wasm",
+      "/api/*"
     ]
   },
   "mimeTypes": {
     ".json": "application/json",
     ".js": "application/javascript",
     ".mjs": "application/javascript",
-    ".jsx": "application/javascript",
-    ".ts": "application/javascript",
-    ".tsx": "application/javascript",
     ".css": "text/css",
     ".html": "text/html",
     ".png": "image/png",
@@ -114,27 +96,25 @@
   "responseOverrides": {
     "404": {
       "rewrite": "/index.html",
+      "statusCode": 200,
       "exclude": [
-        "/runtime-config.js",
         "/assets/*",
-        "/src/*",
-        "/*.js",
-        "/*.mjs",
-        "/*.css",
-        "/*.json",
-        "/*.wasm",
-        "/*.woff",
-        "/*.woff2",
-        "/*.ttf",
-        "/*.eot",
-        "/*.png",
-        "/*.jpg",
-        "/*.jpeg",
-        "/*.gif",
-        "/*.svg",
-        "/*.ico"
+        "*.js",
+        "*.css",
+        "*.map",
+        "*.png",
+        "*.jpg",
+        "*.jpeg",
+        "*.gif",
+        "*.svg",
+        "*.ico",
+        "*.woff",
+        "*.woff2",
+        "*.ttf",
+        "*.eot",
+        "*.wasm",
+        "/api/*"
       ]
     }
   }
 }
-
