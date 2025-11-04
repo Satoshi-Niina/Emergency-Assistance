@@ -89,13 +89,34 @@ function initializeDatabase() {
 initializeDatabase();
 
 // CORS設定
-const corsOrigins = process.env.CORS_ALLOW_ORIGINS?.split(',') || ['*'];
+const allowOrigins = [
+  'https://witty-river-012f39e00.1.azurestaticapps.net',
+  'http://localhost:5173',
+  ...(process.env.CORS_ALLOW_ORIGINS?.split(',') || [])
+].filter(Boolean);
+
 app.use(cors({
-  origin: corsOrigins.includes('*') ? true : corsOrigins,
+  origin: (origin, callback) => {
+    // オリジンなし（同一オリジンまたはモバイルアプリなど）を許可
+    if (!origin) {
+      return callback(null, true);
+    }
+    // 許可リストに含まれているかチェック
+    if (allowOrigins.includes(origin) || allowOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control', 'Pragma', 'Expires']
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control', 'Pragma', 'Expires'],
+  exposedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86400 // 24時間
 }));
+
+// プリフライト（OPTIONS）リクエストをグローバルに許可
+app.options('*', cors());
 
 // ミドルウェア
 app.use(express.json({ limit: '50mb' }));
