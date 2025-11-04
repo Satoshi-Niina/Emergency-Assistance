@@ -1,0 +1,124 @@
+name: Deploy Server to Azure App Service (Docker)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'server/**'
+      - 'shared/**'
+      - 'knowledge-base/**'
+      - 'Dockerfile'
+      - 'server/Dockerfile'
+      - '.github/workflows/deploy-server-azure.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    name: Build Docker Image and Deploy to Azure App Service
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/server
+          tags: |
+            type=sha,prefix=azure-
+            type=ref,event=branch
+            type=raw,value=latest
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./server/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}/server:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}/server:buildcache,mode=max
+          platforms: linux/amd64
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set environment variables on Azure App Service
+        run: |
+          az webapp config appsettings set \
+            --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --settings \
+              NODE_ENV=production \
+              PORT=${{ secrets.PORT || '8080' }} \
+              DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+              JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+              SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
+              FRONTEND_URL="${{ secrets.FRONTEND_URL }}" \
+              FRONTEND_ORIGIN="${{ secrets.FRONTEND_URL }}" \
+              PG_SSL="${{ secrets.PG_SSL || 'require' }}" \
+              CORS_ALLOW_ORIGINS="${{ secrets.CORS_ALLOW_ORIGINS || '*' }}" \
+              OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+              AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
+              AZURE_STORAGE_CONTAINER_NAME="${{ secrets.AZURE_STORAGE_CONTAINER_NAME || 'knowledge' }}" \
+              STORAGE_BASE_PREFIX="${{ secrets.STORAGE_BASE_PREFIX || 'knowledge-base' }}" \
+              ALLOW_DUMMY="${{ secrets.ALLOW_DUMMY || 'false' }}" \
+              BYPASS_DB_FOR_LOGIN="${{ secrets.BYPASS_DB_FOR_LOGIN || 'false' }}" \
+              BACKUP_ENABLED="${{ secrets.BACKUP_ENABLED || 'true' }}" \
+              BACKUP_MAX_FILES="${{ secrets.BACKUP_MAX_FILES || '3' }}" \
+              BACKUP_FOLDER_NAME="${{ secrets.BACKUP_FOLDER_NAME || 'backups' }}" \
+              OPENAI_MODEL="${{ secrets.OPENAI_MODEL || 'gpt-4o' }}" \
+              DOCKER_ENABLE_CI=true \
+              DOCKER_REGISTRY_SERVER_URL=https://ghcr.io \
+              DOCKER_REGISTRY_SERVER_USERNAME=${{ secrets.GITHUB_REGISTRY_USERNAME || github.repository_owner }} \
+              DOCKER_REGISTRY_SERVER_PASSWORD="${{ secrets.GITHUB_REGISTRY_TOKEN }}"
+
+      - name: Configure Azure App Service for Docker
+        run: |
+          # GitHub Container Registryがプライベートの場合、認証情報を設定
+          if [ -n "${{ secrets.GITHUB_REGISTRY_TOKEN }}" ]; then
+            az webapp config container set \
+              --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --docker-custom-image-name ghcr.io/${{ github.repository }}/server:azure-${{ github.sha }} \
+              --docker-registry-server-url https://ghcr.io \
+              --docker-registry-server-user ${{ secrets.GITHUB_REGISTRY_USERNAME || github.repository_owner }} \
+              --docker-registry-server-password "${{ secrets.GITHUB_REGISTRY_TOKEN }}"
+          else
+            # パブリックイメージの場合
+            az webapp config container set \
+              --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --docker-custom-image-name ghcr.io/${{ github.repository }}/server:azure-${{ github.sha }} \
+              --docker-registry-server-url https://ghcr.io
+          fi
+
+      - name: Restart Azure App Service
+        run: |
+          az webapp restart \
+            --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
+
+      - name: Deploy summary
+        run: |
+          echo "✅ Docker image built and pushed to GitHub Container Registry"
+          echo "📦 Image: ghcr.io/${{ github.repository }}/server:azure-${{ github.sha }}"
+          echo "🚀 Server deployed to Azure App Service"
+          echo "🌐 Backend URL: https://${{ secrets.AZURE_APP_SERVICE_NAME }}.azurewebsites.net"
+
