@@ -109,9 +109,13 @@ jobs:
               echo "❌ ERROR: /src/main.tsx still referenced in built index.html!"
               echo "This should have been replaced by Vite with /assets/main-*.js"
               echo "Vite build may have failed or index.html was not processed correctly"
+              echo "⚠️ This will cause 404 errors - /src/main.tsx will be rewritten to index.html"
             else
               echo "✅ No /src/main.tsx reference found (correctly replaced)"
             fi
+            echo ""
+            echo "🔍 Checking actual script references in index.html:"
+            grep -o 'src="[^"]*"' dist/index.html || echo "No script src found"
           fi
           echo ""
           echo "📁 Assets directory contents:"
