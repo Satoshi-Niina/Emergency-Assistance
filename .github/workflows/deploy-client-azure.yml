@@ -57,5 +57,5 @@ jobs:
       - name: Deploy summary
         run: |
           echo "✅ Client deployed to Azure Static Web Apps"
-          echo "🌐 Frontend URL: Check Azure Portal for your Static Web App URL"
+          echo "🌐 Frontend URL: https://witty-river-012f39e00.1.azurestaticapps.net"
 

@@ -130,5 +130,5 @@ jobs:
           echo "✅ Docker image built and pushed to GitHub Container Registry"
           echo "📦 Image: ghcr.io/${REPO_LOWER}/server:azure-${{ github.sha }}"
           echo "🚀 Server deployed to Azure App Service"
-          echo "🌐 Backend URL: https://${{ secrets.AZURE_APP_SERVICE_NAME }}.azurewebsites.net"
+          echo "🌐 Backend URL: https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net"
 
