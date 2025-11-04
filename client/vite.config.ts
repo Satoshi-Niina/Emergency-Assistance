@@ -112,6 +112,7 @@ export default defineConfig(({ command, mode }) => {
       sourcemap: false,
       minify: 'terser',
       rollupOptions: {
+        input: path.resolve(__dirname, 'index.html'),
         output: {
           manualChunks: {
             vendor: ['react', 'react-dom'],

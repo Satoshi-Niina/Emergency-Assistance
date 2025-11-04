@@ -187,6 +187,29 @@ jobs:
           echo "📁 Assets directory contents:"
           ls -la dist/assets/ 2>/dev/null | head -10 || echo "⚠️ assets directory not found or empty"
 
+      - name: Verify dist/index.html before deploy
+        working-directory: ./client
+        run: |
+          echo "🔍 Final verification of dist/index.html:"
+          if [ -f "dist/index.html" ]; then
+            echo "📄 Full content of dist/index.html:"
+            cat dist/index.html
+            echo ""
+            echo "🔍 Script tags found:"
+            grep -i "script" dist/index.html || echo "No script tags found"
+            echo ""
+            echo "🔍 Checking for /src/main.tsx:"
+            if grep -q "/src/main.tsx" dist/index.html; then
+              echo "❌ CRITICAL ERROR: /src/main.tsx still in dist/index.html!"
+              echo "Build verification failed - deployment will fail"
+              exit 1
+            fi
+            echo "✅ Verification passed - /src/main.tsx not found"
+          else
+            echo "❌ ERROR: dist/index.html not found"
+            exit 1
+          fi
+
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
