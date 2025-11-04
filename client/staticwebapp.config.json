@@ -1,13 +1,6 @@
 {
   "routes": [
     {
-      "route": "/runtime-config.js",
-      "serve": "/runtime-config.js",
-      "headers": {
-        "Content-Type": "application/javascript"
-      }
-    },
-    {
       "route": "/login",
       "rewrite": "/index.html"
     },

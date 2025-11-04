@@ -119,7 +119,10 @@ export default defineConfig(({ command, mode }) => {
           }
         }
       },
-      copyPublicDir: true
-    }
+      copyPublicDir: true,
+      // ビルド後のフックでruntime-config.jsを確実にコピー
+      emptyOutDir: true
+    },
+    publicDir: 'public'
   };
 });
