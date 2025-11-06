@@ -30,8 +30,8 @@ export const API_BASE_URL = (() => {
   
   // フォールバック: 環境判定
   if (isLocalhost) {
-    console.log('✅ ローカル環境: localhost:8080を使用');
-    return 'http://localhost:8080';
+    console.log('✅ ローカル環境: localhost:8000を使用');
+    return 'http://localhost:8000';
   }
 
   // フォールバック: 本番環境（相対パス）
@@ -193,10 +193,10 @@ export const userApi = {
 // 認証関連API
 export const auth = {
   login: (credentials: { username: string; password: string }) =>
-    api.post('/auth/login', credentials),
+    userApi.post('/auth/login', credentials), // ログインは認証不要なのでuserApiを使用
   logout: () => api.post('/auth/logout'),
   getCurrentUser: () => api.get('/auth/me'),
-  handshake: () => api.get('/auth/handshake'),
+  handshake: () => userApi.get('/auth/handshake'), // handshakeも認証不要
 };
 
 // ヘルスチェック

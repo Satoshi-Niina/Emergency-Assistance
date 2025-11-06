@@ -27,7 +27,7 @@ export function getRuntimeConfig(): RuntimeConfig {
 
   return {
     // API_BASE_URLには/apiを含めない（buildApiUrlで追加されるため）
-    API_BASE_URL: isLocalhost ? 'http://localhost:8080' : '',
+    API_BASE_URL: isLocalhost ? 'http://localhost:8000' : '',
     CORS_ALLOW_ORIGINS: '*'
   };
 }

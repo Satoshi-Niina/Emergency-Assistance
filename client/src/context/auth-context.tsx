@@ -129,9 +129,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('🔍 ログインレスポンス:', userData);
 
       if (userData && userData.success && userData.user) {
-        // トークンをlocalStorageに保存
-        if (userData.token) {
-          localStorage.setItem('authToken', userData.token);
+        // トークンをlocalStorageに保存（tokenまたはaccessTokenのいずれかを使用）
+        const token = userData.token || userData.accessToken;
+        if (token) {
+          localStorage.setItem('authToken', token);
           console.log('✅ トークンをlocalStorageに保存');
         }
         

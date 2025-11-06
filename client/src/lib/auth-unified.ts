@@ -15,12 +15,11 @@ export const login = async (credentials: LoginCredentials) => {
 
     const userData = await apiAuth.login(credentials);
 
-    // トークンを保存
+    // トークンを保存（authTokenに統一）
     if (userData.token || userData.accessToken) {
       const token = userData.token || userData.accessToken;
-      sessionStorage.setItem('token', token);
-      localStorage.setItem('accessToken', token);
-      console.info('[auth] token saved:', !!token);
+      localStorage.setItem('authToken', token); // authTokenに統一
+      console.info('[auth] token saved to authToken:', !!token);
     }
 
     console.log('✅ ログイン成功:', userData);
@@ -50,9 +49,8 @@ export const logout = async () => {
   try {
     console.log('🔐 ログアウト試行');
 
-    // トークンをクリア
-    sessionStorage.removeItem('token');
-    localStorage.removeItem('accessToken');
+    // トークンをクリア（authTokenに統一）
+    localStorage.removeItem('authToken');
 
     await apiAuth.logout();
     console.log('✅ ログアウト成功');

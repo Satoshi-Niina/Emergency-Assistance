@@ -376,58 +376,71 @@ export class FaultHistoryService {
     const imageRecords: any[] = [];
 
     try {
-      // 会話履歴から画像を抽出
+      // savedImagesから画像情報を取得（base64は使用しない）
+      if (jsonData.savedImages && Array.isArray(jsonData.savedImages)) {
+        for (const savedImage of jsonData.savedImages) {
+          if (savedImage && typeof savedImage === 'object' && savedImage.fileName) {
+            const fileName = savedImage.fileName;
+            const filePath = path.join(this.imagesDir, fileName);
+            
+            // ファイルが存在する場合のみ記録
+            if (fs.existsSync(filePath)) {
+              imagePaths.push(filePath);
+              
+              const imageRecord = {
+                id: uuidv4(),
+                faultHistoryId: historyId,
+                originalFileName: savedImage.originalFileName || fileName,
+                fileName,
+                filePath: path.relative(process.cwd(), filePath),
+                relativePath: `images/chat-exports/${fileName}`,
+                mimeType: savedImage.mimeType || 'image/jpeg',
+                fileSize: savedImage.fileSize || '0',
+                description: savedImage.description || `Image ${fileName}`,
+                createdAt: new Date(),
+              };
+              
+              imageRecords.push(imageRecord);
+              console.log(`📷 画像記録: ${fileName}`);
+            }
+          }
+        }
+      }
+      
+      // conversationHistoryから画像URLを検出（base64は除外）
       const conversationHistory = jsonData.conversationHistory || [];
       
       for (let i = 0; i < conversationHistory.length; i++) {
         const message = conversationHistory[i];
         
         if (message.content && typeof message.content === 'string') {
-          // Base64画像データを検出
-          const base64Matches = message.content.match(/data:image\/([^;]+);base64,([^"]+)/g);
-          
-          if (base64Matches) {
-            for (let j = 0; j < base64Matches.length; j++) {
-              const match = base64Matches[j];
-              const [, mimeType, base64Data] = match.match(/data:image\/([^;]+);base64,(.+)/) || [];
-              
-              if (mimeType && base64Data) {
-                // sharpでjpeg形式で保存するため、拡張子をjpegに統一
-                const fileName = `${historyId}_${i}_${j}.jpeg`;
-                const filePath = path.join(this.imagesDir, fileName);
+          // URL形式の画像のみを処理（base64は除外）
+          if (message.content.startsWith('/api/images/') || message.content.startsWith('http')) {
+            // URLからファイル名を抽出
+            const urlParts = message.content.split('/');
+            const fileName = urlParts[urlParts.length - 1];
+            const filePath = path.join(this.imagesDir, fileName);
+            
+            // ファイルが存在する場合のみ記録
+            if (fs.existsSync(filePath)) {
+              if (!imagePaths.includes(filePath)) {
+                imagePaths.push(filePath);
                 
-                try {
-                  // Base64をデコードして保存
-                  const buffer = Buffer.from(base64Data, 'base64');
-                  
-                  // 画像を最適化して保存（150dpi相当サイズ）
-                  await sharp(buffer)
-                    .resize(620, 437, { fit: 'inside', withoutEnlargement: true })
-                    .jpeg({ quality: 85 })
-                    .toFile(filePath);
-                  
-                  imagePaths.push(filePath);
-                  
-                  // データベース記録用
-                  const imageRecord = {
-                    id: uuidv4(),
-                    faultHistoryId: historyId,
-                    originalFileName: `message_${i}_image_${j}.${mimeType}`,
-                    fileName,
-                    filePath: path.relative(process.cwd(), filePath),
-                    relativePath: `images/chat-exports/${fileName}`,
-                    mimeType: `image/${mimeType}`,
-                    fileSize: buffer.length.toString(),
-                    description: `Message ${i + 1} - Image ${j + 1}`,
-                    createdAt: new Date(),
-                  };
-                  
-                  imageRecords.push(imageRecord);
-                  
-                  console.log(`📷 画像保存: ${fileName} (${buffer.length} bytes)`);
-                } catch (imageError) {
-                  console.error(`❌ 画像保存エラー: ${fileName}`, imageError);
-                }
+                const imageRecord = {
+                  id: uuidv4(),
+                  faultHistoryId: historyId,
+                  originalFileName: fileName,
+                  fileName,
+                  filePath: path.relative(process.cwd(), filePath),
+                  relativePath: `images/chat-exports/${fileName}`,
+                  mimeType: 'image/jpeg',
+                  fileSize: '0',
+                  description: `Message ${i + 1} - Image`,
+                  createdAt: new Date(),
+                };
+                
+                imageRecords.push(imageRecord);
+                console.log(`📷 画像記録（URL）: ${fileName}`);
               }
             }
           }

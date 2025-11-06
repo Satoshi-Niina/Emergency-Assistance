@@ -10,6 +10,8 @@ import { fileURLToPath } from 'url';
 import { BackupManager } from '../lib/backup-manager';
 import { faultHistoryService } from '../services/fault-history-service.js';
 import { summarizeText } from '../lib/openai.js';
+import sharp from 'sharp';
+import { upload } from '../utils/image-uploader.js';
 
 // ESM用__dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -2231,6 +2233,121 @@ router.post('/summarize', async (req, res) => {
     res.status(500).json({
       success: false,
       error: '要約の生成に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * POST /api/history/upload-image
+ * 編集画面から画像をアップロード（120pxにリサイズしてknowledge-base/images/chat-exportsに保存）
+ */
+router.post('/upload-image', upload.single('image'), async (req, res) => {
+  try {
+    console.log('🖼️ 履歴編集画面からの画像アップロードリクエスト受信:', {
+      hasFile: !!req.file,
+      fileSize: req.file?.size,
+      fileName: req.file?.originalname,
+      mimetype: req.file?.mimetype,
+    });
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: '画像ファイルが提供されていません',
+      });
+    }
+
+    // ファイル形式チェック
+    const allowedMimes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+    ];
+    if (!allowedMimes.includes(req.file.mimetype)) {
+      return res.status(400).json({
+        success: false,
+        error: '対応していないファイル形式です',
+      });
+    }
+
+    // ファイルサイズチェック（10MB）
+    if (req.file.size > 10 * 1024 * 1024) {
+      return res.status(400).json({
+        success: false,
+        error: 'ファイルサイズは10MB以下にしてください',
+      });
+    }
+
+    // 保存先ディレクトリのパス
+    let imagesDir = path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
+    if (!fs.existsSync(imagesDir)) {
+      const alternativePath = path.join(
+        process.cwd(),
+        '..',
+        'knowledge-base',
+        'images',
+        'chat-exports'
+      );
+      if (fs.existsSync(alternativePath)) {
+        imagesDir = alternativePath;
+      }
+    }
+
+    // ディレクトリが存在しない場合は作成
+    if (!fs.existsSync(imagesDir)) {
+      fs.mkdirSync(imagesDir, { recursive: true });
+      console.log('📁 画像保存ディレクトリを作成しました:', imagesDir);
+    }
+
+    // ファイル名を生成（タイムスタンプ + ランダム文字列）
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    const extension = path.extname(req.file.originalname) || '.jpg';
+    const fileName = `history_${timestamp}_${randomStr}${extension}`;
+    const filePath = path.join(imagesDir, fileName);
+
+    // 画像を120pxにリサイズして保存
+    try {
+      const resizedBuffer = await sharp(req.file.buffer)
+        .resize(120, 120, {
+          fit: 'inside', // アスペクト比を維持しながら、120x120以内に収める
+          withoutEnlargement: true, // 拡大しない
+        })
+        .jpeg({ quality: 85 })
+        .toBuffer();
+
+      fs.writeFileSync(filePath, resizedBuffer);
+      console.log('✅ 画像ファイルを保存しました（120pxにリサイズ）:', filePath);
+
+      const imageUrl = `/api/images/chat-exports/${fileName}`;
+
+      res.json({
+        success: true,
+        imageUrl,
+        fileName,
+        url: imageUrl,
+      });
+    } catch (resizeError) {
+      console.error('❌ 画像リサイズエラー:', resizeError);
+      // リサイズに失敗した場合は元の画像を保存
+      fs.writeFileSync(filePath, req.file.buffer);
+      const imageUrl = `/api/images/chat-exports/${fileName}`;
+      res.json({
+        success: true,
+        imageUrl,
+        fileName,
+        url: imageUrl,
+        warning: 'リサイズに失敗しましたが、元の画像を保存しました',
+      });
+    }
+  } catch (error) {
+    console.error('❌ 画像アップロードエラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '画像のアップロードに失敗しました',
       details: error instanceof Error ? error.message : 'Unknown error',
     });
   }

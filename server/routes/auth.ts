@@ -19,6 +19,46 @@ const issueJwt = (userId: string, options: { exp?: number } = {}) => {
 
 const router = express.Router();
 
+// CORSミドルウェア（認証ルート用）
+router.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175',
+    'http://localhost:5176',
+    'http://localhost:5177',
+    'http://localhost:5178',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174',
+    'http://127.0.0.1:5175',
+    'http://127.0.0.1:5176',
+    'http://127.0.0.1:5177',
+    'http://127.0.0.1:5178',
+    'https://witty-river-012f39e00.1.azurestaticapps.net',
+    ...(process.env.CORS_ALLOW_ORIGINS?.split(',') || [])
+  ].filter(Boolean);
+
+  if (origin && (allowedOrigins.includes(origin) || allowedOrigins.includes('*'))) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else if (!origin) {
+    // オリジンなし（同一オリジン）を許可
+    res.header('Access-Control-Allow-Origin', '*');
+  }
+
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Cache-Control, Pragma, Expires, Cookie');
+  res.header('Access-Control-Max-Age', '86400');
+
+  // プリフライトリクエスト（OPTIONS）の処理
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
+  next();
+});
+
 // デバッグ用エンドポイント - 環境変数とセッション状態を確認
 router.get('/debug/env', (_req, res) => {
   console.log('🔍 デバッグエンドポイント呼び出し');

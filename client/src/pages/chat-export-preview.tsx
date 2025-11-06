@@ -82,7 +82,7 @@ const ChatExportPreview: React.FC = () => {
   };
 
   const isImageMessage = (content: string) => {
-    return content && content.startsWith('data:image/');
+    return content && (content.startsWith('/api/images/') || content.startsWith('http'));
   };
 
   const downloadImage = (imageUrl: string, fileName: string) => {

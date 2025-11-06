@@ -68,44 +68,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
       );
     }
 
-    // 優先順位2: conversationHistoryからBase64画像を取得
-    if (
-      !foundImageUrl &&
-      reportData?.conversationHistory &&
-      reportData.conversationHistory.length > 0
-    ) {
-      const imageMessage = reportData.conversationHistory.find(
-        (msg: any) => msg.content && msg.content.startsWith('data:image/')
-      );
-      if (imageMessage) {
-        foundImageUrl = imageMessage.content;
-        console.log('ReportViewer: conversationHistoryから画像を取得');
-      }
-    }
-
-    // 優先順位3: originalChatData.messagesからBase64画像を取得
-    if (!foundImageUrl && reportData?.originalChatData?.messages) {
-      const imageMessage = reportData.originalChatData.messages.find(
-        (msg: any) => msg.content && msg.content.startsWith('data:image/')
-      );
-      if (imageMessage) {
-        foundImageUrl = imageMessage.content;
-        console.log('ReportViewer: originalChatDataから画像を取得');
-      }
-    }
-
-    // 優先順位4: chatData.messagesからBase64画像を取得
-    if (!foundImageUrl && reportData?.chatData?.messages) {
-      const imageMessage = reportData.chatData.messages.find(
-        (msg: any) => msg.content && msg.content.startsWith('data:image/')
-      );
-      if (imageMessage) {
-        foundImageUrl = imageMessage.content;
-        console.log('ReportViewer: chatDataから画像を取得');
-      }
-    }
-
-    // 優先順位5: savedImagesから画像を取得
+    // 優先順位2: savedImagesから画像を取得（最優先）
     if (
       !foundImageUrl &&
       reportData?.savedImages &&
@@ -115,18 +78,55 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
       console.log('ReportViewer: savedImagesから画像を取得');
     }
 
-    // 優先順位6: messagesフィールドからBase64画像を検索
+    // 優先順位3: conversationHistoryから画像URLを取得
+    if (
+      !foundImageUrl &&
+      reportData?.conversationHistory &&
+      reportData.conversationHistory.length > 0
+    ) {
+      const imageMessage = reportData.conversationHistory.find(
+        (msg: any) => msg.content && (msg.content.startsWith('/api/images/') || msg.content.startsWith('http'))
+      );
+      if (imageMessage) {
+        foundImageUrl = imageMessage.content;
+        console.log('ReportViewer: conversationHistoryから画像URLを取得');
+      }
+    }
+
+    // 優先順位4: originalChatData.messagesから画像URLを取得
+    if (!foundImageUrl && reportData?.originalChatData?.messages) {
+      const imageMessage = reportData.originalChatData.messages.find(
+        (msg: any) => msg.content && (msg.content.startsWith('/api/images/') || msg.content.startsWith('http'))
+      );
+      if (imageMessage) {
+        foundImageUrl = imageMessage.content;
+        console.log('ReportViewer: originalChatDataから画像URLを取得');
+      }
+    }
+
+    // 優先順位5: chatData.messagesから画像URLを取得
+    if (!foundImageUrl && reportData?.chatData?.messages) {
+      const imageMessage = reportData.chatData.messages.find(
+        (msg: any) => msg.content && (msg.content.startsWith('/api/images/') || msg.content.startsWith('http'))
+      );
+      if (imageMessage) {
+        foundImageUrl = imageMessage.content;
+        console.log('ReportViewer: chatDataから画像URLを取得');
+      }
+    }
+
+    // 優先順位6: messagesフィールドから画像URLを検索
     if (
       !foundImageUrl &&
       reportData?.messages &&
       Array.isArray(reportData.messages)
     ) {
       const imageMessage = reportData.messages.find(
-        (msg: any) => msg.content && msg.content.startsWith('data:image/')
+        (msg: any) => msg.content && (msg.content.startsWith('/api/images/') || msg.content.startsWith('http'))
       );
       if (imageMessage) {
         foundImageUrl = imageMessage.content;
-        console.log('ReportViewer: messagesフィールドから画像を取得');
+        console.log('ReportViewer: messagesフィールドから画像URLを取得');
       }
     }
 
@@ -837,9 +837,7 @@ ${(data.conversationHistory || data.chatData?.messages || [])
                   <div className='mb-4 p-4 bg-gray-50 rounded-lg'>
                     <p className='text-sm text-gray-600 mb-2'>画像URL情報:</p>
                     <p className='text-xs text-gray-500 break-all'>
-                      {imageUrl.startsWith('data:image/')
-                        ? `Base64画像 (${imageUrl.length}文字)`
-                        : `URL: ${imageUrl.substring(0, 100)}...`}
+                      {imageUrl ? `URL: ${imageUrl.substring(0, 100)}${imageUrl.length > 100 ? '...' : ''}` : '画像URLなし'}
                     </p>
                   </div>
                   <img
@@ -1031,3 +1029,4 @@ ${(data.conversationHistory || data.chatData?.messages || [])
 };
 
 export default ReportViewer;
+

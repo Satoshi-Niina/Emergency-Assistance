@@ -10,6 +10,8 @@ import {
   Trash2,
   Printer,
   Wand2,
+  Upload,
+  X,
 } from 'lucide-react';
 import {
   Card,
@@ -1225,47 +1227,70 @@ const HistoryPage: React.FC = () => {
         const images = [];
 
         try {
-          // 優先順位1: conversationHistoryからBase64画像を取得（最優先）
+          // 優先順位1: savedImagesから画像を取得（最優先）
+          if (jsonData?.savedImages && Array.isArray(jsonData.savedImages) && jsonData.savedImages.length > 0) {
+            console.log(
+              'handleGenerateReport: savedImagesから画像を取得:',
+              jsonData.savedImages.length
+            );
+            jsonData.savedImages.forEach((img: any, index: number) => {
+              const imageUrl = typeof img === 'string' ? img : (img.url || img.path || img.fileName);
+              if (imageUrl && !imageUrl.startsWith('data:image/')) {
+                images.push({
+                  id: `saved-${index}`,
+                  url: imageUrl,
+                  fileName: typeof img === 'object' ? img.fileName || `故障画像_${index + 1}` : `故障画像_${index + 1}`,
+                  description: '機械故障箇所の写真',
+                  source: 'savedImages',
+                });
+              }
+            });
+          }
+
+          // 優先順位2: conversationHistoryから画像URLを取得
           if (jsonData?.conversationHistory?.length > 0) {
             console.log(
-              'handleGenerateReport: conversationHistoryからBase64画像を検索中...',
+              'handleGenerateReport: conversationHistoryから画像URLを検索中...',
               jsonData.conversationHistory.length
             );
             const imageMessages = jsonData.conversationHistory.filter(
               (msg: any) =>
                 msg.content &&
                 typeof msg.content === 'string' &&
-                msg.content.startsWith('data:image/')
+                (msg.content.startsWith('/api/images/') || msg.content.startsWith('http'))
             );
             console.log(
-              'handleGenerateReport: conversationHistoryでBase64画像を発見:',
+              'handleGenerateReport: conversationHistoryで画像URLを発見:',
               imageMessages.length
             );
             imageMessages.forEach((msg, index) => {
-              images.push({
-                id: `conv-${index}`,
-                url: msg.content,
-                fileName: `故障画像_${index + 1}`,
-                description: '機械故障箇所の写真',
-                source: 'conversationHistory',
-              });
+              // 既に追加済みの画像は除外
+              if (!images.some(img => img.url === msg.content)) {
+                images.push({
+                  id: `conv-${index}`,
+                  url: msg.content,
+                  fileName: `故障画像_${images.length + 1}`,
+                  description: '機械故障箇所の写真',
+                  source: 'conversationHistory',
+                });
+              }
             });
           }
 
-          // 優先順位2: originalChatData.messagesからBase64画像を取得
+          // 優先順位3: originalChatData.messagesから画像URLを取得
           if (jsonData?.originalChatData?.messages?.length > 0) {
             console.log(
-              'handleGenerateReport: originalChatData.messagesからBase64画像を検索中...',
+              'handleGenerateReport: originalChatData.messagesから画像URLを検索中...',
               jsonData.originalChatData.messages.length
             );
             const imageMessages = jsonData.originalChatData.messages.filter(
               (msg: any) =>
                 msg.content &&
                 typeof msg.content === 'string' &&
-                msg.content.startsWith('data:image/')
+                (msg.content.startsWith('/api/images/') || msg.content.startsWith('http'))
             );
             console.log(
-              'handleGenerateReport: originalChatData.messagesでBase64画像を発見:',
+              'handleGenerateReport: originalChatData.messagesで画像URLを発見:',
               imageMessages.length
             );
             imageMessages.forEach((msg, index) => {
@@ -1282,20 +1307,20 @@ const HistoryPage: React.FC = () => {
             });
           }
 
-          // 優先順位3: chatData.messagesからBase64画像を取得
+          // 優先順位4: chatData.messagesから画像URLを取得
           if (jsonData?.chatData?.messages?.length > 0) {
             console.log(
-              'handleGenerateReport: chatData.messagesからBase64画像を検索中...',
+              'handleGenerateReport: chatData.messagesから画像URLを検索中...',
               jsonData.chatData.messages.length
             );
             const imageMessages = jsonData.chatData.messages.filter(
               (msg: any) =>
                 msg.content &&
                 typeof msg.content === 'string' &&
-                msg.content.startsWith('data:image/')
+                (msg.content.startsWith('/api/images/') || msg.content.startsWith('http'))
             );
             console.log(
-              'handleGenerateReport: chatData.messagesでBase64画像を発見:',
+              'handleGenerateReport: chatData.messagesで画像URLを発見:',
               imageMessages.length
             );
             imageMessages.forEach((msg, index) => {
@@ -1312,43 +1337,8 @@ const HistoryPage: React.FC = () => {
             });
           }
 
-          // 優先順位4: savedImagesフィールドから画像を取得
-          if (jsonData?.savedImages?.length > 0) {
-            console.log(
-              'handleGenerateReport: savedImagesから画像を取得中...',
-              jsonData.savedImages.length
-            );
-            jsonData.savedImages.forEach((img: any, index: number) => {
-              // 既に追加済みの画像は除外
-              let imageUrl = '';
-              
-              // fileNameがある場合は、それを優先してURLを生成
-              if (img.fileName) {
-                const imagePath = `/api/images/chat-exports/${img.fileName}`;
-                let baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-                baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
-                imageUrl = `${baseUrl}${imagePath}`;
-              } else if (img.url) {
-                // urlがある場合
-                imageUrl = img.url.startsWith('http') ? img.url : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${img.url}`;
-              } else if (img.path) {
-                // pathがある場合
-                imageUrl = img.path.startsWith('http') ? img.path : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${img.path}`;
-              }
-              
-              if (imageUrl && !images.some(existingImg => existingImg.url === imageUrl)) {
-                images.push({
-                  id: `saved-${index}`,
-                  url: imageUrl,
-                  fileName: img.fileName || `故障画像_${images.length + 1}`,
-                  description: img.description || '機械故障箇所の写真',
-                  source: 'savedImages',
-                });
-              }
-            });
-          }
 
-          // 優先順位5: 再帰的にJSONデータ内の画像を検索
+          // 優先順位5: 再帰的にJSONデータ内の画像URLを検索（base64は除外）
           const findImagesRecursively = (
             obj: any,
             path: string = ''
@@ -1361,7 +1351,7 @@ const HistoryPage: React.FC = () => {
 
                 if (
                   typeof value === 'string' &&
-                  value.startsWith('data:image/')
+                  (value.startsWith('/api/images/') || value.startsWith('http'))
                 ) {
                   foundImages.push(value);
                 } else if (Array.isArray(value)) {
@@ -1383,7 +1373,7 @@ const HistoryPage: React.FC = () => {
 
           const recursiveImages = findImagesRecursively(jsonData);
           console.log(
-            'handleGenerateReport: 再帰検索で画像を発見:',
+            'handleGenerateReport: 再帰検索で画像URLを発見:',
             recursiveImages.length
           );
           recursiveImages.forEach((imgUrl, index) => {
@@ -1623,6 +1613,8 @@ const HistoryPage: React.FC = () => {
           ...(editedItem.jsonData?.location && { location: editedItem.jsonData.location }),
           ...(editedItem.jsonData?.status && { status: editedItem.jsonData.status }),
           ...(editedItem.jsonData?.remarks && { remarks: editedItem.jsonData.remarks }),
+          // 画像情報を更新
+          ...(editedItem.jsonData?.savedImages && { savedImages: editedItem.jsonData.savedImages }),
           // 基本情報も更新（ルートレベル）
           ...(editedItem.machineType && { machineType: editedItem.machineType }),
           ...(editedItem.machineNumber && { machineNumber: editedItem.machineNumber }),
@@ -1671,22 +1663,24 @@ const HistoryPage: React.FC = () => {
         console.log('ローカルストレージ更新:', savedKey);
       }
 
-      // 履歴リストの該当アイテムを更新
+      // 履歴リストの該当アイテムを更新（savedImagesの順序も保持）
+      const updatedItem = {
+        ...editedItem,
+        jsonData: editedItem.jsonData,
+        lastModified: new Date().toISOString(),
+        // 基本情報も更新
+        machineType: editedItem.jsonData?.machineType || editedItem.machineType,
+        machineNumber: editedItem.jsonData?.machineNumber || editedItem.machineNumber,
+        title: editedItem.jsonData?.title || editedItem.title,
+        incidentTitle: editedItem.jsonData?.title || editedItem.incidentTitle,
+        // savedImagesを直接設定（一覧表で正しく表示されるように）
+        savedImages: editedItem.jsonData?.savedImages || [],
+      };
+
       setHistoryItems(prevItems =>
         prevItems.map(item =>
           item.id === itemId || item.chatId === itemId
-            ? {
-                ...item,
-                jsonData: editedItem.jsonData,
-                lastModified: new Date().toISOString(),
-                // 基本情報も更新
-                machineType:
-                  editedItem.jsonData?.machineType || item.machineType,
-                machineNumber:
-                  editedItem.jsonData?.machineNumber || item.machineNumber,
-                title: editedItem.jsonData?.title || item.title,
-                incidentTitle: editedItem.jsonData?.title || item.incidentTitle,
-              }
+            ? updatedItem
             : item
         )
       );
@@ -1694,18 +1688,7 @@ const HistoryPage: React.FC = () => {
       setFilteredItems(prevItems =>
         prevItems.map(item =>
           item.id === itemId || item.chatId === itemId
-            ? {
-                ...item,
-                jsonData: editedItem.jsonData,
-                lastModified: new Date().toISOString(),
-                // 基本情報も更新
-                machineType:
-                  editedItem.jsonData?.machineType || item.machineType,
-                machineNumber:
-                  editedItem.jsonData?.machineNumber || item.machineNumber,
-                title: editedItem.jsonData?.title || item.title,
-                incidentTitle: editedItem.jsonData?.title || item.incidentTitle,
-              }
+            ? updatedItem
             : item
         )
       );
@@ -1780,7 +1763,7 @@ const HistoryPage: React.FC = () => {
         return '{}';
       }
     };
-    // 画像を収集（base64のみ、詳細なデバッグ付き）
+    // 画像を収集（URL形式のみ、base64は使用しない）
     const collectImages = (
       data: any
     ): Array<{
@@ -1800,74 +1783,42 @@ const HistoryPage: React.FC = () => {
       }> = [];
       const imageUrls = new Set<string>();
 
-      // デバッグ: データ構造を詳細確認
-      console.log('🖼️ データ構造確認:');
-      console.log('🖼️ - chatData:', data?.chatData ? 'あり' : 'なし');
-      console.log(
-        '🖼️ - chatData.messages:',
-        data?.chatData?.messages
-          ? 'あり(' + data.chatData.messages.length + '件)'
-          : 'なし'
-      );
-      console.log(
-        '🖼️ - conversationHistory:',
-        data?.conversationHistory
-          ? 'あり(' +
-              (Array.isArray(data.conversationHistory)
-                ? data.conversationHistory.length
-                : 'non-array') +
-              ')'
-          : 'なし'
-      );
-      console.log(
-        '🖼️ - originalChatData.messages:',
-        data?.originalChatData?.messages
-          ? 'あり(' + data.originalChatData.messages.length + ')'
-          : 'なし'
-      );
-      console.log(
-        '🖼️ - messages:',
-        data?.messages
-          ? 'あり(' +
-              (Array.isArray(data.messages)
-                ? data.messages.length
-                : 'non-array') +
-              ')'
-          : 'なし'
-      );
+      // 優先順位1: savedImagesから画像を取得（最優先）
+      if (data?.savedImages && Array.isArray(data.savedImages) && data.savedImages.length > 0) {
+        console.log('🖼️ savedImagesから画像を取得:', data.savedImages.length);
+        data.savedImages.forEach((img: any, index: number) => {
+          const imageUrl = typeof img === 'string' ? img : (img.url || img.path || img.fileName);
+          if (imageUrl && !imageUrl.startsWith('data:image/') && !imageUrls.has(imageUrl)) {
+            imageUrls.add(imageUrl);
+            images.push({
+              id: `saved-${index}`,
+              url: imageUrl,
+              fileName: typeof img === 'object' ? img.fileName || `故障画像_${index + 1}` : `故障画像_${index + 1}`,
+              description: '故障箇所画像（savedImages）',
+            });
+          }
+        });
+      }
 
-      // 1) chatData.messages から base64 画像を探す（メイン）
+      // 優先順位2: chatData.messages から画像URLを探す
       if (data?.chatData?.messages && Array.isArray(data.chatData.messages)) {
         console.log('🖼️ chatData.messagesをスキャン中...');
         data.chatData.messages.forEach((message: any, messageIndex: number) => {
-          console.log('🖼️ message[' + messageIndex + ']:', {
-            id: message?.id,
-            content: message?.content
-              ? message.content.substring(0, 50) + '...'
-              : 'なし',
-            isBase64: message?.content?.startsWith('data:image/'),
-          });
-
           if (
             message?.content &&
             typeof message.content === 'string' &&
-            message.content.startsWith('data:image/')
+            (message.content.startsWith('/api/images/') || message.content.startsWith('http'))
           ) {
-            const normalizedContent = message.content
-              .replace(/\r?\n/g, '')
-              .replace(/[""]/g, '"')
-              .trim();
-
-            if (!imageUrls.has(normalizedContent)) {
-              imageUrls.add(normalizedContent);
+            if (!imageUrls.has(message.content)) {
+              imageUrls.add(message.content);
               images.push({
                 id: `chatdata-${messageIndex}`,
-                url: normalizedContent,
+                url: message.content,
                 fileName: `故障画像${images.length + 1}`,
                 description: '故障箇所画像（chatData.messages）',
               });
               console.log(
-                '🖼️ Base64画像見つかりました（chatData.messages）:',
+                '🖼️ 画像URL見つかりました（chatData.messages）:',
                 images.length
               );
             }
@@ -1875,7 +1826,7 @@ const HistoryPage: React.FC = () => {
         });
       }
 
-      // 2) conversationHistory から base64 画像を探す
+      // 優先順位3: conversationHistory から画像URLを探す
       if (
         data?.conversationHistory &&
         Array.isArray(data.conversationHistory)
@@ -1886,23 +1837,18 @@ const HistoryPage: React.FC = () => {
             if (
               message?.content &&
               typeof message.content === 'string' &&
-              message.content.startsWith('data:image/')
+              (message.content.startsWith('/api/images/') || message.content.startsWith('http'))
             ) {
-              const normalizedContent = message.content
-                .replace(/\r?\n/g, '')
-                .replace(/[""]/g, '"')
-                .trim();
-
-              if (!imageUrls.has(normalizedContent)) {
-                imageUrls.add(normalizedContent);
+              if (!imageUrls.has(message.content)) {
+                imageUrls.add(message.content);
                 images.push({
                   id: `conversation-${messageIndex}`,
-                  url: normalizedContent,
+                  url: message.content,
                   fileName: `故障画像${images.length + 1}`,
                   description: '故障箇所画像（conversationHistory）',
                 });
                 console.log(
-                  '🖼️ Base64画像見つかりました（conversationHistory）:',
+                  '🖼️ 画像URL見つかりました（conversationHistory）:',
                   images.length
                 );
               }
@@ -1911,7 +1857,7 @@ const HistoryPage: React.FC = () => {
         );
       }
 
-      // 3) originalChatData.messages から base64 画像を探す
+      // 優先順位4: originalChatData.messages から画像URLを探す
       if (
         data?.originalChatData?.messages &&
         Array.isArray(data.originalChatData.messages)
@@ -1922,23 +1868,18 @@ const HistoryPage: React.FC = () => {
             if (
               message?.content &&
               typeof message.content === 'string' &&
-              message.content.startsWith('data:image/')
+              (message.content.startsWith('/api/images/') || message.content.startsWith('http'))
             ) {
-              const normalizedContent = message.content
-                .replace(/\r?\n/g, '')
-                .replace(/[""]/g, '"')
-                .trim();
-
-              if (!imageUrls.has(normalizedContent)) {
-                imageUrls.add(normalizedContent);
+              if (!imageUrls.has(message.content)) {
+                imageUrls.add(message.content);
                 images.push({
                   id: `original-${messageIndex}`,
-                  url: normalizedContent,
+                  url: message.content,
                   fileName: `故障画像${images.length + 1}`,
                   description: '故障箇所画像（originalChatData）',
                 });
                 console.log(
-                  '🖼️ Base64画像見つかりました（originalChatData）:',
+                  '🖼️ 画像URL見つかりました（originalChatData）:',
                   images.length
                 );
               }
@@ -1947,30 +1888,25 @@ const HistoryPage: React.FC = () => {
         );
       }
 
-      // 4) messages から base64 画像を探す
+      // 優先順位5: messages から画像URLを探す
       if (data?.messages && Array.isArray(data.messages)) {
         console.log('🖼️ messagesをスキャン中...');
         data.messages.forEach((message: any, messageIndex: number) => {
           if (
             message?.content &&
             typeof message.content === 'string' &&
-            message.content.startsWith('data:image/')
+            (message.content.startsWith('/api/images/') || message.content.startsWith('http'))
           ) {
-            const normalizedContent = message.content
-              .replace(/\r?\n/g, '')
-              .replace(/[""]/g, '"')
-              .trim();
-
-            if (!imageUrls.has(normalizedContent)) {
-              imageUrls.add(normalizedContent);
+            if (!imageUrls.has(message.content)) {
+              imageUrls.add(message.content);
               images.push({
                 id: `messages-${messageIndex}`,
-                url: normalizedContent,
+                url: message.content,
                 fileName: `故障画像${images.length + 1}`,
                 description: '故障箇所画像（messages）',
               });
               console.log(
-                '🖼️ Base64画像見つかりました（messages）:',
+                '🖼️ 画像URL見つかりました（messages）:',
                 images.length
               );
             }
@@ -3320,8 +3256,15 @@ const HistoryPage: React.FC = () => {
     }
 
     // 3) savedImages から URL を取得（DB画像レコード優先）
-    if (Array.isArray(data?.savedImages) && data.savedImages.length > 0) {
-      const firstImage = data.savedImages[0];
+    // まず、ルートレベルのsavedImagesを確認
+    let savedImagesArray = data?.savedImages;
+    // 次に、jsonData.savedImagesを確認（編集後に更新される可能性がある）
+    if (!savedImagesArray || savedImagesArray.length === 0) {
+      savedImagesArray = data?.jsonData?.savedImages;
+    }
+    
+    if (Array.isArray(savedImagesArray) && savedImagesArray.length > 0) {
+      const firstImage = savedImagesArray[0];
       console.log('🖼️ pickFirstImage - savedImages[0]:', firstImage);
 
       if (typeof firstImage === 'string') {
@@ -3365,11 +3308,11 @@ const HistoryPage: React.FC = () => {
       }
     }
 
-    // 5) conversationHistory から Base64画像を検索
+    // 5) conversationHistory から画像URLを検索
     if (Array.isArray(data?.conversationHistory)) {
       for (const msg of data.conversationHistory) {
-        if (msg.content && typeof msg.content === 'string' && msg.content.startsWith('data:image/')) {
-          console.log('🖼️ pickFirstImage - conversationHistoryからBase64画像を発見');
+        if (msg.content && typeof msg.content === 'string' && (msg.content.startsWith('/api/images/') || msg.content.startsWith('http'))) {
+          console.log('🖼️ pickFirstImage - conversationHistoryから画像URLを発見');
           return msg.content;
         }
       }
@@ -3773,61 +3716,79 @@ const HistoryPage: React.FC = () => {
       imagePath: item.imagePath,
     });
 
-    // 優先順位1: conversationHistoryからBase64画像を取得（最優先）
+    // 優先順位1: savedImagesから画像を取得（最優先）
     if (
+      jsonData?.savedImages &&
+      Array.isArray(jsonData.savedImages) &&
+      jsonData.savedImages.length > 0
+    ) {
+      const firstImage = jsonData.savedImages[0];
+      const imgUrl = typeof firstImage === 'string' ? firstImage : (firstImage.url || firstImage.path || firstImage.fileName);
+      if (imgUrl && !imgUrl.startsWith('data:image/')) {
+        imageUrl = imgUrl;
+        imageFileName = typeof firstImage === 'object' ? firstImage.fileName || `故障画像_${item.id}` : `故障画像_${item.id}`;
+        console.log(
+          '個別レポート印刷用: savedImagesから画像を取得（最優先）'
+        );
+      }
+    }
+
+    // 優先順位2: conversationHistoryから画像URLを取得
+    if (
+      !imageUrl &&
       jsonData?.conversationHistory &&
       jsonData.conversationHistory.length > 0
     ) {
       const imageMessage = jsonData.conversationHistory.find(
-        (msg: any) => msg.content && msg.content.startsWith('data:image/')
+        (msg: any) => msg.content && (msg.content.startsWith('/api/images/') || msg.content.startsWith('http'))
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
         imageFileName = `故障画像_${item.id}`;
         console.log(
-          '個別レポート印刷用: conversationHistoryからBase64画像を取得（最優先）'
+          '個別レポート印刷用: conversationHistoryから画像URLを取得（優先順位2）'
         );
       }
     }
 
-    // 優先順位2: originalChatData.messagesからBase64画像を取得
+    // 優先順位3: originalChatData.messagesから画像URLを取得
     if (!imageUrl && jsonData?.originalChatData?.messages) {
       const imageMessage = jsonData.originalChatData.messages.find(
-        (msg: any) => msg.content && msg.content.startsWith('data:image/')
+        (msg: any) => msg.content && (msg.content.startsWith('/api/images/') || msg.content.startsWith('http'))
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
         imageFileName = `故障画像_${item.id}`;
         console.log(
-          '個別レポート印刷用: originalChatDataからBase64画像を取得（優先順位2）'
+          '個別レポート印刷用: originalChatDataから画像URLを取得（優先順位3）'
         );
       }
     }
 
-    // 優先順位3: chatData.messagesからBase64画像を取得
+    // 優先順位4: chatData.messagesから画像URLを取得
     if (!imageUrl && jsonData?.chatData?.messages) {
       const imageMessage = jsonData.chatData.messages.find(
-        (msg: any) => msg.content && msg.content.startsWith('data:image/')
+        (msg: any) => msg.content && (msg.content.startsWith('/api/images/') || msg.content.startsWith('http'))
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
         imageFileName = `故障画像_${item.id}`;
         console.log(
-          '個別レポート印刷用: chatDataからBase64画像を取得（優先順位3）'
+          '個別レポート印刷用: chatDataから画像URLを取得（優先順位4）'
         );
       }
     }
 
-    // 優先順位4: 直接のmessagesフィールドからBase64画像を検索
+    // 優先順位5: 直接のmessagesフィールドから画像URLを検索
     if (!imageUrl && jsonData?.messages && Array.isArray(jsonData.messages)) {
       const imageMessage = jsonData.messages.find(
-        (msg: any) => msg.content && msg.content.startsWith('data:image/')
+        (msg: any) => msg.content && (msg.content.startsWith('/api/images/') || msg.content.startsWith('http'))
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
         imageFileName = `故障画像_${item.id}`;
         console.log(
-          '個別レポート印刷用: messagesフィールドからBase64画像を取得（優先順位4）'
+          '個別レポート印刷用: messagesフィールドから画像URLを取得（優先順位5）'
         );
       }
     }
@@ -4529,8 +4490,22 @@ const HistoryPage: React.FC = () => {
                                   <img
                                     src={imageUrl}
                                     alt='画像'
-                                    className='w-8 h-8 object-cover rounded border'
-                                    title='故障画像'
+                                    className='w-12 h-12 object-cover rounded border cursor-pointer hover:scale-110 transition-transform'
+                                    title='故障画像（クリックで拡大）'
+                                    onClick={() => {
+                                      // 画像を拡大表示
+                                      const imgWindow = window.open('', '_blank');
+                                      if (imgWindow) {
+                                        imgWindow.document.write(`
+                                          <html>
+                                            <head><title>画像拡大表示</title></head>
+                                            <body style="margin:0;padding:20px;text-align:center;background:#f0f0f0;">
+                                              <img src="${imageUrl}" style="max-width:90%;max-height:90vh;border:2px solid #333;box-shadow:0 4px 8px rgba(0,0,0,0.3);" alt="故障画像" />
+                                            </body>
+                                          </html>
+                                        `);
+                                      }
+                                    }}
                                     onError={e => {
                                       console.error('🖼️ 画像読み込みエラー:', imageUrl);
                                       const target =
@@ -5597,99 +5572,205 @@ const HistoryPage: React.FC = () => {
                 </div>
 
                 {/* 故障個所の画像（修繕計画の上に移動） */}
-                {(() => {
-                  // 複数の画像を取得
-                  const getAllImages = (item: SupportHistoryItem): string[] => {
-                    const images: string[] = [];
-                    
-                    // 1) savedImages から画像を取得
-                    if (Array.isArray(item?.savedImages) && item.savedImages.length > 0) {
-                      item.savedImages.forEach((img: any) => {
-                        if (typeof img === 'string' && !img.startsWith('data:image/')) {
-                          images.push(img);
-                        } else if (img && typeof img === 'object') {
-                          if (img.fileName) {
-                            const imagePath = `/api/images/chat-exports/${img.fileName}`;
-                            let baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-                            baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
-                            images.push(`${baseUrl}${imagePath}`);
-                          } else if (img.url) {
-                            const finalUrl = img.url.startsWith('http') ? img.url : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${img.url}`;
-                            images.push(finalUrl);
-                          } else if (img.path) {
-                            const finalUrl = img.path.startsWith('http') ? img.path : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${img.path}`;
-                            images.push(finalUrl);
+                <div className='bg-purple-50 p-4 rounded-lg'>
+                  <div className='flex items-center justify-between mb-3'>
+                    <h3 className='text-lg font-semibold flex items-center gap-2'>
+                      <Image className='h-5 w-5' />
+                      故障個所の画像
+                    </h3>
+                    <input
+                      type='file'
+                      accept='image/*'
+                      multiple
+                      className='hidden'
+                      id='image-upload-input'
+                      onChange={async (e) => {
+                        const files = e.target.files;
+                        if (!files || files.length === 0) return;
+
+                        const newImages: any[] = [];
+                        for (let i = 0; i < files.length; i++) {
+                          const file = files[i];
+                          const formData = new FormData();
+                          formData.append('image', file);
+
+                          try {
+                            const response = await fetch('/api/history/upload-image', {
+                              method: 'POST',
+                              body: formData,
+                            });
+
+                            if (!response.ok) {
+                              const errorData = await response.json();
+                              throw new Error(errorData.error || '画像のアップロードに失敗しました');
+                            }
+
+                            const result = await response.json();
+                            newImages.push({
+                              fileName: result.fileName,
+                              url: result.imageUrl || result.url,
+                            });
+                          } catch (error) {
+                            console.error('画像アップロードエラー:', error);
+                            alert(`画像のアップロードに失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
                           }
                         }
-                      });
-                    }
-                    
-                    // 2) images配列から取得
-                    if (Array.isArray(item?.images) && item.images.length > 0) {
-                      item.images.forEach((img: any) => {
-                        if (typeof img === 'string') {
-                          images.push(img);
-                        } else if (img && typeof img === 'object') {
-                          const url = img.url || img.path || img.fileName;
-                          if (url && !url.startsWith('data:image/')) {
-                            const finalUrl = url.startsWith('http') ? url : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${url}`;
-                            images.push(finalUrl);
+
+                        if (newImages.length > 0) {
+                          const currentSavedImages = editingItem.jsonData?.savedImages || [];
+                          // 新しく追加した画像を先頭に配置（一覧表で最初に表示されるように）
+                          setEditingItem({
+                            ...editingItem,
+                            jsonData: {
+                              ...editingItem.jsonData,
+                              savedImages: [...newImages, ...currentSavedImages],
+                            },
+                          });
+                        }
+
+                        // 入力フィールドをリセット
+                        e.target.value = '';
+                      }}
+                    />
+                    <Button
+                      type='button'
+                      onClick={() => {
+                        document.getElementById('image-upload-input')?.click();
+                      }}
+                      className='text-sm'
+                      variant='outline'
+                    >
+                      <Upload className='h-4 w-4 mr-1' />
+                      画像を追加
+                    </Button>
+                  </div>
+                  {(() => {
+                    // 複数の画像を取得
+                    const getAllImages = (item: SupportHistoryItem): Array<{ url: string; fileName?: string; index: number }> => {
+                      const images: Array<{ url: string; fileName?: string; index: number }> = [];
+                      
+                      // 1) savedImages から画像を取得
+                      if (Array.isArray(item?.savedImages) && item.savedImages.length > 0) {
+                        item.savedImages.forEach((img: any, idx: number) => {
+                          if (typeof img === 'string' && !img.startsWith('data:image/')) {
+                            images.push({ url: img, index: idx });
+                          } else if (img && typeof img === 'object') {
+                            if (img.fileName) {
+                              const imagePath = `/api/images/chat-exports/${img.fileName}`;
+                              let baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+                              baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
+                              images.push({ url: `${baseUrl}${imagePath}`, fileName: img.fileName, index: idx });
+                            } else if (img.url) {
+                              const finalUrl = img.url.startsWith('http') ? img.url : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${img.url}`;
+                              images.push({ url: finalUrl, fileName: img.fileName, index: idx });
+                            } else if (img.path) {
+                              const finalUrl = img.path.startsWith('http') ? img.path : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${img.path}`;
+                              images.push({ url: finalUrl, fileName: img.fileName, index: idx });
+                            }
                           }
+                        });
+                      }
+                      
+                      // 2) images配列から取得
+                      if (Array.isArray(item?.images) && item.images.length > 0) {
+                        item.images.forEach((img: any, idx: number) => {
+                          if (typeof img === 'string') {
+                            images.push({ url: img, index: idx + 1000 });
+                          } else if (img && typeof img === 'object') {
+                            const url = img.url || img.path || img.fileName;
+                            if (url && !url.startsWith('data:image/')) {
+                              const finalUrl = url.startsWith('http') ? url : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${url}`;
+                              images.push({ url: finalUrl, fileName: img.fileName, index: idx + 1000 });
+                            }
+                          }
+                        });
+                      }
+                      
+                      // 3) jsonData.savedImagesからも取得
+                      if (Array.isArray(item?.jsonData?.savedImages) && item.jsonData.savedImages.length > 0) {
+                        item.jsonData.savedImages.forEach((img: any, idx: number) => {
+                          if (typeof img === 'string' && !img.startsWith('data:image/')) {
+                            images.push({ url: img, index: idx + 2000 });
+                          } else if (img && typeof img === 'object') {
+                            if (img.fileName) {
+                              const imagePath = `/api/images/chat-exports/${img.fileName}`;
+                              let baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+                              baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
+                              images.push({ url: `${baseUrl}${imagePath}`, fileName: img.fileName, index: idx + 2000 });
+                            } else if (img.url) {
+                              const finalUrl = img.url.startsWith('http') ? img.url : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${img.url}`;
+                              images.push({ url: finalUrl, fileName: img.fileName, index: idx + 2000 });
+                            }
+                          }
+                        });
+                      }
+                      
+                      // 重複を除去（URLベース）
+                      const uniqueImages: Array<{ url: string; fileName?: string; index: number }> = [];
+                      const seenUrls = new Set<string>();
+                      images.forEach(img => {
+                        if (!seenUrls.has(img.url)) {
+                          seenUrls.add(img.url);
+                          uniqueImages.push(img);
                         }
                       });
-                    }
+                      
+                      return uniqueImages;
+                    };
                     
-                    // 3) jsonData.savedImagesからも取得
-                    if (Array.isArray(item?.jsonData?.savedImages) && item.jsonData.savedImages.length > 0) {
-                      item.jsonData.savedImages.forEach((img: any) => {
-                        if (typeof img === 'string' && !img.startsWith('data:image/')) {
-                          images.push(img);
-                        } else if (img && typeof img === 'object') {
-                          if (img.fileName) {
-                            const imagePath = `/api/images/chat-exports/${img.fileName}`;
-                            let baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-                            baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
-                            images.push(`${baseUrl}${imagePath}`);
-                          } else if (img.url) {
-                            const finalUrl = img.url.startsWith('http') ? img.url : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${img.url}`;
-                            images.push(finalUrl);
-                          }
-                        }
-                      });
-                    }
-                    
-                    // 重複を除去
-                    return Array.from(new Set(images));
-                  };
-                  
-                  const imageUrls = getAllImages(editingItem);
-                  if (imageUrls.length > 0) {
-                    return (
-                      <div className='bg-purple-50 p-4 rounded-lg'>
-                        <h3 className='text-lg font-semibold mb-3 flex items-center gap-2'>
-                          <Image className='h-5 w-5' />
-                          故障個所の画像 ({imageUrls.length}枚)
-                        </h3>
+                    const imageList = getAllImages(editingItem);
+                    if (imageList.length > 0) {
+                      return (
                         <div className='grid grid-cols-3 gap-4'>
-                          {imageUrls.map((imageUrl, index) => (
-                            <div key={index} className='text-center'>
+                          {imageList.map((image, index) => (
+                            <div key={index} className='relative group'>
                               <img
-                                src={imageUrl}
+                                src={image.url}
                                 alt={`故障画像${index + 1}`}
                                 className='w-full h-auto max-h-48 object-contain border border-gray-300 rounded-md shadow-sm'
                                 onError={(e) => {
-                                  console.error(`🖼️ 画像読み込みエラー (編集画面):`, imageUrl);
+                                  console.error(`🖼️ 画像読み込みエラー (編集画面):`, image.url);
                                   (e.target as HTMLImageElement).style.display = 'none';
                                 }}
                               />
+                              <Button
+                                type='button'
+                                variant='destructive'
+                                size='sm'
+                                className='absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity'
+                                onClick={() => {
+                                  // 画像を削除
+                                  const currentSavedImages = editingItem.jsonData?.savedImages || [];
+                                  const updatedSavedImages = currentSavedImages.filter((img: any, idx: number) => {
+                                    if (image.fileName && img.fileName === image.fileName) return false;
+                                    if (img.url === image.url) return false;
+                                    if (img.path === image.url) return false;
+                                    return true;
+                                  });
+                                  
+                                  setEditingItem({
+                                    ...editingItem,
+                                    jsonData: {
+                                      ...editingItem.jsonData,
+                                      savedImages: updatedSavedImages,
+                                    },
+                                  });
+                                }}
+                              >
+                                <X className='h-4 w-4' />
+                              </Button>
                             </div>
                           ))}
                         </div>
-                      </div>
+                      );
+                    }
+                    return (
+                      <p className='text-sm text-gray-500 text-center py-4'>
+                        画像がありません。上記の「画像を追加」ボタンから画像を追加してください。
+                      </p>
                     );
-                  }
-                  return null;
-                })()}
+                  })()}
+                </div>
 
                 {/* 修繕計画編集 */}
                 <div className='bg-yellow-50 p-4 rounded-lg'>

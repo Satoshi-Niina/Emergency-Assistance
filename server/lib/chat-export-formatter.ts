@@ -731,47 +731,8 @@ ${messages
   }
 
   const conversationHistory = messages.map((message: any) => {
-    // コンテンツ内の画像パスを検出
+    // コンテンツをそのまま使用（base64は使用しない）
     const updatedContent = message.content;
-
-    // 画像パスを正規表現で抽出 - パターンを拡張して相対パスと絶対パスの両方に対応
-    const imagePathRegex =
-      /(\/|\.\/)?(knowledge-base|public)\/images\/[^)\s"'\n]+\.(svg|png|jpg|jpeg)/g;
-    const imagePaths = message.content.match(imagePathRegex) || [];
-
-    console.log(
-      `メッセージID ${message.id}: ${imagePaths.length}個の画像パスを検出`
-    );
-
-    // Base64エンコードした画像データを保持するマップ
-    const base64Images: { [key: string]: string } = {};
-
-    // 各画像パスに対してBase64エンコードを実行
-    for (const imagePath of imagePaths) {
-      try {
-        // パスを正規化
-        const normalizedPath = imagePath.startsWith('./')
-          ? imagePath.slice(2)
-          : imagePath;
-        const fullPath = path.join(__dirname, '../../', normalizedPath);
-
-        if (fs.existsSync(fullPath)) {
-          const imageBuffer = fs.readFileSync(fullPath);
-          const base64Data = imageBuffer.toString('base64');
-          const fileExtension = path.extname(imagePath).slice(1);
-          const mimeType =
-            fileExtension === 'svg'
-              ? 'image/svg+xml'
-              : `image/${fileExtension}`;
-          base64Images[imagePath] = `data:${mimeType};base64,${base64Data}`;
-          console.log(`画像をBase64エンコード: ${imagePath}`);
-        } else {
-          console.warn(`画像ファイルが見つかりません: ${fullPath}`);
-        }
-      } catch (error) {
-        console.error(`画像のBase64エンコード中にエラー: ${imagePath}`, error);
-      }
-    }
 
     // メディア情報を追加
     let mediaInfo = [];
@@ -803,8 +764,6 @@ ${messages
       isAiResponse: message.isAiResponse,
       timestamp: message.createdAt,
       media: mediaInfo,
-      base64Images:
-        Object.keys(base64Images).length > 0 ? base64Images : undefined,
     };
   });
 
