@@ -29,10 +29,10 @@ export default defineConfig(({ command, mode }) => {
   
   const apiBaseUrl = (() => {
     // 環境変数が設定されている場合は最優先
-    if (env.VITE_API_BASE_URL) {
+    if (env.VITE_API_BASE_URL && env.VITE_API_BASE_URL.trim() !== '') {
       return env.VITE_API_BASE_URL;
     }
-    if (env.VITE_API_BASE) {
+    if (env.VITE_API_BASE && env.VITE_API_BASE.trim() !== '') {
       return env.VITE_API_BASE;
     }
     
@@ -49,8 +49,25 @@ export default defineConfig(({ command, mode }) => {
     // フォールバック
     return 'http://localhost:8080';
   })();
-  const serverPort = parseInt(env.PORT || '3003');
-  const clientPort = parseInt(env.CLIENT_PORT || '5175');
+  
+  // プロキシのtargetを計算（相対パスの場合は絶対URLに変換）
+  const proxyTarget = (() => {
+    // apiBaseUrlが相対パスの場合（/apiで始まる）
+    if (apiBaseUrl.startsWith('/')) {
+      return 'http://localhost:8080';
+    }
+    
+    // apiBaseUrlが有効なURLかチェック
+    if (apiBaseUrl && apiBaseUrl.trim() !== '' && (apiBaseUrl.startsWith('http://') || apiBaseUrl.startsWith('https://'))) {
+      return apiBaseUrl;
+    }
+    
+    // フォールバック: 統合サーバーのデフォルトポート
+    return 'http://localhost:8080';
+  })();
+  
+  const serverPort = parseInt(env.PORT || env.VITE_SERVER_PORT || '3003');
+  const clientPort = parseInt(env.VITE_CLIENT_PORT || '5173');
 
   console.log('🔧 Vite環境変数確認:', {
     VITE_API_BASE: env.VITE_API_BASE,
@@ -58,6 +75,7 @@ export default defineConfig(({ command, mode }) => {
     VITE_API_BASE_TYPE: typeof env.VITE_API_BASE,
     VITE_API_BASE_LENGTH: env.VITE_API_BASE?.length,
     apiBaseUrl,
+    proxyTarget,
     serverPort,
     clientPort,
   });
@@ -84,7 +102,7 @@ export default defineConfig(({ command, mode }) => {
       host: true,
       proxy: {
         '/api': {
-          target: 'http://localhost:8080',
+          target: proxyTarget,
           changeOrigin: true,
           secure: false,
           configure: (proxy, _options) => {

@@ -347,8 +347,9 @@ function buildApiUrl(path: string): string {
     import.meta.env.DEV || window.location.hostname.includes('localhost');
 
   if (isDevelopment) {
-    console.log('✅ 開発環境: ポート8000を使用');
-    return `http://localhost:8081${path}`;
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+    console.log('✅ 開発環境:', apiBase, 'を使用');
+    return `${apiBase}${path}`;
   }
 
   // その他の環境では相対パス
@@ -371,23 +372,23 @@ console.log('🔍 環境変数詳細確認:', {
   MODE: import.meta.env.MODE,
   BASE_URL: import.meta.env.BASE_URL,
   // 実際に使用されるURL
-  finalApiBaseUrl: VITE_API_BASE_URL || 'http://localhost:3001',
+  finalApiBaseUrl: VITE_API_BASE_URL || 'http://localhost:8080',
 });
 
 console.log('🔧 API設定:', {
   isProduction,
   isDevelopment,
-  API_BASE_URL: VITE_API_BASE_URL || 'http://localhost:3001',
+  API_BASE_URL: VITE_API_BASE_URL || 'http://localhost:8080',
   // デバッグ用：実際のリクエストURLを確認
-  sampleAuthUrl: `${VITE_API_BASE_URL || 'http://localhost:3001'}/api/login`,
+  sampleAuthUrl: `${VITE_API_BASE_URL || 'http://localhost:8080'}/api/login`,
   // 追加のデバッグ情報
   location: window.location.href,
   origin: window.location.origin,
   hostname: window.location.hostname,
   protocol: window.location.protocol,
   // 実際のAPI URLを構築して確認
-  actualAuthUrl: `${VITE_API_BASE_URL || 'http://localhost:3001'}/api/login`,
-  actualMeUrl: `${VITE_API_BASE_URL || 'http://localhost:3001'}/api/auth/me`,
+  actualAuthUrl: `${VITE_API_BASE_URL || 'http://localhost:8080'}/api/login`,
+  actualMeUrl: `${VITE_API_BASE_URL || 'http://localhost:8080'}/api/auth/me`,
   // 環境変数の詳細確認
   envVars: {
     VITE_API_BASE_URL,
@@ -414,5 +415,5 @@ const API_BASE_URL = (() => {
   }
 
   // デフォルト
-  return 'http://localhost:3001';
+  return import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 })();

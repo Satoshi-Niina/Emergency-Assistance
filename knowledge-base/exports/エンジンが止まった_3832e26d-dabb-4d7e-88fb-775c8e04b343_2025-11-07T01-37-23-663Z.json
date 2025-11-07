@@ -1,0 +1,69 @@
+{
+  "chatId": "3832e26d-dabb-4d7e-88fb-775c8e04b343",
+  "userId": "test-user",
+  "exportType": "manual_send",
+  "exportTimestamp": "2025-11-07T01:37:23.674Z",
+  "title": "エンジンが止まった",
+  "chatData": {
+    "chatId": "3832e26d-dabb-4d7e-88fb-775c8e04b343",
+    "timestamp": "2025-11-07T01:37:23.352Z",
+    "machineInfo": {
+      "selectedMachineType": "a8ee08ea-7f26-4595-b6f8-a841840a6f31",
+      "selectedMachineNumber": "",
+      "machineTypeName": "MC300(堀川）",
+      "machineNumber": "1000"
+    },
+    "messages": [
+      {
+        "id": "1762479379791",
+        "content": "機種及び機械番号を選択入力してください！",
+        "isAiResponse": true,
+        "timestamp": "2025-11-07T01:36:19.791Z",
+        "media": []
+      },
+      {
+        "id": "1762479380293",
+        "content": "何か問題がありましたか？お困りの事象を教えてください！",
+        "isAiResponse": true,
+        "timestamp": "2025-11-07T01:36:20.292Z",
+        "media": []
+      },
+      {
+        "id": "1762479422052",
+        "content": "エンジンが止まった",
+        "isAiResponse": false,
+        "timestamp": "2025-11-07T01:37:02.052Z",
+        "media": []
+      },
+      {
+        "id": "1762479430907",
+        "content": "エンジンが止まった場合、まずは以下の手順を試してみてください。\n\n1. **安全確認**: 車両を安全な場所に停め、ハザードランプを点灯させますね。他の車両の通行を妨げないように注意してみてください。\n\n2",
+        "isAiResponse": true,
+        "timestamp": "2025-11-07T01:37:10.906Z",
+        "media": []
+      },
+      {
+        "id": 1762479438672,
+        "content": "/api/images/chat-exports/chat_image_3832e26d-dabb-4d7e-88fb-775c8e04b343_1762479443666.jpg",
+        "isAiResponse": false,
+        "timestamp": "2025-11-07T01:37:18.672Z",
+        "media": []
+      },
+      {
+        "id": "1762479442180",
+        "content": "サーバーへ送信してください！",
+        "isAiResponse": true,
+        "timestamp": "2025-11-07T01:37:22.180Z",
+        "media": []
+      }
+    ]
+  },
+  "savedImages": [
+    {
+      "messageId": 1762479438672,
+      "fileName": "chat_image_3832e26d-dabb-4d7e-88fb-775c8e04b343_1762479443666.jpg",
+      "path": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\system\\Emergency-Assistance\\knowledge-base\\images\\chat-exports\\chat_image_3832e26d-dabb-4d7e-88fb-775c8e04b343_1762479443666.jpg",
+      "url": "/api/images/chat-exports/chat_image_3832e26d-dabb-4d7e-88fb-775c8e04b343_1762479443666.jpg"
+    }
+  ]
+}

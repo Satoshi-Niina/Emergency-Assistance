@@ -2,7 +2,7 @@
 import React from 'react';
 
 // API設定 - VITE_API_BASE_URLのみを使用
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 export interface ImageData {
     id: string;

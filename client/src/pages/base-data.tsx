@@ -274,31 +274,77 @@ export default function BaseDataPage() {
   // AI支援設定の保存
   const saveAiAssistSettings = async () => {
     try {
-      // ローカルストレージに一時保存（実際の実装ではAPIに保存）
-      localStorage.setItem('aiAssistSettings', JSON.stringify(aiAssistSettings));
-      
-      // 実際の実装では、サーバーAPIに送信
-      // const response = await fetch('/api/ai-assist/settings', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(aiAssistSettings)
-      // });
-      
-      alert('AI支援設定を保存しました');
-    } catch (_error) {
-      alert('AI支援設定の保存に失敗しました');
+      const response = await fetch('/api/ai-assist/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(aiAssistSettings),
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        // ローカルストレージにもバックアップとして保存
+        localStorage.setItem('aiAssistSettings', JSON.stringify(aiAssistSettings));
+        // 同じウィンドウ内での変更を通知するカスタムイベントを発火
+        window.dispatchEvent(new Event('aiAssistSettingsChanged'));
+        alert('AI支援設定を保存しました');
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || '設定の保存に失敗しました');
+      }
+    } catch (error) {
+      console.error('AI支援設定保存エラー:', error);
+      alert('AI支援設定の保存に失敗しました: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
   // AI支援設定の読み込み
   const loadAiAssistSettings = async () => {
     try {
-      const saved = localStorage.getItem('aiAssistSettings');
-      if (saved) {
-        setAiAssistSettings(JSON.parse(saved));
+      const response = await fetch('/api/ai-assist/settings', {
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const settings = result.success ? result.data : result;
+        if (settings) {
+          setAiAssistSettings(prev => ({
+            ...prev,
+            ...settings,
+            // ネストされたオブジェクトもマージ
+            questionFlow: {
+              ...prev.questionFlow,
+              ...settings.questionFlow,
+            },
+            branchingConditions: {
+              ...prev.branchingConditions,
+              ...settings.branchingConditions,
+            },
+          }));
+          // ローカルストレージにもバックアップとして保存
+          localStorage.setItem('aiAssistSettings', JSON.stringify(settings));
+        }
+      } else {
+        // サーバーから取得できない場合は、ローカルストレージから読み込む（フォールバック）
+        const saved = localStorage.getItem('aiAssistSettings');
+        if (saved) {
+          setAiAssistSettings(JSON.parse(saved));
+        }
       }
-    } catch (_error) {
-      // AI支援設定読み込みエラー（無視）
+    } catch (error) {
+      console.warn('AI支援設定読み込みエラー（ローカルストレージから読み込みを試行）:', error);
+      // エラー時はローカルストレージから読み込む（フォールバック）
+      try {
+        const saved = localStorage.getItem('aiAssistSettings');
+        if (saved) {
+          setAiAssistSettings(JSON.parse(saved));
+        }
+      } catch (_localError) {
+        // ローカルストレージからの読み込みも失敗した場合はデフォルト値を使用
+      }
     }
   };
 

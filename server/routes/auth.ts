@@ -22,20 +22,22 @@ const router = express.Router();
 // CORSミドルウェア（認証ルート用）
 router.use((req, res, next) => {
   const origin = req.headers.origin;
+  const staticWebAppUrl = process.env.STATIC_WEB_APP_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
+  const clientPort = process.env.CLIENT_PORT || '5173';
   const allowedOrigins = [
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://localhost:5175',
-    'http://localhost:5176',
-    'http://localhost:5177',
-    'http://localhost:5178',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:5174',
-    'http://127.0.0.1:5175',
-    'http://127.0.0.1:5176',
-    'http://127.0.0.1:5177',
-    'http://127.0.0.1:5178',
-    'https://witty-river-012f39e00.1.azurestaticapps.net',
+    `http://localhost:${clientPort}`,
+    `http://localhost:${parseInt(clientPort) + 1}`,
+    `http://localhost:${parseInt(clientPort) + 2}`,
+    `http://localhost:${parseInt(clientPort) + 3}`,
+    `http://localhost:${parseInt(clientPort) + 4}`,
+    `http://localhost:${parseInt(clientPort) + 5}`,
+    `http://127.0.0.1:${clientPort}`,
+    `http://127.0.0.1:${parseInt(clientPort) + 1}`,
+    `http://127.0.0.1:${parseInt(clientPort) + 2}`,
+    `http://127.0.0.1:${parseInt(clientPort) + 3}`,
+    `http://127.0.0.1:${parseInt(clientPort) + 4}`,
+    `http://127.0.0.1:${parseInt(clientPort) + 5}`,
+    staticWebAppUrl,
     ...(process.env.CORS_ALLOW_ORIGINS?.split(',') || [])
   ].filter(Boolean);
 

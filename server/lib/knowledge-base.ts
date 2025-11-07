@@ -199,9 +199,19 @@ export interface TextChunk {
 /**
  * 知識ベースから検索する関数
  * @param query 検索クエリ
+ * @param ragSettings RAG設定（オプション）
  * @returns 関連するテキストチャンクの配列
  */
-export async function searchKnowledgeBase(query: string): Promise<TextChunk[]> {
+export async function searchKnowledgeBase(
+  query: string,
+  ragSettings?: {
+    similarityThreshold?: number;
+    maxResults?: number;
+    enableSemantic?: boolean;
+    enableKeyword?: boolean;
+    customPrompt?: string;
+  }
+): Promise<TextChunk[]> {
   // インメモリで単純な検索を実装
   try {
     console.log('🔍 searchKnowledgeBase開始:', query);
@@ -414,10 +424,17 @@ export async function searchKnowledgeBase(query: string): Promise<TextChunk[]> {
       };
     });
 
-    // 類似度でソートして上位10件を返す
-    const results = scoredChunks
+    // 類似度閾値と最大取得件数を適用
+    const similarityThreshold = ragSettings?.similarityThreshold ?? 0.7;
+    const maxResults = ragSettings?.maxResults ?? 5;
+    
+    // 類似度でソートして、閾値以上のもののみを返す
+    const filteredChunks = scoredChunks
+      .filter(chunk => (chunk.similarity || 0) >= similarityThreshold)
       .sort((a, b) => (b.similarity || 0) - (a.similarity || 0))
-      .slice(0, 10);
+      .slice(0, maxResults);
+    
+    const results = filteredChunks;
 
     console.log('🔍 検索結果数:', results.length);
     if (results.length > 0) {
@@ -437,10 +454,17 @@ export async function searchKnowledgeBase(query: string): Promise<TextChunk[]> {
  * @returns 知識ベースを組み込んだシステムプロンプト
  */
 export async function generateSystemPromptWithKnowledge(
-  query: string
+  query: string,
+  ragSettings?: {
+    similarityThreshold?: number;
+    maxResults?: number;
+    enableSemantic?: boolean;
+    enableKeyword?: boolean;
+    customPrompt?: string;
+  }
 ): Promise<string> {
-  // 知識ベースから関連情報を検索
-  const relevantChunks = await searchKnowledgeBase(query);
+  // 知識ベースから関連情報を検索（RAG設定を適用）
+  const relevantChunks = await searchKnowledgeBase(query, ragSettings);
 
   // 関連情報をプロンプトに追加するための文字列を構築
   let knowledgeText = '';
@@ -524,8 +548,38 @@ export async function generateSystemPromptWithKnowledge(
     knowledgeText += `\n📊 **検索統計**: 総${totalChunks}件中、緊急${urgentCount}件・重要${importantCount}件を表示\n`;
   }
 
-  // 高度に専門化されたシステムプロンプト
-  const baseSystemPrompt = `あなたは鉄道保守車両（軌道モータカー、マルチプルタイタンパー、バラストレギュレーター等）の専門技術者として20年以上の現場経験を持つエキスパートAIです。
+  // 高度に専門化されたシステムプロンプト（1問1答形式に最適化）
+  const baseSystemPrompt = `あなたは、**鉄道の保守用車（軌道モーターカー）**に関する専門的な知識を持つAIアシスタントです。
+
+【厳守事項】
+
+回答の範囲: 回答は、あなたが保持している保守用車（軌道モーターカー）の仕様、機能、および故障事例に関するナレッジデータのみに基づいて行い、このナレッジにない情報については回答できません。
+
+情報源の限定: インターネット検索や外部情報源を参照することは一切禁止します。
+
+ナレッジの不足時の対応: 質問に対する情報がナレッジデータ内に存在しない場合は、「申し訳ありませんが、その情報（または、その詳細）は、現在の私の保守用車に関するナレッジデータには含まれておりません。」と明確に回答し、それ以上の推測や一般的な情報の提供は行わないでください。
+
+【回答の品質】
+
+専門性: 鉄道保守・車両工学の専門用語を用いて、正確かつ技術的な観点から回答してください。
+
+構造化: 仕様、機能、故障のデータは、箇条書きや表を用いて、利用者が理解しやすいよう構造化して提示してください。
+
+具体的なデータとの紐づけ: 可能な限り、具体的な仕様名、機能名称、故障コード、または特定の構成部品と紐づけて回答してください。
+
+【タスク例】
+
+特定の車種（例：〇〇型軌道モーターカー）のエンジン出力や最大牽引力の仕様を問い合わせられた場合。
+
+油圧駆動システムの機能について説明を求められた場合。
+
+特定の故障コード（例：E-123）が発生した場合の考えられる原因や一次的な対処法を問い合わせられた場合。
+
+上記を厳守し、専門家として、ユーザーの質問に正確に回答してください。
+
+---
+
+あなたは鉄道保守車両（軌道モータカー、マルチプルタイタンパー、バラストレギュレーター等）の専門技術者として20年以上の現場経験を持つエキスパートAIです。
 
 【専門領域と責任】
 - 鉄道保守車両の故障診断・修理・メンテナンス
@@ -534,23 +588,24 @@ export async function generateSystemPromptWithKnowledge(
 - JR各社の保守基準と作業手順書に準拠した指導
 
 【回答生成における重要原則】
-1. **安全第一**: 人命・安全を最優先とし、危険を伴う作業では必ず複数名確認を指示
-2. **現場重視**: 理論より実践的で即座に実行可能な解決策を提示
-3. **経験則活用**: 現場でよくある事例や「よくある間違い」を含めた包括的アドバイス
-4. **段階的対応**: 応急処置→詳細診断→根本的解決の順序で構造化された回答
-5. **コンテキスト適応**: 車両種別、気象条件、作業時間、人員配置を考慮した柔軟な対応
+1. **1問1答形式**: 端的に1つの質問または1つの回答のみを提供。長文の説明は避け、簡潔に要点を伝える
+2. **情報の絞り込み**: ユーザーからの情報を基に、必要な情報を段階的に絞り込み、解消へ向けて繰り返す
+3. **安全第一**: 人命・安全を最優先とし、危険を伴う作業では必ず複数名確認を指示
+4. **現場重視**: 理論より実践的で即座に実行可能な解決策を提示
+5. **段階的対応**: 応急処置→詳細診断→根本的解決の順序で、1つずつ確認しながら進める
 
 【知識ベース活用戦略】
 - 🔴 重要情報: 安全関連は必ず最初に言及し、強調表示
 - 🟡 関連度順: 類似度の高い事例から優先的に参照
-- 📋 補完知識: 知識ベースにない場合は一般的な保守技術で補完
+- 📋 知識ベースのみ: knowledge-base\documentsの情報のみを使用し、それ以外の情報は提供しない
 - 📞 エスカレーション: 複雑な故障は適切な専門部署への連絡を推奨
 
 【コミュニケーションスタイル】
-- 専門用語使用時は「（）」内で平易な説明を併記
-- 作業手順は番号付きリストで明確に記載
-- 「なぜそうするのか」の理由も含めて説明
-- 現場での実際の作業イメージが湧く具体的な表現を使用`;
+- **端的な1問1答**: 1回の応答で1つの質問または1つの回答のみ
+- **情報確認**: 必要な情報が不足している場合は、1つずつ確認する質問を1つだけ提示
+- **簡潔明瞭**: 専門用語使用時は「（）」内で平易な説明を併記
+- **段階的**: ユーザーの回答を基に、次の質問や解決策を提示
+- **具体的**: 現場での実際の作業イメージが湧く具体的な表現を使用`;
 
   return `${baseSystemPrompt}${knowledgeText}`;
 }

@@ -92,20 +92,24 @@ function initializeDatabase() {
 initializeDatabase();
 
 // CORS設定
+const staticWebAppUrl = process.env.STATIC_WEB_APP_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+const clientPort = process.env.CLIENT_PORT || '5173';
 const allowOrigins = [
-  'https://witty-river-012f39e00.1.azurestaticapps.net',
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175',
-  'http://localhost:5176',
-  'http://localhost:5177',
-  'http://localhost:5178',
-  'http://127.0.0.1:5173',
-  'http://127.0.0.1:5174',
-  'http://127.0.0.1:5175',
-  'http://127.0.0.1:5176',
-  'http://127.0.0.1:5177',
-  'http://127.0.0.1:5178',
+  staticWebAppUrl,
+  frontendUrl,
+  `http://localhost:${clientPort}`,
+  `http://localhost:${parseInt(clientPort) + 1}`,
+  `http://localhost:${parseInt(clientPort) + 2}`,
+  `http://localhost:${parseInt(clientPort) + 3}`,
+  `http://localhost:${parseInt(clientPort) + 4}`,
+  `http://localhost:${parseInt(clientPort) + 5}`,
+  `http://127.0.0.1:${clientPort}`,
+  `http://127.0.0.1:${parseInt(clientPort) + 1}`,
+  `http://127.0.0.1:${parseInt(clientPort) + 2}`,
+  `http://127.0.0.1:${parseInt(clientPort) + 3}`,
+  `http://127.0.0.1:${parseInt(clientPort) + 4}`,
+  `http://127.0.0.1:${parseInt(clientPort) + 5}`,
   ...(process.env.CORS_ALLOW_ORIGINS?.split(',') || [])
 ].filter(Boolean);
 
@@ -376,7 +380,7 @@ if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'dev-mock-key')
     openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
-    // APIキーをマスクしてログ出力
+    // APIキーをマスクしてログ出力（セキュリティのため）
     const maskedKey = process.env.OPENAI_API_KEY.substring(0, 7) + '...' + process.env.OPENAI_API_KEY.substring(process.env.OPENAI_API_KEY.length - 4);
     console.log(`✅ OpenAI client initialized (key: ${maskedKey})`);
   } catch (error) {
@@ -435,7 +439,8 @@ apiRouter.get('/auth/me', async (req, res) => {
       try {
         const token = auth.slice(7);
         const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-key-32-characters-long');
-        console.log('[auth/me] Token-based auth:', payload);
+        // セキュリティのため、トークンのペイロードはログに出力しない（ユーザーIDのみ）
+        console.log('[auth/me] Token-based auth: user authenticated (userId:', payload.uid || payload.id || 'unknown', ')');
         return res.json({ 
           success: true, 
           user: { 
@@ -492,7 +497,8 @@ apiRouter.get('/auth/me', async (req, res) => {
 // 認証API
 apiRouter.post('/auth/login', async (req, res) => {
   try {
-    console.log('Login attempt received:', req.body);
+    // セキュリティのため、パスワードはログに出力しない
+    console.log('Login attempt received:', { username: req.body.username });
     const { username, password } = req.body;
     
     if (!username || !password) {
@@ -574,7 +580,8 @@ apiRouter.post('/auth/login', async (req, res) => {
 
     function handleSimpleAuth(username, password, res) {
       console.log('Using simple authentication without database');
-      console.log(`Provided credentials: username="${username}", password="${password}"`);
+      console.log(`Login attempt: username="${username}"`);
+      // セキュリティのため、パスワードはログに出力しない
       
       const testUsers = {
         'admin': { password: 'admin', role: 'admin', displayName: 'Administrator', department: 'IT' },
@@ -1206,7 +1213,9 @@ apiRouter.get('/users', async (req, res) => {
 // ユーザー作成API（認証を一時的に無効化）
 apiRouter.post('/users', async (req, res) => {
   try {
-    console.log('👤 ユーザー作成リクエスト:', req.body);
+    // セキュリティのため、パスワードはログに出力しない
+    const { password: _password, ...safeBody } = req.body;
+    console.log('👤 ユーザー作成リクエスト:', safeBody);
     const { username, password, display_name, role, department, description } = req.body;
     
     if (!username || !password || !display_name) {
@@ -1270,7 +1279,9 @@ apiRouter.put('/users/:id', async (req, res) => {
     const { id } = req.params;
     const { username, password, display_name, role, department, description } = req.body;
     
-    console.log('👤 ユーザー更新リクエスト:', { id, ...req.body });
+    // セキュリティのため、パスワードはログに出力しない
+    const { password: _password, ...safeBody } = req.body;
+    console.log('👤 ユーザー更新リクエスト:', { id, ...safeBody });
     
     if (!id || !username || !display_name) {
       return res.status(400).json({
@@ -2837,12 +2848,107 @@ apiRouter.post('/emergency-flow/generate', async (req, res) => {
       });
     }
 
+    // AI支援カスタマイズ設定を読み込む
+    let aiAssistSettings = null;
+    try {
+      const AI_ASSIST_SETTINGS_FILE = path.join(__dirname, '../data/ai-assist-settings.json');
+      if (fs.existsSync(AI_ASSIST_SETTINGS_FILE)) {
+        const settingsData = fs.readFileSync(AI_ASSIST_SETTINGS_FILE, 'utf-8');
+        aiAssistSettings = JSON.parse(settingsData);
+        console.log('✅ AI支援設定をフロー生成に適用しました');
+      } else {
+        // デフォルト設定
+        aiAssistSettings = {
+          conversationStyle: 'frank',
+          customInstructions: '',
+          questionFlow: {
+            step1: '具体的な症状を教えてください',
+            step2: 'いつ頃から発生していますか？',
+            step3: '作業環境や状況を教えてください',
+            step4: '他に気になることはありますか？',
+            step5: '緊急度を教えてください'
+          },
+        };
+      }
+    } catch (error) {
+      console.warn('AI支援設定の読み込みに失敗しました。デフォルト値を使用します:', error);
+      aiAssistSettings = {
+        conversationStyle: 'frank',
+        customInstructions: '',
+        questionFlow: {
+          step1: '具体的な症状を教えてください',
+          step2: 'いつ頃から発生していますか？',
+          step3: '作業環境や状況を教えてください',
+          step4: '他に気になることはありますか？',
+          step5: '緊急度を教えてください'
+        },
+      };
+    }
+
+    // 会話スタイルに応じたトーンの調整
+    let toneInstruction = '';
+    if (aiAssistSettings.conversationStyle === 'business') {
+      toneInstruction = '丁寧で正式なビジネス用語を使用し、専門的な表現を心がけてください。';
+    } else if (aiAssistSettings.conversationStyle === 'technical') {
+      toneInstruction = '専門用語を中心に、技術的な説明を重視してください。';
+    } else {
+      toneInstruction = '親しみやすく、わかりやすい表現で説明してください。';
+    }
+
+    // カスタム指示を追加
+    let customInstructionText = '';
+    if (aiAssistSettings.customInstructions) {
+      customInstructionText = `\n\n【追加の指示事項】\n${aiAssistSettings.customInstructions}`;
+    }
+
+    // 質問フロー設定を参考にした構造化ガイド
+    let questionFlowGuide = '';
+    if (aiAssistSettings.questionFlow) {
+      const flowSteps = Object.values(aiAssistSettings.questionFlow)
+        .filter(q => q && q.trim())
+        .map((q, idx) => `- ${q}`)
+        .join('\n');
+      if (flowSteps) {
+        questionFlowGuide = `\n\n【推奨される情報収集フロー】\n以下の順序で情報を収集することを推奨します：\n${flowSteps}`;
+      }
+    }
+
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',
       messages: [
         {
           role: 'system',
-          content: `あなたは建設機械の故障診断と応急処置の専門家です。
+          content: `あなたは、**鉄道の保守用車（軌道モーターカー）**に関する専門的な知識を持つAIアシスタントです。
+
+【厳守事項】
+
+回答の範囲: 回答は、あなたが保持している保守用車（軌道モーターカー）の仕様、機能、および故障事例に関するナレッジデータのみに基づいて行い、このナレッジにない情報については回答できません。
+
+情報源の限定: インターネット検索や外部情報源を参照することは一切禁止します。
+
+ナレッジの不足時の対応: 質問に対する情報がナレッジデータ内に存在しない場合は、「申し訳ありませんが、その情報（または、その詳細）は、現在の私の保守用車に関するナレッジデータには含まれておりません。」と明確に回答し、それ以上の推測や一般的な情報の提供は行わないでください。
+
+【回答の品質】
+
+専門性: 鉄道保守・車両工学の専門用語を用いて、正確かつ技術的な観点から回答してください。
+
+構造化: 仕様、機能、故障のデータは、箇条書きや表を用いて、利用者が理解しやすいよう構造化して提示してください。
+
+具体的なデータとの紐づけ: 可能な限り、具体的な仕様名、機能名称、故障コード、または特定の構成部品と紐づけて回答してください。
+
+【タスク例】
+
+特定の車種（例：〇〇型軌道モーターカー）のエンジン出力や最大牽引力の仕様を問い合わせられた場合。
+
+油圧駆動システムの機能について説明を求められた場合。
+
+特定の故障コード（例：E-123）が発生した場合の考えられる原因や一次的な対処法を問い合わせられた場合。
+
+上記を厳守し、専門家として、ユーザーの質問に正確に回答してください。
+
+---
+
+あなたは鉄道保守用車（軌道モーターカー）の故障診断と応急処置の専門家です。
 以下の形式で一問一答形式の詳細な応急処置フローを生成してください：
 
 **必須フォーマット:**
@@ -2873,6 +2979,7 @@ apiRouter.post('/emergency-flow/generate', async (req, res) => {
 - 安全確認は最初のステップに必ず含める
 - 必要な工具や部品があれば明記
 - 専門技術者への連絡が必要な場合は最後のステップに含める
+${toneInstruction}${questionFlowGuide}${customInstructionText}
 
 **例:**
 タイトル：エンジン始動不良
@@ -3934,23 +4041,42 @@ apiRouter.get('/settings/rag', async (req, res) => {
   try {
     console.log('⚙️ RAG設定取得リクエスト');
     
+    // RAG設定ファイルから読み込む
+    const RAG_SETTINGS_FILE = path.join(__dirname, '../data/rag-settings.json');
+    const DEFAULT_RAG_SETTINGS = {
+      chunkSize: 500,
+      chunkOverlap: 200,
+      similarityThreshold: 0.7,
+      maxResults: 5,
+      useSemanticSearch: true,
+      useKeywordSearch: true,
+      removeDuplicates: true,
+      preprocessingOptions: {
+        removeStopWords: true,
+        lowercaseText: true,
+        removeSpecialChars: false,
+      },
+      customPrompt: '',
+      temperature: 0.7,
+      maxTokens: 2000,
+    };
+    
+    let ragSettings = DEFAULT_RAG_SETTINGS;
+    try {
+      if (fs.existsSync(RAG_SETTINGS_FILE)) {
+        const settingsData = fs.readFileSync(RAG_SETTINGS_FILE, 'utf-8');
+        ragSettings = { ...DEFAULT_RAG_SETTINGS, ...JSON.parse(settingsData) };
+        console.log('✅ RAG設定ファイルから読み込み成功');
+      } else {
+        console.log('📝 RAG設定ファイルが存在しないため、デフォルト設定を使用');
+      }
+    } catch (fileError) {
+      console.warn('⚠️ RAG設定ファイルの読み込みに失敗。デフォルト設定を使用:', fileError);
+    }
+    
     res.json({
       success: true,
-      data: {
-        enabled: true,
-        model: 'gpt-3.5-turbo',
-        temperature: 0.7,
-        maxTokens: 1000,
-        chunkSize: 500,  // 精度向上のため500文字に変更
-        overlap: 100,   // 20%のオーバーラップ
-        minChunkSize: 50,
-        processingMethod: 'semantic-boundary-aware',
-        features: {
-          semanticBoundarySplitting: true,
-          keywordExtraction: true,
-          textNormalization: true,
-        }
-      },
+      data: ragSettings,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -3993,6 +4119,113 @@ apiRouter.get('/config/rag', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'RAG設定の取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// AI支援設定API
+apiRouter.get('/ai-assist/settings', async (req, res) => {
+  try {
+    console.log('⚙️ AI支援設定取得リクエスト');
+    
+    // AI支援設定ファイルから読み込む
+    const AI_ASSIST_SETTINGS_FILE = path.join(__dirname, '../data/ai-assist-settings.json');
+    console.log('📁 AI支援設定ファイルパス:', AI_ASSIST_SETTINGS_FILE);
+    console.log('📁 __dirname:', __dirname);
+    
+    const DEFAULT_AI_ASSIST_SETTINGS = {
+      initialPrompt: '何か問題がありましたか？お困りの事象を教えてください！',
+      conversationStyle: 'frank', // 'frank', 'business', 'technical'
+      questionFlow: {
+        step1: '具体的な症状を教えてください',
+        step2: 'いつ頃から発生していますか？',
+        step3: '作業環境や状況を教えてください',
+        step4: '他に気になることはありますか？',
+        step5: '緊急度を教えてください'
+      },
+      branchingConditions: {
+        timeCheck: true,
+        detailsCheck: true,
+        toolsCheck: true,
+        safetyCheck: true
+      },
+      responsePattern: 'step_by_step', // 'step_by_step', 'comprehensive', 'minimal'
+      escalationTime: 20, // 分
+      customInstructions: '',
+      enableEmergencyContact: true
+    };
+    
+    let aiAssistSettings = DEFAULT_AI_ASSIST_SETTINGS;
+    try {
+      if (fs.existsSync(AI_ASSIST_SETTINGS_FILE)) {
+        console.log('✅ AI支援設定ファイルが存在します');
+        const settingsData = fs.readFileSync(AI_ASSIST_SETTINGS_FILE, 'utf-8');
+        const parsedSettings = JSON.parse(settingsData);
+        aiAssistSettings = { ...DEFAULT_AI_ASSIST_SETTINGS, ...parsedSettings };
+        console.log('✅ AI支援設定ファイルから読み込み成功');
+      } else {
+        console.log('📝 AI支援設定ファイルが存在しないため、デフォルト設定を使用');
+        console.log('📝 ファイルパス:', AI_ASSIST_SETTINGS_FILE);
+      }
+    } catch (fileError) {
+      console.warn('⚠️ AI支援設定ファイルの読み込みに失敗。デフォルト設定を使用:', fileError);
+      console.warn('⚠️ エラー詳細:', fileError.message);
+      console.warn('⚠️ スタック:', fileError.stack);
+    }
+    
+    res.json({
+      success: true,
+      data: aiAssistSettings,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ AI支援設定取得エラー:', error);
+    console.error('❌ エラー詳細:', error.message);
+    console.error('❌ スタック:', error.stack);
+    res.status(500).json({
+      success: false,
+      error: 'AI支援設定の取得に失敗しました',
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// AI支援設定保存API
+apiRouter.post('/ai-assist/settings', async (req, res) => {
+  try {
+    console.log('💾 AI支援設定保存リクエスト');
+    
+    const AI_ASSIST_SETTINGS_FILE = path.join(__dirname, '../data/ai-assist-settings.json');
+    const settings = req.body;
+    
+    // データディレクトリを確保
+    const dataDir = path.dirname(AI_ASSIST_SETTINGS_FILE);
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    
+    // 設定をファイルに保存
+    fs.writeFileSync(
+      AI_ASSIST_SETTINGS_FILE,
+      JSON.stringify(settings, null, 2),
+      'utf-8'
+    );
+    
+    console.log('✅ AI支援設定保存成功');
+    res.json({
+      success: true,
+      message: 'AI支援設定が保存されました',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ AI支援設定保存エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'AI支援設定の保存に失敗しました',
       details: error.message,
       timestamp: new Date().toISOString()
     });
@@ -5928,6 +6161,206 @@ apiRouter.post('/files/import', upload.single('file'), async (req, res) => {
       success: false,
       error: 'ファイルのインポートに失敗しました',
       details: error instanceof Error ? error.message : '不明なエラー',
+    });
+  }
+});
+
+// GPT APIエンドポイント
+apiRouter.post('/chatgpt', async (req, res) => {
+  try {
+    const { text, useOnlyKnowledgeBase = false, conversationHistory = [] } = req.body;
+    
+    console.log('[api/chatgpt] GPT request:', { 
+      text: text?.substring(0, 100) + '...', 
+      useOnlyKnowledgeBase,
+      conversationHistoryLength: conversationHistory.length,
+      openaiAvailable: !!openai 
+    });
+
+    if (!text) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Text is required' 
+      });
+    }
+
+    if (!openai) {
+      return res.json({
+        success: false,
+        response: 'OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable.',
+        message: 'GPT機能を利用するにはOpenAI APIキーの設定が必要です',
+        details: {
+          environment: 'development',
+          apiKeyConfigured: false,
+          fallbackMode: true
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // OpenAI APIを使用した実際の処理
+    try {
+      // processOpenAIRequestを使用してknowledge-baseからデータを取得
+      // 本番環境（node）と開発環境（tsx）の両方に対応
+      let processOpenAIRequest;
+      try {
+        // まず、.jsファイルを試す（本番環境用）
+        const openaiJsPath = path.join(__dirname, 'lib', 'openai.js');
+        if (fs.existsSync(openaiJsPath)) {
+          const module = await import(openaiJsPath);
+          processOpenAIRequest = module.processOpenAIRequest;
+        } else {
+          // .jsファイルが存在しない場合、.tsファイルを試す（開発環境用、tsxが必要）
+          const openaiTsPath = path.join(__dirname, 'lib', 'openai.ts');
+          const module = await import(openaiTsPath);
+          processOpenAIRequest = module.processOpenAIRequest;
+        }
+      } catch (importError) {
+        console.error('[api/chatgpt] Failed to import openai module:', importError);
+        throw new Error('OpenAI module could not be loaded. In production, ensure TypeScript files are compiled to .js files.');
+      }
+      
+      // knowledge-baseからのデータのみを使用（useOnlyKnowledgeBaseがtrueの場合）
+      const useKnowledgeBase = useOnlyKnowledgeBase !== false; // デフォルトはtrue
+      
+      // AI支援カスタマイズ設定を読み込む
+      let aiAssistSettings = null;
+      try {
+        // クライアントから送信された設定を使用（リクエストボディに含まれている場合）
+        if (req.body.aiAssistSettings) {
+          aiAssistSettings = req.body.aiAssistSettings;
+        } else {
+          // サーバー側の設定ファイルから読み込む
+          const AI_ASSIST_SETTINGS_FILE = path.join(__dirname, '../data/ai-assist-settings.json');
+          if (fs.existsSync(AI_ASSIST_SETTINGS_FILE)) {
+            const settingsData = fs.readFileSync(AI_ASSIST_SETTINGS_FILE, 'utf-8');
+            aiAssistSettings = JSON.parse(settingsData);
+            console.log('✅ AI支援設定をサーバーから読み込みました');
+          } else {
+            // デフォルト設定を使用
+            aiAssistSettings = {
+              responsePattern: 'step_by_step',
+              customInstructions: '',
+              conversationStyle: 'frank',
+              questionFlow: {
+                step1: '具体的な症状を教えてください',
+                step2: 'いつ頃から発生していますか？',
+                step3: '作業環境や状況を教えてください',
+                step4: '他に気になることはありますか？',
+                step5: '緊急度を教えてください'
+              },
+            };
+          }
+        }
+      } catch (error) {
+        console.warn('AI支援設定の読み込みに失敗しました。デフォルト値を使用します:', error);
+        aiAssistSettings = {
+          responsePattern: 'step_by_step',
+          customInstructions: '',
+          conversationStyle: 'frank',
+          questionFlow: {
+            step1: '具体的な症状を教えてください',
+            step2: 'いつ頃から発生していますか？',
+            step3: '作業環境や状況を教えてください',
+            step4: '他に気になることはありますか？',
+            step5: '緊急度を教えてください'
+          },
+        };
+      }
+      
+      // 会話スタイルに応じたシステムプロンプトの調整
+      let styleInstruction = '';
+      if (aiAssistSettings.conversationStyle === 'business') {
+        styleInstruction = '丁寧で正式なビジネス用語を使用してください。';
+      } else if (aiAssistSettings.conversationStyle === 'technical') {
+        styleInstruction = '専門用語を中心に、技術的な説明を重視してください。';
+      } else {
+        styleInstruction = '親しみやすく、フランクな口調で話してください。';
+      }
+      
+      // 1問1答形式で端的な応答を生成するためのシステムプロンプト調整
+      let prompt = text;
+      
+      // カスタム指示を追加
+      let customInstructionText = '';
+      if (aiAssistSettings.customInstructions) {
+        customInstructionText = `\n\n【追加指示】\n${aiAssistSettings.customInstructions}`;
+      }
+      
+      // 応答パターンに応じた指示を追加
+      let responsePatternInstruction = '';
+      if (aiAssistSettings.responsePattern === 'minimal') {
+        responsePatternInstruction = '要点のみ簡潔に回答してください。';
+      } else if (aiAssistSettings.responsePattern === 'comprehensive') {
+        responsePatternInstruction = '包括的に複数の対策をまとめて表示してください。';
+      } else {
+        // 段階的表示：質問フロー設定を活用
+        if (aiAssistSettings.questionFlow) {
+          const questionFlowGuide = Object.values(aiAssistSettings.questionFlow)
+            .filter(q => q && q.trim())
+            .map((q, idx) => `ステップ${idx + 1}: ${q}`)
+            .join('\n');
+          responsePatternInstruction = `端的に1問1答形式で回答してください。必要に応じて、以下の質問フローを参考に、ユーザーから追加情報を確認する質問を1つだけしてください。\n\n【推奨質問フロー】\n${questionFlowGuide}`;
+        } else {
+          responsePatternInstruction = '端的に1問1答形式で回答してください。必要に応じて、ユーザーから追加情報を確認する質問を1つだけしてください。';
+        }
+      }
+      
+      // 会話履歴がある場合は、1問1答形式を維持するように指示を追加
+      if (conversationHistory && conversationHistory.length > 0) {
+        const recentHistory = conversationHistory.slice(-4).map(msg => ({
+          role: msg.isAiResponse ? 'assistant' : 'user',
+          content: msg.content
+        }));
+        
+        // 会話履歴を考慮したプロンプト構築
+        prompt = `【会話の流れ】
+${recentHistory.map(msg => `${msg.role === 'assistant' ? 'AI' : 'ユーザー'}: ${msg.content}`).join('\n')}
+
+【現在の質問】
+${text}
+
+上記の会話を踏まえ、knowledge-baseの情報のみを基に、${styleInstruction}${responsePatternInstruction}${customInstructionText}`;
+      } else {
+        // 初回の質問の場合
+        prompt = `${text}\n\nknowledge-baseの情報のみを基に、${styleInstruction}${responsePatternInstruction}${customInstructionText}`;
+      }
+      
+      const response = await processOpenAIRequest(prompt, useKnowledgeBase);
+      
+      res.json({
+        success: true,
+        response: response,
+        message: 'GPT応答を生成しました',
+        details: {
+          inputText: text || 'no text provided',
+          useOnlyKnowledgeBase: useKnowledgeBase,
+          environment: 'development',
+          model: 'gpt-4o'
+        },
+        timestamp: new Date().toISOString()
+      });
+    } catch (apiError) {
+      console.error('[api/chatgpt] OpenAI API error:', apiError);
+      res.status(500).json({
+        success: false,
+        response: 'AI支援機能は現在利用できません。しばらくしてから再度お試しください。',
+        message: 'OpenAI APIの呼び出しに失敗しました',
+        details: {
+          environment: 'development',
+          error: apiError instanceof Error ? apiError.message : String(apiError)
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+  } catch (error) {
+    console.error('[api/chatgpt] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error processing request',
+      error: error instanceof Error ? error.message : String(error),
+      timestamp: new Date().toISOString()
     });
   }
 });

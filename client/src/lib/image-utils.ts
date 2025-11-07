@@ -37,14 +37,16 @@ function getApiBaseUrl(): string {
       }
       
       // 本番環境のデフォルト
-      return 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net';
+      return import.meta.env.VITE_BACKEND_SERVICE_URL || 
+             'https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net';
     }
   } catch (error) {
     console.warn('APIベースURL取得エラー:', error);
   }
   
   // フォールバック - 現在のoriginを使用
-  return typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+  const fallbackUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+  return typeof window !== 'undefined' ? window.location.origin : fallbackUrl;
 }
 
 /**
@@ -74,7 +76,8 @@ export function convertImageUrl(url: any): string {
   // レガシーポート参照の自動修正
   if (typeof url === 'string' && url.includes('localhost:8000')) {
     // 現在のoriginを使用して動的に修正
-    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+    const fallbackUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : fallbackUrl;
     const correctedUrl = url.replace(/http:\/\/localhost:8000/g, currentOrigin);
     console.log('🔧 レガシーポート修正:', { original: url, corrected: correctedUrl, currentOrigin });
     return correctedUrl;

@@ -182,7 +182,8 @@ export default function TroubleshootingPage() {
     mutationFn: async (flowId: string) => {
       console.log('🗑️ フロー削除開始:', flowId);
       
-      const response = await fetch(`http://localhost:8081/api/emergency-flow/${flowId}`, {
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+      const response = await fetch(`${apiBase}/api/emergency-flow/${flowId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -275,7 +276,8 @@ export default function TroubleshootingPage() {
   };
 
   const handleOpenEditor = (flowId: string) => {
-    fetch(`http://localhost:8081/api/emergency-flow/detail/${flowId}`)
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+    fetch(`${apiBase}/api/emergency-flow/detail/${flowId}`)
       .then(res => res.json())
       .then(fullFlowData => {
         setSelectedFlow(fullFlowData);

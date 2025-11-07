@@ -214,4 +214,109 @@ router.get('/openai-api-key', authenticateToken, async (req: Request, res: Respo
   }
 });
 
+// AI支援設定ファイルのパス
+const AI_ASSIST_SETTINGS_FILE = path.join(__dirname, '../data/ai-assist-settings.json');
+
+// デフォルトのAI支援設定
+const DEFAULT_AI_ASSIST_SETTINGS = {
+  initialPrompt: '何か問題がありましたか？お困りの事象を教えてください！',
+  conversationStyle: 'frank', // 'frank', 'business', 'technical'
+  questionFlow: {
+    step1: '具体的な症状を教えてください',
+    step2: 'いつ頃から発生していますか？',
+    step3: '作業環境や状況を教えてください',
+    step4: '他に気になることはありますか？',
+    step5: '緊急度を教えてください'
+  },
+  branchingConditions: {
+    timeCheck: true,
+    detailsCheck: true,
+    toolsCheck: true,
+    safetyCheck: true
+  },
+  responsePattern: 'step_by_step', // 'step_by_step', 'comprehensive', 'minimal'
+  escalationTime: 20, // 分
+  customInstructions: '',
+  enableEmergencyContact: true
+};
+
+// AI支援設定を取得
+router.get('/ai-assist', async (req: Request, res: Response) => {
+  try {
+    console.log('🔍 AI支援設定取得リクエスト:', req.path, req.originalUrl);
+
+    await ensureDataDirectory();
+
+    try {
+      const data = await fs.readFile(AI_ASSIST_SETTINGS_FILE, 'utf-8');
+      const settings = JSON.parse(data);
+      console.log('✅ AI支援設定読み込み成功:', settings);
+      res.json({
+        success: true,
+        data: settings,
+      });
+    } catch (error) {
+      // ファイルが存在しない場合はデフォルト設定を返す
+      console.log(
+        '📝 AI支援設定ファイルが存在しないため、デフォルト設定を返します'
+      );
+      res.json({
+        success: true,
+        data: DEFAULT_AI_ASSIST_SETTINGS,
+      });
+    }
+  } catch (error) {
+    console.error('❌ AI支援設定取得エラー:', error);
+    res.status(500).json({
+      error: 'AI支援設定の取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// AI支援設定を保存
+router.post('/ai-assist', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    console.log('💾 AI支援設定保存リクエスト:', req.path, req.originalUrl, req.body);
+
+    await ensureDataDirectory();
+
+    // 設定をバリデーション
+    const settings = {
+      ...DEFAULT_AI_ASSIST_SETTINGS,
+      ...req.body,
+    };
+
+    // ファイルに保存
+    await fs.writeFile(
+      AI_ASSIST_SETTINGS_FILE,
+      JSON.stringify(settings, null, 2),
+      'utf-8'
+    );
+
+    console.log('✅ AI支援設定保存成功:', settings);
+    res.json({ 
+      success: true, 
+      data: settings,
+      message: 'AI支援設定が保存されました',
+    });
+  } catch (error) {
+    console.error('❌ AI支援設定保存エラー:', error);
+    res.status(500).json({
+      error: 'AI支援設定の保存に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// デバッグ用: ルーターが正しく登録されているか確認
+router.get('/test', async (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    message: 'Settings router is working',
+    path: req.path,
+    originalUrl: req.originalUrl,
+  });
+});
+
 export default router;

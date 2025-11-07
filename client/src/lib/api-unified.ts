@@ -30,8 +30,9 @@ export const API_BASE_URL = (() => {
   
   // フォールバック: 環境判定
   if (isLocalhost) {
-    console.log('✅ ローカル環境: localhost:8000を使用');
-    return 'http://localhost:8000';
+    const defaultUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+    console.log('✅ ローカル環境:', defaultUrl, 'を使用');
+    return defaultUrl;
   }
 
   // フォールバック: 本番環境（相対パス）

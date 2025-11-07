@@ -1334,12 +1334,107 @@ router.post('/generate', async (_req, res) => {
       });
     }
 
+    // AI支援カスタマイズ設定を読み込む
+    let aiAssistSettings = null;
+    try {
+      const AI_ASSIST_SETTINGS_FILE = path.join(__dirname, '../data/ai-assist-settings.json');
+      if (fs.existsSync(AI_ASSIST_SETTINGS_FILE)) {
+        const settingsData = fs.readFileSync(AI_ASSIST_SETTINGS_FILE, 'utf-8');
+        aiAssistSettings = JSON.parse(settingsData);
+        console.log('✅ AI支援設定をフロー生成に適用しました');
+      } else {
+        // デフォルト設定
+        aiAssistSettings = {
+          conversationStyle: 'frank',
+          customInstructions: '',
+          questionFlow: {
+            step1: '具体的な症状を教えてください',
+            step2: 'いつ頃から発生していますか？',
+            step3: '作業環境や状況を教えてください',
+            step4: '他に気になることはありますか？',
+            step5: '緊急度を教えてください'
+          },
+        };
+      }
+    } catch (error) {
+      console.warn('AI支援設定の読み込みに失敗しました。デフォルト値を使用します:', error);
+      aiAssistSettings = {
+        conversationStyle: 'frank',
+        customInstructions: '',
+        questionFlow: {
+          step1: '具体的な症状を教えてください',
+          step2: 'いつ頃から発生していますか？',
+          step3: '作業環境や状況を教えてください',
+          step4: '他に気になることはありますか？',
+          step5: '緊急度を教えてください'
+        },
+      };
+    }
+
+    // 会話スタイルに応じたトーンの調整
+    let toneInstruction = '';
+    if (aiAssistSettings.conversationStyle === 'business') {
+      toneInstruction = '丁寧で正式なビジネス用語を使用し、専門的な表現を心がけてください。';
+    } else if (aiAssistSettings.conversationStyle === 'technical') {
+      toneInstruction = '専門用語を中心に、技術的な説明を重視してください。';
+    } else {
+      toneInstruction = '親しみやすく、わかりやすい表現で説明してください。';
+    }
+
+    // カスタム指示を追加
+    let customInstructionText = '';
+    if (aiAssistSettings.customInstructions) {
+      customInstructionText = `\n\n【追加の指示事項】\n${aiAssistSettings.customInstructions}`;
+    }
+
+    // 質問フロー設定を参考にした構造化ガイド
+    let questionFlowGuide = '';
+    if (aiAssistSettings.questionFlow) {
+      const flowSteps = Object.values(aiAssistSettings.questionFlow)
+        .filter(q => q && q.trim())
+        .map((q, idx) => `- ${q}`)
+        .join('\n');
+      if (flowSteps) {
+        questionFlowGuide = `\n\n【推奨される情報収集フロー】\n以下の順序で情報を収集することを推奨します：\n${flowSteps}`;
+      }
+    }
+
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',
       messages: [
         {
           role: 'system',
-          content: `あなたは建設機械の故障診断と応急処置の専門家です。
+          content: `あなたは、**鉄道の保守用車（軌道モーターカー）**に関する専門的な知識を持つAIアシスタントです。
+
+【厳守事項】
+
+回答の範囲: 回答は、あなたが保持している保守用車（軌道モーターカー）の仕様、機能、および故障事例に関するナレッジデータのみに基づいて行い、このナレッジにない情報については回答できません。
+
+情報源の限定: インターネット検索や外部情報源を参照することは一切禁止します。
+
+ナレッジの不足時の対応: 質問に対する情報がナレッジデータ内に存在しない場合は、「申し訳ありませんが、その情報（または、その詳細）は、現在の私の保守用車に関するナレッジデータには含まれておりません。」と明確に回答し、それ以上の推測や一般的な情報の提供は行わないでください。
+
+【回答の品質】
+
+専門性: 鉄道保守・車両工学の専門用語を用いて、正確かつ技術的な観点から回答してください。
+
+構造化: 仕様、機能、故障のデータは、箇条書きや表を用いて、利用者が理解しやすいよう構造化して提示してください。
+
+具体的なデータとの紐づけ: 可能な限り、具体的な仕様名、機能名称、故障コード、または特定の構成部品と紐づけて回答してください。
+
+【タスク例】
+
+特定の車種（例：〇〇型軌道モーターカー）のエンジン出力や最大牽引力の仕様を問い合わせられた場合。
+
+油圧駆動システムの機能について説明を求められた場合。
+
+特定の故障コード（例：E-123）が発生した場合の考えられる原因や一次的な対処法を問い合わせられた場合。
+
+上記を厳守し、専門家として、ユーザーの質問に正確に回答してください。
+
+---
+
+あなたは鉄道保守用車（軌道モーターカー）の故障診断と応急処置の専門家です。
 以下の形式で具体的で実用的な応急処置フローを生成してください：
 
 **必須フォーマット:**
@@ -1356,6 +1451,7 @@ router.post('/generate', async (_req, res) => {
 - 必要な工具や部品があれば明記
 - 専門技術者への連絡が必要な場合は明記
 - 技術者でも素人でも実行可能なレベルで説明
+${toneInstruction}${questionFlowGuide}${customInstructionText}
 
 **例:**
 手順1：エンジンルームの安全確認（エンジン停止、ブレーキ掛け、作業現場の安全確保）

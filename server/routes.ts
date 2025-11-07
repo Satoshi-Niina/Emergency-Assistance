@@ -46,6 +46,7 @@ import filesRouter from './routes/files.js';
 import knowledgeBaseRouter from './routes/knowledge-base.js';
 import qaLearningRouter from './routes/qa-learning.js';
 import { registerKnowledgeBaseRoutes } from './routes/knowledge-base.js';
+import settingsRouter from './routes/settings.js';
 
 // ESM用__dirname定義
 const __filename = fileURLToPath(import.meta.url);
@@ -98,6 +99,7 @@ export function registerRoutes(app: Express): void {
   app.use('/api/knowledge-base', knowledgeBaseRouter);
   app.use('/api/qa-learning', qaLearningRouter);
   app.use('/api/maintenance', maintenanceRouter);
+  app.use('/api/settings', settingsRouter);
 
   // Health check endpoints
   app.get('/api/health', (req, res) => {
@@ -432,7 +434,8 @@ export function registerRoutes(app: Express): void {
 
       if (success) {
         // 画像検索データを再初期化
-        fetch('http://localhost:5000/api/tech-support/init-image-search-data', {
+        const techSupportApiUrl = process.env.TECH_SUPPORT_API_URL || 'http://localhost:5000';
+        fetch(`${techSupportApiUrl}/api/tech-support/init-image-search-data`, {
           method: 'POST',
         })
           .then(response => {

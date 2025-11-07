@@ -5,7 +5,7 @@
   "main": "minimal-azure-server.js",
   "scripts": {
     "dev": "cross-env NODE_ENV=development PORT=8000 DATABASE_URL=postgresql://postgres:CHANGE_THIS_PASSWORD@localhost:5432/webappdb JWT_SECRET=CHANGE_THIS_JWT_SECRET_TO_32_CHARACTERS_MINIMUM SESSION_SECRET=CHANGE_THIS_SESSION_SECRET_TO_32_CHARACTERS_MINIMUM FRONTEND_URL=http://localhost:5173 BYPASS_DB_FOR_LOGIN=true OPENAI_API_KEY=sk-CHANGE_THIS_TO_YOUR_ACTUAL_OPENAI_API_KEY node unified-server.js",
-    "build": "echo 'Using unified-server.js - no TypeScript build needed'",
+    "build": "tsc --project tsconfig.build.json && echo 'TypeScript files compiled successfully'",
     "start:prod": "node unified-server.js",
     "start": "node unified-server.js",
     "typecheck": "echo 'Using unified-api-server.js - no TypeScript check needed'",

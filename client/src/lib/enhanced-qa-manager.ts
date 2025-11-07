@@ -43,7 +43,8 @@ async function callOpenAIAPI(
   useKnowledgeBase: boolean = true
 ): Promise<string> {
   try {
-    const response = await fetch('http://localhost:8081/api/chatgpt', {
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+    const response = await fetch(`${apiBase}/api/chatgpt`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

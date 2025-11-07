@@ -1,0 +1,21 @@
+{
+  "initialPrompt": "何か問題がありましたか？支援するために現在の状況を教えてください！",
+  "conversationStyle": "frank",
+  "questionFlow": {
+    "step1": "具体的な症状を教えてください",
+    "step2": "いつ頃から発生していますか？",
+    "step3": "作業環境や状況を教えてください",
+    "step4": "他に気になることはありますか？",
+    "step5": "緊急度を教えてください"
+  },
+  "branchingConditions": {
+    "timeCheck": true,
+    "detailsCheck": true,
+    "toolsCheck": true,
+    "safetyCheck": true
+  },
+  "responsePattern": "step_by_step",
+  "escalationTime": 20,
+  "customInstructions": "",
+  "enableEmergencyContact": true
+}

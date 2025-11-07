@@ -25,11 +25,12 @@ export const API_BASE_URL = (() => {
 
   // 本番環境では常にApp Serviceの絶対URLを使用
   if (isProduction) {
-    return 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net';
+    return import.meta.env.VITE_BACKEND_SERVICE_URL || 
+           'https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net';
   }
 
-  // 開発環境でも絶対URLを使用（localhost:8081）
-  return 'http://localhost:8081';
+  // 開発環境でも絶対URLを使用
+  return import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 })();
 
 console.log('🔧 API設定詳細:', {

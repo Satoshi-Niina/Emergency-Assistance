@@ -198,32 +198,36 @@ async function startupSequence() {
 startupSequence();
 
 // Azure App Service用のCORS設定
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
+const FRONTEND_URL = process.env.FRONTEND_URL || process.env.STATIC_WEB_APP_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
+const STATIC_WEB_APP_URL = process.env.STATIC_WEB_APP_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
+const BACKEND_SERVICE_URL = process.env.BACKEND_SERVICE_URL || 'https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net';
+const CLIENT_PORT = process.env.CLIENT_PORT || '5173';
 const ALLOWED_ORIGINS = [
   FRONTEND_URL,
-  'https://witty-river-012f39e00.1.azurestaticapps.net',
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175',
-  'http://localhost:5176',
-  'http://localhost:5177',
-  'http://localhost:5178',
-  'http://127.0.0.1:5173',
-  'http://127.0.0.1:5174',
-  'http://127.0.0.1:5175',
-  'http://127.0.0.1:5176',
-  'http://127.0.0.1:5177',
-  'http://127.0.0.1:5178'
-];
+  STATIC_WEB_APP_URL,
+  `http://localhost:${CLIENT_PORT}`,
+  `http://localhost:${parseInt(CLIENT_PORT) + 1}`,
+  `http://localhost:${parseInt(CLIENT_PORT) + 2}`,
+  `http://localhost:${parseInt(CLIENT_PORT) + 3}`,
+  `http://localhost:${parseInt(CLIENT_PORT) + 4}`,
+  `http://localhost:${parseInt(CLIENT_PORT) + 5}`,
+  `http://127.0.0.1:${CLIENT_PORT}`,
+  `http://127.0.0.1:${parseInt(CLIENT_PORT) + 1}`,
+  `http://127.0.0.1:${parseInt(CLIENT_PORT) + 2}`,
+  `http://127.0.0.1:${parseInt(CLIENT_PORT) + 3}`,
+  `http://127.0.0.1:${parseInt(CLIENT_PORT) + 4}`,
+  `http://127.0.0.1:${parseInt(CLIENT_PORT) + 5}`,
+  ...(process.env.CORS_ALLOW_ORIGINS?.split(',') || [])
+].filter(Boolean);
 
 // CORS設定（本番環境用）
 app.use(cors({
   origin: [
-    'https://witty-river-012f39e00.1.azurestaticapps.net', // 新しいフロントエンドURL
-    'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net', // バックエンドURL
-    'http://localhost:5173', // ローカル開発用
-    'http://localhost:3000', // ローカル開発用
-    'http://localhost:8000'  // ローカル開発用
+    STATIC_WEB_APP_URL, // フロントエンドURL
+    BACKEND_SERVICE_URL, // バックエンドURL
+    `http://localhost:${CLIENT_PORT}`, // ローカル開発用
+    `http://localhost:3000`, // ローカル開発用
+    `http://localhost:${process.env.PORT || '8080'}`  // ローカル開発用
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

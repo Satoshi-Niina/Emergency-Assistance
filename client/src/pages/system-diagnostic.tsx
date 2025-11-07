@@ -43,7 +43,7 @@ export default function SystemDiagnosticPage() {
 
   // APIのベースURLを取得
   const apiBaseUrl =
-    import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
+    import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
   
   // API URLを構築（/apiの重複を防ぐ）
   const buildApiPath = (path: string) => {

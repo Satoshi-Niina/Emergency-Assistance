@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import * as path from 'path';
+import * as fs from 'fs';
 import { fileURLToPath } from 'url';
 
 // ESM用__dirname定義
@@ -273,8 +274,33 @@ export async function processOpenAIRequest(
     }
 
     // システムプロンプトを設定
-    let systemPrompt =
-      'あなたは保守用車支援システムの一部として機能するAIアシスタントです。ユーザーの質問に対して、正確で実用的な回答を提供してください。';
+    let systemPrompt = `あなたは、**鉄道の保守用車（軌道モーターカー）**に関する専門的な知識を持つAIアシスタントです。
+
+【厳守事項】
+
+回答の範囲: 回答は、あなたが保持している保守用車（軌道モーターカー）の仕様、機能、および故障事例に関するナレッジデータのみに基づいて行い、このナレッジにない情報については回答できません。
+
+情報源の限定: インターネット検索や外部情報源を参照することは一切禁止します。
+
+ナレッジの不足時の対応: 質問に対する情報がナレッジデータ内に存在しない場合は、「申し訳ありませんが、その情報（または、その詳細）は、現在の私の保守用車に関するナレッジデータには含まれておりません。」と明確に回答し、それ以上の推測や一般的な情報の提供は行わないでください。
+
+【回答の品質】
+
+専門性: 鉄道保守・車両工学の専門用語を用いて、正確かつ技術的な観点から回答してください。
+
+構造化: 仕様、機能、故障のデータは、箇条書きや表を用いて、利用者が理解しやすいよう構造化して提示してください。
+
+具体的なデータとの紐づけ: 可能な限り、具体的な仕様名、機能名称、故障コード、または特定の構成部品と紐づけて回答してください。
+
+【タスク例】
+
+特定の車種（例：〇〇型軌道モーターカー）のエンジン出力や最大牽引力の仕様を問い合わせられた場合。
+
+油圧駆動システムの機能について説明を求められた場合。
+
+特定の故障コード（例：E-123）が発生した場合の考えられる原因や一次的な対処法を問い合わせられた場合。
+
+上記を厳守し、専門家として、ユーザーの質問に正確に回答してください。`;
 
     // ナレッジベースから関連情報を取得して含める
     if (useKnowledgeBase) {
@@ -282,7 +308,59 @@ export async function processOpenAIRequest(
         const { generateSystemPromptWithKnowledge } = await import(
           './knowledge-base.js'
         );
-        systemPrompt = await generateSystemPromptWithKnowledge(prompt);
+        
+        // RAG設定を読み込む（settings.tsの設定ファイルから）
+        let ragSettings = null;
+        try {
+          // まず、settings.tsの設定ファイルから読み込む
+          const settingsPath = path.join(__dirname, '../routes/../data/rag-settings.json');
+          const settingsPathAlt = path.join(process.cwd(), 'server', 'data', 'rag-settings.json');
+          
+          let ragConfigData = null;
+          if (fs.existsSync(settingsPath)) {
+            ragConfigData = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+          } else if (fs.existsSync(settingsPathAlt)) {
+            ragConfigData = JSON.parse(fs.readFileSync(settingsPathAlt, 'utf-8'));
+          }
+          
+          if (ragConfigData) {
+            ragSettings = {
+              similarityThreshold: ragConfigData.similarityThreshold ?? 0.7,
+              maxResults: ragConfigData.maxResults ?? 5,
+              enableSemantic: ragConfigData.useSemanticSearch ?? true,
+              enableKeyword: ragConfigData.useKeywordSearch ?? true,
+              customPrompt: ragConfigData.customPrompt ?? '',
+            };
+            console.log('✅ RAG設定を読み込みました:', ragSettings);
+          } else {
+            // config-manager.tsから読み込む（フォールバック）
+            try {
+              const { loadRagConfig } = await import('../services/config-manager.js');
+              const ragConfig = await loadRagConfig();
+              ragSettings = {
+                similarityThreshold: ragConfig.similarityThreshold,
+                maxResults: ragConfig.retrieveK,
+                enableSemantic: true,
+                enableKeyword: true,
+                customPrompt: '',
+              };
+            } catch (configManagerError) {
+              throw configManagerError;
+            }
+          }
+        } catch (ragError) {
+          console.warn('RAG設定の読み込みに失敗しました。デフォルト値を使用します:', ragError);
+          // デフォルト値を使用
+          ragSettings = {
+            similarityThreshold: 0.7,
+            maxResults: 5,
+            enableSemantic: true,
+            enableKeyword: true,
+            customPrompt: '',
+          };
+        }
+        
+        systemPrompt = await generateSystemPromptWithKnowledge(prompt, ragSettings);
 
         // コンテキスト分析結果でシステムプロンプトを調整
         if (contextAnalysis) {

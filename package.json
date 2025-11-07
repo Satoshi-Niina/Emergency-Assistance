@@ -10,8 +10,8 @@
     "shared"
   ],
   "scripts": {
-    "dev": "node server/unified-server.js",
-    "dev:hot": "node server/unified-server.js",
+    "dev": "tsx server/unified-server.js",
+    "dev:hot": "tsx server/unified-server.js",
     "dev:separate": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "cd server && npm run dev",
     "dev:client": "cd client && npm run dev",

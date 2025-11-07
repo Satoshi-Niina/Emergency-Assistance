@@ -49,6 +49,12 @@ import {
   Database,
   Save,
 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useToast } from '../hooks/use-toast';
 import {
   searchTroubleshootingFlows,
@@ -140,7 +146,9 @@ export default function ChatPage() {
   useEffect(() => {
     fetchMachineTypes();
     fetchKnowledgeData();
-    loadAiAssistSettings(); // AI支援設定を初期化時に読み込み
+    loadAiAssistSettings().catch(error => {
+      console.error('AI支援設定の初期読み込みエラー:', error);
+    }); // AI支援設定を初期化時に読み込み
   }, []);
 
   // 機種データが更新された時にフィルタリングリストも更新
@@ -306,16 +314,110 @@ export default function ChatPage() {
   };
 
   // AI支援設定の読み込み
-  const loadAiAssistSettings = () => {
+  const loadAiAssistSettings = async () => {
     try {
-      const saved = localStorage.getItem('aiAssistSettings');
-      if (saved) {
-        setAiAssistSettings(JSON.parse(saved));
+      const response = await fetch('/api/ai-assist/settings', {
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const settings = result.success ? result.data : result;
+        if (settings) {
+          setAiAssistSettings(prev => ({
+            ...prev,
+            ...settings,
+            // ネストされたオブジェクトもマージ
+            questionFlow: {
+              ...prev.questionFlow,
+              ...settings.questionFlow,
+            },
+            branchingConditions: {
+              ...prev.branchingConditions,
+              ...settings.branchingConditions,
+            },
+          }));
+          // ローカルストレージにもバックアップとして保存
+          localStorage.setItem('aiAssistSettings', JSON.stringify(settings));
+          console.log('✅ AI支援設定をサーバーから読み込みました:', settings);
+          return settings;
+        }
+      } else {
+        // サーバーから取得できない場合は、ローカルストレージから読み込む（フォールバック）
+        const saved = localStorage.getItem('aiAssistSettings');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setAiAssistSettings(parsed);
+          console.log('✅ AI支援設定をローカルストレージから読み込みました:', parsed);
+          return parsed;
+        }
       }
-    } catch (_error) {
-      // 設定読み込みエラー（デフォルト値を使用）
+    } catch (error) {
+      console.warn('AI支援設定読み込みエラー（ローカルストレージから読み込みを試行）:', error);
+      // エラー時はローカルストレージから読み込む（フォールバック）
+      try {
+        const saved = localStorage.getItem('aiAssistSettings');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setAiAssistSettings(parsed);
+          console.log('✅ AI支援設定をローカルストレージから読み込みました（フォールバック）:', parsed);
+          return parsed;
+        }
+      } catch (_localError) {
+        console.error('❌ AI支援設定の読み込みエラー:', _localError);
+        // ローカルストレージからの読み込みも失敗した場合はデフォルト値を使用
+      }
     }
+    return null;
   };
+
+  // localStorageの変更を監視してAI支援設定を再読み込み
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'aiAssistSettings' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setAiAssistSettings(parsed);
+          console.log('✅ localStorage変更を検知してAI支援設定を再読み込みしました:', parsed);
+        } catch (error) {
+          console.error('❌ AI支援設定の再読み込みエラー:', error);
+        }
+      }
+    };
+
+    // 同じウィンドウ内での変更も監視（カスタムイベント）
+    const handleCustomStorageChange = async () => {
+      const loaded = await loadAiAssistSettings();
+      if (loaded) {
+        console.log('✅ カスタムイベントでAI支援設定を再読み込みしました:', loaded);
+        // 初期メッセージが既に表示されている場合は、最新の設定で更新
+        if (aiSupportMode && initialPromptSentRef.current && loaded.initialPrompt) {
+          // 最新の設定で初期メッセージを更新
+          setMessages((prev: any) => {
+            // 最初のai_supportタイプのメッセージを探して更新
+            const firstAiSupportIndex = prev.findIndex((m: any) => m.type === 'ai_support');
+            if (firstAiSupportIndex !== -1) {
+              const updatedMessages = [...prev];
+              updatedMessages[firstAiSupportIndex] = {
+                ...updatedMessages[firstAiSupportIndex],
+                content: loaded.initialPrompt,
+              };
+              return updatedMessages;
+            }
+            return prev;
+          });
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('aiAssistSettingsChanged', handleCustomStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('aiAssistSettingsChanged', handleCustomStorageChange);
+    };
+  }, []);
 
   // 追加: 機種一覧を取得する関数（設定UIと同じAPIを使用）
   const fetchMachineTypes = useCallback(async () => {
@@ -452,13 +554,18 @@ export default function ChatPage() {
       // バッチ状態更新を使用
       setMachineTypeInput(type.machine_type_name);
       setSelectedMachineType(type.id);
+      selectedMachineTypeRef.current = type.id; // refも更新
       setShowMachineTypeSuggestions(false);
 
       // 機種変更時は機械番号をリセット
       setSelectedMachineNumber('');
+      selectedMachineNumberRef.current = ''; // refも更新
       setMachineNumberInput('');
       setMachines([]);
       setFilteredMachines([]);
+      
+      // 警告メッセージのrefをリセット（機種が変更されたため）
+      lastWarningMessageRef.current = null;
 
       console.log('✅ 機種選択完了:', type.machine_type_name);
 
@@ -479,8 +586,23 @@ export default function ChatPage() {
     try {
       // 状態を確実に更新
       setSelectedMachineNumber(machine.id);
+      selectedMachineNumberRef.current = machine.id; // refも更新
       setMachineNumberInput(machine.machine_number);
       setShowMachineNumberSuggestions(false);
+      
+      // 機種・機械番号が両方入力された場合は警告メッセージのrefをリセット
+      // refとstateの両方を確認
+      const hasMachineType = (selectedMachineTypeRef.current && selectedMachineTypeRef.current.trim() !== '') ||
+                             (selectedMachineType && selectedMachineType.trim() !== '');
+      const hasMachineNumber = machine.id && machine.id.trim() !== '';
+      
+      if (hasMachineType && hasMachineNumber) {
+        lastWarningMessageRef.current = null;
+        console.log('✅ 機種・機械番号が両方入力されました。警告メッセージをリセットします。', {
+          machineType: selectedMachineTypeRef.current || selectedMachineType,
+          machineNumber: machine.id
+        });
+      }
 
       console.log('✅ 機械番号選択完了:', machine.machine_number);
     } catch (error) {
@@ -578,8 +700,11 @@ export default function ChatPage() {
   // 追加: 機種選択時の処理（オートコンプリート用）
   const handleMachineTypeChange = (typeId: string) => {
     setSelectedMachineType(typeId);
+    selectedMachineTypeRef.current = typeId; // refも更新
     setSelectedMachineNumber(''); // 機種変更時は機械番号をリセット
+    selectedMachineNumberRef.current = ''; // refも更新
     setMachineNumberInput(''); // 機械番号入力もリセット
+    lastWarningMessageRef.current = null; // 警告メッセージのrefをリセット
 
     if (typeId) {
       fetchMachines(typeId);
@@ -592,6 +717,32 @@ export default function ChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // AI支援モードの自動開始用のref（一度だけ実行するため）
+  const aiSupportInitializedRef = useRef(false);
+  const machineInfoMessageSentRef = useRef(false);
+  const initialPromptSentRef = useRef(false);
+  const lastWarningMessageRef = useRef<string | null>(null);
+  // 機種・機械番号の最新状態を追跡するref
+  const selectedMachineTypeRef = useRef<string>('');
+  const selectedMachineNumberRef = useRef<string>('');
+
+  // 機種・機械番号の状態変更を監視してrefを更新
+  useEffect(() => {
+    selectedMachineTypeRef.current = selectedMachineType;
+    if (selectedMachineType && selectedMachineNumber) {
+      // 両方入力された場合は警告メッセージのrefをリセット
+      lastWarningMessageRef.current = null;
+    }
+  }, [selectedMachineType]);
+
+  useEffect(() => {
+    selectedMachineNumberRef.current = selectedMachineNumber;
+    if (selectedMachineType && selectedMachineNumber) {
+      // 両方入力された場合は警告メッセージのrefをリセット
+      lastWarningMessageRef.current = null;
+    }
+  }, [selectedMachineNumber]);
 
   // コンポーネントマウント時の初期化
   useEffect(() => {
@@ -615,6 +766,51 @@ export default function ChatPage() {
       );
     });
   }, [chatId, initializeChat, fetchMachineTypes]);
+
+  // AI支援モードをデフォルトで有効化（一度だけ実行）
+  useEffect(() => {
+    if (!aiSupportMode && !aiSupportInitializedRef.current) {
+      console.log('🤖 AI支援モードをデフォルトで有効化');
+      aiSupportInitializedRef.current = true;
+      (async () => {
+        try {
+          // AI支援設定を読み込み（結果を待つ）
+          const loadedSettings = await loadAiAssistSettings();
+          
+          // AI支援モードを開始
+          setAiSupportMode(true);
+          setAiSupportStartTime(new Date());
+          setElapsedTime(0);
+
+          // GPTの初期メッセージを表示（機種・機械番号のチェックはメッセージ送信時に行う）
+          if (!initialPromptSentRef.current) {
+            initialPromptSentRef.current = true;
+            // 読み込んだ設定のinitialPromptを使用（なければ現在の状態を使用）
+            const initialPrompt = loadedSettings?.initialPrompt || aiAssistSettings.initialPrompt;
+            const aiSupportMessage = {
+              id: Date.now().toString(),
+              content: initialPrompt,
+              isAiResponse: true,
+              timestamp: new Date(),
+              type: 'ai_support',
+            };
+            setMessages((prev: any) => [...prev, aiSupportMessage]);
+            console.log('✅ 初期メッセージを表示:', initialPrompt);
+          }
+        } catch (error) {
+          console.error('❌ AI支援モード自動開始エラー:', error);
+        }
+      })();
+    }
+  }, [aiSupportMode, loadAiAssistSettings, aiAssistSettings, setMessages]);
+
+  // 機種・機械番号が両方入力された時に警告メッセージを削除（オプション）
+  useEffect(() => {
+    if (aiSupportMode && selectedMachineType && selectedMachineNumber && machineInfoMessageSentRef.current) {
+      // 機種・機械番号が入力されたら、警告メッセージはそのまま残す（削除しない）
+      console.log('✅ 機種・機械番号が入力されました');
+    }
+  }, [aiSupportMode, selectedMachineType, selectedMachineNumber]);
 
   // 機種データの状態変更を監視してフィルタリングを更新
   useEffect(() => {
@@ -712,8 +908,8 @@ export default function ChatPage() {
   // AI支援開始（カスタマイズ対応版）
   const handleStartAiSupport = async () => {
     try {
-      // AI支援設定を読み込み
-      loadAiAssistSettings();
+      // AI支援設定を読み込み（結果を待つ）
+      const loadedSettings = await loadAiAssistSettings();
       
       // AI支援モードを開始
       setAiSupportMode(true);
@@ -721,15 +917,18 @@ export default function ChatPage() {
       setElapsedTime(0);
 
       // カスタマイズされた初期メッセージを送信
+      // 読み込んだ設定のinitialPromptを使用（なければ現在の状態を使用）
+      const initialPrompt = loadedSettings?.initialPrompt || aiAssistSettings.initialPrompt;
       const aiSupportMessage = {
         id: Date.now().toString(),
-        content: aiAssistSettings.initialPrompt,
+        content: initialPrompt,
         isAiResponse: true,
         timestamp: new Date(),
         type: 'ai_support',
       };
 
       setMessages((prev: any) => [...prev, aiSupportMessage]);
+      console.log('✅ AI支援開始 - 初期メッセージを表示:', initialPrompt);
 
       toast({
         title: 'AI支援開始',
@@ -747,18 +946,10 @@ export default function ChatPage() {
 
   // AI支援終了（チャットエリア内でやり取り）
   const handleAiSupportExit = () => {
-    // AI支援モードを終了
-    setAiSupportMode(false);
-    setAiSupportStartTime(null);
-    setElapsedTime(0);
-    setEmergencyStep(0);
-    setProblemType('');
-
     // AI支援終了メッセージを送信
     const aiSupportEndMessage = {
       id: Date.now().toString(),
-      content:
-        'AI支援を終了します。また何かお困りのことがあれば、いつでもお声がけください！',
+      content: 'サーバーへ送信してください！',
       isAiResponse: true,
       timestamp: new Date(),
       type: 'ai_support_end',
@@ -766,9 +957,16 @@ export default function ChatPage() {
 
     setMessages(prev => [...prev, aiSupportEndMessage]);
 
+    // AI支援モードを終了
+    setAiSupportMode(false);
+    setAiSupportStartTime(null);
+    setElapsedTime(0);
+    setEmergencyStep(0);
+    setProblemType('');
+
     toast({
-      title: 'AI支援終了',
-      description: 'AI支援を終了しました。',
+      title: '支援終了',
+      description: 'サーバーへ送信してください。',
     });
   };
 
@@ -969,11 +1167,14 @@ export default function ChatPage() {
 
         // 機種と機械番号の選択状態もリセット
         setSelectedMachineType('');
+        selectedMachineTypeRef.current = '';
         setSelectedMachineNumber('');
+        selectedMachineNumberRef.current = '';
         setMachineTypeInput('');
         setMachineNumberInput('');
         setFilteredMachineTypes([]);
         setFilteredMachines([]);
+        lastWarningMessageRef.current = null;
 
         toast({
           title: 'チャットクリア完了',
@@ -1319,10 +1520,56 @@ export default function ChatPage() {
     }
   };
 
-  // AI支援メッセージ処理（段階的応急処置フロー対応）
+  // AI支援メッセージ処理（GPT応答を使用）
   const handleAiSupportMessage = async (content: string, media: any[] = []) => {
     try {
-      // ユーザーメッセージを追加
+      // 機種・機械番号の入力チェック（空文字列、null、undefinedをチェック）
+      // refとstateの両方を確認して最新の状態を取得（どちらかが有効な値を持っているかを確認）
+      // 最新の状態を確実に取得するため、refを優先し、なければstateを使用
+      // 機械番号については、selectedMachineNumber（ID）またはmachineNumberInput（表示値）のどちらかがあればOK
+      const refMachineType = selectedMachineTypeRef.current;
+      const refMachineNumber = selectedMachineNumberRef.current;
+      const stateMachineType = selectedMachineType;
+      const stateMachineNumber = selectedMachineNumber;
+      
+      // refとstateの両方を確認し、どちらかが有効な値を持っているかを確認
+      // refが優先、なければstateを使用
+      // 機種は、selectedMachineType（ID）またはmachineTypeInput（表示値）のどちらかがあればOK
+      const currentMachineType = (refMachineType && refMachineType.trim() !== '' && refMachineType !== 'null' && refMachineType !== 'undefined')
+        ? refMachineType 
+        : (stateMachineType && stateMachineType.trim() !== '' && stateMachineType !== 'null' && stateMachineType !== 'undefined')
+          ? stateMachineType 
+          : (machineTypeInput && machineTypeInput.trim() !== '')
+            ? machineTypeInput.trim()
+            : '';
+      
+      // 機械番号は、selectedMachineNumber（ID）またはmachineNumberInput（表示値）のどちらかがあればOK
+      const currentMachineNumber = (refMachineNumber && refMachineNumber.trim() !== '' && refMachineNumber !== 'null' && refMachineNumber !== 'undefined')
+        ? refMachineNumber 
+        : (stateMachineNumber && stateMachineNumber.trim() !== '' && stateMachineNumber !== 'null' && stateMachineNumber !== 'undefined')
+          ? stateMachineNumber 
+          : (machineNumberInput && machineNumberInput.trim() !== '')
+            ? machineNumberInput.trim()
+            : '';
+      
+      // 最終的な判定（空文字列でないことを確認）
+      const hasMachineType = currentMachineType !== '';
+      const hasMachineNumber = currentMachineNumber !== '';
+      
+      console.log('🔍 機種・機械番号チェック:', {
+        refMachineType,
+        refMachineNumber,
+        stateMachineType,
+        stateMachineNumber,
+        machineTypeInput,
+        machineNumberInput,
+        currentMachineType,
+        currentMachineNumber,
+        hasMachineType,
+        hasMachineNumber
+      });
+      
+      // ユーザーメッセージを先に追加（常に表示する）
       const userMessage = {
         id: Date.now().toString(),
         content: content,
@@ -1332,10 +1579,58 @@ export default function ChatPage() {
         media: media,
       };
 
-      setMessages(prev => [...prev, userMessage]);
+      // メッセージを追加し、最新の状態を取得
+      let updatedMessages: any[] = [];
+      setMessages(prev => {
+        updatedMessages = [...prev, userMessage];
+        return updatedMessages;
+      });
 
-      // 段階的応急処置フローに基づいてAI応答を生成
-      const aiResponse = await generateStepByStepResponse(content);
+      // 機種・機械番号が入力されていない場合の処理
+      if (!hasMachineType || !hasMachineNumber) {
+        // 機種・機械番号が入力されていない場合の警告メッセージ（連続表示を防ぐ）
+        const warningContent = '機種及び機械番号を選択入力してください！';
+        const currentTime = Date.now();
+        
+        // 前回の警告メッセージから5秒以上経過している場合のみ表示
+        const lastWarningTime = lastWarningMessageRef.current 
+          ? parseInt(lastWarningMessageRef.current) 
+          : 0;
+        const timeSinceLastWarning = currentTime - lastWarningTime;
+        
+        if (timeSinceLastWarning > 5000) {
+          lastWarningMessageRef.current = currentTime.toString();
+          const warningMessage = {
+            id: (Date.now() + 1).toString(),
+            content: warningContent,
+            isAiResponse: true,
+            timestamp: new Date(),
+            type: 'ai_support',
+          };
+          setMessages((prev: any) => [...prev, warningMessage]);
+          console.log('⚠️ 警告メッセージを表示:', warningContent);
+        } else {
+          console.log('⏭️ 警告メッセージをスキップ（5秒以内）:', timeSinceLastWarning);
+        }
+        return; // GPT応答を生成せずに終了
+      }
+      
+      // 機種・機械番号が入力されている場合は、警告メッセージのrefをリセット
+      lastWarningMessageRef.current = null;
+      console.log('✅ 機種・機械番号が入力されています。GPT応答を生成します。');
+
+      // 会話履歴を取得（AI支援メッセージのみ、最新のメッセージを含める）
+      const conversationHistory = updatedMessages
+        .filter(msg => msg.type === 'ai_support' || msg.type === 'ai_support_response' || msg.type === 'user_message')
+        .map(msg => ({
+          content: msg.content,
+          isAiResponse: msg.isAiResponse,
+          timestamp: msg.timestamp,
+          type: msg.type,
+        }));
+
+      // GPTにリクエストを送信してAI応答を生成
+      const aiResponse = await generateAiSupportResponse(content, conversationHistory);
       
       // AI応答メッセージを追加
       const aiMessage = {
@@ -1622,6 +1917,17 @@ export default function ChatPage() {
         return `⏰ 診断時間が20分を超えました。\n\n技術支援センターへの救援要請をお勧めします：\n📞 技術支援センター: 0123-456-789\n\nお疲れ様でした！また何かお困りのことがあれば、いつでもお声がけください。`;
       }
       
+      // 会話履歴を構築（ナレッジベース検索用のコンテキストとして使用）
+      const conversationContext = conversationHistory
+        .slice(-6) // 直近6件の履歴を使用
+        .map(msg => `${msg.isAiResponse ? 'AI' : 'ユーザー'}: ${msg.content}`)
+        .join('\n');
+      
+      // ユーザーメッセージと会話履歴を組み合わせたプロンプト
+      const enhancedPrompt = conversationContext 
+        ? `【これまでの会話】\n${conversationContext}\n\n【現在の質問】\n${userMessage}`
+        : userMessage;
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -1629,11 +1935,18 @@ export default function ChatPage() {
         },
         credentials: 'include',
         body: JSON.stringify({
-          text: userMessage,
-          useOnlyKnowledgeBase: false,
+          text: enhancedPrompt,
+          useOnlyKnowledgeBase: true, // knowledge-baseからのデータのみを使用
           conversationHistory: conversationHistory.slice(-4), // 直近4件の履歴
           elapsedMinutes: elapsedMinutes,
           aiSupportMode: true,
+          aiAssistSettings: {
+            responsePattern: aiAssistSettings.responsePattern,
+            customInstructions: aiAssistSettings.customInstructions,
+            conversationStyle: aiAssistSettings.conversationStyle,
+            questionFlow: aiAssistSettings.questionFlow,
+            branchingConditions: aiAssistSettings.branchingConditions,
+          },
         }),
       });
 
@@ -1643,6 +1956,27 @@ export default function ChatPage() {
 
       const data = await response.json();
       let aiResponse = data.response || '申し訳ございません。現在AI支援の応答を生成できません。';
+      
+      // 会話スタイルを適用
+      aiResponse = applyConversationStyle(aiResponse);
+      
+      // 応答パターンに応じて調整
+      if (aiAssistSettings.responsePattern === 'minimal') {
+        // 最小限表示：要点のみ簡潔に
+        const sentences = aiResponse.split(/[。\n]/).filter(s => s.trim());
+        aiResponse = sentences.slice(0, 2).join('。') + (sentences.length > 2 ? '...' : '');
+      } else if (aiAssistSettings.responsePattern === 'comprehensive') {
+        // 包括的表示：そのまま（既に包括的）
+      } else {
+        // 段階的表示（デフォルト）：1問1答形式を維持
+        // 既に1問1答形式なので、そのまま
+      }
+      
+      // カスタム指示を適用
+      if (aiAssistSettings.customInstructions) {
+        // カスタム指示があれば、応答の最後に追加（必要に応じて）
+        // ただし、1問1答形式を維持するため、ここでは適用しない
+      }
       
       // フレンドリーな言い回しに調整
       aiResponse = makeFriendlyResponse(aiResponse);
@@ -1763,6 +2097,23 @@ export default function ChatPage() {
       setTroubleshootingMode(false);
       setTroubleshootingSession(null);
       setAiSupportMode(false);
+      
+      // 機種・機械番号もクリア
+      setSelectedMachineType('');
+      selectedMachineTypeRef.current = '';
+      setSelectedMachineNumber('');
+      selectedMachineNumberRef.current = '';
+      setMachineTypeInput('');
+      setMachineNumberInput('');
+      setMachines([]);
+      setFilteredMachines([]);
+      
+      // AI支援モードの初期化フラグもリセット
+      aiSupportInitializedRef.current = false;
+      machineInfoMessageSentRef.current = false;
+      initialPromptSentRef.current = false;
+      lastWarningMessageRef.current = null;
+      
       toast({
         title: '成功',
         description: 'チャット履歴をクリアしました',
@@ -1928,50 +2279,66 @@ export default function ChatPage() {
               機種:
             </Label>
             <div className='relative'>
-              <Input
-                id='machine-type'
-                type='text'
-                placeholder={
-                  isLoadingMachineTypes ? '読み込み中...' : '機種を選択...'
-                }
-                value={machineTypeInput}
-                onChange={e => {
-                  const value = e.target.value;
-                  console.log('🔍 機種入力変更:', value);
-                  setMachineTypeInput(value);
-                  filterMachineTypes(value);
-                  setShowMachineTypeSuggestions(true);
-                }}
-                onFocus={() => {
-                  console.log('🔍 機種入力フォーカス:', {
-                    machineTypesCount: machineTypes.length,
-                    machineTypes: machineTypes,
-                    filteredMachineTypesCount: filteredMachineTypes.length,
-                    showMachineTypeSuggestions: showMachineTypeSuggestions,
-                  });
-                  setShowMachineTypeSuggestions(true);
-                  // フォーカス時に全機種を表示
-                  if (machineTypes.length > 0) {
-                    setFilteredMachineTypes(machineTypes);
-                  }
-                }}
-                onBlur={e => {
-                  // ドロップダウン内のクリックの場合は閉じない
-                  const relatedTarget = e.relatedTarget as HTMLElement;
-                  if (
-                    relatedTarget &&
-                    relatedTarget.closest('.machine-type-dropdown')
-                  ) {
-                    return;
-                  }
-                  // 少し遅延させてクリックイベントが処理されるのを待つ
-                  setTimeout(() => {
-                    setShowMachineTypeSuggestions(false);
-                  }, 150);
-                }}
-                disabled={isLoadingMachineTypes}
-                className='w-48'
-              />
+              <TooltipProvider>
+                <Tooltip open={
+                  aiSupportMode && 
+                  !selectedMachineTypeRef.current && 
+                  !selectedMachineType &&
+                  !machineTypeInput.trim()
+                }>
+                  <TooltipTrigger asChild>
+                    <div className='w-48'>
+                      <Input
+                        id='machine-type'
+                        type='text'
+                        placeholder={
+                          isLoadingMachineTypes ? '読み込み中...' : '機種を選択...'
+                        }
+                        value={machineTypeInput}
+                        onChange={e => {
+                          const value = e.target.value;
+                          console.log('🔍 機種入力変更:', value);
+                          setMachineTypeInput(value);
+                          filterMachineTypes(value);
+                          setShowMachineTypeSuggestions(true);
+                        }}
+                        onFocus={() => {
+                          console.log('🔍 機種入力フォーカス:', {
+                            machineTypesCount: machineTypes.length,
+                            machineTypes: machineTypes,
+                            filteredMachineTypesCount: filteredMachineTypes.length,
+                            showMachineTypeSuggestions: showMachineTypeSuggestions,
+                          });
+                          setShowMachineTypeSuggestions(true);
+                          // フォーカス時に全機種を表示
+                          if (machineTypes.length > 0) {
+                            setFilteredMachineTypes(machineTypes);
+                          }
+                        }}
+                        onBlur={e => {
+                          // ドロップダウン内のクリックの場合は閉じない
+                          const relatedTarget = e.relatedTarget as HTMLElement;
+                          if (
+                            relatedTarget &&
+                            relatedTarget.closest('.machine-type-dropdown')
+                          ) {
+                            return;
+                          }
+                          // 少し遅延させてクリックイベントが処理されるのを待つ
+                          setTimeout(() => {
+                            setShowMachineTypeSuggestions(false);
+                          }, 150);
+                        }}
+                        disabled={isLoadingMachineTypes}
+                        className='w-48'
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side='bottom' className='bg-yellow-100 text-yellow-800 border-yellow-300'>
+                    <p>選択入力してください</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               {(() => {
                 console.log('🔍 機種ドロップダウン表示条件:', {
                   showMachineTypeSuggestions,
@@ -2033,62 +2400,79 @@ export default function ChatPage() {
               機械番号:
             </Label>
             <div className='relative'>
-              <Input
-                id='machine-number'
-                type='text'
-                placeholder={
-                  isLoadingMachines ? '読み込み中...' : '機械番号を選択...'
-                }
-                value={machineNumberInput}
-                onChange={e => {
-                  const value = e.target.value;
-                  console.log('🔍 機械番号入力変更:', value);
-                  setMachineNumberInput(value);
-                  filterMachines(value);
-                  setShowMachineNumberSuggestions(true);
-                }}
-                onFocus={() => {
-                  console.log('🔍 機械番号入力フォーカス');
-                  console.log('🔧 フォーカス時の状態:', {
-                    selectedMachineType,
-                    machinesCount: machines.length,
-                    machines: machines,
-                    filteredMachinesCount: filteredMachines.length,
-                    filteredMachines: filteredMachines,
-                    isLoadingMachines,
-                    machineNumberInput,
-                    showMachineNumberSuggestions,
-                  });
-                  setShowMachineNumberSuggestions(true);
-                  // フォーカス時に全機械番号を表示
-                  if (machines.length > 0) {
-                    setFilteredMachines(machines);
-                    console.log(
-                      '✅ フォーカス時に機械番号リストを設定:',
-                      machines.length,
-                      '件'
-                    );
-                  } else {
-                    console.log('⚠️ フォーカス時に機械番号がありません');
-                  }
-                }}
-                onBlur={e => {
-                  // ドロップダウン内のクリックの場合は閉じない
-                  const relatedTarget = e.relatedTarget as HTMLElement;
-                  if (
-                    relatedTarget &&
-                    relatedTarget.closest('.machine-number-dropdown')
-                  ) {
-                    return;
-                  }
-                  // 少し遅延させてクリックイベントが処理されるのを待つ
-                  setTimeout(() => {
-                    setShowMachineNumberSuggestions(false);
-                  }, 150);
-                }}
-                disabled={!selectedMachineType || isLoadingMachines}
-                className='w-48'
-              />
+              <TooltipProvider>
+                <Tooltip open={
+                  aiSupportMode && 
+                  (selectedMachineTypeRef.current || selectedMachineType) &&
+                  !selectedMachineNumberRef.current && 
+                  !selectedMachineNumber &&
+                  !machineNumberInput.trim()
+                }>
+                  <TooltipTrigger asChild>
+                    <div className='w-48'>
+                      <Input
+                        id='machine-number'
+                        type='text'
+                        placeholder={
+                          isLoadingMachines ? '読み込み中...' : '機械番号を選択...'
+                        }
+                        value={machineNumberInput}
+                        onChange={e => {
+                          const value = e.target.value;
+                          console.log('🔍 機械番号入力変更:', value);
+                          setMachineNumberInput(value);
+                          filterMachines(value);
+                          setShowMachineNumberSuggestions(true);
+                        }}
+                        onFocus={() => {
+                          console.log('🔍 機械番号入力フォーカス');
+                          console.log('🔧 フォーカス時の状態:', {
+                            selectedMachineType,
+                            machinesCount: machines.length,
+                            machines: machines,
+                            filteredMachinesCount: filteredMachines.length,
+                            filteredMachines: filteredMachines,
+                            isLoadingMachines,
+                            machineNumberInput,
+                            showMachineNumberSuggestions,
+                          });
+                          setShowMachineNumberSuggestions(true);
+                          // フォーカス時に全機械番号を表示
+                          if (machines.length > 0) {
+                            setFilteredMachines(machines);
+                            console.log(
+                              '✅ フォーカス時に機械番号リストを設定:',
+                              machines.length,
+                              '件'
+                            );
+                          } else {
+                            console.log('⚠️ フォーカス時に機械番号がありません');
+                          }
+                        }}
+                        onBlur={e => {
+                          // ドロップダウン内のクリックの場合は閉じない
+                          const relatedTarget = e.relatedTarget as HTMLElement;
+                          if (
+                            relatedTarget &&
+                            relatedTarget.closest('.machine-number-dropdown')
+                          ) {
+                            return;
+                          }
+                          // 少し遅延させてクリックイベントが処理されるのを待つ
+                          setTimeout(() => {
+                            setShowMachineNumberSuggestions(false);
+                          }, 150);
+                        }}
+                        disabled={!selectedMachineType || isLoadingMachines}
+                        className='w-48'
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side='bottom' className='bg-yellow-100 text-yellow-800 border-yellow-300'>
+                    <p>選択入力してください</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               {(() => {
                 console.log('🔍 機械番号ドロップダウン表示条件:', {
                   showMachineNumberSuggestions,
@@ -2141,79 +2525,72 @@ export default function ChatPage() {
 
         {/* 中央：AI支援・カメラ・応急処置ガイドボタン */}
         <div className='flex items-center gap-6'>
-          {/* AI支援開始/終了ボタン */}
-          {!aiSupportMode ? (
-            <Button
-              variant='outline'
-              size='lg'
-              onClick={handleStartAiSupport}
-              disabled={isLoading}
-              className='bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 mr-6 px-8 py-3 text-base font-semibold'
-            >
-              <Brain className='w-6 h-6 mr-3' />
-              AI支援
-            </Button>
-          ) : (
-            <div className='flex items-center gap-4 mr-6'>
-              <Button
-                variant='outline'
-                size='lg'
-                onClick={handleAiSupportExit}
-                className={`px-8 py-3 text-base font-semibold ${
-                  getTimeWarningLevel(elapsedTime) === 'critical'
-                    ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
-                    : getTimeWarningLevel(elapsedTime) === 'warning'
-                    ? 'bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100'
-                    : 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100'
-                }`}
-              >
-                <X className='w-6 h-6 mr-3' />
-                AI支援終了
-              </Button>
-              
-              {/* 時間表示 */}
-              <div className={`px-4 py-2 rounded-lg border text-sm font-medium ${
-                getTimeWarningLevel(elapsedTime) === 'critical'
-                  ? 'bg-red-100 text-red-800 border-red-200'
-                  : getTimeWarningLevel(elapsedTime) === 'warning'
-                  ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
-                  : 'bg-green-100 text-green-800 border-green-200'
-              }`}>
-                <div className='flex items-center gap-2'>
-                  <span>⏰</span>
-                  <span>{formatElapsedTime(elapsedTime)}</span>
-                  {getTimeWarningLevel(elapsedTime) === 'warning' && (
-                    <span className='text-xs'>(あと5分)</span>
-                  )}
-                  {getTimeWarningLevel(elapsedTime) === 'critical' && (
-                    <span className='text-xs'>(救援要請推奨)</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* カメラボタン */}
-          <Button
-            variant='outline'
-            size='sm'
-            onClick={handleCameraClick}
-            className='bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 mr-6'
-          >
-            <Camera className='w-4 h-4 mr-2' />
-            カメラ
-          </Button>
-
           {/* 応急復旧マニュアルボタン */}
           <Button
             variant='outline'
             size='lg'
             onClick={handleEmergencyGuide}
             disabled={isLoadingGuides}
-            className='bg-red-50 border-red-200 text-red-700 hover:bg-red-100 mr-6 px-8 py-3 text-base font-semibold'
+            className='bg-blue-50 text-blue-600 hover:bg-blue-100 border-4 border-blue-600 px-8 py-3 text-lg font-bold'
           >
             <Activity className='w-6 h-6 mr-3' />
             応急復旧マニュアル
+          </Button>
+
+          {/* 4文字分のスペース */}
+          <div className='w-16'></div>
+
+          {/* カメラボタン */}
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={handleCameraClick}
+            className='bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
+          >
+            <Camera className='w-4 h-4 mr-2' />
+            カメラ
+          </Button>
+
+          {/* 時間表示（AI支援モードが有効な時のみ表示） */}
+          {aiSupportMode && (
+            <div className={`px-4 py-2 rounded-lg border text-sm font-medium ${
+              getTimeWarningLevel(elapsedTime) === 'critical'
+                ? 'bg-red-100 text-red-800 border-red-200'
+                : getTimeWarningLevel(elapsedTime) === 'warning'
+                ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                : 'bg-green-100 text-green-800 border-green-200'
+            }`}>
+              <div className='flex items-center gap-2'>
+                <span>⏰</span>
+                <span>{formatElapsedTime(elapsedTime)}</span>
+                {getTimeWarningLevel(elapsedTime) === 'warning' && (
+                  <span className='text-xs'>(あと5分)</span>
+                )}
+                {getTimeWarningLevel(elapsedTime) === 'critical' && (
+                  <span className='text-xs'>(救援要請推奨)</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 支援終了ボタン（常に表示） */}
+          <Button
+            variant='outline'
+            size='lg'
+            onClick={handleAiSupportExit}
+            disabled={!aiSupportMode || isLoading}
+            className={`px-8 py-3 text-base font-semibold mr-6 ${
+              !aiSupportMode
+                ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
+                : getTimeWarningLevel(elapsedTime) === 'critical'
+                ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
+                : getTimeWarningLevel(elapsedTime) === 'warning'
+                ? 'bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100'
+                : 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100'
+            }`}
+          >
+            <X className='w-6 h-6 mr-3' />
+            支援終了
           </Button>
         </div>
 
