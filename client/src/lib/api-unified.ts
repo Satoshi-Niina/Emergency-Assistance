@@ -52,8 +52,21 @@ export function buildApiUrl(path: string): string {
   // パスを正規化（先頭の/を確保）
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   
+  // Azure Static Web Apps環境の場合、window.BACKEND_SERVICE_URLを優先使用（動的に確認）
+  let baseUrl = API_BASE_URL;
+  if (isAzureStaticWebApp && typeof window !== 'undefined') {
+    const backendUrl = (window as any).BACKEND_SERVICE_URL;
+    if (backendUrl && backendUrl.trim() !== '') {
+      baseUrl = backendUrl.replace(/\/$/, '').replace(/\/api$/, '');
+      console.log('🔧 buildApiUrl: window.BACKEND_SERVICE_URLを使用:', baseUrl);
+    } else {
+      console.warn('⚠️ buildApiUrl: window.BACKEND_SERVICE_URLが設定されていません');
+      console.log('🔧 buildApiUrl: window.BACKEND_SERVICE_URLの値:', backendUrl);
+    }
+  }
+  
   // API_BASE_URLを正規化（末尾の/と/apiを除去）
-  let baseUrl = API_BASE_URL.replace(/\/$/, '').replace(/\/api$/, '');
+  baseUrl = baseUrl.replace(/\/$/, '').replace(/\/api$/, '');
   
   // パスが既に/apiで始まっている場合は重複を避ける
   const pathWithoutApi = cleanPath.startsWith('/api/') 
@@ -63,14 +76,18 @@ export function buildApiUrl(path: string): string {
     : cleanPath;
   
   // 最終的なURLを構築（必ず/apiを含める）
-  const result = `${baseUrl}/api${pathWithoutApi.startsWith('/') ? pathWithoutApi : '/' + pathWithoutApi}`;
+  const result = baseUrl 
+    ? `${baseUrl}/api${pathWithoutApi.startsWith('/') ? pathWithoutApi : '/' + pathWithoutApi}`
+    : `/api${pathWithoutApi.startsWith('/') ? pathWithoutApi : '/' + pathWithoutApi}`;
   
   // デバッグログ
   console.log('🔧 buildApiUrl:', {
     originalPath: path,
     cleanPath,
     baseUrl,
-    finalUrl: result
+    finalUrl: result,
+    isAzureStaticWebApp,
+    windowBackendUrl: typeof window !== 'undefined' ? (window as any).BACKEND_SERVICE_URL : 'N/A'
   });
   
   return result;

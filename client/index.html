@@ -29,8 +29,10 @@
     />
     <!-- Runtime configuration -->
     <script>
-      // バックエンドURLの設定（ビルド時に埋め込まれる）
+      // バックエンドURLの設定（デプロイ時に埋め込まれる）
+      // この値はデプロイワークフローで自動的に置換されます
       window.BACKEND_SERVICE_URL = window.BACKEND_SERVICE_URL || '';
+      console.log('🔧 Initial BACKEND_SERVICE_URL:', window.BACKEND_SERVICE_URL);
       // 動的環境設定（インライン）
       (function() {
         const isLocalhost = window.location.hostname === 'localhost' || 

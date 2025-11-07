@@ -25,6 +25,16 @@ jobs:
         working-directory: client
         run: npm ci
 
+      - name: Clean previous build
+        working-directory: client
+        run: |
+          if [ -d "dist" ]; then
+            rm -rf dist
+            echo "✅ Cleaned previous build directory"
+          else
+            echo "ℹ️ No previous build directory found"
+          fi
+
       - name: Build
         working-directory: client
         env:
@@ -53,15 +63,17 @@ jobs:
             BACKEND_URL="${{ secrets.VITE_BACKEND_SERVICE_URL }}"
             # ビルド後のindex.htmlにバックエンドURLを埋め込む
             if [ -f "dist/index.html" ]; then
-              # window.BACKEND_SERVICE_URLの行を置換または追加
-              if grep -q "window.BACKEND_SERVICE_URL" dist/index.html; then
-                # 既存の行を置換
-                sed -i "s|window.BACKEND_SERVICE_URL = .*|window.BACKEND_SERVICE_URL = '${BACKEND_URL}';|g" dist/index.html
-              else
-                # 新しい行を追加（Runtime configurationの直後）
+              # window.BACKEND_SERVICE_URLの行を確実に置換（複数行対応）
+              # 既存の行を置換（= の前後の空白も考慮）
+              sed -i "s|window\.BACKEND_SERVICE_URL\s*=\s*[^;]*|window.BACKEND_SERVICE_URL = '${BACKEND_URL}'|g" dist/index.html
+              # もし置換されなかった場合（行が存在しない場合）、追加
+              if ! grep -q "window.BACKEND_SERVICE_URL = '${BACKEND_URL}'" dist/index.html; then
+                # Runtime configurationの直後に追加
                 sed -i "s|<!-- Runtime configuration -->|<!-- Runtime configuration -->\n    <script>window.BACKEND_SERVICE_URL = '${BACKEND_URL}';</script>|g" dist/index.html
               fi
               echo "✅ Injected BACKEND_SERVICE_URL into index.html: ${BACKEND_URL}"
+              # 確認用：実際に埋め込まれたか確認
+              grep "window.BACKEND_SERVICE_URL" dist/index.html || echo "⚠️ Warning: BACKEND_SERVICE_URL not found in index.html"
             else
               echo "⚠️ dist/index.html not found, skipping injection"
             fi
