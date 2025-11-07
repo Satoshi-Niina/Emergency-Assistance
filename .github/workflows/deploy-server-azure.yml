@@ -189,5 +189,6 @@ jobs:
           echo "📦 Image: ghcr.io/${REPO_LOWER}/server:azure-${{ github.sha }}"
           echo "🚀 Server deployed to Azure App Service"
           echo "🌐 Backend URL: ${{ secrets.BACKEND_SERVICE_URL }}"
+          echo "📦 Package: Public access enabled for Docker image pull"
           echo "✅ All environment variables have been set on Azure App Service"
 

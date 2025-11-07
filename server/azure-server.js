@@ -55,10 +55,11 @@ if (!isOpenAIAvailable) {
 }
 
 // バージョン情報（デプロイ確認用）
-const VERSION = '1.0.4-CORS-EXPLICIT-FIX-' + new Date().toISOString().slice(0, 19).replace(/[-:]/g, '');
+const VERSION = '1.0.5-PUBLIC-PACKAGE-FIX-' + new Date().toISOString().slice(0, 19).replace(/[-:]/g, '');
 console.log('🚀 Azure Server Starting - Version:', VERSION);
 console.log('🎯 Environment: PRODUCTION ONLY (no local.env)');
 console.log('🌐 CORS: Explicit Azure Static Web App URL support');
+console.log('📦 Package: Public GitHub Container Registry access');
 console.log('🔗 Frontend URL:', STATIC_WEB_APP_URL);
 
 const app = express();
