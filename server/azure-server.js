@@ -198,9 +198,10 @@ async function startupSequence() {
 startupSequence();
 
 // Azure App Service用のCORS設定
-const FRONTEND_URL = process.env.FRONTEND_URL || process.env.STATIC_WEB_APP_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
-const STATIC_WEB_APP_URL = process.env.STATIC_WEB_APP_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
-const BACKEND_SERVICE_URL = process.env.BACKEND_SERVICE_URL || 'https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net';
+// 注意: 本番環境では必ず環境変数を設定してください
+const FRONTEND_URL = process.env.FRONTEND_URL || process.env.STATIC_WEB_APP_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080');
+const STATIC_WEB_APP_URL = process.env.STATIC_WEB_APP_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080');
+const BACKEND_SERVICE_URL = process.env.BACKEND_SERVICE_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080');
 const CLIENT_PORT = process.env.CLIENT_PORT || '5173';
 const ALLOWED_ORIGINS = [
   FRONTEND_URL,

@@ -92,7 +92,8 @@ function initializeDatabase() {
 initializeDatabase();
 
 // CORS設定
-const staticWebAppUrl = process.env.STATIC_WEB_APP_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
+// 注意: 本番環境では必ずSTATIC_WEB_APP_URL環境変数を設定してください
+const staticWebAppUrl = process.env.STATIC_WEB_APP_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080');
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
 const clientPort = process.env.CLIENT_PORT || '5173';
 const allowOrigins = [

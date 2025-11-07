@@ -49,9 +49,10 @@
           };
         } else if (isAzureStaticWebApp) {
           // Azure Static Web Apps: 本番環境で統合Functions使用
+          // CORS_ALLOW_ORIGINSは現在のオリジンを使用（動的）
           config = {
             "API_BASE_URL": "/api",
-            "CORS_ALLOW_ORIGINS": "https://witty-river-012f39e00.1.azurestaticapps.net",
+            "CORS_ALLOW_ORIGINS": window.location.origin,
             "ENVIRONMENT": "production"
           };
         } else {

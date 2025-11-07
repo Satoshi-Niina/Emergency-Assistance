@@ -36,9 +36,8 @@ function getApiBaseUrl(): string {
         return window.location.origin;
       }
       
-      // 本番環境のデフォルト
-      return import.meta.env.VITE_BACKEND_SERVICE_URL || 
-             'https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net';
+      // 本番環境のデフォルト（環境変数から取得、フォールバックは相対パス）
+      return import.meta.env.VITE_BACKEND_SERVICE_URL || '';
     }
   } catch (error) {
     console.warn('APIベースURL取得エラー:', error);

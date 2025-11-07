@@ -30,7 +30,21 @@ jobs:
         env:
           NODE_ENV: production
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || '/api' }}
+          VITE_BACKEND_SERVICE_URL: ${{ secrets.VITE_BACKEND_SERVICE_URL || '' }}
+          VITE_STATIC_WEB_APP_URL: ${{ secrets.VITE_STATIC_WEB_APP_URL || '' }}
         run: npm run build
+
+      - name: Update staticwebapp.config.json with backend URL
+        working-directory: client
+        run: |
+          if [ -n "${{ secrets.VITE_BACKEND_SERVICE_URL }}" ]; then
+            BACKEND_URL="${{ secrets.VITE_BACKEND_SERVICE_URL }}"
+            # JSONファイル内の環境変数プレースホルダーを実際のURLに置換
+            sed -i "s|\${BACKEND_SERVICE_URL}|${BACKEND_URL}|g" staticwebapp.config.json
+            echo "✅ Updated staticwebapp.config.json with backend URL: ${BACKEND_URL}"
+          else
+            echo "⚠️ VITE_BACKEND_SERVICE_URL is not set, using default rewrite rule"
+          fi
 
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1

@@ -46,7 +46,7 @@
     },
     {
       "route": "/api/*",
-      "rewrite": "https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net/api/*",
+      "rewrite": "${BACKEND_SERVICE_URL}/api/*",
       "allowedRoles": ["anonymous", "authenticated"]
     }
   ],

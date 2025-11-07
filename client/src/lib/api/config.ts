@@ -23,10 +23,9 @@ export const API_BASE_URL = (() => {
     return import.meta.env.VITE_API_BASE_URL;
   }
 
-  // 本番環境では常にApp Serviceの絶対URLを使用
+  // 本番環境では環境変数から取得（フォールバックは相対パス）
   if (isProduction) {
-    return import.meta.env.VITE_BACKEND_SERVICE_URL || 
-           'https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net';
+    return import.meta.env.VITE_BACKEND_SERVICE_URL || '';
   }
 
   // 開発環境でも絶対URLを使用
