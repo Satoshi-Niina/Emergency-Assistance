@@ -89,7 +89,11 @@ module.exports = async (context, request) => {
         role: user.role,
       });
     } catch (dbError) {
-      context.log.error('Database query failed:', dbError);
+      context.log.error('Database query failed:', {
+        message: dbError.message,
+        stack: dbError.stack,
+        name: dbError.name,
+      });
       return {
         status: 500,
         headers: {
@@ -99,7 +103,10 @@ module.exports = async (context, request) => {
         body: JSON.stringify({
           success: false,
           error: 'データベースエラーが発生しました',
-          details: dbError.message,
+          details: process.env.NODE_ENV === 'production' 
+            ? 'データベース接続に失敗しました。管理者にお問い合わせください。'
+            : dbError.message,
+          timestamp: new Date().toISOString(),
         }),
       };
     }
@@ -153,7 +160,11 @@ module.exports = async (context, request) => {
       }),
     };
   } catch (error) {
-    context.log.error('Error in auth login function:', error);
+    context.log.error('Error in auth login function:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+    });
     return {
       status: 500,
       headers: {
@@ -163,7 +174,9 @@ module.exports = async (context, request) => {
       body: JSON.stringify({
         success: false,
         error: 'ログイン処理に失敗しました',
-        details: error.message,
+        details: process.env.NODE_ENV === 'production'
+          ? 'サーバーエラーが発生しました。しばらく時間をおいてから再度お試しください。'
+          : error.message,
         timestamp: new Date().toISOString(),
       }),
     };

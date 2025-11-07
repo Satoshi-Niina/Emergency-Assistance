@@ -29,6 +29,8 @@
     />
     <!-- Runtime configuration -->
     <script>
+      // バックエンドURLの設定（ビルド時に埋め込まれる）
+      window.BACKEND_SERVICE_URL = window.BACKEND_SERVICE_URL || '';
       // 動的環境設定（インライン）
       (function() {
         const isLocalhost = window.location.hostname === 'localhost' || 
@@ -48,10 +50,11 @@
             "ENVIRONMENT": "development"
           };
         } else if (isAzureStaticWebApp) {
-          // Azure Static Web Apps: 本番環境で統合Functions使用
-          // CORS_ALLOW_ORIGINSは現在のオリジンを使用（動的）
+          // Azure Static Web Apps: 外部バックエンドに直接リクエスト
+          // 環境変数からバックエンドURLを取得（ビルド時に埋め込まれる）
+          const backendUrl = window.BACKEND_SERVICE_URL || '';
           config = {
-            "API_BASE_URL": "/api",
+            "API_BASE_URL": backendUrl ? `${backendUrl}/api` : "/api",
             "CORS_ALLOW_ORIGINS": window.location.origin,
             "ENVIRONMENT": "production"
           };

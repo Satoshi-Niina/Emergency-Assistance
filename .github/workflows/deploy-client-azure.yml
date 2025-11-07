@@ -46,6 +46,29 @@ jobs:
             echo "⚠️ VITE_BACKEND_SERVICE_URL is not set, using default rewrite rule"
           fi
 
+      - name: Inject backend URL into index.html
+        working-directory: client
+        run: |
+          if [ -n "${{ secrets.VITE_BACKEND_SERVICE_URL }}" ]; then
+            BACKEND_URL="${{ secrets.VITE_BACKEND_SERVICE_URL }}"
+            # ビルド後のindex.htmlにバックエンドURLを埋め込む
+            if [ -f "dist/index.html" ]; then
+              # window.BACKEND_SERVICE_URLの行を置換または追加
+              if grep -q "window.BACKEND_SERVICE_URL" dist/index.html; then
+                # 既存の行を置換
+                sed -i "s|window.BACKEND_SERVICE_URL = .*|window.BACKEND_SERVICE_URL = '${BACKEND_URL}';|g" dist/index.html
+              else
+                # 新しい行を追加（Runtime configurationの直後）
+                sed -i "s|<!-- Runtime configuration -->|<!-- Runtime configuration -->\n    <script>window.BACKEND_SERVICE_URL = '${BACKEND_URL}';</script>|g" dist/index.html
+              fi
+              echo "✅ Injected BACKEND_SERVICE_URL into index.html: ${BACKEND_URL}"
+            else
+              echo "⚠️ dist/index.html not found, skipping injection"
+            fi
+          else
+            echo "⚠️ VITE_BACKEND_SERVICE_URL is not set, skipping injection"
+          fi
+
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:

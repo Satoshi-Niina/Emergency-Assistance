@@ -46,7 +46,6 @@
     },
     {
       "route": "/api/*",
-      "rewrite": "${BACKEND_SERVICE_URL}/api/*",
       "allowedRoles": ["anonymous", "authenticated"]
     }
   ],
