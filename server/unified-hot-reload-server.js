@@ -8,7 +8,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname } from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
@@ -6206,17 +6206,64 @@ apiRouter.post('/chatgpt', async (req, res) => {
       try {
         // まず、.jsファイルを試す（本番環境用）
         const openaiJsPath = path.join(__dirname, 'lib', 'openai.js');
+        const openaiTsPath = path.join(__dirname, 'lib', 'openai.ts');
+        
         if (fs.existsSync(openaiJsPath)) {
-          const module = await import(openaiJsPath);
-          processOpenAIRequest = module.processOpenAIRequest;
+          // .jsファイルが存在する場合
+          try {
+            const fileUrl = pathToFileURL(openaiJsPath).href;
+            const module = await import(fileUrl);
+            processOpenAIRequest = module.processOpenAIRequest;
+            console.log('[api/chatgpt] ✅ openai.js を読み込みました');
+          } catch (jsError) {
+            // 相対パスでも試す
+            try {
+              const module = await import('./lib/openai.js');
+              processOpenAIRequest = module.processOpenAIRequest;
+              console.log('[api/chatgpt] ✅ openai.js を相対パスで読み込みました');
+            } catch (relError) {
+              throw new Error(`openai.js の読み込みに失敗: ${jsError.message}`);
+            }
+          }
+        } else if (fs.existsSync(openaiTsPath)) {
+          // .tsファイルのみ存在する場合、tsx/esmローダーを使ってロード
+          try {
+            // tsx/esmローダーを有効化
+            await import('tsx/esm/api');
+            
+            // TypeScriptファイルをインポート
+            const fileUrl = pathToFileURL(openaiTsPath).href;
+            const module = await import(fileUrl + '?tsx');
+            processOpenAIRequest = module.processOpenAIRequest;
+            console.log('[api/chatgpt] ✅ openai.ts をtsx/esmで読み込みました');
+          } catch (tsxError) {
+            // tsx/esmが利用できない場合、別の方法を試す
+            try {
+              // tsxのregister関数を使う
+              const tsxModule = await import('tsx');
+              if (tsxModule.register) {
+                tsxModule.register();
+              }
+              
+              const fileUrl = pathToFileURL(openaiTsPath).href;
+              const module = await import(fileUrl);
+              processOpenAIRequest = module.processOpenAIRequest;
+              console.log('[api/chatgpt] ✅ openai.ts をtsx registerで読み込みました');
+            } catch (registerError) {
+              // 最後の手段：tsxコマンドを使って実行（非推奨だが動作する可能性がある）
+              console.warn('[api/chatgpt] ⚠️ tsx/esmとtsx registerの両方が失敗しました。TypeScriptファイルをコンパイルするか、tsxでサーバーを起動してください。');
+              throw new Error(`openai.ts の読み込みに失敗。tsxがインストールされているか確認してください。エラー: ${tsxError.message}`);
+            }
+          }
         } else {
-          // .jsファイルが存在しない場合、.tsファイルを試す（開発環境用、tsxが必要）
-          const openaiTsPath = path.join(__dirname, 'lib', 'openai.ts');
-          const module = await import(openaiTsPath);
-          processOpenAIRequest = module.processOpenAIRequest;
+          throw new Error('openai.js と openai.ts の両方が見つかりません');
         }
       } catch (importError) {
         console.error('[api/chatgpt] Failed to import openai module:', importError);
+        console.error('[api/chatgpt] Import error details:', {
+          message: importError instanceof Error ? importError.message : String(importError),
+          stack: importError instanceof Error ? importError.stack : undefined
+        });
         throw new Error('OpenAI module could not be loaded. In production, ensure TypeScript files are compiled to .js files.');
       }
       
@@ -6342,13 +6389,15 @@ ${text}
       });
     } catch (apiError) {
       console.error('[api/chatgpt] OpenAI API error:', apiError);
+      console.error('[api/chatgpt] Error stack:', apiError instanceof Error ? apiError.stack : 'No stack trace');
       res.status(500).json({
         success: false,
         response: 'AI支援機能は現在利用できません。しばらくしてから再度お試しください。',
         message: 'OpenAI APIの呼び出しに失敗しました',
         details: {
           environment: 'development',
-          error: apiError instanceof Error ? apiError.message : String(apiError)
+          error: apiError instanceof Error ? apiError.message : String(apiError),
+          stack: isDevelopment && apiError instanceof Error ? apiError.stack : undefined
         },
         timestamp: new Date().toISOString()
       });
@@ -6356,10 +6405,14 @@ ${text}
 
   } catch (error) {
     console.error('[api/chatgpt] Error:', error);
+    console.error('[api/chatgpt] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     res.status(500).json({
       success: false,
       message: 'Error processing request',
       error: error instanceof Error ? error.message : String(error),
+      details: {
+        stack: isDevelopment && error instanceof Error ? error.stack : undefined
+      },
       timestamp: new Date().toISOString()
     });
   }

@@ -10,8 +10,23 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const KNOWLEDGE_BASE_DIR =
-  process.env.KNOWLEDGE_BASE_PATH || path.join(process.cwd(), 'knowledge-base');
+// 知識ベースディレクトリのパス解決
+// 1. 環境変数が設定されている場合はそれを使用
+// 2. それ以外は、server/libから見て../knowledge-baseを参照
+// 3. それも存在しない場合は、process.cwd()からknowledge-baseを参照
+let KNOWLEDGE_BASE_DIR: string;
+if (process.env.KNOWLEDGE_BASE_PATH) {
+  KNOWLEDGE_BASE_DIR = process.env.KNOWLEDGE_BASE_PATH;
+} else {
+  // server/libから見て../knowledge-base
+  const relativePath = path.join(__dirname, '..', '..', 'knowledge-base');
+  if (fs.existsSync(relativePath)) {
+    KNOWLEDGE_BASE_DIR = relativePath;
+  } else {
+    // フォールバック: process.cwd()からknowledge-base
+    KNOWLEDGE_BASE_DIR = path.join(process.cwd(), 'knowledge-base');
+  }
+}
 const DATA_DIR = path.join(KNOWLEDGE_BASE_DIR, 'data');
 const TEXT_DIR = path.join(KNOWLEDGE_BASE_DIR, 'text');
 const TROUBLESHOOTING_DIR = path.join(KNOWLEDGE_BASE_DIR, 'troubleshooting');
@@ -262,6 +277,7 @@ export async function searchKnowledgeBase(
     // documentsディレクトリのチャンクデータを読み込む（新規追加）
     try {
       console.log('📁 DOCUMENTS_DIR確認:', DOCUMENTS_DIR);
+      console.log('📁 DOCUMENTS_DIR存在確認:', fs.existsSync(DOCUMENTS_DIR));
       if (fs.existsSync(DOCUMENTS_DIR)) {
         const documentDirs = fs.readdirSync(DOCUMENTS_DIR).filter(dir => {
           const dirPath = path.join(DOCUMENTS_DIR, dir);
@@ -325,6 +341,13 @@ export async function searchKnowledgeBase(
                 `チャンクファイル ${chunksPath} の読み込み中にエラーが発生しました:`,
                 error
               );
+              if (error instanceof Error) {
+                console.error('エラー詳細:', {
+                  message: error.message,
+                  stack: error.stack,
+                  name: error.name
+                });
+              }
             }
           } else {
             console.log('チャンクファイルが存在しません:', chunksPath);
@@ -335,6 +358,13 @@ export async function searchKnowledgeBase(
       }
     } catch (error) {
       console.error('documentsディレクトリ検索エラー:', error);
+      if (error instanceof Error) {
+        console.error('エラー詳細:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+      }
     }
 
     // トラブルシューティングフローも検索対象に含める
@@ -444,6 +474,13 @@ export async function searchKnowledgeBase(
     return results;
   } catch (error) {
     console.error('知識ベース検索エラー:', error);
+    if (error instanceof Error) {
+      console.error('エラー詳細:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+    }
     return [];
   }
 }

@@ -374,6 +374,13 @@ export async function processOpenAIRequest(
         }
       } catch (error) {
         console.error('ナレッジベース初期化エラー:', error);
+        if (error instanceof Error) {
+          console.error('エラー詳細:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+          });
+        }
         // エラーが発生した場合は基本的なシステムプロンプトを使用
         systemPrompt =
           'あなたは保守用車支援システムの一部として機能するAIアシスタントです。ユーザーの質問に対して、正確で実用的な回答を提供してください。';
