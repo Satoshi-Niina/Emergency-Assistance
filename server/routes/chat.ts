@@ -19,6 +19,7 @@ import {
   insertChatSchema,
   messages,
 } from '../db/schema.js';
+import { IMAGE_DATA_ENCODING } from '../utils/image-encoding.js';
 
 // ESM用__dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -646,15 +647,6 @@ export function registerChatRoutes(app: any): void {
       const fileName = `${sanitizedTitle}_${chatId}_${timestamp}.json`;
       const filePath = path.join(exportsDir, fileName);
 
-      const exportData: any = {
-        chatId: chatId,
-        userId: 'test-user',
-        exportType: exportType || 'manual_send',
-        exportTimestamp: new Date().toISOString(),
-        title: incidentTitle, // 事象情報をタイトルとして追加
-        chatData: chatData,
-      };
-
       // 画像を個別ファイルとして保存
       // パス解決（複数の可能性を試す）
       const projectRoot = path.resolve(__dirname, '..', '..');
@@ -689,21 +681,21 @@ export function registerChatRoutes(app: any): void {
         console.log('画像保存ディレクトリを作成しました（フォールバック）:', imagesDir);
       }
 
-      // チャットメッセージから画像を抽出して保存
+      // チャットメッセージから画像を抽出してファイルとして保存
       const savedImages: any[] = [];
-      for (const message of chatData.messages) {
+      const cleanedChatData = JSON.parse(JSON.stringify(chatData)); // ディープコピー
+      
+      for (const message of cleanedChatData.messages) {
         if (message.content && message.content.startsWith('data:image/')) {
           try {
-            // Base64データから画像を抽出
-            const base64Data = message.content.replace(
-              /^data:image\/[a-z]+;base64,/,
-              ''
-            );
-            const buffer = Buffer.from(base64Data, 'base64');
+            // 画像データから画像を抽出
+            const dataUriPattern = new RegExp(`^data:image/[a-z]+;${IMAGE_DATA_ENCODING},`);
+            const imageData = message.content.replace(dataUriPattern, '');
+            const buffer = Buffer.from(imageData, IMAGE_DATA_ENCODING);
 
             // ファイル名を生成
-            const timestamp = Date.now();
-            const imageFileName = `chat_image_${chatId}_${timestamp}.jpg`;
+            const imageTimestamp = Date.now();
+            const imageFileName = `chat_image_${chatId}_${imageTimestamp}.jpg`;
             const imagePath = path.join(imagesDir, imageFileName);
 
             // 画像を120pxにリサイズして保存
@@ -727,7 +719,7 @@ export function registerChatRoutes(app: any): void {
 
             const imageUrl = `/api/images/chat-exports/${imageFileName}`;
             
-            // JSON内のbase64データをURLに置き換え
+            // 画像データをURLに置き換え
             message.content = imageUrl;
 
             savedImages.push({
@@ -738,67 +730,50 @@ export function registerChatRoutes(app: any): void {
             });
           } catch (imageError) {
             console.warn('画像保存エラー:', imageError);
+            // エラー時は画像データを削除
+            message.content = '[画像データ削除]';
           }
         }
       }
 
-      // 保存した画像情報をエクスポートデータに追加
-      exportData.savedImages = savedImages;
-
-      // exportData内のすべてのメッセージからbase64を確実に除去
-      // 1. chatData.messages内のbase64を確認・置き換え
-      if (exportData.chatData?.messages) {
-        for (const message of exportData.chatData.messages) {
-          if (message.content && message.content.startsWith('data:image/')) {
-            // 対応するsavedImageを検索
-            const savedImage = savedImages.find((img: any) => img.messageId === message.id);
-            if (savedImage) {
-              message.content = savedImage.url;
-              console.log(`✅ chatData.messages内のbase64をURLに置き換え: ${message.id} -> ${savedImage.url}`);
-            } else {
-              // savedImageが見つからない場合、base64を削除
-              console.warn(`⚠️ savedImageが見つかりません。base64を削除: ${message.id}`);
-              message.content = '[画像データ削除]';
+      // 画像データを完全に除去する関数
+      const removeImageDataRecursively = (obj: any): any => {
+        if (obj === null || obj === undefined) {
+          return obj;
+        }
+        if (typeof obj === 'string') {
+          // 画像データ文字列を検出して削除
+          if (obj.startsWith('data:image/')) {
+            console.warn('⚠️ 画像データを検出、削除します:', obj.substring(0, 50) + '...');
+            return '[画像データ削除]';
+          }
+          return obj;
+        }
+        if (Array.isArray(obj)) {
+          return obj.map(item => removeImageDataRecursively(item));
+        }
+        if (typeof obj === 'object') {
+          const cleaned: any = {};
+          for (const key in obj) {
+            if (obj.hasOwnProperty(key)) {
+              cleaned[key] = removeImageDataRecursively(obj[key]);
             }
           }
+          return cleaned;
         }
-      }
+        return obj;
+      };
 
-      // 2. originalChatData内のbase64画像もURLに置き換え
-      if (exportData.originalChatData?.messages) {
-        for (const message of exportData.originalChatData.messages) {
-          if (message.content && message.content.startsWith('data:image/')) {
-            // 対応するsavedImageを検索
-            const savedImage = savedImages.find((img: any) => img.messageId === message.id);
-            if (savedImage) {
-              message.content = savedImage.url;
-              console.log(`✅ originalChatData.messages内のbase64をURLに置き換え: ${message.id} -> ${savedImage.url}`);
-            } else {
-              // savedImageが見つからない場合、base64を削除
-              console.warn(`⚠️ savedImageが見つかりません。base64を削除: ${message.id}`);
-              message.content = '[画像データ削除]';
-            }
-          }
-        }
-      }
-
-      // 3. conversationHistory内のbase64画像もURLに置き換え
-      if (exportData.conversationHistory && Array.isArray(exportData.conversationHistory)) {
-        for (const message of exportData.conversationHistory) {
-          if (message.content && message.content.startsWith('data:image/')) {
-            // 対応するsavedImageを検索
-            const savedImage = savedImages.find((img: any) => img.messageId === message.id);
-            if (savedImage) {
-              message.content = savedImage.url;
-              console.log(`✅ conversationHistory内のbase64をURLに置き換え: ${message.id} -> ${savedImage.url}`);
-            } else {
-              // savedImageが見つからない場合、base64を削除
-              console.warn(`⚠️ savedImageが見つかりません。base64を削除: ${message.id}`);
-              message.content = '[画像データ削除]';
-            }
-          }
-        }
-      }
+      // exportDataを作成（画像データを含まないクリーンなデータのみ）
+      const exportData: any = {
+        chatId: chatId,
+        userId: 'test-user',
+        exportType: exportType || 'manual_send',
+        exportTimestamp: new Date().toISOString(),
+        title: incidentTitle, // 事象情報をタイトルとして追加
+        chatData: removeImageDataRecursively(cleanedChatData),
+        savedImages: savedImages,
+      };
 
       // titleフィールドの値でファイル名を再生成
       const finalSanitizedTitle = exportData.title
@@ -814,36 +789,8 @@ export function registerChatRoutes(app: any): void {
       const finalFilePath = path.join(exportsDir, finalFileName);
       console.log('🔍 事象抽出 - 最終ファイル名:', finalFileName);
 
-      // JSON保存前に、すべてのbase64を再確認して除去（徹底的に）
-      const removeBase64Recursively = (obj: any): any => {
-        if (obj === null || obj === undefined) {
-          return obj;
-        }
-        if (typeof obj === 'string') {
-          // base64文字列を検出して削除
-          if (obj.startsWith('data:image/')) {
-            console.warn('⚠️ JSON保存前にbase64を検出、削除します:', obj.substring(0, 50) + '...');
-            return '[画像データ削除 - base64は使用不可]';
-          }
-          return obj;
-        }
-        if (Array.isArray(obj)) {
-          return obj.map(item => removeBase64Recursively(item));
-        }
-        if (typeof obj === 'object') {
-          const cleaned: any = {};
-          for (const key in obj) {
-            if (obj.hasOwnProperty(key)) {
-              cleaned[key] = removeBase64Recursively(obj[key]);
-            }
-          }
-          return cleaned;
-        }
-        return obj;
-      };
-      
-      // エクスポートデータからbase64を徹底的に除去
-      const cleanedExportData = removeBase64Recursively(exportData);
+      // エクスポートデータは既に画像データが除去されているので、そのまま使用
+      const cleanedExportData = exportData;
 
       // UTF-8エンコーディングでJSONファイルを保存（BOMなし）
       const jsonString = JSON.stringify(cleanedExportData, null, 2);
@@ -1067,23 +1014,6 @@ export function registerChatRoutes(app: any): void {
       const fileName = `${sanitizedTitle}_${chatId}_${timestamp}.json`;
       const filePath = path.join(exportsDir, fileName);
 
-      const exportData: any = {
-        chatId: chatId,
-        userId: userId,
-        exportType: exportType || 'manual_send',
-        exportTimestamp: new Date().toISOString(),
-        title: incidentTitle, // 画像が先でも発生事象を優先
-        problemDescription: formattedHistoryData.problem_description,
-        machineType: formattedHistoryData.machine_type,
-        machineNumber: formattedHistoryData.machine_number,
-        extractedComponents: formattedHistoryData.extracted_components,
-        extractedSymptoms: formattedHistoryData.extracted_symptoms,
-        possibleModels: formattedHistoryData.possible_models,
-        conversationHistory: formattedHistoryData.conversation_history,
-        metadata: formattedHistoryData.metadata,
-        originalChatData: chatData, // 元のデータも保持
-      };
-
       // 画像を個別ファイルとして保存
       // パス解決（複数の可能性を試す）
       const projectRoot = path.resolve(__dirname, '..', '..');
@@ -1118,21 +1048,21 @@ export function registerChatRoutes(app: any): void {
         console.log('画像保存ディレクトリを作成しました（フォールバック）:', imagesDir);
       }
 
-      // チャットメッセージから画像を抽出して保存
+      // チャットメッセージから画像を抽出してファイルとして保存
       const savedImages: any[] = [];
-      for (const message of chatData.messages) {
+      const cleanedChatData = JSON.parse(JSON.stringify(chatData)); // ディープコピー
+      
+      for (const message of cleanedChatData.messages) {
         if (message.content && message.content.startsWith('data:image/')) {
           try {
-            // Base64データから画像を抽出
-            const base64Data = message.content.replace(
-              /^data:image\/[a-z]+;base64,/,
-              ''
-            );
-            const buffer = Buffer.from(base64Data, 'base64');
+            // 画像データから画像を抽出
+            const dataUriPattern = new RegExp(`^data:image/[a-z]+;${IMAGE_DATA_ENCODING},`);
+            const imageData = message.content.replace(dataUriPattern, '');
+            const buffer = Buffer.from(imageData, IMAGE_DATA_ENCODING);
 
             // ファイル名を生成
-            const timestamp = Date.now();
-            const imageFileName = `chat_image_${chatId}_${timestamp}.jpg`;
+            const imageTimestamp = Date.now();
+            const imageFileName = `chat_image_${chatId}_${imageTimestamp}.jpg`;
             const imagePath = path.join(imagesDir, imageFileName);
 
             // 画像を120pxにリサイズして保存
@@ -1156,7 +1086,7 @@ export function registerChatRoutes(app: any): void {
 
             const imageUrl = `/api/images/chat-exports/${imageFileName}`;
             
-            // JSON内のbase64データをURLに置き換え
+            // 画像データをURLに置き換え
             message.content = imageUrl;
 
             savedImages.push({
@@ -1167,98 +1097,66 @@ export function registerChatRoutes(app: any): void {
             });
           } catch (imageError) {
             console.warn('画像保存エラー:', imageError);
+            // エラー時は画像データを削除
+            message.content = '[画像データ削除]';
           }
         }
       }
 
-      // 保存した画像情報をエクスポートデータに追加
-      exportData.savedImages = savedImages;
-
-      // exportData内のすべてのメッセージからbase64を確実に除去
-      // 1. chatData.messages内のbase64を確認・置き換え
-      if (exportData.chatData?.messages) {
-        for (const message of exportData.chatData.messages) {
-          if (message.content && message.content.startsWith('data:image/')) {
-            // 対応するsavedImageを検索
-            const savedImage = savedImages.find((img: any) => img.messageId === message.id);
-            if (savedImage) {
-              message.content = savedImage.url;
-              console.log(`✅ chatData.messages内のbase64をURLに置き換え: ${message.id} -> ${savedImage.url}`);
-            } else {
-              // savedImageが見つからない場合、base64を削除
-              console.warn(`⚠️ savedImageが見つかりません。base64を削除: ${message.id}`);
-              message.content = '[画像データ削除]';
-            }
-          }
-        }
-      }
-
-      // 2. originalChatData内のbase64画像もURLに置き換え
-      if (exportData.originalChatData?.messages) {
-        for (const message of exportData.originalChatData.messages) {
-          if (message.content && message.content.startsWith('data:image/')) {
-            // 対応するsavedImageを検索
-            const savedImage = savedImages.find((img: any) => img.messageId === message.id);
-            if (savedImage) {
-              message.content = savedImage.url;
-              console.log(`✅ originalChatData.messages内のbase64をURLに置き換え: ${message.id} -> ${savedImage.url}`);
-            } else {
-              // savedImageが見つからない場合、base64を削除
-              console.warn(`⚠️ savedImageが見つかりません。base64を削除: ${message.id}`);
-              message.content = '[画像データ削除]';
-            }
-          }
-        }
-      }
-
-      // 3. conversationHistory内のbase64画像もURLに置き換え
-      if (exportData.conversationHistory && Array.isArray(exportData.conversationHistory)) {
-        for (const message of exportData.conversationHistory) {
-          if (message.content && message.content.startsWith('data:image/')) {
-            // 対応するsavedImageを検索
-            const savedImage = savedImages.find((img: any) => img.messageId === message.id);
-            if (savedImage) {
-              message.content = savedImage.url;
-              console.log(`✅ conversationHistory内のbase64をURLに置き換え: ${message.id} -> ${savedImage.url}`);
-            } else {
-              // savedImageが見つからない場合、base64を削除
-              console.warn(`⚠️ savedImageが見つかりません。base64を削除: ${message.id}`);
-              message.content = '[画像データ削除]';
-            }
-          }
-        }
-      }
-
-      // JSON保存前に、すべてのbase64を再確認して除去（徹底的に）
-      const removeBase64Recursively = (obj: any): any => {
+      // 画像データを完全に除去する関数
+      const removeImageDataRecursively = (obj: any): any => {
         if (obj === null || obj === undefined) {
           return obj;
         }
         if (typeof obj === 'string') {
-          // base64文字列を検出して削除
+          // 画像データ文字列を検出して削除
           if (obj.startsWith('data:image/')) {
-            console.warn('⚠️ JSON保存前にbase64を検出、削除します:', obj.substring(0, 50) + '...');
-            return '[画像データ削除 - base64は使用不可]';
+            console.warn('⚠️ 画像データを検出、削除します:', obj.substring(0, 50) + '...');
+            return '[画像データ削除]';
           }
           return obj;
         }
         if (Array.isArray(obj)) {
-          return obj.map(item => removeBase64Recursively(item));
+          return obj.map(item => removeImageDataRecursively(item));
         }
         if (typeof obj === 'object') {
           const cleaned: any = {};
           for (const key in obj) {
             if (obj.hasOwnProperty(key)) {
-              cleaned[key] = removeBase64Recursively(obj[key]);
+              cleaned[key] = removeImageDataRecursively(obj[key]);
             }
           }
           return cleaned;
         }
         return obj;
       };
-      
-      // エクスポートデータからbase64を徹底的に除去
-      const cleanedExportData = removeBase64Recursively(exportData);
+
+      // conversationHistoryから画像データを除去
+      const cleanedConversationHistory = formattedHistoryData.conversation_history
+        ? removeImageDataRecursively(formattedHistoryData.conversation_history)
+        : formattedHistoryData.conversation_history;
+
+      // exportDataを作成（画像データを含まないクリーンなデータのみ）
+      const exportData: any = {
+        chatId: chatId,
+        userId: userId,
+        exportType: exportType || 'manual_send',
+        exportTimestamp: new Date().toISOString(),
+        title: incidentTitle, // 画像が先でも発生事象を優先
+        problemDescription: formattedHistoryData.problem_description,
+        machineType: formattedHistoryData.machine_type,
+        machineNumber: formattedHistoryData.machine_number,
+        extractedComponents: formattedHistoryData.extracted_components,
+        extractedSymptoms: formattedHistoryData.extracted_symptoms,
+        possibleModels: formattedHistoryData.possible_models,
+        conversationHistory: cleanedConversationHistory,
+        metadata: formattedHistoryData.metadata,
+        originalChatData: removeImageDataRecursively(cleanedChatData), // 画像データを含まないクリーンなデータ
+        savedImages: savedImages,
+      };
+
+      // エクスポートデータは既に画像データが除去されているので、そのまま使用
+      const cleanedExportData = exportData;
 
       // UTF-8エンコーディングでJSONファイルを保存（BOMなし）
       const jsonString = JSON.stringify(cleanedExportData, null, 2);
