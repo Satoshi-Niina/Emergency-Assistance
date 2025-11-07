@@ -31,7 +31,8 @@
     <script>
       // バックエンドURLの設定（デプロイ時に埋め込まれる）
       // この値はデプロイワークフローで自動的に置換されます
-      window.BACKEND_SERVICE_URL = window.BACKEND_SERVICE_URL || '';
+      // PLACEHOLDER_BACKEND_SERVICE_URL はデプロイ時に実際のURLに置換されます
+      window.BACKEND_SERVICE_URL = 'PLACEHOLDER_BACKEND_SERVICE_URL';
       console.log('🔧 Initial BACKEND_SERVICE_URL:', window.BACKEND_SERVICE_URL);
       // 動的環境設定（インライン）
       (function() {

@@ -1,13 +1,25 @@
 // 統一API設定 - runtime-config対応
 // Docker統合環境で動作するAPIクライアント
 
-import { getApiBaseUrl, getRuntimeConfig } from './runtime-config';
+import { getRuntimeConfig } from './runtime-config';
 
 // 環境判定
 const isProduction = import.meta.env.PROD;
 const isDevelopment = import.meta.env.DEV;
-const isLocalhost = window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1');
-const isAzureStaticWebApp = /\.azurestaticapps\.net$/i.test(window.location.hostname);
+const isLocalhost = typeof window !== 'undefined' && (window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1'));
+const isAzureStaticWebApp = typeof window !== 'undefined' && /\.azurestaticapps\.net$/i.test(window.location.hostname);
+
+// デバッグ: 環境判定の結果をログ出力
+if (typeof window !== 'undefined') {
+  console.log('🔍 環境判定:', {
+    hostname: window.location.hostname,
+    isProduction,
+    isDevelopment,
+    isLocalhost,
+    isAzureStaticWebApp,
+    windowBackendUrl: (window as any).BACKEND_SERVICE_URL
+  });
+}
 
 // API Base URLの決定（runtime-config優先）
 export const API_BASE_URL = (() => {
@@ -52,22 +64,6 @@ export function buildApiUrl(path: string): string {
   // パスを正規化（先頭の/を確保）
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   
-  // Azure Static Web Apps環境の場合、window.BACKEND_SERVICE_URLを優先使用（動的に確認）
-  let baseUrl = API_BASE_URL;
-  if (isAzureStaticWebApp && typeof window !== 'undefined') {
-    const backendUrl = (window as any).BACKEND_SERVICE_URL;
-    if (backendUrl && backendUrl.trim() !== '') {
-      baseUrl = backendUrl.replace(/\/$/, '').replace(/\/api$/, '');
-      console.log('🔧 buildApiUrl: window.BACKEND_SERVICE_URLを使用:', baseUrl);
-    } else {
-      console.warn('⚠️ buildApiUrl: window.BACKEND_SERVICE_URLが設定されていません');
-      console.log('🔧 buildApiUrl: window.BACKEND_SERVICE_URLの値:', backendUrl);
-    }
-  }
-  
-  // API_BASE_URLを正規化（末尾の/と/apiを除去）
-  baseUrl = baseUrl.replace(/\/$/, '').replace(/\/api$/, '');
-  
   // パスが既に/apiで始まっている場合は重複を避ける
   const pathWithoutApi = cleanPath.startsWith('/api/') 
     ? cleanPath.replace(/^\/api/, '') 
@@ -75,19 +71,48 @@ export function buildApiUrl(path: string): string {
     ? '/' 
     : cleanPath;
   
-  // 最終的なURLを構築（必ず/apiを含める）
+  // Azure Static Web Apps環境の場合、必ず外部バックエンドURLを使用（強制）
+  if (isAzureStaticWebApp && typeof window !== 'undefined') {
+    const backendUrl = (window as any).BACKEND_SERVICE_URL;
+    console.log('🔍 buildApiUrl (Azure SWA): window.BACKEND_SERVICE_URLの値:', backendUrl);
+    
+    // バックエンドURLを取得（プレースホルダーまたは空の場合はフォールバック）
+    let baseUrl = '';
+    if (backendUrl && backendUrl.trim() !== '' && backendUrl !== 'PLACEHOLDER_BACKEND_SERVICE_URL') {
+      baseUrl = backendUrl.replace(/\/$/, '').replace(/\/api$/, '');
+      console.log('✅ buildApiUrl: window.BACKEND_SERVICE_URLを使用:', baseUrl);
+    } else {
+      console.warn('⚠️ buildApiUrl: window.BACKEND_SERVICE_URLが無効、フォールバックを使用');
+      // フォールバック: ハードコードされたURL
+      baseUrl = 'https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net';
+    }
+    
+    // 最終的なURLを構築（必ず/apiを含める）
+    const result = `${baseUrl}/api${pathWithoutApi.startsWith('/') ? pathWithoutApi : '/' + pathWithoutApi}`;
+    
+    console.log('🔧 buildApiUrl (Azure SWA):', {
+      originalPath: path,
+      cleanPath,
+      pathWithoutApi,
+      baseUrl,
+      finalUrl: result,
+      windowBackendUrl: backendUrl
+    });
+    
+    return result;
+  }
+  
+  // 非Azure Static Web Apps環境の場合
+  const baseUrl = API_BASE_URL.replace(/\/$/, '').replace(/\/api$/, '');
   const result = baseUrl 
     ? `${baseUrl}/api${pathWithoutApi.startsWith('/') ? pathWithoutApi : '/' + pathWithoutApi}`
     : `/api${pathWithoutApi.startsWith('/') ? pathWithoutApi : '/' + pathWithoutApi}`;
   
-  // デバッグログ
-  console.log('🔧 buildApiUrl:', {
+  console.log('🔧 buildApiUrl (非Azure SWA):', {
     originalPath: path,
     cleanPath,
     baseUrl,
-    finalUrl: result,
-    isAzureStaticWebApp,
-    windowBackendUrl: typeof window !== 'undefined' ? (window as any).BACKEND_SERVICE_URL : 'N/A'
+    finalUrl: result
   });
   
   return result;

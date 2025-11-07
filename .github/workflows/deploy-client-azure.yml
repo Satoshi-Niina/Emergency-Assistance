@@ -19,7 +19,8 @@ jobs:
       - name: Use Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '20.x'
+          check-latest: true
 
       - name: Install deps
         working-directory: client
@@ -63,22 +64,23 @@ jobs:
             BACKEND_URL="${{ secrets.VITE_BACKEND_SERVICE_URL }}"
             # ビルド後のindex.htmlにバックエンドURLを埋め込む
             if [ -f "dist/index.html" ]; then
-              # window.BACKEND_SERVICE_URLの行を確実に置換（複数行対応）
-              # 既存の行を置換（= の前後の空白も考慮）
-              sed -i "s|window\.BACKEND_SERVICE_URL\s*=\s*[^;]*|window.BACKEND_SERVICE_URL = '${BACKEND_URL}'|g" dist/index.html
-              # もし置換されなかった場合（行が存在しない場合）、追加
-              if ! grep -q "window.BACKEND_SERVICE_URL = '${BACKEND_URL}'" dist/index.html; then
-                # Runtime configurationの直後に追加
-                sed -i "s|<!-- Runtime configuration -->|<!-- Runtime configuration -->\n    <script>window.BACKEND_SERVICE_URL = '${BACKEND_URL}';</script>|g" dist/index.html
-              fi
+              # PLACEHOLDER_BACKEND_SERVICE_URLを実際のURLに置換
+              sed -i "s|PLACEHOLDER_BACKEND_SERVICE_URL|${BACKEND_URL}|g" dist/index.html
               echo "✅ Injected BACKEND_SERVICE_URL into index.html: ${BACKEND_URL}"
               # 確認用：実際に埋め込まれたか確認
-              grep "window.BACKEND_SERVICE_URL" dist/index.html || echo "⚠️ Warning: BACKEND_SERVICE_URL not found in index.html"
+              if grep -q "window.BACKEND_SERVICE_URL = '${BACKEND_URL}'" dist/index.html; then
+                echo "✅ Confirmed: BACKEND_SERVICE_URL is correctly set in index.html"
+              else
+                echo "⚠️ Warning: BACKEND_SERVICE_URL replacement may have failed"
+                echo "Current value in index.html:"
+                grep "window.BACKEND_SERVICE_URL" dist/index.html || echo "⚠️ BACKEND_SERVICE_URL not found in index.html"
+              fi
             else
               echo "⚠️ dist/index.html not found, skipping injection"
             fi
           else
             echo "⚠️ VITE_BACKEND_SERVICE_URL is not set, skipping injection"
+            echo "⚠️ BACKEND_SERVICE_URL will remain as placeholder"
           fi
 
       - name: Deploy to Azure Static Web Apps
