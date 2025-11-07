@@ -259,12 +259,75 @@ app.use(cors({
 
 // プリフライトリクエストの明示的な処理（強化版）
 app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  const origin = req.headers.origin;
+  console.log('🔍 OPTIONS リクエスト:', { origin, method: req.method, path: req.path });
+  
+  // Azure Static Web Appsのオリジンを許可
+  if (origin && origin.includes('azurestaticapps.net')) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+    console.log('✅ CORS: Azure Static Web Appのオリジンを許可:', origin);
+  } else if (origin) {
+    // その他のオリジンも許可リストをチェック
+    const allowedOrigins = [
+      STATIC_WEB_APP_URL,
+      BACKEND_SERVICE_URL,
+      `http://localhost:${CLIENT_PORT}`,
+      `http://localhost:3000`,
+      ...ALLOWED_ORIGINS
+    ].filter(Boolean);
+    
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
+      console.log('✅ CORS: 許可リストのオリジンを許可:', origin);
+    } else {
+      res.header('Access-Control-Allow-Origin', '*');
+      console.warn('⚠️ CORS: 許可リストにないオリジン、ワイルドカードで許可:', origin);
+    }
+  } else {
+    res.header('Access-Control-Allow-Origin', '*');
+  }
+  
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Cache-Control, Pragma, Expires, Cookie');
-  res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Max-Age', '86400'); // 24時間
   res.sendStatus(200);
+});
+
+// CORSヘッダーをすべてのレスポンスに追加（確実に設定されるように）
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  
+  // Azure Static Web Appsのオリジンを許可
+  if (origin && origin.includes('azurestaticapps.net')) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+  } else if (origin) {
+    // その他のオリジンも許可リストをチェック
+    const allowedOrigins = [
+      STATIC_WEB_APP_URL,
+      BACKEND_SERVICE_URL,
+      `http://localhost:${CLIENT_PORT}`,
+      `http://localhost:3000`,
+      ...ALLOWED_ORIGINS
+    ].filter(Boolean);
+    
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
+    } else {
+      res.header('Access-Control-Allow-Origin', '*');
+    }
+  } else {
+    res.header('Access-Control-Allow-Origin', '*');
+  }
+  
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Cache-Control, Pragma, Expires, Cookie');
+  res.header('Access-Control-Max-Age', '86400');
+  
+  next();
 });
 
 app.use(express.json());
