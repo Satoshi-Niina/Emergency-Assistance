@@ -221,43 +221,7 @@ const ALLOWED_ORIGINS = [
   ...(process.env.CORS_ALLOW_ORIGINS?.split(',') || [])
 ].filter(Boolean);
 
-// CORS設定（本番環境用）- Azure Static Web Appsのオリジンを動的に許可
-app.use(cors({
-  origin: (origin, callback) => {
-    // オリジンなし（同一オリジンまたはモバイルアプリなど）を許可
-    if (!origin) {
-      return callback(null, true);
-    }
-    
-    // Azure Static Web Appsのオリジンを許可（*.azurestaticapps.net）
-    if (origin.includes('azurestaticapps.net')) {
-      return callback(null, true);
-    }
-    
-    // 許可リストに含まれているかチェック
-    const allowedOrigins = [
-      STATIC_WEB_APP_URL,
-      BACKEND_SERVICE_URL,
-      `http://localhost:${CLIENT_PORT}`,
-      `http://localhost:3000`,
-      `http://localhost:${process.env.PORT || '8080'}`,
-      ...ALLOWED_ORIGINS
-    ].filter(Boolean);
-    
-    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
-      callback(null, true);
-    } else {
-      console.warn('⚠️ CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control', 'Pragma', 'Expires', 'Cookie'],
-  optionsSuccessStatus: 200
-}));
-
-// プリフライトリクエストの明示的な処理（強化版）
+// プリフライトリクエスト（OPTIONS）を最優先で処理（CORSミドルウェアより前に配置）
 app.options('*', (req, res) => {
   const origin = req.headers.origin;
   console.log('🔍 OPTIONS リクエスト:', { origin, method: req.method, path: req.path });
@@ -329,6 +293,46 @@ app.use((req, res, next) => {
   
   next();
 });
+
+// CORS設定（本番環境用）- Azure Static Web Appsのオリジンを動的に許可
+app.use(cors({
+  origin: (origin, callback) => {
+    // オリジンなし（同一オリジンまたはモバイルアプリなど）を許可
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    // Azure Static Web Appsのオリジンを許可（*.azurestaticapps.net）
+    if (origin.includes('azurestaticapps.net')) {
+      console.log('✅ CORS: Azure Static Web Appのオリジンを許可:', origin);
+      return callback(null, true);
+    }
+    
+    // 許可リストに含まれているかチェック
+    const allowedOrigins = [
+      STATIC_WEB_APP_URL,
+      BACKEND_SERVICE_URL,
+      `http://localhost:${CLIENT_PORT}`,
+      `http://localhost:3000`,
+      `http://localhost:${process.env.PORT || '8080'}`,
+      ...ALLOWED_ORIGINS
+    ].filter(Boolean);
+    
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      console.log('✅ CORS: 許可リストのオリジンを許可:', origin);
+      callback(null, true);
+    } else {
+      console.warn('⚠️ CORS blocked origin:', origin);
+      // デバッグ用：許可リストを表示
+      console.log('許可リスト:', allowedOrigins);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control', 'Pragma', 'Expires', 'Cookie'],
+  optionsSuccessStatus: 200
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
