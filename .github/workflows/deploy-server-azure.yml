@@ -144,6 +144,38 @@ jobs:
               --docker-registry-server-url https://ghcr.io
           fi
 
+      - name: Configure CORS for Azure App Service
+        run: |
+          echo "🌐 Setting up CORS configuration..."
+          # Clear existing CORS settings
+          az webapp cors remove \
+            --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --allowed-origins "*" || true
+          
+          # Add specific CORS origins
+          az webapp cors add \
+            --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --allowed-origins "${{ secrets.STATIC_WEB_APP_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net' }}"
+          
+          # Add localhost for development
+          az webapp cors add \
+            --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --allowed-origins "http://localhost:5173" || true
+          
+          az webapp cors add \
+            --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --allowed-origins "http://localhost:8080" || true
+          
+          # Show current CORS configuration
+          echo "📋 Current CORS configuration:"
+          az webapp cors show \
+            --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
+
       - name: Restart Azure App Service
         run: |
           az webapp restart \
