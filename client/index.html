@@ -52,9 +52,10 @@
         } else if (isAzureStaticWebApp) {
           // Azure Static Web Apps: 外部バックエンドに直接リクエスト
           // 環境変数からバックエンドURLを取得（ビルド時に埋め込まれる）
+          // API_BASE_URLには/apiを含めない（buildApiUrlで追加されるため）
           const backendUrl = window.BACKEND_SERVICE_URL || '';
           config = {
-            "API_BASE_URL": backendUrl ? `${backendUrl}/api` : "/api",
+            "API_BASE_URL": backendUrl || "",
             "CORS_ALLOW_ORIGINS": window.location.origin,
             "ENVIRONMENT": "production"
           };

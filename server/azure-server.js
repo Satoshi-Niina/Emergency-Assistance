@@ -221,15 +221,36 @@ const ALLOWED_ORIGINS = [
   ...(process.env.CORS_ALLOW_ORIGINS?.split(',') || [])
 ].filter(Boolean);
 
-// CORS設定（本番環境用）
+// CORS設定（本番環境用）- Azure Static Web Appsのオリジンを動的に許可
 app.use(cors({
-  origin: [
-    STATIC_WEB_APP_URL, // フロントエンドURL
-    BACKEND_SERVICE_URL, // バックエンドURL
-    `http://localhost:${CLIENT_PORT}`, // ローカル開発用
-    `http://localhost:3000`, // ローカル開発用
-    `http://localhost:${process.env.PORT || '8080'}`  // ローカル開発用
-  ],
+  origin: (origin, callback) => {
+    // オリジンなし（同一オリジンまたはモバイルアプリなど）を許可
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    // Azure Static Web Appsのオリジンを許可（*.azurestaticapps.net）
+    if (origin.includes('azurestaticapps.net')) {
+      return callback(null, true);
+    }
+    
+    // 許可リストに含まれているかチェック
+    const allowedOrigins = [
+      STATIC_WEB_APP_URL,
+      BACKEND_SERVICE_URL,
+      `http://localhost:${CLIENT_PORT}`,
+      `http://localhost:3000`,
+      `http://localhost:${process.env.PORT || '8080'}`,
+      ...ALLOWED_ORIGINS
+    ].filter(Boolean);
+    
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      console.warn('⚠️ CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control', 'Pragma', 'Expires', 'Cookie'],

@@ -48,7 +48,8 @@ GitHubリポジトリの **Settings > Secrets and variables > Actions** で設�
 
 | Secret名 | 説明 | 例 | 備考 |
 |---------|------|-----|------|
-| `VITE_API_BASE_URL` | APIベースURL | `/api` または `https://your-app.azurewebsites.net/api` | ビルド時に埋め込まれる |
+| `VITE_API_BASE_URL` | APIベースURL | `/api` または `https://your-app.azurewebsites.net/api` | ビルド時に埋め込まれる（オプション） |
+| `VITE_BACKEND_SERVICE_URL` | バックエンドサービスURL | `https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net` | **必須** - フロントエンドから直接バックエンドにリクエストする場合 |
 
 ### Docker Container Registry認証情報（オプション）
 

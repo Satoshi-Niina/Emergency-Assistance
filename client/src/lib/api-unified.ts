@@ -11,6 +11,13 @@ const isAzureStaticWebApp = /\.azurestaticapps\.net$/i.test(window.location.host
 
 // API Base URLの決定（runtime-config優先）
 export const API_BASE_URL = (() => {
+  // Azure Static Web Apps環境の場合、window.BACKEND_SERVICE_URLを優先使用
+  if (isAzureStaticWebApp && typeof window !== 'undefined' && (window as any).BACKEND_SERVICE_URL) {
+    const backendUrl = (window as any).BACKEND_SERVICE_URL.replace(/\/$/, '');
+    console.log('✅ Azure Static Web App: BACKEND_SERVICE_URLから取得:', backendUrl);
+    return backendUrl;
+  }
+  
   // まずruntime-configから取得を試行
   try {
     const runtimeConfig = getRuntimeConfig();
