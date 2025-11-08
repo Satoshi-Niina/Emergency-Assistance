@@ -39,14 +39,13 @@ if (hasCriticalEnvVars) {
     console.error('❌ Error message:', error.message);
     console.error('❌ Error name:', error.name);
     console.error('❌ Stack trace:', error.stack);
-    
+
     // 強制的に本番サーバーを試行（デバッグ目的）
     console.log('🔧 FORCE RETRY: Attempting production server again with detailed logging...');
     try {
       // エラー情報をより詳細に取得するため再度実行
       const module = await import('./azure-server.js?retry=' + Date.now());
       console.log('✅ azure-server.js loaded successfully on retry');
-      return;
     } catch (retryError) {
       console.error('❌ Production server retry failed:', retryError);
       console.error('❌ Retry error details:', {
@@ -55,7 +54,7 @@ if (hasCriticalEnvVars) {
         code: retryError.code
       });
     }
-    
+
     // フォールバックとしてデバッグサーバーを起動
     console.log('🔧 Fallback: Starting debug server due to production server error...');
     try {
@@ -70,14 +69,14 @@ if (hasCriticalEnvVars) {
   // 環境変数が不足している場合はデバッグサーバーを使用
   console.log('⚠️ Critical environment variables missing. Starting debug server...');
   console.log('🔧 Missing variables will be handled by debug server.');
-  
+
   try {
     await import('./azure-server-debug.js');
     console.log('✅ azure-server-debug.js loaded for missing env vars');
   } catch (debugError) {
     console.error('❌ Debug server failed to start:', debugError);
     console.error('❌ Debug server stack trace:', debugError.stack);
-    
+
     // 最後の手段: 最小限フォールバックサーバー
     console.log('🆘 Starting minimal fallback server as last resort...');
     try {
