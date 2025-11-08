@@ -23,8 +23,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '20.18.0'
           registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+          cache-dependency-path: 'server/package-lock.json'
 
       - name: Install dependencies (isolated npm)
         run: |
@@ -107,15 +109,47 @@ jobs:
           mkdir -p deploy/app-logs/{exports,history}
           mkdir -p deploy/uploads
 
-          # Clean up
+          # Clean up unnecessary files
           rm -f deploy/.env* deploy/tsconfig*.json
+
+          # Ensure web.config exists for IIS/Azure App Service
+          if [ ! -f deploy/web.config ]; then
+            echo "⚠️ web.config missing, creating default..."
+            cat > deploy/web.config << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <system.webServer>
+              <handlers>
+                <add name="iisnode" path="index.js" verb="*" modules="iisnode"/>
+              </handlers>
+              <rewrite>
+                <rules>
+                  <rule name="DynamicContent">
+                    <conditions>
+                      <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="True"/>
+                    </conditions>
+                    <action type="Rewrite" url="index.js"/>
+                  </rule>
+                </rules>
+              </rewrite>
+              <iisnode node_env="production" />
+            </system.webServer>
+          </configuration>
+          EOF
+          fi
 
           # Verify deployment package
           echo "🔍 Deployment package verification:"
           echo "  - Entry point: $(test -f deploy/index.js && echo 'OK' || echo 'MISSING')"
           echo "  - Package.json: $(test -f deploy/package.json && echo 'OK' || echo 'MISSING')"
+          echo "  - Web.config: $(test -f deploy/web.config && echo 'OK' || echo 'MISSING')"
           echo "  - Node modules: $(test -d deploy/node_modules && echo 'OK' || echo 'MISSING')"
           echo "  - Express: $(test -f deploy/node_modules/express/package.json && echo 'OK' || echo 'MISSING')"
+
+          # Display package.json engines
+          if [ -f deploy/package.json ]; then
+            echo "  - Node version requirement: $(grep -A2 '"engines"' deploy/package.json || echo 'Not specified')"
+          fi
 
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3
@@ -123,6 +157,8 @@ jobs:
           app-name: Emergency-Assistance
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: deploy
+          type: 'ZIP'
+          clean: true
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
@@ -130,6 +166,8 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           FRONTEND_URL: "https://witty-river-012f39e00.1.azurestaticapps.net"
           NODE_ENV: "production"
+          WEBSITE_NODE_DEFAULT_VERSION: "20-lts"
+          SCM_DO_BUILD_DURING_DEPLOYMENT: "true"
 
       - name: Health check
         run: |
