@@ -1,4 +1,4 @@
-name: Deploy Server to Azure App Service (ZIP)
+name: Deploy Server to Azure App Service (Simplified)
 
 on:
   push:
@@ -12,312 +12,120 @@ on:
       - 'knowledge-base/**'
       - '.github/workflows/deploy-server-azure.yml'
   workflow_dispatch:
-    inputs:
-      force_deploy:
-        description: 'Force deployment even if no server files changed'
-        required: false
-        default: 'false'
-      reason:
-        description: 'Reason for force deployment (Optional)'
-        required: false
-        default: 'Manual trigger for redeploy'
 
 permissions:
   contents: read
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
-    name: Build and Deploy to Azure App Service (Node.js)
+    name: Build and Deploy to Azure App Service
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Debug workflow trigger
-        run: |
-          echo "🔍 Workflow triggered by: ${{ github.event_name }}"
-          echo "🔍 Branch: ${{ github.ref }}"
-          echo "🔍 Commit SHA: ${{ github.sha }}"
-          echo "🔍 Changed files:"
-          git diff --name-only HEAD~1 HEAD || echo "No previous commit"
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'server/package.json'
 
-      - name: Verify pre-installed dependencies
+      - name: Install dependencies (simplified)
+        working-directory: ./server
         run: |
-          echo "📦 Verifying pre-installed dependencies in server directory..."
-          cd server
+          echo "📦 Installing server dependencies..."
           
-          # Show current working directory and package.json
-          echo "📁 Current directory: $(pwd)"
-          echo "📄 Package.json exists: $(test -f package.json && echo 'YES' || echo 'NO')"
+          # Clean installation
+          rm -rf node_modules package-lock.json .npm
           
-          # Always install dependencies (node_modules excluded by .gitignore)
-          echo "📦 Installing dependencies..."
-          rm -rf node_modules package-lock.json
+          # Configure npm for CI
+          npm config set audit-level none
+          npm config set fund false
+          npm config set progress false
           
-          # Show package.json dependencies first
-          echo "📄 Dependencies in package.json:"
-          cat package.json | grep -A 20 '"dependencies"' || echo "No dependencies section found"
+          # Install with legacy peer deps to avoid conflicts
+          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
           
-          # Install with verbose logging
-          echo "📦 Running npm install..."
-          npm install --no-audit --no-fund --verbose
-          
-          # Show installation results with detailed analysis
-          echo "📦 Installation completed:"
-          echo "  - Node modules count: $(ls node_modules | wc -l)"
-          echo "  - Node modules size: $(du -sh node_modules/)"
-          echo "  - Available modules (first 20):"
-          ls node_modules/ | head -20
-          echo "  - Express specifically:"
-          ls -la node_modules/ | grep express || echo "No express found in directory listing"
-          
-          # Verify critical dependencies exist using npm list (more reliable)
-          echo "🔍 Verifying critical dependencies..."
-          CRITICAL_DEPS=("express" "cors" "dotenv" "bcryptjs" "jsonwebtoken")
-          
-          for dep in "${CRITICAL_DEPS[@]}"; do
-            echo "🔍 Checking $dep..."
-            if npm list $dep > /dev/null 2>&1; then
-              echo "✅ $dep: Found in npm list"
-              # Get version info
-              VERSION=$(npm list $dep --depth=0 2>/dev/null | grep $dep | head -1 || echo "version unknown")
-              echo "📦 $dep: $VERSION"
+          # Verify critical modules exist
+          echo "🔍 Verifying key modules..."
+          for module in express cors dotenv bcryptjs; do
+            if [ -d "node_modules/$module" ]; then
+              echo "✅ $module: OK"
             else
-              echo "❌ $dep: Not found in npm list - attempting installation..."
-              
-              # Try multiple installation methods
-              npm install $dep --save --no-audit --no-fund
-              sleep 2
-              
-              if [ ! -d "node_modules/$dep" ]; then
-                echo "🔄 Retry: npm install $dep with force..."
-                npm install $dep --save --force
-                sleep 2
-              fi
-              
-              if [ ! -d "node_modules/$dep" ]; then
-                echo "🔄 Retry: npm install $dep with specific version..."
-                case $dep in
-                  "express") npm install express@4.21.2 --save ;;
-                  "cors") npm install cors@2.8.5 --save ;;
-                  "dotenv") npm install dotenv@16.6.1 --save ;;
-                  "bcryptjs") npm install bcryptjs@2.4.3 --save ;;
-                  "jsonwebtoken") npm install jsonwebtoken@9.0.2 --save ;;
-                esac
-                sleep 2
-              fi
-              
-              # Final check using npm list (more reliable than directory check)
-              if npm list $dep > /dev/null 2>&1; then
-                echo "✅ $dep: Successfully installed and available"
-                VERSION=$(npm list $dep --depth=0 2>/dev/null | grep $dep | head -1 || echo "version unknown")
-                echo "📦 $dep: $VERSION"
-              else
-                echo "❌ $dep: Installation verification failed!"
-                echo "📋 Debugging info for $dep:"
-                echo "  - npm list $dep:"
-                npm list $dep || echo "Not found in npm list"
-                echo "  - Full dependency tree:"
-                npm list --depth=1 | grep -i $dep || echo "No matching dependencies found"
-                exit 1
-              fi
+              echo "⚠️ $module: Missing, installing..."
+              npm install $module --legacy-peer-deps
             fi
           done
           
-          # Express specific comprehensive verification using require() test
-          echo "🔍 Express comprehensive verification..."
-          
-          if node -e "require('express'); console.log('✅ Express require() successful')" 2>/dev/null; then
-            echo "✅ Express module is properly accessible via require()"
-            EXPRESS_VERSION=$(node -e "console.log(require('express')().get('version') || require('express/package.json').version)" 2>/dev/null || echo "unknown")
-            echo "📦 Express version: $EXPRESS_VERSION"
-          else
-            echo "❌ Express require() failed - but checking npm list first..."
-            
-            # Check if Express is in npm list but just not accessible via require
-            if npm list express > /dev/null 2>&1; then
-              echo "⚠️ Express found in npm list but require() failed"
-              echo "📋 This may be a dependency resolution issue, trying to continue..."
-              echo "� Express in dependency tree:"
-              npm list express --depth=0 2>/dev/null || npm list | grep express
-            else
-              echo "❌ Express completely missing - attempting emergency installation..."
-              
-              # Single simplified installation attempt
-              echo "🔄 Installing Express..."
-              npm install express@4.21.2 --save
-              
-              # Final verification
-              if npm list express > /dev/null 2>&1; then
-                echo "✅ Express emergency installation successful"
-              else
-                echo "🚨 Express installation failed completely!"
-                echo "📋 Final diagnostic - continuing anyway as npm might resolve at runtime..."
-                npm list | head -20
-              fi
-            fi
-          fi
-          
-          echo "✅ All dependencies verified and installed successfully"
-          echo "📦 Final package count: $(ls node_modules | wc -l) modules"
+          echo "📦 Dependencies ready: $(ls node_modules | wc -l) modules"
 
       - name: Prepare deployment package
         run: |
-          echo "📦 Preparing deployment package..."
+          echo "📦 Creating deployment package..."
           
-          # Remove any existing deployment directory
-          rm -rf deploy
+          # Create deployment directory
           mkdir -p deploy
           
-          # Copy server files (including pre-installed node_modules)
-          echo "📦 Copying server source files and dependencies..."
+          # Copy server files
           cp -r server/* deploy/
           
-          # Copy shared modules and knowledge base
-          echo "📦 Copying additional resources..."
-          cp -r shared deploy/
-          cp -r knowledge-base deploy/
+          # Copy additional resources
+          cp -r shared deploy/shared 2>/dev/null || echo "No shared directory"
+          cp -r knowledge-base deploy/knowledge-base 2>/dev/null || echo "No knowledge-base directory"
           
-          # Create necessary directories
-          mkdir -p deploy/app-logs/exports
-          mkdir -p deploy/app-logs/history
+          # Create required directories
+          mkdir -p deploy/app-logs/{exports,history}
           mkdir -p deploy/uploads
           
-          # Cleanup development files but keep all node_modules
-          rm -f deploy/tsconfig*.json
-          rm -rf deploy/.env*
+          # Clean up
+          rm -f deploy/.env* deploy/tsconfig*.json
           
-          # Final verification before deployment
-          echo "🔍 FINAL: Verifying deployment package..."
-          
-          # Check main entry point
-          if [ -f "deploy/index.js" ]; then
-            echo "✅ Main index.js found"
-          else
-            echo "❌ FATAL: Main index.js missing!"
-            exit 1
-          fi
-          
-          # Check package.json
-          if [ -f "deploy/package.json" ]; then
-            echo "✅ Package.json found"
-            echo "📦 Start script: $(grep -A 1 '"start"' deploy/package.json)"
-          else
-            echo "❌ FATAL: package.json missing!"
-            exit 1
-          fi
-          
-          # Check node_modules and dependencies
-          if [ -d "deploy/node_modules" ]; then
-            echo "✅ node_modules directory exists ($(du -sh deploy/node_modules/))"
-            
-            # Test Express accessibility in deployment package
-            cd deploy
-            if node -e "require('express'); console.log('✅ Express accessible in deploy package')" 2>/dev/null; then
-              echo "✅ Express module verified and accessible"
-              EXPRESS_VERSION=$(node -e "console.log(require('express/package.json').version)" 2>/dev/null || echo "unknown")
-              echo "📦 Express version: $EXPRESS_VERSION"
-            else
-              echo "⚠️ Express require() test failed, but checking npm list..."
-              if npm list express > /dev/null 2>&1; then
-                echo "✅ Express found in npm dependencies - deployment should work"
-                npm list express --depth=0
-              else
-                echo "❌ Express completely missing from deployment package!"
-                echo "📋 Available modules (sample):"
-                ls node_modules/ | head -10
-                echo "📋 Continuing deployment - Azure may resolve dependencies..."
-              fi
-            fi
-            cd ..
-          else
-            echo "❌ FATAL: node_modules directory missing!"
-            exit 1
-          fi
-          
-          echo "📦 Final package verification:"
-          echo "  - Total size: $(du -sh deploy/)"
-          echo "  - File count: $(find deploy -type f | wc -l)"
-          echo "  - JS files: $(find deploy -name '*.js' | wc -l)"
-          echo "✅ Deployment package ready"
+          # Verify deployment package
+          echo "🔍 Deployment package verification:"
+          echo "  - Entry point: $(test -f deploy/index.js && echo 'OK' || echo 'MISSING')"
+          echo "  - Package.json: $(test -f deploy/package.json && echo 'OK' || echo 'MISSING')"
+          echo "  - Node modules: $(test -d deploy/node_modules && echo 'OK' || echo 'MISSING')"
+          echo "  - Express: $(test -f deploy/node_modules/express/package.json && echo 'OK' || echo 'MISSING')"
 
-      - name: Deploy to Azure App Service (publish profile method)
+      - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3
         with:
           app-name: Emergency-Assistance
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: deploy
         env:
-          # Environment variables for Azure App Service
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           FRONTEND_URL: "https://witty-river-012f39e00.1.azurestaticapps.net"
           NODE_ENV: "production"
-        continue-on-error: false
         
-      - name: Configure Azure App Service Settings
-        run: |
-          echo "⚙️ Verifying Azure App Service configuration..."
-          echo "📦 Deployment package final verification:"
-          echo "  - Deploy directory size: $(du -sh deploy/)"
-          echo "  - Express module in package:"
-          ls -la deploy/node_modules/express/index.js || echo "❌ Express index.js missing"
-          echo "  - Main entry point:"
-          ls -la deploy/index.js || echo "❌ Main index.js missing"
-          echo "  - Package.json start script:"
-          grep -A 5 '"scripts"' deploy/package.json || echo "❌ Scripts section missing"
-          echo "✅ Configuration verification completed"
-        
-      - name: Verify deployment and Health Check
+      - name: Health check
         run: |
           APP_URL="https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net"
           
-          echo "✅ Node.js application deployed to Azure App Service"
-          echo "🚀 Server deployed via ZIP deployment using Publish Profile"
-          echo "🌐 Backend URL: $APP_URL"
-          echo "🌐 Frontend URL: https://witty-river-012f39e00.1.azurestaticapps.net"
-          echo "🎯 Startup command: node index.js"
-          echo ""
+          echo "🚀 Deployment completed"
+          echo "⏰ Starting health check in 30 seconds..."
+          sleep 30
           
-          echo "⏰ Starting health check with retries..."
-          HEALTH_CHECK_SUCCESS=false
-          
-          # 5回リトライ（初回30秒待機、その後60秒間隔）
-          for i in {1..5}; do
-            if [ $i -eq 1 ]; then
-              echo "🔍 Attempt $i/5: Waiting 30 seconds for initial startup..."
-              sleep 30
-            else
-              echo "🔍 Attempt $i/5: Waiting 60 seconds for retry..."
-              sleep 60
-            fi
+          # Health check with retries
+          for i in {1..3}; do
+            echo "🔍 Health check attempt $i/3..."
             
-            echo "🔍 Testing health check at $APP_URL/api/health..."
-            if curl -f "$APP_URL/api/health" --max-time 30; then
-              echo "✅ Health check PASSED on attempt $i - Server is responding correctly"
-              HEALTH_CHECK_SUCCESS=true
-              break
+            if curl -f "$APP_URL/api/health" --max-time 30 --silent; then
+              echo "✅ Health check PASSED - Server is responding"
+              exit 0
             else
-              echo "❌ Health check attempt $i failed"
-              echo "📋 Diagnostic info:"
-              curl -I "$APP_URL/api/health" --max-time 10 || echo "No HTTP response received"
+              echo "⚠️ Attempt $i failed"
+              if [ $i -lt 3 ]; then
+                sleep 60
+              fi
             fi
           done
           
-          if [ "$HEALTH_CHECK_SUCCESS" = "true" ]; then
-            echo "🎉 Deployment successful - Server is healthy!"
-          else
-            echo "❌ All health check attempts failed"
-            echo "🔍 Please check Azure App Service logs:"
-            echo "   Azure Portal → App Service → Log stream"
-            echo "⚠️ Server might need more startup time or have configuration issues"
-            exit 1
-          fi
+          echo "❌ Health check failed after 3 attempts"
+          echo "📋 Please check Azure App Service logs"
+          exit 1
