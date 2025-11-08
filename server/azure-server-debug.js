@@ -40,14 +40,16 @@ criticalEnvs.forEach(env => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 全体的なエラーハンドリング
+// 全体的なエラーハンドリング（ログのみ、プロセス継続）
 process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
+  console.error('❌ Uncaught Exception (debug server continuing):', error);
   console.error('❌ Stack:', error.stack);
+  // デバッグサーバーではプロセスを終了させない
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('❌ Unhandled Rejection (debug server continuing):', promise, 'reason:', reason);
+  // デバッグサーバーではプロセスを終了させない
 });
 
 // 強化されたCORS設定（Azure Static Web Apps対応）
