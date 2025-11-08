@@ -34,8 +34,36 @@ async function startServer() {
       process.exit(1);
     });
 
-    await import('./azure-server.js');
-    console.log(' ✅ Production server loaded successfully');
+    import('./azure-server.js').then(module => {
+      console.log('✅ Azure server module loaded successfully');
+      console.log('📊 Server startup completed at:', new Date().toISOString());
+    }).catch(error => {
+      console.error('❌ Failed to load azure-server.js:', error);
+      console.error('Stack trace:', error.stack);
+
+      // Enhanced EISDIR debugging
+      if (error.code === 'EISDIR') {
+        console.error('🔍 EISDIR Details:');
+        console.error('  - Path:', error.path);
+        console.error('  - Syscall:', error.syscall);
+        console.error('  - Errno:', error.errno);
+        console.error('  - Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+      }
+
+      process.exit(1);
+    });
+
+    // Catch any unhandled rejections during module loading
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('⚠️ Unhandled promise rejection during startup:', promise, 'reason:', reason);
+      if (reason && reason.code === 'EISDIR') {
+        console.error('🔍 EISDIR in promise rejection:');
+        console.error('  - Path:', reason.path);
+        console.error('  - Syscall:', reason.syscall);
+        console.error('  - Errno:', reason.errno);
+        console.error('  - Full error object:', JSON.stringify(reason, Object.getOwnPropertyNames(reason), 2));
+      }
+    });
   } catch (error) {
     console.error(' ❌ IMPORT ERROR:', error.message);
     console.error(' 📍 Error Code:', error.code);
