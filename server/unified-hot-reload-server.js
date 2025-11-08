@@ -6235,163 +6235,163 @@ apiRouter.post('/chatgpt', async (req, res) => {
           };
         }
       } catch (importError) {
-      console.error('[api/chatgpt] Failed to import openai module:', importError);
-      console.error('[api/chatgpt] Import error details:', {
-        message: importError instanceof Error ? importError.message : String(importError),
-        stack: importError instanceof Error ? importError.stack : undefined
-      });
-      throw new Error('OpenAI module could not be loaded. In production, ensure TypeScript files are compiled to .js files.');
-    }
+        console.error('[api/chatgpt] Failed to import openai module:', importError);
+        console.error('[api/chatgpt] Import error details:', {
+          message: importError instanceof Error ? importError.message : String(importError),
+          stack: importError instanceof Error ? importError.stack : undefined
+        });
+        throw new Error('OpenAI module could not be loaded. In production, ensure TypeScript files are compiled to .js files.');
+      }
 
-    // knowledge-baseからのデータのみを使用（useOnlyKnowledgeBaseがtrueの場合）
-    const useKnowledgeBase = useOnlyKnowledgeBase !== false; // デフォルトはtrue
+      // knowledge-baseからのデータのみを使用（useOnlyKnowledgeBaseがtrueの場合）
+      const useKnowledgeBase = useOnlyKnowledgeBase !== false; // デフォルトはtrue
 
-    // AI支援カスタマイズ設定を読み込む
-    let aiAssistSettings = null;
-    try {
-      // クライアントから送信された設定を使用（リクエストボディに含まれている場合）
-      if (req.body.aiAssistSettings) {
-        aiAssistSettings = req.body.aiAssistSettings;
-      } else {
-        // サーバー側の設定ファイルから読み込む
-        const AI_ASSIST_SETTINGS_FILE = path.join(__dirname, '../data/ai-assist-settings.json');
-        if (fs.existsSync(AI_ASSIST_SETTINGS_FILE)) {
-          const settingsData = fs.readFileSync(AI_ASSIST_SETTINGS_FILE, 'utf-8');
-          aiAssistSettings = JSON.parse(settingsData);
-          console.log('✅ AI支援設定をサーバーから読み込みました');
+      // AI支援カスタマイズ設定を読み込む
+      let aiAssistSettings = null;
+      try {
+        // クライアントから送信された設定を使用（リクエストボディに含まれている場合）
+        if (req.body.aiAssistSettings) {
+          aiAssistSettings = req.body.aiAssistSettings;
         } else {
-          // デフォルト設定を使用
-          aiAssistSettings = {
-            responsePattern: 'step_by_step',
-            customInstructions: '',
-            conversationStyle: 'frank',
-            questionFlow: {
-              step1: '具体的な症状を教えてください',
-              step2: 'いつ頃から発生していますか？',
-              step3: '作業環境や状況を教えてください',
-              step4: '他に気になることはありますか？',
-              step5: '緊急度を教えてください'
-            },
-          };
+          // サーバー側の設定ファイルから読み込む
+          const AI_ASSIST_SETTINGS_FILE = path.join(__dirname, '../data/ai-assist-settings.json');
+          if (fs.existsSync(AI_ASSIST_SETTINGS_FILE)) {
+            const settingsData = fs.readFileSync(AI_ASSIST_SETTINGS_FILE, 'utf-8');
+            aiAssistSettings = JSON.parse(settingsData);
+            console.log('✅ AI支援設定をサーバーから読み込みました');
+          } else {
+            // デフォルト設定を使用
+            aiAssistSettings = {
+              responsePattern: 'step_by_step',
+              customInstructions: '',
+              conversationStyle: 'frank',
+              questionFlow: {
+                step1: '具体的な症状を教えてください',
+                step2: 'いつ頃から発生していますか？',
+                step3: '作業環境や状況を教えてください',
+                step4: '他に気になることはありますか？',
+                step5: '緊急度を教えてください'
+              },
+            };
+          }
+        }
+      } catch (error) {
+        console.warn('AI支援設定の読み込みに失敗しました。デフォルト値を使用します:', error);
+        aiAssistSettings = {
+          responsePattern: 'step_by_step',
+          customInstructions: '',
+          conversationStyle: 'frank',
+          questionFlow: {
+            step1: '具体的な症状を教えてください',
+            step2: 'いつ頃から発生していますか？',
+            step3: '作業環境や状況を教えてください',
+            step4: '他に気になることはありますか？',
+            step5: '緊急度を教えてください'
+          },
+        };
+      }
+
+      // 会話スタイルに応じたシステムプロンプトの調整
+      let styleInstruction = '';
+      if (aiAssistSettings.conversationStyle === 'business') {
+        styleInstruction = '丁寧で正式なビジネス用語を使用してください。';
+      } else if (aiAssistSettings.conversationStyle === 'technical') {
+        styleInstruction = '専門用語を中心に、技術的な説明を重視してください。';
+      } else {
+        styleInstruction = '親しみやすく、フランクな口調で話してください。';
+      }
+
+      // 1問1答形式で端的な応答を生成するためのシステムプロンプト調整
+      let prompt = text;
+
+      // カスタム指示を追加
+      let customInstructionText = '';
+      if (aiAssistSettings.customInstructions) {
+        customInstructionText = `\n\n【追加指示】\n${aiAssistSettings.customInstructions}`;
+      }
+
+      // 応答パターンに応じた指示を追加
+      let responsePatternInstruction = '';
+      if (aiAssistSettings.responsePattern === 'minimal') {
+        responsePatternInstruction = '要点のみ簡潔に回答してください。';
+      } else if (aiAssistSettings.responsePattern === 'comprehensive') {
+        responsePatternInstruction = '包括的に複数の対策をまとめて表示してください。';
+      } else {
+        // 段階的表示：質問フロー設定を活用
+        if (aiAssistSettings.questionFlow) {
+          const questionFlowGuide = Object.values(aiAssistSettings.questionFlow)
+            .filter(q => q && q.trim())
+            .map((q, idx) => `ステップ${idx + 1}: ${q}`)
+            .join('\n');
+          responsePatternInstruction = `端的に1問1答形式で回答してください。必要に応じて、以下の質問フローを参考に、ユーザーから追加情報を確認する質問を1つだけしてください。\n\n【推奨質問フロー】\n${questionFlowGuide}`;
+        } else {
+          responsePatternInstruction = '端的に1問1答形式で回答してください。必要に応じて、ユーザーから追加情報を確認する質問を1つだけしてください。';
         }
       }
-    } catch (error) {
-      console.warn('AI支援設定の読み込みに失敗しました。デフォルト値を使用します:', error);
-      aiAssistSettings = {
-        responsePattern: 'step_by_step',
-        customInstructions: '',
-        conversationStyle: 'frank',
-        questionFlow: {
-          step1: '具体的な症状を教えてください',
-          step2: 'いつ頃から発生していますか？',
-          step3: '作業環境や状況を教えてください',
-          step4: '他に気になることはありますか？',
-          step5: '緊急度を教えてください'
-        },
-      };
-    }
 
-    // 会話スタイルに応じたシステムプロンプトの調整
-    let styleInstruction = '';
-    if (aiAssistSettings.conversationStyle === 'business') {
-      styleInstruction = '丁寧で正式なビジネス用語を使用してください。';
-    } else if (aiAssistSettings.conversationStyle === 'technical') {
-      styleInstruction = '専門用語を中心に、技術的な説明を重視してください。';
-    } else {
-      styleInstruction = '親しみやすく、フランクな口調で話してください。';
-    }
+      // 会話履歴がある場合は、1問1答形式を維持するように指示を追加
+      if (conversationHistory && conversationHistory.length > 0) {
+        const recentHistory = conversationHistory.slice(-4).map(msg => ({
+          role: msg.isAiResponse ? 'assistant' : 'user',
+          content: msg.content
+        }));
 
-    // 1問1答形式で端的な応答を生成するためのシステムプロンプト調整
-    let prompt = text;
-
-    // カスタム指示を追加
-    let customInstructionText = '';
-    if (aiAssistSettings.customInstructions) {
-      customInstructionText = `\n\n【追加指示】\n${aiAssistSettings.customInstructions}`;
-    }
-
-    // 応答パターンに応じた指示を追加
-    let responsePatternInstruction = '';
-    if (aiAssistSettings.responsePattern === 'minimal') {
-      responsePatternInstruction = '要点のみ簡潔に回答してください。';
-    } else if (aiAssistSettings.responsePattern === 'comprehensive') {
-      responsePatternInstruction = '包括的に複数の対策をまとめて表示してください。';
-    } else {
-      // 段階的表示：質問フロー設定を活用
-      if (aiAssistSettings.questionFlow) {
-        const questionFlowGuide = Object.values(aiAssistSettings.questionFlow)
-          .filter(q => q && q.trim())
-          .map((q, idx) => `ステップ${idx + 1}: ${q}`)
-          .join('\n');
-        responsePatternInstruction = `端的に1問1答形式で回答してください。必要に応じて、以下の質問フローを参考に、ユーザーから追加情報を確認する質問を1つだけしてください。\n\n【推奨質問フロー】\n${questionFlowGuide}`;
-      } else {
-        responsePatternInstruction = '端的に1問1答形式で回答してください。必要に応じて、ユーザーから追加情報を確認する質問を1つだけしてください。';
-      }
-    }
-
-    // 会話履歴がある場合は、1問1答形式を維持するように指示を追加
-    if (conversationHistory && conversationHistory.length > 0) {
-      const recentHistory = conversationHistory.slice(-4).map(msg => ({
-        role: msg.isAiResponse ? 'assistant' : 'user',
-        content: msg.content
-      }));
-
-      // 会話履歴を考慮したプロンプト構築
-      prompt = `【会話の流れ】
+        // 会話履歴を考慮したプロンプト構築
+        prompt = `【会話の流れ】
 ${recentHistory.map(msg => `${msg.role === 'assistant' ? 'AI' : 'ユーザー'}: ${msg.content}`).join('\n')}
 
 【現在の質問】
 ${text}
 
 上記の会話を踏まえ、knowledge-baseの情報のみを基に、${styleInstruction}${responsePatternInstruction}${customInstructionText}`;
-    } else {
-      // 初回の質問の場合
-      prompt = `${text}\n\nknowledge-baseの情報のみを基に、${styleInstruction}${responsePatternInstruction}${customInstructionText}`;
+      } else {
+        // 初回の質問の場合
+        prompt = `${text}\n\nknowledge-baseの情報のみを基に、${styleInstruction}${responsePatternInstruction}${customInstructionText}`;
+      }
+
+      const response = await processOpenAIRequest(prompt, useKnowledgeBase);
+
+      res.json({
+        success: true,
+        response: response,
+        message: 'GPT応答を生成しました',
+        details: {
+          inputText: text || 'no text provided',
+          useOnlyKnowledgeBase: useKnowledgeBase,
+          environment: 'development',
+          model: 'gpt-4o'
+        },
+        timestamp: new Date().toISOString()
+      });
+    } catch (apiError) {
+      console.error('[api/chatgpt] OpenAI API error:', apiError);
+      console.error('[api/chatgpt] Error stack:', apiError instanceof Error ? apiError.stack : 'No stack trace');
+      res.status(500).json({
+        success: false,
+        response: 'AI支援機能は現在利用できません。しばらくしてから再度お試しください。',
+        message: 'OpenAI APIの呼び出しに失敗しました',
+        details: {
+          environment: 'development',
+          error: apiError instanceof Error ? apiError.message : String(apiError),
+          stack: isDevelopment && apiError instanceof Error ? apiError.stack : undefined
+        },
+        timestamp: new Date().toISOString()
+      });
     }
 
-    const response = await processOpenAIRequest(prompt, useKnowledgeBase);
-
-    res.json({
-      success: true,
-      response: response,
-      message: 'GPT応答を生成しました',
-      details: {
-        inputText: text || 'no text provided',
-        useOnlyKnowledgeBase: useKnowledgeBase,
-        environment: 'development',
-        model: 'gpt-4o'
-      },
-      timestamp: new Date().toISOString()
-    });
-  } catch (apiError) {
-    console.error('[api/chatgpt] OpenAI API error:', apiError);
-    console.error('[api/chatgpt] Error stack:', apiError instanceof Error ? apiError.stack : 'No stack trace');
+  } catch (error) {
+    console.error('[api/chatgpt] Error:', error);
+    console.error('[api/chatgpt] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     res.status(500).json({
       success: false,
-      response: 'AI支援機能は現在利用できません。しばらくしてから再度お試しください。',
-      message: 'OpenAI APIの呼び出しに失敗しました',
+      message: 'Error processing request',
+      error: error instanceof Error ? error.message : String(error),
       details: {
-        environment: 'development',
-        error: apiError instanceof Error ? apiError.message : String(apiError),
-        stack: isDevelopment && apiError instanceof Error ? apiError.stack : undefined
+        stack: isDevelopment && error instanceof Error ? error.stack : undefined
       },
       timestamp: new Date().toISOString()
     });
   }
-
-} catch (error) {
-  console.error('[api/chatgpt] Error:', error);
-  console.error('[api/chatgpt] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-  res.status(500).json({
-    success: false,
-    message: 'Error processing request',
-    error: error instanceof Error ? error.message : String(error),
-    details: {
-      stack: isDevelopment && error instanceof Error ? error.stack : undefined
-    },
-    timestamp: new Date().toISOString()
-  });
-}
 });
 
 // 診断用エンドポイントをマウント
