@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<deployment>
+  <id>5c929f6f-6f6b-441f-bf82-1c9e48b000fa</id>
+  <author>N/A</author>
+  <deployer>GITHUB_ZIP_DEPLOY</deployer>
+  <authorEmail>N/A</authorEmail>
+  <message>{"type":"deployment","sha":"2c640fee11300b3eb369558c284105aa40d5ca2c","repoName":"Satoshi-Niina/Emergency-Assistance","actor":"Satoshi-Niina","slotName":"production","commitMessage":"Complete migration to ZIP deployment - Remove all Docker code and configure Node.js runtime"}</message>
+  <progress></progress>
+  <status>Success</status>
+  <statusText></statusText>
+  <lastSuccessEndTime>2025-11-08T00:55:56.3071266Z</lastSuccessEndTime>
+  <receivedTime>2025-11-08T00:55:35.8686038Z</receivedTime>
+  <startTime>2025-11-08T00:55:37.2636413Z</startTime>
+  <endTime>2025-11-08T00:55:56.3071266Z</endTime>
+  <complete>True</complete>
+  <is_temp>False</is_temp>
+  <is_readonly>True</is_readonly>
+  <buildSummary />
+</deployment>
