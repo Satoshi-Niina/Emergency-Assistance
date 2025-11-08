@@ -136,13 +136,24 @@ jobs:
           echo "📦 Package size:"
           du -sh deploy/
 
-      - name: Deploy to Azure App Service (using publish profile)
+      - name: Deploy to Azure App Service (publish profile method)
         uses: azure/webapps-deploy@v3
         with:
           app-name: Emergency-Assistance
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: deploy
-          startup-command: 'node index.js'
+        continue-on-error: false
+        
+      - name: Verify deployment
+        run: |
+          echo "📋 Deployment summary:"
+          echo "  - App Name: Emergency-Assistance"
+          echo "  - Package: deploy directory"
+          echo "  - Startup: node index.js"
+          echo ""
+          echo "💡 If deployment failed due to credentials:"
+          echo "   Please ensure AZURE_WEBAPP_PUBLISH_PROFILE is set in GitHub Secrets"
+          echo "   Download from: Azure Portal > App Service > Deployment Center > Publish Profile"
 
       - name: Configure CORS on Azure App Service
         run: |
