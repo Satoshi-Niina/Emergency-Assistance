@@ -46,48 +46,82 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: server/package.json
 
-      - name: Install dependencies and prepare package
+      - name: Verify pre-installed dependencies
         run: |
-          echo "📦 Installing dependencies in server directory..."
+          echo "📦 Verifying pre-installed dependencies in server directory..."
           cd server
           
           # Show current working directory and package.json
           echo "📁 Current directory: $(pwd)"
           echo "📄 Package.json exists: $(test -f package.json && echo 'YES' || echo 'NO')"
-          echo "📄 Package.json content:"
-          cat package.json | head -20
           
-          # Clear any existing node_modules and package-lock to avoid cache issues
-          echo "🧹 Cleaning existing installation..."
-          rm -rf node_modules package-lock.json
+          # Complete cleanup to ensure fresh start
+          echo "🧹 Complete cleanup..."
+          rm -rf node_modules package-lock.json npm-debug.log*
+          npm cache clean --force
           
-          # Fresh install with --production=false to include devDependencies
-          echo "📦 Starting fresh npm install..."
-          npm install --production=false --no-audit --no-fund --verbose
-          echo "📦 Dependencies installed successfully"
+          # Verify npm registry access
+          echo "🌐 Checking npm registry access..."
+          npm config get registry
+          npm ping || echo "⚠️ npm ping failed, but continuing..."
           
-          # Verify installation was successful
-          echo "📦 Verifying installation:"
+          # Install with multiple strategies
+          echo "📦 Strategy 1: npm install with retries..."
+          for i in {1..3}; do
+            echo "📦 Attempt $i: npm install..."
+            if npm install --no-optional --no-audit --no-fund; then
+              echo "✅ npm install successful on attempt $i"
+              break
+            else
+              echo "❌ npm install failed on attempt $i"
+              if [ $i -eq 3 ]; then
+                echo "� All npm install attempts failed, trying alternative..."
+                # Try installing express specifically
+                echo "📦 Installing express explicitly..."
+                npm install express@^4.21.2 --save
+                npm install cors@^2.8.5 --save
+                npm install dotenv@^16.6.1 --save
+                npm install bcryptjs@^2.4.3 --save
+              else
+                rm -rf node_modules package-lock.json
+                sleep 5
+              fi
+            fi
+          done
+          
+          # Verify critical dependencies
+          echo "🔍 Verifying critical dependencies..."
+          CRITICAL_DEPS=("express" "cors" "dotenv" "bcryptjs")
+          ALL_DEPS_OK=true
+          
+          for dep in "${CRITICAL_DEPS[@]}"; do
+            if [ -d "node_modules/$dep" ]; then
+              echo "✅ $dep: OK"
+            else
+              echo "❌ $dep: MISSING - Installing individually..."
+              npm install $dep --save || echo "Failed to install $dep"
+              ALL_DEPS_OK=false
+            fi
+          done
+          
+          # Final verification
+          echo "📦 Final dependency verification:"
           echo "  - Node.js version: $(node --version)"
           echo "  - NPM version: $(npm --version)"
-          echo "  - Package.json scripts:"
-          cat package.json | jq '.scripts' || echo "No jq available"
-          
-          # Comprehensive express check
-          echo "📦 Checking express installation:"
-          echo "  - npm list express:"
-          npm list express || echo "    Express not found in npm list"
           echo "  - node_modules directory:"
-          ls -la node_modules/ | head -10
-          echo "  - express directory check:"
-          ls -la node_modules/express/ || echo "    Express directory not found"
-          echo "  - express package.json:"
-          cat node_modules/express/package.json | head -10 || echo "    Express package.json not found"
-          echo "  - node_modules size:"
-          du -sh node_modules/
+          ls -la node_modules/ | head -15
+          echo "  - Express check:"
+          if [ -f "node_modules/express/index.js" ]; then
+            echo "✅ Express main file exists"
+            echo "  - Express version: $(node -p "require('./node_modules/express/package.json').version")"
+          else
+            echo "❌ Express main file missing!"
+            echo "  - Available in node_modules:"
+            ls -la node_modules/ | grep express || echo "No express found"
+          fi
+          echo "  - Total modules: $(ls node_modules | wc -l)"
+          echo "  - node_modules size: $(du -sh node_modules/)"
 
       - name: Prepare deployment package
         run: |
