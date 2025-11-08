@@ -28,38 +28,38 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: 'server/package.json'
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
 
-      - name: Install dependencies (simplified)
+      - name: Install dependencies (config-safe)
         working-directory: ./server
         run: |
           echo "📦 Installing server dependencies..."
           
-          # Clean installation
-          rm -rf node_modules package-lock.json .npm
+          # Clean start - remove problematic files
+          rm -rf node_modules package-lock.json .npm .npmrc
           
-          # Configure npm for CI
-          npm config set audit-level none
-          npm config set fund false
-          npm config set progress false
+          # Create minimal .npmrc to avoid config issues
+          echo "audit=false" > .npmrc
+          echo "fund=false" >> .npmrc
+          echo "progress=false" >> .npmrc
+          echo "legacy-peer-deps=true" >> .npmrc
           
-          # Install with legacy peer deps to avoid conflicts
-          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+          # Simple npm install without config commands
+          echo "🔧 Running npm install..."
+          npm install || {
+            echo "⚠️ npm install failed, trying with --force..."
+            npm install --force
+          }
           
-          # Verify critical modules exist
-          echo "🔍 Verifying key modules..."
-          for module in express cors dotenv bcryptjs; do
-            if [ -d "node_modules/$module" ]; then
-              echo "✅ $module: OK"
-            else
-              echo "⚠️ $module: Missing, installing..."
-              npm install $module --legacy-peer-deps
-            fi
-          done
+          # Basic verification
+          echo "📦 Installation summary:"
+          echo "  - Modules installed: $(ls node_modules 2>/dev/null | wc -l || echo '0')"
+          echo "  - Express: $(test -d node_modules/express && echo 'OK' || echo 'MISSING')"
+          echo "  - CORS: $(test -d node_modules/cors && echo 'OK' || echo 'MISSING')"
           
-          echo "📦 Dependencies ready: $(ls node_modules | wc -l) modules"
+          # Clean up .npmrc
+          rm -f .npmrc
 
       - name: Prepare deployment package
         run: |
