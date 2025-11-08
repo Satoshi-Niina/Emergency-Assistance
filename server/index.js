@@ -31,11 +31,30 @@ if (hasCriticalEnvVars) {
   // 本番サーバーを使用
   try {
     console.log('📦 Loading azure-server.js (production server with all env vars)...');
+    console.log('🔧 Production server attempt - detailed logging enabled');
     await import('./azure-server.js');
     console.log('✅ azure-server.js loaded successfully');
   } catch (error) {
     console.error('❌ Error loading azure-server.js:', error);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error name:', error.name);
     console.error('❌ Stack trace:', error.stack);
+    
+    // 強制的に本番サーバーを試行（デバッグ目的）
+    console.log('🔧 FORCE RETRY: Attempting production server again with detailed logging...');
+    try {
+      // エラー情報をより詳細に取得するため再度実行
+      const module = await import('./azure-server.js?retry=' + Date.now());
+      console.log('✅ azure-server.js loaded successfully on retry');
+      return;
+    } catch (retryError) {
+      console.error('❌ Production server retry failed:', retryError);
+      console.error('❌ Retry error details:', {
+        message: retryError.message,
+        name: retryError.name,
+        code: retryError.code
+      });
+    }
     
     // フォールバックとしてデバッグサーバーを起動
     console.log('🔧 Fallback: Starting debug server due to production server error...');
