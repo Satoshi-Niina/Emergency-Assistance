@@ -131,8 +131,17 @@ jobs:
           mkdir -p deploy/app-logs/{exports,history}
           mkdir -p deploy/uploads
 
-          # Clean up unnecessary files
+          # Clean up files that might cause EISDIR errors
+          echo "🧹 Cleaning up potentially problematic files..."
           rm -f deploy/.env* deploy/tsconfig*.json
+          rm -rf deploy/lib deploy/routes deploy/compat deploy/config
+          rm -f deploy/*hot-reload* deploy/unified-*.js deploy/fallback-*.js
+          rm -f deploy/*.ts deploy/*.md deploy/*.sql deploy/*.cjs deploy/*.mjs
+          find deploy -name "*.ts" -delete 2>/dev/null || true
+          find deploy -name "*.md" -delete 2>/dev/null || true
+          find deploy -type d -name ".git" -exec rm -rf {} + 2>/dev/null || true
+
+          echo "📦 Keeping only essential files for minimal deployment..."
 
           # Ensure web.config exists for IIS/Azure App Service
           if [ ! -f deploy/web.config ]; then

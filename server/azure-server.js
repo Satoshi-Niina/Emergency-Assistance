@@ -8,7 +8,8 @@ import express from 'express';
 import cors from 'cors';
 import { Pool } from 'pg';
 import { BlobServiceClient, generateBlobSASQueryParameters, BlobSASPermissions } from '@azure/storage-blob';
-import { runMigrations } from './startup-migration.js';
+// FIXME: Temporarily disable migration import to isolate EISDIR
+// import { runMigrations } from './startup-migration.js';
 import bcrypt from 'bcryptjs';
 import session from 'express-session';
 import dotenv from 'dotenv';
@@ -145,12 +146,13 @@ async function startupSequence() {
   try {
     console.log('🚀 Starting Azure application startup sequence...');
 
+    // FIXME: Temporarily disable migrations to isolate EISDIR
     // データベースマイグレーションを実行
     // データベースマイグレーション実行（強制版）
-    console.log('🔄 Running database migrations (FORCED)...');
+    console.log('🔄 Skipping database migrations (EISDIR debug)...');
     try {
-      await runMigrations();
-      console.log('✅ Database migrations completed successfully');
+      // await runMigrations();
+      console.log('✅ Database migrations skipped (EISDIR debug)');
 
       // マイグレーション後のテーブル確認
       if (dbPool) {
