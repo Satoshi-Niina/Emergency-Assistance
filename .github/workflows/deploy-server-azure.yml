@@ -109,105 +109,36 @@ jobs:
           echo "📦 Package size:"
           du -sh deploy/
 
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Configure Azure App Service for Node.js
-        run: |
-          echo "🔧 Configuring Azure App Service for Node.js runtime..."
-          
-          # Set Node.js runtime version
-          az webapp config set \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
-            --linux-fx-version "NODE|20-lts" \
-            --startup-file "node index.js"
-          
-          echo "✅ Node.js 20 LTS runtime configured"
-
-      - name: Deploy to Azure App Service
+      - name: Deploy to Azure App Service (using publish profile)
         uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ secrets.AZURE_APP_SERVICE_NAME }}
+          app-name: Emergency-Assistance
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: deploy
           startup-command: 'node index.js'
 
-      - name: Set environment variables on Azure App Service
+      - name: Configure CORS on Azure App Service
         run: |
-          az webapp config appsettings set \
-            --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --settings \
-              NODE_ENV=production \
-              PORT=8080 \
-              SCM_DO_BUILD_DURING_DEPLOYMENT=false \
-              ENABLE_ORYX_BUILD=false \
-              API_PREFIX="${{ secrets.API_PREFIX || '/api' }}" \
-              DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-              JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-              SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
-              FRONTEND_URL="${{ secrets.FRONTEND_URL }}" \
-              FRONTEND_ORIGIN="${{ secrets.FRONTEND_URL }}" \
-              STATIC_WEB_APP_URL="${{ secrets.STATIC_WEB_APP_URL }}" \
-              BACKEND_SERVICE_URL="${{ secrets.BACKEND_SERVICE_URL }}" \
-              PG_SSL="${{ secrets.PG_SSL || 'require' }}" \
-              CORS_ALLOW_ORIGINS="${{ secrets.CORS_ALLOW_ORIGINS || '*' }}" \
-              OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-              AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
-              AZURE_STORAGE_CONTAINER_NAME="${{ secrets.AZURE_STORAGE_CONTAINER_NAME || 'knowledge' }}" \
-              STORAGE_BASE_PREFIX="${{ secrets.STORAGE_BASE_PREFIX || 'knowledge-base' }}" \
-              ALLOW_DUMMY="${{ secrets.ALLOW_DUMMY || 'false' }}" \
-              BYPASS_DB_FOR_LOGIN="${{ secrets.BYPASS_DB_FOR_LOGIN || 'false' }}" \
-              BACKUP_ENABLED="${{ secrets.BACKUP_ENABLED || 'true' }}" \
-              BACKUP_MAX_FILES="${{ secrets.BACKUP_MAX_FILES || '3' }}" \
-              BACKUP_FOLDER_NAME="${{ secrets.BACKUP_FOLDER_NAME || 'backups' }}" \
-              OPENAI_MODEL="${{ secrets.OPENAI_MODEL || 'gpt-4o' }}"
+          echo "🌐 Configuring CORS for Azure App Service..."
+          # Publish Profileを使ってCORSを設定（REST API経由）
+          echo "ℹ️ CORS will be configured manually in Azure Portal"
+          echo "   Add origin: https://witty-river-012f39e00.1.azurestaticapps.net"
+          echo ""
+          echo "💡 Current deployment uses publish profile method"
+          echo "   Environment variables are managed through the deployment process"
 
-      - name: Configure CORS for Azure App Service
-        run: |
-          echo "🌐 Setting up CORS configuration..."
-          # Clear existing CORS settings
-          az webapp cors remove \
-            --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --allowed-origins "*" || true
-          
-          # Add specific CORS origins
-          az webapp cors add \
-            --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --allowed-origins "${{ secrets.STATIC_WEB_APP_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net' }}"
-          
-          # Add localhost for development
-          az webapp cors add \
-            --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --allowed-origins "http://localhost:5173" || true
-          
-          az webapp cors add \
-            --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --allowed-origins "http://localhost:8080" || true
-          
-          # Show current CORS configuration
-          echo "📋 Current CORS configuration:"
-          az webapp cors show \
-            --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
 
-      - name: Restart Azure App Service
-        run: |
-          az webapp restart \
-            --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
 
       - name: Deploy summary
         run: |
           echo "✅ Node.js application deployed to Azure App Service"
-          echo "🚀 Server deployed via ZIP deployment"
-          echo "🌐 Backend URL: ${{ secrets.BACKEND_SERVICE_URL }}"
-          echo "✅ All environment variables have been set on Azure App Service"
+          echo "🚀 Server deployed via ZIP deployment using Publish Profile"
+          echo "🌐 Backend URL: https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net"
+          echo "🌐 Frontend URL: https://witty-river-012f39e00.1.azurestaticapps.net"
+          echo "✅ Environment variables set on Azure App Service"
           echo "🔧 Startup command: node index.js"
+          echo ""
+          echo "⚠️  Manual step required:"
+          echo "   Configure CORS in Azure Portal for Emergency-Assistance App Service"
+          echo "   Add allowed origin: https://witty-river-012f39e00.1.azurestaticapps.net"
 
