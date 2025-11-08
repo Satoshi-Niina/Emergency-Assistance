@@ -50,17 +50,49 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-// 基本的なCORS設定
+// 強化されたCORS設定（Azure Static Web Apps対応）
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  const origin = req.headers.origin;
   
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
+  // Azure Static Web Apps用の明示的なCORS設定
+  const allowedOrigins = [
+    'https://witty-river-012f39e00.1.azurestaticapps.net',
+    'http://localhost:5173',
+    'http://localhost:8080',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:8080'
+  ];
+  
+  console.log('🔍 CORS Request:', {
+    method: req.method,
+    origin: origin,
+    path: req.path,
+    userAgent: req.headers['user-agent']?.substring(0, 30) + '...'
+  });
+  
+  // 常に Azure Static Web Apps のオリジンを許可
+  if (!origin || allowedOrigins.includes(origin) || (origin && origin.includes('azurestaticapps.net'))) {
+    res.header('Access-Control-Allow-Origin', origin || 'https://witty-river-012f39e00.1.azurestaticapps.net');
+    console.log('✅ CORS: 許可されたオリジン:', origin);
   } else {
-    next();
+    // 開発/デバッグでは全てのオリジンを許可
+    res.header('Access-Control-Allow-Origin', origin || '*');
+    console.log('🔧 CORS: デバッグモードでオリジンを許可:', origin);
   }
+  
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma, Expires, Cookie, Set-Cookie');
+  res.header('Access-Control-Expose-Headers', 'Set-Cookie');
+  res.header('Access-Control-Max-Age', '86400');
+  
+  // OPTIONSプリフライトリクエストの処理
+  if (req.method === 'OPTIONS') {
+    console.log('📋 OPTIONS プリフライト完了:', { origin, allowed: true });
+    return res.status(200).end();
+  }
+  
+  next();
 });
 
 // ヘルスチェック（簡易版）
@@ -132,9 +164,28 @@ app.get('/api/debug/system', (req, res) => {
   });
 });
 
+// CORS テスト専用エンドポイント
+app.options('/api/auth/login', (req, res) => {
+  console.log('🔍 CORS Preflight for login endpoint');
+  res.status(200).end();
+});
+
 // 最小限のログインエンドポイント（認証バイパス）
 app.post('/api/auth/login', (req, res) => {
-  console.log('🔐 Login attempt (bypass mode):', req.body?.username);
+  console.log('🔐 Login attempt (bypass mode):', {
+    username: req.body?.username,
+    origin: req.headers.origin,
+    userAgent: req.headers['user-agent']?.substring(0, 50) + '...'
+  });
+  
+  // CORS ヘッダーを明示的に再設定
+  const origin = req.headers.origin;
+  if (origin && origin.includes('azurestaticapps.net')) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else {
+    res.header('Access-Control-Allow-Origin', 'https://witty-river-012f39e00.1.azurestaticapps.net');
+  }
+  res.header('Access-Control-Allow-Credentials', 'true');
   
   // 最小限のテストレスポンス
   res.json({
@@ -146,6 +197,34 @@ app.post('/api/auth/login', (req, res) => {
       role: 'admin'
     },
     token: 'debug-token-' + Date.now(),
+    timestamp: new Date().toISOString(),
+    corsInfo: {
+      origin: origin,
+      allowedOrigin: res.getHeaders()['access-control-allow-origin']
+    }
+  });
+});
+
+// CORS 診断エンドポイント
+app.get('/api/debug/cors', (req, res) => {
+  const origin = req.headers.origin;
+  console.log('🔍 CORS診断リクエスト from:', origin);
+  
+  res.json({
+    success: true,
+    corsTest: {
+      requestOrigin: origin,
+      allowedOrigins: [
+        'https://witty-river-012f39e00.1.azurestaticapps.net',
+        'http://localhost:5173',
+        'http://localhost:8080'
+      ],
+      responseHeaders: {
+        'Access-Control-Allow-Origin': res.getHeaders()['access-control-allow-origin'],
+        'Access-Control-Allow-Credentials': res.getHeaders()['access-control-allow-credentials'],
+        'Access-Control-Allow-Methods': res.getHeaders()['access-control-allow-methods']
+      }
+    },
     timestamp: new Date().toISOString()
   });
 });

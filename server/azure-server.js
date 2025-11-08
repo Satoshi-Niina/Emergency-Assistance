@@ -261,11 +261,19 @@ app.use((req, res, next) => {
     ...ALLOWED_ORIGINS
   ].filter(Boolean);
   
-  // オリジンのチェックと許可
+  // オリジンのチェックと許可（強化版）
   let allowOrigin = false;
-  if (!origin) {
+  
+  // Azure Static Web Apps のオリジンを最優先で許可
+  if (origin && origin.includes('azurestaticapps.net')) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+    allowOrigin = true;
+    console.log('✅ CORS: Azure Static Web Apps オリジンを許可:', origin);
+  } else if (!origin) {
     // オリジンなしのリクエスト（直接アクセスなど）
-    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Origin', 'https://witty-river-012f39e00.1.azurestaticapps.net');
+    res.header('Access-Control-Allow-Credentials', 'true');
     allowOrigin = true;
   } else if (allowedOrigins.includes(origin)) {
     // 許可リストに含まれるオリジン
@@ -273,27 +281,12 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Credentials', 'true');
     allowOrigin = true;
     console.log('✅ CORS: 許可されたオリジン:', origin);
-  } else if (origin.includes('azurestaticapps.net')) {
-    // Azure Static Web Apps のオリジン（セーフガード）
+  } else {
+    // 不明なオリジン - 本番環境でも一時的に全て許可（CORS問題解決のため）
     res.header('Access-Control-Allow-Origin', origin);
     res.header('Access-Control-Allow-Credentials', 'true');
     allowOrigin = true;
-    console.log('✅ CORS: Azure Static Web Apps オリジンを許可:', origin);
-  } else {
-    // 不明なオリジン（プロダクションでは拒否、開発では許可）
-    console.warn('⚠️ CORS: 不明なオリジン:', origin);
-    if (process.env.NODE_ENV === 'development') {
-      res.header('Access-Control-Allow-Origin', origin);
-      res.header('Access-Control-Allow-Credentials', 'true');
-      allowOrigin = true;
-      console.log('🔧 CORS: 開発モードで不明なオリジンを許可:', origin);
-    } else {
-      // プロダクションでも一時的に許可（デバッグのため）
-      res.header('Access-Control-Allow-Origin', origin);
-      res.header('Access-Control-Allow-Credentials', 'true');
-      allowOrigin = true;
-      console.warn('⚠️ CORS: プロダクションで不明なオリジンを一時許可:', origin);
-    }
+    console.warn('⚠️ CORS: 一時的に全オリジンを許可:', origin);
   }
   
   // 共通のCORSヘッダー
