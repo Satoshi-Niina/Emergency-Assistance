@@ -28,42 +28,24 @@ console.log('🔍 Critical environment variables check:');
 console.log('  - Has all critical vars:', hasCriticalEnvVars);
 
 if (hasCriticalEnvVars) {
-  // 本番サーバーを使用
+  // 本番サーバーを使用（フォールバック無効化）
+  console.log('📦 Loading azure-server.js (production server with all env vars)...');
+  console.log('🔧 Production server FORCED - no fallback to debug server');
+  console.log('🔍 Forcing production server to start, any errors will be fatal');
+
   try {
-    console.log('📦 Loading azure-server.js (production server with all env vars)...');
-    console.log('🔧 Production server attempt - detailed logging enabled');
     await import('./azure-server.js');
     console.log('✅ azure-server.js loaded successfully');
   } catch (error) {
-    console.error('❌ Error loading azure-server.js:', error);
+    console.error('❌ FATAL ERROR loading azure-server.js:', error);
     console.error('❌ Error message:', error.message);
     console.error('❌ Error name:', error.name);
+    console.error('❌ Error code:', error.code);
     console.error('❌ Stack trace:', error.stack);
 
-    // 強制的に本番サーバーを試行（デバッグ目的）
-    console.log('🔧 FORCE RETRY: Attempting production server again with detailed logging...');
-    try {
-      // エラー情報をより詳細に取得するため再度実行
-      const module = await import('./azure-server.js?retry=' + Date.now());
-      console.log('✅ azure-server.js loaded successfully on retry');
-    } catch (retryError) {
-      console.error('❌ Production server retry failed:', retryError);
-      console.error('❌ Retry error details:', {
-        message: retryError.message,
-        name: retryError.name,
-        code: retryError.code
-      });
-    }
-
-    // フォールバックとしてデバッグサーバーを起動
-    console.log('🔧 Fallback: Starting debug server due to production server error...');
-    try {
-      await import('./azure-server-debug.js');
-      console.log('✅ azure-server-debug.js loaded as fallback');
-    } catch (debugError) {
-      console.error('❌ Fallback also failed:', debugError);
-      process.exit(1);
-    }
+    // 本番サーバーでエラーが発生した場合、プロセスを終了
+    console.error('� Production server failed to start. Exiting process...');
+    process.exit(1);
   }
 } else {
   // 環境変数が不足している場合はデバッグサーバーを使用
