@@ -187,10 +187,8 @@ async function startupSequence() {
   }
 }
 
-// FIXME: Temporarily disable startup sequence to isolate EISDIR
 // 非同期でスタートアップシーケンスを実行
-// startupSequence();
-console.log('🚀 Startup sequence disabled for EISDIR debugging');
+startupSequence();
 
 // Azure App Service用のCORS設定
 // 注意: 本番環境では必ず環境変数を設定してください

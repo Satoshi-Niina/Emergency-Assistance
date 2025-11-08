@@ -224,7 +224,7 @@ jobs:
           FRONTEND_URL: "https://witty-river-012f39e00.1.azurestaticapps.net"
           NODE_ENV: "production"
           WEBSITE_NODE_DEFAULT_VERSION: "20-lts"
-          SCM_DO_BUILD_DURING_DEPLOYMENT: "false"
+          SCM_DO_BUILD_DURING_DEPLOYMENT: "true"
 
       - name: Health check
         run: |
