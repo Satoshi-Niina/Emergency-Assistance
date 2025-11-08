@@ -1,42 +1,44 @@
-# Azure App Service CORS設定修正スクリプト
-# Emergency-Assistance プロジェクト用
+# Azure App Service CORS config fix script
+# Emergency-Assistance project
 
 param(
     [string]$ResourceGroup = "Emergency-Assistance_group",
     [string]$AppName = "emergency-assistance-bfckhjejb3fbf9du"
 )
 
-Write-Host "🔧 Azure App Service CORS設定を修正します" -ForegroundColor Cyan
-Write-Host "📱 App Service: $AppName" -ForegroundColor Yellow
-Write-Host "🏠 Resource Group: $ResourceGroup" -ForegroundColor Yellow
+Write-Host "Azure App Service CORS config fix starting..." -ForegroundColor Cyan
+Write-Host "App Service: $AppName" -ForegroundColor Yellow
+Write-Host "Resource Group: $ResourceGroup" -ForegroundColor Yellow
 
-# Azure CLIでログイン確認
-Write-Host "`n🔍 Azure CLIの認証状態を確認中..." -ForegroundColor Cyan
+# Check Azure CLI authentication
+Write-Host "`nChecking Azure CLI authentication..." -ForegroundColor Cyan
 try {
-    $account = az account show --query "user.name" -o tsv
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "✅ Azure CLI認証済み: $account" -ForegroundColor Green
+    $account = az account show --query "user.name" -o tsv 2>$null
+    if ($LASTEXITCODE -eq 0 -and $account) {
+        Write-Host "Azure CLI authenticated: $account" -ForegroundColor Green
     } else {
-        throw "Azure CLI未認証"
+        throw "Azure CLI not authenticated"
     }
 } catch {
-    Write-Host "❌ Azure CLIにログインしてください" -ForegroundColor Red
-    Write-Host "実行コマンド: az login" -ForegroundColor Yellow
+    Write-Host "Please login to Azure CLI" -ForegroundColor Red
+    Write-Host "Command: az login" -ForegroundColor Yellow
     exit 1
 }
 
-# 現在のCORS設定を取得
-Write-Host "`n📋 現在のCORS設定を確認中..." -ForegroundColor Cyan
+# Get current CORS settings
+Write-Host "`nChecking current CORS settings..." -ForegroundColor Cyan
 try {
-    $currentCors = az webapp cors show --name $AppName --resource-group $ResourceGroup --query "allowedOrigins" -o json
-    Write-Host "現在の許可オリジン:" -ForegroundColor Yellow
-    $currentCors | ConvertFrom-Json | ForEach-Object { Write-Host "  - $_" -ForegroundColor Gray }
+    $currentCors = az webapp cors show --name $AppName --resource-group $ResourceGroup --query "allowedOrigins" -o json 2>$null
+    if ($currentCors) {
+        Write-Host "Current allowed origins:" -ForegroundColor Yellow
+        $currentCors | ConvertFrom-Json | ForEach-Object { Write-Host "  - $_" -ForegroundColor Gray }
+    }
 } catch {
-    Write-Host "⚠️ 現在のCORS設定取得に失敗" -ForegroundColor Yellow
+    Write-Host "Failed to get current CORS settings" -ForegroundColor Yellow
 }
 
-# 新しいCORS設定を適用
-Write-Host "`n🚀 新しいCORS設定を適用中..." -ForegroundColor Cyan
+# Apply new CORS settings
+Write-Host "`nApplying new CORS settings..." -ForegroundColor Cyan
 
 $allowedOrigins = @(
     "https://witty-river-012f39e00.1.azurestaticapps.net",
@@ -46,57 +48,61 @@ $allowedOrigins = @(
     "https://127.0.0.1:5173"
 )
 
-Write-Host "設定する許可オリジン:" -ForegroundColor Yellow
+Write-Host "Origins to allow:" -ForegroundColor Yellow
 $allowedOrigins | ForEach-Object { Write-Host "  - $_" -ForegroundColor Gray }
 
 try {
-    # CORS設定をクリア（既存設定を削除）
-    Write-Host "`n🗑️ 既存CORS設定をクリア中..." -ForegroundColor Cyan
-    az webapp cors remove --name $AppName --resource-group $ResourceGroup --allowed-origins "*"
+    # Clear existing CORS settings
+    Write-Host "`nClearing existing CORS settings..." -ForegroundColor Cyan
+    az webapp cors remove --name $AppName --resource-group $ResourceGroup --allowed-origins "*" 2>$null
     
-    # 新しいCORS設定を追加
-    Write-Host "➕ 新しいCORS設定を追加中..." -ForegroundColor Cyan
-    $originsString = $allowedOrigins -join " "
-    az webapp cors add --name $AppName --resource-group $ResourceGroup --allowed-origins $originsString
-    
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "✅ CORS設定が正常に更新されました" -ForegroundColor Green
-    } else {
-        throw "CORS設定更新に失敗"
+    # Add new CORS settings
+    Write-Host "Adding new CORS settings..." -ForegroundColor Cyan
+    foreach ($origin in $allowedOrigins) {
+        Write-Host "Adding origin: $origin" -ForegroundColor Gray
+        az webapp cors add --name $AppName --resource-group $ResourceGroup --allowed-origins $origin 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Warning: Failed to add origin $origin" -ForegroundColor Yellow
+        }
     }
+    
+    Write-Host "CORS settings updated successfully" -ForegroundColor Green
 } catch {
-    Write-Host "❌ CORS設定の更新に失敗しました" -ForegroundColor Red
-    Write-Host "エラー: $_" -ForegroundColor Red
+    Write-Host "Failed to update CORS settings" -ForegroundColor Red
+    Write-Host "Error: $_" -ForegroundColor Red
     exit 1
 }
 
-# 設定確認
-Write-Host "`n🔍 更新後のCORS設定を確認中..." -ForegroundColor Cyan
+# Verify settings
+Write-Host "`nVerifying updated CORS settings..." -ForegroundColor Cyan
 try {
-    $newCors = az webapp cors show --name $AppName --resource-group $ResourceGroup --query "allowedOrigins" -o json
-    Write-Host "更新後の許可オリジン:" -ForegroundColor Yellow
-    $newCors | ConvertFrom-Json | ForEach-Object { Write-Host "  - $_" -ForegroundColor Green }
-} catch {
-    Write-Host "⚠️ 更新後のCORS設定確認に失敗" -ForegroundColor Yellow
-}
-
-# App Serviceの再起動
-Write-Host "`n🔄 App Serviceを再起動して設定を反映中..." -ForegroundColor Cyan
-try {
-    az webapp restart --name $AppName --resource-group $ResourceGroup
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "✅ App Serviceが正常に再起動されました" -ForegroundColor Green
-    } else {
-        throw "App Service再起動に失敗"
+    $newCors = az webapp cors show --name $AppName --resource-group $ResourceGroup --query "allowedOrigins" -o json 2>$null
+    if ($newCors) {
+        Write-Host "Updated allowed origins:" -ForegroundColor Yellow
+        $newCors | ConvertFrom-Json | ForEach-Object { Write-Host "  - $_" -ForegroundColor Green }
     }
 } catch {
-    Write-Host "❌ App Service再起動に失敗しました" -ForegroundColor Red
-    Write-Host "手動で再起動してください" -ForegroundColor Yellow
+    Write-Host "Failed to verify updated CORS settings" -ForegroundColor Yellow
 }
 
-Write-Host "`n🎉 CORS設定修正が完了しました！" -ForegroundColor Green
-Write-Host "📱 フロントエンドからのアクセスが可能になります" -ForegroundColor Cyan
-Write-Host "🌐 テストURL: https://witty-river-012f39e00.1.azurestaticapps.net" -ForegroundColor Cyan
-Write-Host "🔗 バックエンドURL: https://$AppName.azurewebsites.net" -ForegroundColor Cyan
+# Restart App Service
+Write-Host "`nRestarting App Service to apply settings..." -ForegroundColor Cyan
+try {
+    az webapp restart --name $AppName --resource-group $ResourceGroup 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "App Service restarted successfully" -ForegroundColor Green
+    } else {
+        Write-Host "Failed to restart App Service" -ForegroundColor Red
+        Write-Host "Please restart manually" -ForegroundColor Yellow
+    }
+} catch {
+    Write-Host "Failed to restart App Service" -ForegroundColor Red
+    Write-Host "Please restart manually" -ForegroundColor Yellow
+}
 
-Write-Host "`n⏰ 設定反映まで数分かかる場合があります" -ForegroundColor Yellow
+Write-Host "`nCORS configuration completed!" -ForegroundColor Green
+Write-Host "Frontend should now be able to access backend" -ForegroundColor Cyan
+Write-Host "Frontend URL: https://witty-river-012f39e00.1.azurestaticapps.net" -ForegroundColor Cyan
+Write-Host "Backend URL: https://$AppName.azurewebsites.net" -ForegroundColor Cyan
+
+Write-Host "`nSettings may take a few minutes to propagate" -ForegroundColor Yellow
