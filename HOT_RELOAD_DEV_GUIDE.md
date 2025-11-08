@@ -62,7 +62,7 @@ JWT_SECRET=dev-secret-key-32-characters-long
 SESSION_SECRET=dev-session-secret-32-characters-long
 FRONTEND_URL=http://localhost:8080
 BYPASS_DB_FOR_LOGIN=true
-OPENAI_API_KEY=sk-CHANGE_THIS_TO_YOUR_ACTUAL_OPENAI_API_KEY
+OPENAI_API_KEY=your-openai-api-key-here
 CORS_ALLOW_ORIGINS=http://localhost:8080,http://localhost:5173
 ```
 

@@ -59,45 +59,126 @@ jobs:
           # Always install dependencies (node_modules excluded by .gitignore)
           echo "📦 Installing dependencies..."
           rm -rf node_modules package-lock.json
-          npm install --no-audit --no-fund
           
-          # Show installation results
+          # Show package.json dependencies first
+          echo "📄 Dependencies in package.json:"
+          cat package.json | grep -A 20 '"dependencies"' || echo "No dependencies section found"
+          
+          # Install with verbose logging
+          echo "📦 Running npm install..."
+          npm install --no-audit --no-fund --verbose
+          
+          # Show installation results with detailed analysis
           echo "📦 Installation completed:"
           echo "  - Node modules count: $(ls node_modules | wc -l)"
           echo "  - Node modules size: $(du -sh node_modules/)"
+          echo "  - Available modules (first 20):"
+          ls node_modules/ | head -20
+          echo "  - Express specifically:"
+          ls -la node_modules/ | grep express || echo "No express found in directory listing"
           
-          # Verify critical dependencies exist with fallback installation
+          # Verify critical dependencies exist with aggressive fallback
           echo "🔍 Verifying critical dependencies..."
           CRITICAL_DEPS=("express" "cors" "dotenv" "bcryptjs" "jsonwebtoken")
           
           for dep in "${CRITICAL_DEPS[@]}"; do
+            echo "🔍 Checking $dep..."
             if [ -d "node_modules/$dep" ]; then
-              echo "✅ $dep: OK"
-            else
-              echo "⚠️ $dep: MISSING - installing individually..."
-              npm install $dep --save
-              if [ -d "node_modules/$dep" ]; then
-                echo "✅ $dep: Installed successfully"
+              echo "✅ $dep: Directory exists"
+              # Double-check main file exists
+              if [ -f "node_modules/$dep/package.json" ]; then
+                echo "✅ $dep: Package.json found"
               else
-                echo "❌ $dep: Failed to install!"
+                echo "⚠️ $dep: Directory exists but package.json missing"
+              fi
+            else
+              echo "❌ $dep: Directory missing - attempting installation..."
+              
+              # Try multiple installation methods
+              npm install $dep --save --no-audit --no-fund
+              sleep 2
+              
+              if [ ! -d "node_modules/$dep" ]; then
+                echo "🔄 Retry: npm install $dep with force..."
+                npm install $dep --save --force
+                sleep 2
+              fi
+              
+              if [ ! -d "node_modules/$dep" ]; then
+                echo "🔄 Retry: npm install $dep with specific version..."
+                case $dep in
+                  "express") npm install express@4.21.2 --save ;;
+                  "cors") npm install cors@2.8.5 --save ;;
+                  "dotenv") npm install dotenv@16.6.1 --save ;;
+                  "bcryptjs") npm install bcryptjs@2.4.3 --save ;;
+                  "jsonwebtoken") npm install jsonwebtoken@9.0.2 --save ;;
+                esac
+                sleep 2
+              fi
+              
+              # Final check
+              if [ -d "node_modules/$dep" ]; then
+                echo "✅ $dep: Successfully installed"
+              else
+                echo "❌ $dep: All installation attempts failed!"
+                echo "📋 Debugging info for $dep:"
+                echo "  - npm list $dep:"
+                npm list $dep || echo "Not found in npm list"
+                echo "  - Available modules containing '$dep':"
+                ls node_modules/ | grep -i $dep || echo "No matching modules found"
                 exit 1
               fi
             fi
           done
           
-          # Express specific verification
+          # Express specific comprehensive verification
+          echo "🔍 Express comprehensive verification..."
+          
           if [ -f "node_modules/express/index.js" ]; then
             echo "✅ Express main file verified"
             echo "📦 Express version: $(node -p "require('./node_modules/express/package.json').version")"
           else
-            echo "❌ Express main file missing - attempting direct installation..."
-            npm install express@4.21.2 --save
-            if [ -f "node_modules/express/index.js" ]; then
-              echo "✅ Express installed successfully via direct installation"
-            else
-              echo "❌ Express installation failed completely!"
-              exit 1
+            echo "❌ Express main file missing!"
+            echo "📋 Express diagnostic information:"
+            echo "  - Express directory exists: $([ -d "node_modules/express" ] && echo 'YES' || echo 'NO')"
+            if [ -d "node_modules/express" ]; then
+              echo "  - Express directory contents:"
+              ls -la node_modules/express/ | head -10
             fi
+            
+            echo "🔄 Attempting Express emergency installation..."
+            
+            # Remove potentially corrupted express installation
+            rm -rf node_modules/express
+            
+            # Multiple installation attempts
+            for attempt in 1 2 3; do
+              echo "🔄 Express installation attempt $attempt..."
+              case $attempt in
+                1) npm install express@4.21.2 --save --no-audit --no-fund ;;
+                2) npm install express@4.21.2 --save --force ;;
+                3) npm install express --save --legacy-peer-deps ;;
+              esac
+              
+              sleep 3
+              
+              if [ -f "node_modules/express/index.js" ]; then
+                echo "✅ Express installed successfully on attempt $attempt"
+                echo "📦 Express version: $(node -p "require('./node_modules/express/package.json').version")"
+                break
+              else
+                echo "❌ Express installation attempt $attempt failed"
+                if [ $attempt -eq 3 ]; then
+                  echo "🚨 All Express installation attempts failed!"
+                  echo "📋 Final diagnostic:"
+                  echo "  - node_modules contents:"
+                  ls -la node_modules/ | grep -i express || echo "No express-related files found"
+                  echo "  - npm cache info:"
+                  npm cache verify
+                  exit 1
+                fi
+              fi
+            done
           fi
           
           echo "✅ All dependencies verified and installed successfully"
@@ -178,6 +259,14 @@ jobs:
           app-name: Emergency-Assistance
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: deploy
+        env:
+          # Environment variables for Azure App Service
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          FRONTEND_URL: "https://witty-river-012f39e00.1.azurestaticapps.net"
+          NODE_ENV: "production"
         continue-on-error: false
         
       - name: Configure Azure App Service Settings

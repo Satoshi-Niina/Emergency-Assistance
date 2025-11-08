@@ -20,7 +20,7 @@ export JWT_SECRET="dev-secret-key-32-characters-long"
 export SESSION_SECRET="dev-session-secret-32-characters-long"
 export FRONTEND_URL="http://localhost:8080"
 export BYPASS_DB_FOR_LOGIN="true"
-export OPENAI_API_KEY="sk-CHANGE_THIS_TO_YOUR_ACTUAL_OPENAI_API_KEY"
+export OPENAI_API_KEY="your-openai-api-key-here"
 export CORS_ALLOW_ORIGINS="http://localhost:8080,http://localhost:5173"
 
 echo "⚙️ 環境変数設定完了"

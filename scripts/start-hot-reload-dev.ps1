@@ -18,7 +18,7 @@ $env:JWT_SECRET = "dev-secret-key-32-characters-long"
 $env:SESSION_SECRET = "dev-session-secret-32-characters-long"
 $env:FRONTEND_URL = "http://localhost:8080"
 $env:BYPASS_DB_FOR_LOGIN = "true"
-$env:OPENAI_API_KEY = "sk-CHANGE_THIS_TO_YOUR_ACTUAL_OPENAI_API_KEY"
+$env:OPENAI_API_KEY = "your-openai-api-key-here"
 $env:CORS_ALLOW_ORIGINS = "http://localhost:8080,http://localhost:5173"
 
 Write-Host "⚙️ 環境変数設定完了" -ForegroundColor Green
