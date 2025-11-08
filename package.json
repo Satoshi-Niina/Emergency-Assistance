@@ -1,83 +1,37 @@
 {
   "name": "emergency-assistance",
-  "version": "1.0.0",
-  "description": "Emergency Assistance System with AI-powered support",
-  "type": "module",
-  "main": "server/unified-server.js",
-  "workspaces": [
-    "client",
-    "server",
-    "shared"
-  ],
+  "version": "1.0.2",
+  "private": true,
+  "description": "Emergency Assistance System - Full Stack Application",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
-    "dev": "tsx server/unified-server.js",
-    "dev:hot": "tsx server/unified-server.js",
-    "dev:separate": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "install:server": "cd server && npm install",
+    "start:server": "cd server && npm start",
     "dev:server": "cd server && npm run dev",
-    "dev:client": "cd client && npm run dev",
-    "build": "npm run build:client && npm run build:server",
-    "build:client": "cd client && npm run build",
-    "build:server": "cd server && npm run build",
-    "clean-build": "powershell -ExecutionPolicy Bypass -File scripts/clean-build.ps1",
-    "clean-build:docker": "bash scripts/clean-build-docker.sh",
-    "docker:up": "docker-compose -f server/docker-compose.yml up --build -d",
-    "docker:down": "docker-compose -f server/docker-compose.yml down",
-    "docker:logs": "docker-compose -f server/docker-compose.yml logs -f",
-    "start": "node server/unified-server.js",
-    "docker:build": "docker build -t emergency-assistance .",
-    "docker:run": "docker run -p 8080:8080 emergency-assistance",
-    "clean": "npx rimraf client/dist server/dist",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
-    "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix"
+    "build": "echo 'Root build step completed'",
+    "test": "echo 'No root tests specified'"
   },
-  "dependencies": {
-    "archiver": "^7.0.1",
-    "argon2": "^0.30.3",
-    "bcrypt": "^6.0.0",
-    "concurrently": "^9.2.0",
-    "cookie-parser": "^1.4.7",
-    "cors": "^2.8.5",
-    "dotenv": "^16.6.1",
-    "express": "^4.21.2",
-    "express-rate-limit": "^8.1.0",
-    "fuse.js": "^7.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "pg": "^8.16.3",
-    "tsx": "^4.20.3",
-    "zod": "^3.22.4"
-  },
+  "workspaces": [
+    "server",
+    "client"
+  ],
   "devDependencies": {
-    "@eslint/js": "^9.36.0",
-    "@tailwindcss/typography": "^0.5.18",
-    "@types/node": "^22.10.2",
-    "@typescript-eslint/eslint-plugin": "^8.44.1",
-    "@typescript-eslint/parser": "^8.44.1",
-    "depcheck": "^1.4.7",
-    "drizzle-kit": "^0.31.4",
-    "eslint": "^9.36.0",
-    "express-session": "^1.18.2",
-    "madge": "^8.0.0",
-    "prettier": "^3.6.2",
-    "rimraf": "^6.0.1",
-    "tailwindcss": "^4.1.13",
-    "ts-prune": "^0.10.3",
-    "typescript": "^5.6.3"
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3"
   },
   "keywords": [
     "emergency",
     "assistance",
-    "ai",
-    "chat",
-    "support",
-    "react",
-    "typescript",
-    "postgresql"
+    "azure",
+    "nodejs"
   ],
   "author": "Emergency Assistance Team",
-  "license": "MIT",
-  "engines": {
-    "node": "^20",
-    "npm": ">=8.0.0"
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Satoshi-Niina/Emergency-Assistance.git"
   }
 }

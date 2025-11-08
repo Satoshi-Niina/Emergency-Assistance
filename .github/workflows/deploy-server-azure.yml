@@ -20,57 +20,67 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     name: Build and Deploy to Azure App Service
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Install dependencies (yarn fallback)
+      - name: Install dependencies (npm stable)
         working-directory: ./server
         run: |
           echo "📦 Installing server dependencies..."
-          
-          # Clean start
+
+          # Clean start - remove conflicting lock files
           rm -rf node_modules package-lock.json yarn.lock .npm .npmrc
-          
-          # Try yarn first (more stable in CI)
-          if command -v yarn >/dev/null 2>&1; then
-            echo "🔧 Using yarn for stable installation..."
-            yarn install --non-interactive --frozen-lockfile || yarn install --non-interactive
-          else
-            echo "🔧 Installing yarn..."
-            npm install -g yarn --no-audit --no-fund
-            echo "🔧 Using yarn for installation..."
-            yarn install --non-interactive
+
+          # Use npm with stable configuration
+          echo "🔧 Using npm for installation..."
+
+          # Create clean npm configuration
+          npm config set audit false
+          npm config set fund false
+          npm config set optional false
+
+          # Install dependencies with retries
+          INSTALL_SUCCESS=false
+          for attempt in 1 2 3; do
+            echo "� Installation attempt $attempt/3..."
+
+            if npm install --no-optional --no-shrinkwrap --loglevel=error; then
+              INSTALL_SUCCESS=true
+              echo "✅ npm install completed successfully on attempt $attempt"
+              break
+            else
+              echo "⚠️ Attempt $attempt failed, cleaning up..."
+              rm -rf node_modules package-lock.json
+              sleep 5
+            fi
+          done
+
+          if [ "$INSTALL_SUCCESS" = false ]; then
+            echo "❌ All installation attempts failed"
+            exit 1
           fi
-          
-          # Fallback to npm if yarn fails
-          if [ ! -d "node_modules" ] || [ $(ls node_modules 2>/dev/null | wc -l) -lt 10 ]; then
-            echo "⚠️ Yarn failed or insufficient modules, trying npm with specific approach..."
-            rm -rf node_modules
-            
-            # Use npm with very basic approach
-            NPM_CONFIG_AUDIT=false NPM_CONFIG_FUND=false npm install --no-optional --no-shrinkwrap
-          fi
-          
+
           # Verify installation
-          echo "📦 Installation summary:"
+          echo "📦 Installation verification:"
           if [ -d "node_modules" ]; then
             MODULE_COUNT=$(ls node_modules 2>/dev/null | wc -l || echo '0')
             echo "  - Modules installed: $MODULE_COUNT"
-            
+
             # Check critical dependencies
             for module in express cors dotenv bcryptjs; do
               if [ -d "node_modules/$module" ]; then
                 echo "  ✅ $module: Found"
               else
                 echo "  ❌ $module: Missing"
+                exit 1
               fi
             done
           else
@@ -81,24 +91,24 @@ jobs:
       - name: Prepare deployment package
         run: |
           echo "📦 Creating deployment package..."
-          
+
           # Create deployment directory
           mkdir -p deploy
-          
+
           # Copy server files
           cp -r server/* deploy/
-          
+
           # Copy additional resources
           cp -r shared deploy/shared 2>/dev/null || echo "No shared directory"
           cp -r knowledge-base deploy/knowledge-base 2>/dev/null || echo "No knowledge-base directory"
-          
+
           # Create required directories
           mkdir -p deploy/app-logs/{exports,history}
           mkdir -p deploy/uploads
-          
+
           # Clean up
           rm -f deploy/.env* deploy/tsconfig*.json
-          
+
           # Verify deployment package
           echo "🔍 Deployment package verification:"
           echo "  - Entry point: $(test -f deploy/index.js && echo 'OK' || echo 'MISSING')"
@@ -119,19 +129,19 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           FRONTEND_URL: "https://witty-river-012f39e00.1.azurestaticapps.net"
           NODE_ENV: "production"
-        
+
       - name: Health check
         run: |
           APP_URL="https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net"
-          
+
           echo "🚀 Deployment completed"
           echo "⏰ Starting health check in 30 seconds..."
           sleep 30
-          
+
           # Health check with retries
           for i in {1..3}; do
             echo "🔍 Health check attempt $i/3..."
-            
+
             if curl -f "$APP_URL/api/health" --max-time 30 --silent; then
               echo "✅ Health check PASSED - Server is responding"
               exit 0
@@ -142,7 +152,7 @@ jobs:
               fi
             fi
           done
-          
+
           echo "❌ Health check failed after 3 attempts"
           echo "📋 Please check Azure App Service logs"
           exit 1
