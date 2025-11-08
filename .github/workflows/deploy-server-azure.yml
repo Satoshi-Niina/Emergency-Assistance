@@ -101,10 +101,9 @@ jobs:
           echo "✅ Node.js 20 LTS runtime configured"
 
       - name: Deploy to Azure App Service
-        uses: azure/webapps-deploy@v2
+        uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ secrets.AZURE_APP_SERVICE_NAME }}
-          resource-group: ${{ secrets.AZURE_RESOURCE_GROUP }}
           package: deploy
           startup-command: 'node index.js'
 
