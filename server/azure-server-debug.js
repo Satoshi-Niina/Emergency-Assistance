@@ -23,7 +23,7 @@ console.log('⏰ Start time:', new Date().toISOString());
 // 環境変数の詳細ログ
 console.log('🔍 Environment Variables Check:');
 const criticalEnvs = [
-  'NODE_ENV', 'PORT', 'DATABASE_URL', 'JWT_SECRET', 'SESSION_SECRET', 
+  'NODE_ENV', 'PORT', 'DATABASE_URL', 'JWT_SECRET', 'SESSION_SECRET',
   'FRONTEND_URL', 'STATIC_WEB_APP_URL', 'AZURE_STORAGE_CONNECTION_STRING'
 ];
 
@@ -55,7 +55,7 @@ process.on('unhandledRejection', (reason, promise) => {
 // 強化されたCORS設定（Azure Static Web Apps対応）
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  
+
   // Azure Static Web Apps用の明示的なCORS設定
   const allowedOrigins = [
     'https://witty-river-012f39e00.1.azurestaticapps.net',
@@ -64,14 +64,14 @@ app.use((req, res, next) => {
     'http://127.0.0.1:5173',
     'http://127.0.0.1:8080'
   ];
-  
+
   console.log('🔍 CORS Request:', {
     method: req.method,
     origin: origin,
     path: req.path,
     userAgent: req.headers['user-agent']?.substring(0, 30) + '...'
   });
-  
+
   // 常に Azure Static Web Apps のオリジンを許可
   if (!origin || allowedOrigins.includes(origin) || (origin && origin.includes('azurestaticapps.net'))) {
     res.header('Access-Control-Allow-Origin', origin || 'https://witty-river-012f39e00.1.azurestaticapps.net');
@@ -81,19 +81,19 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', origin || '*');
     console.log('🔧 CORS: デバッグモードでオリジンを許可:', origin);
   }
-  
+
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma, Expires, Cookie, Set-Cookie');
   res.header('Access-Control-Expose-Headers', 'Set-Cookie');
   res.header('Access-Control-Max-Age', '86400');
-  
+
   // OPTIONSプリフライトリクエストの処理
   if (req.method === 'OPTIONS') {
     console.log('📋 OPTIONS プリフライト完了:', { origin, allowed: true });
     return res.status(200).end();
   }
-  
+
   next();
 });
 
@@ -115,12 +115,12 @@ app.get('/api/health', (req, res) => {
 // 詳細診断エンドポイント
 app.get('/api/debug/env', (req, res) => {
   console.log('🔍 Environment debug request received');
-  
+
   const envInfo = {};
   criticalEnvs.forEach(env => {
     const value = process.env[env];
-    envInfo[env] = value ? 
-      (env.includes('SECRET') || env.includes('URL') || env.includes('CONNECTION') ? 'SET (hidden)' : value) : 
+    envInfo[env] = value ?
+      (env.includes('SECRET') || env.includes('URL') || env.includes('CONNECTION') ? 'SET (hidden)' : value) :
       'NOT SET';
   });
 
@@ -140,7 +140,7 @@ app.get('/api/debug/env', (req, res) => {
 // システム情報
 app.get('/api/debug/system', (req, res) => {
   console.log('💻 System debug request received');
-  
+
   res.json({
     success: true,
     timestamp: new Date().toISOString(),
@@ -179,7 +179,7 @@ app.post('/api/auth/login', (req, res) => {
     origin: req.headers.origin,
     userAgent: req.headers['user-agent']?.substring(0, 50) + '...'
   });
-  
+
   // CORS ヘッダーを明示的に再設定
   const origin = req.headers.origin;
   if (origin && origin.includes('azurestaticapps.net')) {
@@ -188,7 +188,7 @@ app.post('/api/auth/login', (req, res) => {
     res.header('Access-Control-Allow-Origin', 'https://witty-river-012f39e00.1.azurestaticapps.net');
   }
   res.header('Access-Control-Allow-Credentials', 'true');
-  
+
   // 最小限のテストレスポンス
   res.json({
     success: true,
@@ -207,11 +207,93 @@ app.post('/api/auth/login', (req, res) => {
   });
 });
 
+// 認証状態確認エンドポイント（デバッグ用）
+app.get('/api/auth/me', (req, res) => {
+  console.log('🔍 Auth me request (debug mode)');
+
+  res.json({
+    success: true,
+    user: {
+      id: 1,
+      username: 'debug-user',
+      role: 'admin',
+      email: 'debug@example.com'
+    },
+    message: 'Debug mode - always authenticated',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// ナレッジベースエンドポイント（デバッグ用）
+app.get('/api/knowledge-base', (req, res) => {
+  console.log('🔍 Knowledge base request (debug mode)');
+
+  res.json({
+    success: true,
+    data: [
+      {
+        id: 1,
+        title: 'デバッグ用ナレッジ',
+        content: 'これはデバッグモード用のサンプルデータです',
+        category: 'troubleshooting',
+        tags: ['debug', 'sample'],
+        createdAt: new Date().toISOString()
+      }
+    ],
+    message: 'Debug mode - sample knowledge data',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// 機種一覧エンドポイント（デバッグ用）
+app.get('/api/machines/machine-types', (req, res) => {
+  console.log('🔍 Machine types request (debug mode)');
+
+  res.json({
+    success: true,
+    data: [
+      {
+        id: 1,
+        name: 'サンプル機種A',
+        model: 'MODEL-A-001',
+        category: 'industrial',
+        manufacturer: 'Sample Corp'
+      },
+      {
+        id: 2,
+        name: 'サンプル機種B',
+        model: 'MODEL-B-002',
+        category: 'commercial',
+        manufacturer: 'Sample Corp'
+      }
+    ],
+    message: 'Debug mode - sample machine types',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// AI Assistエンドポイント（デバッグ用）
+app.get('/api/ai-assist/settings', (req, res) => {
+  console.log('🔍 AI Assist settings request (debug mode)');
+
+  res.json({
+    success: true,
+    settings: {
+      enabled: true,
+      model: 'debug-model',
+      maxTokens: 1000,
+      temperature: 0.7
+    },
+    message: 'Debug mode - sample AI settings',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // CORS 診断エンドポイント
 app.get('/api/debug/cors', (req, res) => {
   const origin = req.headers.origin;
   console.log('🔍 CORS診断リクエスト from:', origin);
-  
+
   res.json({
     success: true,
     corsTest: {
