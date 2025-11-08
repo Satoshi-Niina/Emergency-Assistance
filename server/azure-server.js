@@ -1814,14 +1814,28 @@ app.use((req, res) => {
 const port = process.env.PORT || 8080;
 const host = '0.0.0.0';
 
-app.listen(port, host, () => {
-  console.log(`🚀 Azure Server running on ${host}:${port}`);
-  console.log(`📊 Health check: /api/health`);
-  console.log(`🌍 Environment: azure-production`);
-  console.log(`📦 Node.js: ${process.version}`);
-  console.log(`💻 Platform: ${process.platform}`);
-  console.log(`🎯 Version: ${VERSION}`);
-});
+try {
+  const server = app.listen(port, host, () => {
+    console.log(`🚀 Azure Server running on ${host}:${port}`);
+    console.log(`📊 Health check: /api/health`);
+    console.log(`🌍 Environment: azure-production`);
+    console.log(`📦 Node.js: ${process.version}`);
+    console.log(`💻 Platform: ${process.platform}`);
+    console.log(`🎯 Version: ${VERSION}`);
+    console.log('✅ Server successfully started and listening for requests');
+  });
+
+  server.on('error', (error) => {
+    console.error('❌ Server failed to start:', error);
+    console.error('❌ Error code:', error.code);
+    console.error('❌ Error message:', error.message);
+    process.exit(1);
+  });
+} catch (error) {
+  console.error('❌ Failed to create server:', error);
+  console.error('❌ Stack trace:', error.stack);
+  process.exit(1);
+}
 
 // グレースフルシャットダウン
 process.on('SIGTERM', () => {
