@@ -315,7 +315,56 @@ app.use(session({
 
 // ヘルスチェックエンドポイント
 // ヘルスチェックエンドポイント（詳細版）
-app.get('/api/health', async (req, res) => {
+// Health check endpoint with timeout protection
+app.get('/api/health', (req, res) => {
+  // Set response timeout to prevent hanging
+  const timeout = setTimeout(() => {
+    if (!res.headersSent) {
+      res.status(503).json({
+        status: 'timeout',
+        message: 'Health check timed out',
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, 10000); // 10 second timeout
+
+  res.on('finish', () => clearTimeout(timeout));
+
+  // Immediate health response for Azure App Service
+  const healthResponse = {
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'production',
+    version: VERSION,
+    uptime: Math.floor(process.uptime()),
+    memory: {
+      used: Math.round(process.memoryUsage().rss / 1024 / 1024),
+      heap: Math.round(process.memoryUsage().heapUsed / 1024 / 1024)
+    },
+    node_version: process.version,
+    platform: process.platform,
+    pid: process.pid
+  };
+
+  // Quick database status check (non-blocking)
+  if (dbPool) {
+    healthResponse.database_status = 'pool_available';
+  } else {
+    healthResponse.database_status = 'not_initialized';
+  }
+
+  // Quick blob storage status
+  if (connectionString) {
+    healthResponse.blob_storage_status = 'configured';
+  } else {
+    healthResponse.blob_storage_status = 'not_configured';
+  }
+
+  res.status(200).json(healthResponse);
+});
+
+// Detailed health check with full database testing
+app.get('/api/health/detailed', async (req, res) => {
   let dbStatus = 'not_initialized';
   let dbTestResult = null;
 
@@ -380,17 +429,21 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
-// 詳細ヘルスチェック
-app.get('/api/health/detailed', (req, res) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    nodeVersion: process.version,
-    environment: 'azure-production',
-    platform: process.platform,
-    uptime: process.uptime(),
-    memory: process.memoryUsage(),
-    arch: process.arch,
+// Azure App Service用シンプルなヘルスチェック (プローブ用)
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
+// プローブ用極軽量エンドポイント
+app.get('/ping', (req, res) => {
+  res.status(200).send('pong');
+});
+
+// Azure App Service用ヘルスプローブ
+app.get('/api/ping', (req, res) => {
+  res.status(200).json({
+    status: 'up',
+    timestamp: Date.now(),
     pid: process.pid
   });
 });

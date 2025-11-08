@@ -112,6 +112,28 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Azure App Service用シンプルなヘルスチェック (プローブ用)
+app.get('/health', (req, res) => {
+  console.log('📡 Simple health probe received');
+  res.status(200).send('OK');
+});
+
+// プローブ用極軽量エンドポイント
+app.get('/ping', (req, res) => {
+  console.log('📡 Ping request received');
+  res.status(200).send('pong');
+});
+
+// Azure App Service用ヘルスプローブ
+app.get('/api/ping', (req, res) => {
+  console.log('📡 API ping request received');
+  res.status(200).json({
+    status: 'up',
+    timestamp: Date.now(),
+    pid: process.pid
+  });
+});
+
 // 詳細診断エンドポイント
 app.get('/api/debug/env', (req, res) => {
   console.log('🔍 Environment debug request received');
