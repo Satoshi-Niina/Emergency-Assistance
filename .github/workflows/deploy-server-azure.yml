@@ -6,11 +6,6 @@ on:
       - main
       - master
       - backup
-    paths:
-      - 'server/**'
-      - 'shared/**'
-      - 'knowledge-base/**'
-      - '.github/workflows/deploy-server-azure.yml'
   workflow_dispatch:
 
 permissions:
