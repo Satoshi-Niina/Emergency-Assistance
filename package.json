@@ -1,7 +1,6 @@
 {
   "name": "emergency-assistance",
   "version": "1.0.2",
-  "private": true,
   "description": "Emergency Assistance System - Full Stack Application",
   "engines": {
     "node": ">=20.0.0",
@@ -14,10 +13,6 @@
     "build": "echo 'Root build step completed'",
     "test": "echo 'No root tests specified'"
   },
-  "workspaces": [
-    "server",
-    "client"
-  ],
   "devDependencies": {
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3"

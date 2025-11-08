@@ -31,28 +31,37 @@ jobs:
           node-version: '20.x'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Install dependencies (npm stable)
-        working-directory: ./server
+      - name: Install dependencies (isolated npm)
         run: |
           echo "📦 Installing server dependencies..."
 
-          # Clean start - remove conflicting lock files
+          # Navigate to server directory and work in isolation
+          cd server
+
+          # Clean start - remove any conflicting files
           rm -rf node_modules package-lock.json yarn.lock .npm .npmrc
 
-          # Use npm with stable configuration
-          echo "🔧 Using npm for installation..."
+          # Create isolated npm environment
+          echo "🔧 Setting up isolated npm environment..."
 
-          # Create clean npm configuration
+          # Disable workspaces completely
+          export npm_config_workspaces=false
+          export npm_config_workspace=
+
+          # Set npm configuration for CI
           npm config set audit false
           npm config set fund false
           npm config set optional false
+          npm config set workspaces false
 
-          # Install dependencies with retries
+          # Install dependencies with isolation flags
+          echo "📦 Installing dependencies with isolation..."
           INSTALL_SUCCESS=false
           for attempt in 1 2 3; do
-            echo "� Installation attempt $attempt/3..."
+            echo "📦 Installation attempt $attempt/3..."
 
-            if npm install --no-optional --no-shrinkwrap --loglevel=error; then
+            # Use --ignore-workspace-root-check to bypass workspace detection
+            if npm install --ignore-workspace-root-check --no-workspaces --no-optional --loglevel=error; then
               INSTALL_SUCCESS=true
               echo "✅ npm install completed successfully on attempt $attempt"
               break
