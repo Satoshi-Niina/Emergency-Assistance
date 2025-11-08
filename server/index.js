@@ -2,7 +2,7 @@
 
 // Main entry point for Azure App Service
 // This file ensures that azure-server.js is started correctly
-// ESModule compatible version
+// ESModule compatible version with CORS fix
 
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -21,39 +21,23 @@ console.log('  - PORT:', process.env.PORT);
 console.log('  - DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
 console.log('  - JWT_SECRET:', process.env.JWT_SECRET ? 'SET' : 'NOT SET');
 
-// 緊急デバッグ：503エラーの原因特定のためデバッグサーバーを使用
-const useDebugServer = !process.env.DATABASE_URL || !process.env.JWT_SECRET || !process.env.SESSION_SECRET;
-
-if (useDebugServer) {
-  console.log('⚠️ Critical environment variables missing. Starting debug server...');
-  console.log('🔧 Missing variables will cause 503 errors. Using debug mode.');
+// 環境変数が設定されている場合は本番サーバーを使用
+// CORSエラー修正のため、デバッグサーバーの使用を最小限に抑制
+try {
+  console.log('📦 Loading azure-server.js (main production server)...');
+  await import('./azure-server.js');
+  console.log('✅ azure-server.js loaded successfully');
+} catch (error) {
+  console.error('❌ Error loading azure-server.js:', error);
+  console.error('❌ Stack trace:', error.stack);
   
+  // 最後の手段としてデバッグサーバーを起動
+  console.log('🔧 Fallback: Starting debug server...');
   try {
-    console.log('📦 Loading azure-server-debug.js...');
     await import('./azure-server-debug.js');
-    console.log('✅ azure-server-debug.js loaded successfully');
-  } catch (error) {
-    console.error('❌ Error loading azure-server-debug.js:', error);
-    console.error('❌ Stack trace:', error.stack);
+    console.log('✅ azure-server-debug.js loaded as fallback');
+  } catch (debugError) {
+    console.error('❌ Fallback also failed:', debugError);
     process.exit(1);
-  }
-} else {
-  try {
-    console.log('📦 Loading azure-server.js...');
-    await import('./azure-server.js');
-    console.log('✅ azure-server.js loaded successfully');
-  } catch (error) {
-    console.error('❌ Error loading azure-server.js:', error);
-    console.error('❌ Stack trace:', error.stack);
-    
-    // フォールバックとしてデバッグサーバーを起動
-    console.log('🔧 Fallback: Starting debug server...');
-    try {
-      await import('./azure-server-debug.js');
-      console.log('✅ azure-server-debug.js loaded as fallback');
-    } catch (debugError) {
-      console.error('❌ Fallback also failed:', debugError);
-      process.exit(1);
-    }
   }
 }

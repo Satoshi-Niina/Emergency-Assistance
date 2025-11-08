@@ -17,6 +17,10 @@ on:
         description: 'Force deployment even if no server files changed'
         required: false
         default: 'false'
+      reason:
+        description: 'Reason for force deployment (Optional)'
+        required: false
+        default: 'Manual trigger for redeploy'
 
 permissions:
   contents: read
@@ -144,39 +148,26 @@ jobs:
           package: deploy
         continue-on-error: false
         
-      - name: Verify deployment
+      - name: Verify deployment and Health Check
         run: |
-          echo "📋 Deployment summary:"
-          echo "  - App Name: Emergency-Assistance"
-          echo "  - Package: deploy directory"
-          echo "  - Startup: node index.js"
-          echo ""
-          echo "💡 If deployment failed due to credentials:"
-          echo "   Please ensure AZURE_WEBAPP_PUBLISH_PROFILE is set in GitHub Secrets"
-          echo "   Download from: Azure Portal > App Service > Deployment Center > Publish Profile"
-
-      - name: Configure CORS on Azure App Service
-        run: |
-          echo "🌐 Configuring CORS for Azure App Service..."
-          # Publish Profileを使ってCORSを設定（REST API経由）
-          echo "ℹ️ CORS will be configured manually in Azure Portal"
-          echo "   Add origin: https://witty-river-012f39e00.1.azurestaticapps.net"
-          echo ""
-          echo "💡 Current deployment uses publish profile method"
-          echo "   Environment variables are managed through the deployment process"
-
-
-
-      - name: Deploy summary
-        run: |
+          APP_URL="https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net"
+          
           echo "✅ Node.js application deployed to Azure App Service"
           echo "🚀 Server deployed via ZIP deployment using Publish Profile"
-          echo "🌐 Backend URL: https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net"
+          echo "🌐 Backend URL: $APP_URL"
           echo "🌐 Frontend URL: https://witty-river-012f39e00.1.azurestaticapps.net"
-          echo "✅ Environment variables set on Azure App Service"
-          echo "🔧 Startup command: node index.js"
+          echo "� Startup command: node index.js"
           echo ""
-          echo "⚠️  Manual step required:"
-          echo "   Configure CORS in Azure Portal for Emergency-Assistance App Service"
-          echo "   Add allowed origin: https://witty-river-012f39e00.1.azurestaticapps.net"
+          
+          echo "⏰ Waiting 30 seconds for app to start..."
+          sleep 30
+          
+          echo "🔍 Testing health check at $APP_URL/api/health..."
+          # ヘルスチェックに失敗した場合、ワークフロー全体を失敗させる
+          if curl -f "$APP_URL/api/health"; then
+            echo "✅ Health check PASSED - Server is responding correctly"
+          else
+            echo "❌ Health check FAILED - Check App Service logs in Azure Portal"
+            exit 1
+          fi
 

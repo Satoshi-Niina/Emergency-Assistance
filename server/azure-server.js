@@ -233,61 +233,62 @@ console.log('  STATIC_WEB_APP_URL:', STATIC_WEB_APP_URL);
 console.log('  ALLOWED_ORIGINS:', ALLOWED_ORIGINS.slice(0, 5), ALLOWED_ORIGINS.length > 5 ? `... and ${ALLOWED_ORIGINS.length - 5} more` : '');
 console.log('  CORS_ALLOW_ORIGINS from env:', process.env.CORS_ALLOW_ORIGINS || 'not set');
 
-// CORS設定（手動実装 - より厳密な設定）
-// すべてのリクエストに対してCORSヘッダーを設定
+// CORS設定（恒久的な修正）- Azure Static Web Apps対応
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   
   console.log('🔍 CORS Request:', { 
     method: req.method, 
     origin: origin, 
-    path: req.path,
-    userAgent: req.headers['user-agent']?.substring(0, 50) + '...'
+    path: req.path
   });
   
-  // 許可するオリジンのリスト
+  // 明示的に許可するオリジンのリスト（恒久的設定）
   const allowedOrigins = [
-    'https://witty-river-012f39e00.1.azurestaticapps.net',
+    'https://witty-river-012f39e00.1.azurestaticapps.net', // メインフロントエンド
     STATIC_WEB_APP_URL,
     FRONTEND_URL,
-    `http://localhost:${CLIENT_PORT}`,
-    `http://localhost:3000`,
+    `http://localhost:${CLIENT_PORT}`, // 開発環境
     `http://localhost:5173`,
     `http://localhost:8080`,
     `http://127.0.0.1:${CLIENT_PORT}`,
-    `http://127.0.0.1:3000`,
     `http://127.0.0.1:5173`,
     `http://127.0.0.1:8080`,
     ...ALLOWED_ORIGINS
   ].filter(Boolean);
   
-  // オリジンのチェックと許可（強化版）
-  let allowOrigin = false;
+  // CORS ヘッダーの設定
+  let corsOrigin = null;
   
-  // Azure Static Web Apps のオリジンを最優先で許可
-  if (origin && origin.includes('azurestaticapps.net')) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
-    allowOrigin = true;
-    console.log('✅ CORS: Azure Static Web Apps オリジンを許可:', origin);
-  } else if (!origin) {
+  if (!origin) {
     // オリジンなしのリクエスト（直接アクセスなど）
-    res.header('Access-Control-Allow-Origin', 'https://witty-river-012f39e00.1.azurestaticapps.net');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    allowOrigin = true;
+    corsOrigin = 'https://witty-river-012f39e00.1.azurestaticapps.net';
+  } else if (origin === 'https://witty-river-012f39e00.1.azurestaticapps.net') {
+    // メインフロントエンドオリジンを最優先で許可
+    corsOrigin = origin;
+    console.log('✅ CORS: メインフロントエンドオリジン許可:', origin);
+  } else if (origin.includes('azurestaticapps.net')) {
+    // その他の Azure Static Web Apps オリジンも許可
+    corsOrigin = origin;
+    console.log('✅ CORS: Azure Static Web Apps オリジン許可:', origin);
   } else if (allowedOrigins.includes(origin)) {
     // 許可リストに含まれるオリジン
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
-    allowOrigin = true;
-    console.log('✅ CORS: 許可されたオリジン:', origin);
+    corsOrigin = origin;
+    console.log('✅ CORS: 許可リスト内オリジン:', origin);
   } else {
-    // 不明なオリジン - 本番環境でも一時的に全て許可（CORS問題解決のため）
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
-    allowOrigin = true;
-    console.warn('⚠️ CORS: 一時的に全オリジンを許可:', origin);
+    // 不明なオリジン（開発環境でのみ許可）
+    if (process.env.NODE_ENV === 'development') {
+      corsOrigin = origin;
+      console.log('🔧 CORS: 開発モードで許可:', origin);
+    } else {
+      corsOrigin = 'https://witty-river-012f39e00.1.azurestaticapps.net'; // デフォルトフォールバック
+      console.warn('⚠️ CORS: 不明なオリジン、デフォルトを使用:', origin);
+    }
   }
+  
+  // CORS ヘッダー設定
+  res.header('Access-Control-Allow-Origin', corsOrigin);
+  res.header('Access-Control-Allow-Credentials', 'true');
   
   // 共通のCORSヘッダー
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
@@ -297,8 +298,8 @@ app.use((req, res, next) => {
   
   // プリフライトリクエスト（OPTIONS）の処理
   if (req.method === 'OPTIONS') {
-    console.log('📋 OPTIONS プリフライト完了:', { origin, allowOrigin });
-    return res.sendStatus(200);
+    console.log('📋 OPTIONS プリフライト完了:', { origin, corsOrigin });
+    return res.status(200).end();
   }
   
   next();
