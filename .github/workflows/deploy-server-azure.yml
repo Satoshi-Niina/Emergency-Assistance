@@ -45,11 +45,12 @@ jobs:
           cache: 'npm'
           cache-dependency-path: server/package.json
 
-      - name: Install dependencies
+      - name: Install dependencies and prepare package
         run: |
+          echo "📦 Installing dependencies in server directory..."
           cd server
-          npm ci --production
-          echo "📦 Dependencies installed"
+          npm ci --production --no-audit --no-fund
+          echo "📦 Dependencies installed successfully"
 
       - name: Prepare deployment package
         run: |
@@ -58,8 +59,11 @@ jobs:
           # Create deployment directory
           mkdir -p deploy
           
-          # Copy server files
+          # Copy server files (including node_modules)
           cp -r server/* deploy/
+          
+          echo "📦 Verifying node_modules in deploy directory:"
+          ls -la deploy/node_modules/ | head -5
           
           # Copy shared modules
           cp -r shared deploy/
