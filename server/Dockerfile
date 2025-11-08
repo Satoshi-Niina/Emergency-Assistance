@@ -15,6 +15,8 @@ COPY server/package.json ./
 RUN npm install --omit=dev --no-audit --no-fund
 
 # アプリケーションコードをコピー（serverディレクトリから）
+COPY server/index.js ./
+COPY server/azure-server.js ./
 COPY server/unified-server.js ./
 COPY server/unified-hot-reload-server.js ./
 COPY server/services/ ./services/
@@ -60,5 +62,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:8080/api/health || exit 1
 
-# アプリケーションを起動（統合サーバー）
-CMD ["node", "unified-server.js"]
+# アプリケーションを起動（Azure対応エントリーポイント）
+CMD ["node", "index.js"]
