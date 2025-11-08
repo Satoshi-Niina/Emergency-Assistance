@@ -60,10 +60,21 @@ jobs:
           echo "📄 Package.json content:"
           cat package.json | head -20
           
-          # Clean install with all dependencies first
-          echo "📦 Starting npm ci..."
-          npm ci --no-audit --no-fund --verbose
+          # Clear any existing node_modules and package-lock to avoid cache issues
+          echo "🧹 Cleaning existing installation..."
+          rm -rf node_modules package-lock.json
+          
+          # Fresh install with --production=false to include devDependencies
+          echo "📦 Starting fresh npm install..."
+          npm install --production=false --no-audit --no-fund --verbose
           echo "📦 Dependencies installed successfully"
+          
+          # Verify installation was successful
+          echo "📦 Verifying installation:"
+          echo "  - Node.js version: $(node --version)"
+          echo "  - NPM version: $(npm --version)"
+          echo "  - Package.json scripts:"
+          cat package.json | jq '.scripts' || echo "No jq available"
           
           # Comprehensive express check
           echo "📦 Checking express installation:"
@@ -73,6 +84,8 @@ jobs:
           ls -la node_modules/ | head -10
           echo "  - express directory check:"
           ls -la node_modules/express/ || echo "    Express directory not found"
+          echo "  - express package.json:"
+          cat node_modules/express/package.json | head -10 || echo "    Express package.json not found"
           echo "  - node_modules size:"
           du -sh node_modules/
 
@@ -80,48 +93,27 @@ jobs:
         run: |
           echo "📦 Preparing deployment package..."
           
-          # Create deployment directory
+          # Remove any existing deployment directory
+          rm -rf deploy
           mkdir -p deploy
           
-          # Copy all server files including node_modules
-          echo "📦 Copying server files..."
-          cp -r server/* deploy/
+          # Copy server files first (without node_modules)
+          echo "📦 Copying server source files..."
+          rsync -av --exclude='node_modules' server/ deploy/
           
-          # Double check node_modules copy with detailed verification
-          echo "📦 Verifying node_modules copy:"
-          echo "  - Source server directory contents:"
-          ls -la server/ | grep -E "(node_modules|package|index)"
-          echo "  - Deploy directory contents before copy:"
-          ls -la deploy/ || echo "    Deploy directory empty/missing"
-          
-          if [ -d "deploy/node_modules" ]; then
-            echo "✅ node_modules directory exists in deploy"
-            echo "  - Deploy node_modules size: $(du -sh deploy/node_modules/)"
-            echo "  - Deploy node_modules file count: $(find deploy/node_modules -type f | wc -l)"
-            if [ -d "deploy/node_modules/express" ]; then
-              echo "✅ express module found in deployment package"
-              echo "  - Express files: $(find deploy/node_modules/express -name '*.js' | wc -l) JS files"
-            else
-              echo "❌ express module NOT found in deployment package"
-              echo "  - Available modules in deploy:"
-              ls -la deploy/node_modules/ | head -5
-            fi
+          # Then copy the correctly installed node_modules
+          echo "📦 Copying node_modules with verification..."
+          if [ -d "server/node_modules" ]; then
+            cp -r server/node_modules deploy/
+            echo "✅ node_modules copied successfully"
           else
-            echo "❌ node_modules directory NOT copied to deploy"
-            echo "  - Attempting manual copy..."
-            if [ -d "server/node_modules" ]; then
-              cp -r server/node_modules deploy/
-              echo "  - Manual copy completed"
-            else
-              echo "  - ERROR: server/node_modules does not exist!"
-              ls -la server/
-            fi
+            echo "❌ ERROR: server/node_modules not found!"
+            exit 1
           fi
           
-          # Copy shared modules
+          # Copy shared modules and knowledge base
+          echo "📦 Copying additional resources..."
           cp -r shared deploy/
-          
-          # Copy knowledge base
           cp -r knowledge-base deploy/
           
           # Create necessary directories
@@ -129,16 +121,52 @@ jobs:
           mkdir -p deploy/app-logs/history
           mkdir -p deploy/uploads
           
-          # Only remove specific dev files, keep all production dependencies
+          # Cleanup development files but keep all node_modules
           rm -f deploy/tsconfig*.json
           rm -rf deploy/.env*
           
-          echo "📦 Final deployment package contents:"
-          ls -la deploy/
-          echo "📦 Final node_modules check:"
-          ls -la deploy/node_modules/express/ || echo "Express still missing!"
-          echo "📦 Package size:"
-          du -sh deploy/
+          # Critical verification before deployment
+          echo "🔍 CRITICAL: Verifying deployment package..."
+          
+          # Check main entry point
+          if [ -f "deploy/index.js" ]; then
+            echo "✅ Main index.js found"
+          else
+            echo "❌ FATAL: Main index.js missing!"
+            exit 1
+          fi
+          
+          # Check package.json
+          if [ -f "deploy/package.json" ]; then
+            echo "✅ Package.json found"
+            echo "📦 Start script: $(grep -A 1 '"start"' deploy/package.json)"
+          else
+            echo "❌ FATAL: package.json missing!"
+            exit 1
+          fi
+          
+          # Check node_modules and express
+          if [ -d "deploy/node_modules" ]; then
+            echo "✅ node_modules directory exists ($(du -sh deploy/node_modules/))"
+            if [ -f "deploy/node_modules/express/index.js" ]; then
+              echo "✅ Express module verified - main file exists"
+              echo "📦 Express version: $(node -e "console.log(require('./deploy/node_modules/express/package.json').version)")"
+            else
+              echo "❌ FATAL: Express module incomplete!"
+              echo "Available modules:"
+              ls -la deploy/node_modules/ | head -10
+              exit 1
+            fi
+          else
+            echo "❌ FATAL: node_modules directory missing!"
+            exit 1
+          fi
+          
+          echo "📦 Final package verification:"
+          echo "  - Total size: $(du -sh deploy/)"
+          echo "  - File count: $(find deploy -type f | wc -l)"
+          echo "  - JS files: $(find deploy -name '*.js' | wc -l)"
+          echo "✅ Deployment package ready"
 
       - name: Deploy to Azure App Service (publish profile method)
         uses: azure/webapps-deploy@v3
@@ -147,6 +175,19 @@ jobs:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: deploy
         continue-on-error: false
+        
+      - name: Configure Azure App Service Settings
+        run: |
+          echo "⚙️ Verifying Azure App Service configuration..."
+          echo "📦 Deployment package final verification:"
+          echo "  - Deploy directory size: $(du -sh deploy/)"
+          echo "  - Express module in package:"
+          ls -la deploy/node_modules/express/index.js || echo "❌ Express index.js missing"
+          echo "  - Main entry point:"
+          ls -la deploy/index.js || echo "❌ Main index.js missing"
+          echo "  - Package.json start script:"
+          grep -A 5 '"scripts"' deploy/package.json || echo "❌ Scripts section missing"
+          echo "✅ Configuration verification completed"
         
       - name: Verify deployment and Health Check
         run: |
