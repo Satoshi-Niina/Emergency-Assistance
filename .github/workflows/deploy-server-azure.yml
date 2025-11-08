@@ -31,35 +31,52 @@ jobs:
           node-version: '20.x'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Install dependencies (config-safe)
+      - name: Install dependencies (yarn fallback)
         working-directory: ./server
         run: |
           echo "📦 Installing server dependencies..."
           
-          # Clean start - remove problematic files
-          rm -rf node_modules package-lock.json .npm .npmrc
+          # Clean start
+          rm -rf node_modules package-lock.json yarn.lock .npm .npmrc
           
-          # Create minimal .npmrc to avoid config issues
-          echo "audit=false" > .npmrc
-          echo "fund=false" >> .npmrc
-          echo "progress=false" >> .npmrc
-          echo "legacy-peer-deps=true" >> .npmrc
+          # Try yarn first (more stable in CI)
+          if command -v yarn >/dev/null 2>&1; then
+            echo "🔧 Using yarn for stable installation..."
+            yarn install --non-interactive --frozen-lockfile || yarn install --non-interactive
+          else
+            echo "🔧 Installing yarn..."
+            npm install -g yarn --no-audit --no-fund
+            echo "🔧 Using yarn for installation..."
+            yarn install --non-interactive
+          fi
           
-          # Simple npm install without config commands
-          echo "🔧 Running npm install..."
-          npm install || {
-            echo "⚠️ npm install failed, trying with --force..."
-            npm install --force
-          }
+          # Fallback to npm if yarn fails
+          if [ ! -d "node_modules" ] || [ $(ls node_modules 2>/dev/null | wc -l) -lt 10 ]; then
+            echo "⚠️ Yarn failed or insufficient modules, trying npm with specific approach..."
+            rm -rf node_modules
+            
+            # Use npm with very basic approach
+            NPM_CONFIG_AUDIT=false NPM_CONFIG_FUND=false npm install --no-optional --no-shrinkwrap
+          fi
           
-          # Basic verification
+          # Verify installation
           echo "📦 Installation summary:"
-          echo "  - Modules installed: $(ls node_modules 2>/dev/null | wc -l || echo '0')"
-          echo "  - Express: $(test -d node_modules/express && echo 'OK' || echo 'MISSING')"
-          echo "  - CORS: $(test -d node_modules/cors && echo 'OK' || echo 'MISSING')"
-          
-          # Clean up .npmrc
-          rm -f .npmrc
+          if [ -d "node_modules" ]; then
+            MODULE_COUNT=$(ls node_modules 2>/dev/null | wc -l || echo '0')
+            echo "  - Modules installed: $MODULE_COUNT"
+            
+            # Check critical dependencies
+            for module in express cors dotenv bcryptjs; do
+              if [ -d "node_modules/$module" ]; then
+                echo "  ✅ $module: Found"
+              else
+                echo "  ❌ $module: Missing"
+              fi
+            done
+          else
+            echo "  ❌ node_modules directory not created"
+            exit 1
+          fi
 
       - name: Prepare deployment package
         run: |
