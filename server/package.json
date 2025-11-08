@@ -2,7 +2,7 @@
   "name": "emergency-assistance-server",
   "version": "1.0.0",
   "type": "module",
-  "main": "minimal-azure-server.js",
+  "main": "index.js",
   "scripts": {
     "dev": "cross-env NODE_ENV=development PORT=8000 DATABASE_URL=postgresql://postgres:CHANGE_THIS_PASSWORD@localhost:5432/webappdb JWT_SECRET=CHANGE_THIS_JWT_SECRET_TO_32_CHARACTERS_MINIMUM SESSION_SECRET=CHANGE_THIS_SESSION_SECRET_TO_32_CHARACTERS_MINIMUM FRONTEND_URL=http://localhost:5173 BYPASS_DB_FOR_LOGIN=true OPENAI_API_KEY=sk-CHANGE_THIS_TO_YOUR_ACTUAL_OPENAI_API_KEY node unified-server.js",
     "build": "tsc --project tsconfig.build.json && echo 'TypeScript files compiled successfully'",
