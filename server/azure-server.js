@@ -21,20 +21,9 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load environment variables from .env files (PRODUCTION ONLY)
+// FIXME: Temporarily disable .env loading to prevent EISDIR errors
 // Azure App Service uses environment variables, not .env files
-const envPath = path.join(__dirname, '..', '.env');
-
-console.log('🔍 Checking for environment files:');
-console.log('  - .env:', envPath, fs.existsSync(envPath) ? 'EXISTS' : 'NOT FOUND');
-
-if (fs.existsSync(envPath)) {
-  console.log('📄 Loading environment from .env');
-  dotenv.config({ path: envPath });
-  console.log('✅ Environment loaded from .env');
-} else {
-  console.log('📄 Using system environment variables (Azure App Service)');
-}
+console.log('📄 Using system environment variables (Azure App Service - .env loading disabled)');
 
 // Environment validation (warnings only, don't exit)
 // OpenAI API設定の確認とフォールバック

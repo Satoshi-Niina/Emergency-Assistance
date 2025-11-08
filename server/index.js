@@ -16,11 +16,33 @@ console.log(' Loading production server...');
 
 async function startServer() {
   try {
+    console.log(' 🔄 Attempting to import azure-server.js...');
+
+    // Add process error handlers before import
+    process.on('uncaughtException', (error) => {
+      console.error(' 💥 UNCAUGHT EXCEPTION:', error);
+      console.error(' 📍 Error Code:', error.code);
+      console.error(' 📍 Error Errno:', error.errno);
+      console.error(' 📍 Error Syscall:', error.syscall);
+      console.error(' 📍 Error Path:', error.path);
+      process.exit(1);
+    });
+
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error(' 💥 UNHANDLED REJECTION at:', promise);
+      console.error(' 📍 Reason:', reason);
+      process.exit(1);
+    });
+
     await import('./azure-server.js');
-    console.log(' Production server loaded successfully');
+    console.log(' ✅ Production server loaded successfully');
   } catch (error) {
-    console.error(' ERROR:', error.message);
-    console.error(' Stack:', error.stack);
+    console.error(' ❌ IMPORT ERROR:', error.message);
+    console.error(' 📍 Error Code:', error.code);
+    console.error(' 📍 Error Errno:', error.errno);
+    console.error(' 📍 Error Syscall:', error.syscall);
+    console.error(' 📍 Error Path:', error.path);
+    console.error(' 📍 Full Stack:', error.stack);
     process.exit(1);
   }
 }
