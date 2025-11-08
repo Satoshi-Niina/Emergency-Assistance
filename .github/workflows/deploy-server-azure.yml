@@ -49,14 +49,28 @@ jobs:
         run: |
           echo "📦 Installing dependencies in server directory..."
           cd server
+          
+          # Show current working directory and package.json
+          echo "📁 Current directory: $(pwd)"
+          echo "📄 Package.json exists: $(test -f package.json && echo 'YES' || echo 'NO')"
+          echo "📄 Package.json content:"
+          cat package.json | head -20
+          
           # Clean install with all dependencies first
-          npm ci --no-audit --no-fund
+          echo "📦 Starting npm ci..."
+          npm ci --no-audit --no-fund --verbose
           echo "📦 Dependencies installed successfully"
           
-          # Check if express is installed
+          # Comprehensive express check
           echo "📦 Checking express installation:"
-          npm list express || echo "Express not found in npm list"
-          ls -la node_modules/express/ || echo "Express directory not found"
+          echo "  - npm list express:"
+          npm list express || echo "    Express not found in npm list"
+          echo "  - node_modules directory:"
+          ls -la node_modules/ | head -10
+          echo "  - express directory check:"
+          ls -la node_modules/express/ || echo "    Express directory not found"
+          echo "  - node_modules size:"
+          du -sh node_modules/
 
       - name: Prepare deployment package
         run: |
@@ -69,22 +83,35 @@ jobs:
           echo "📦 Copying server files..."
           cp -r server/* deploy/
           
-          # Double check node_modules copy
+          # Double check node_modules copy with detailed verification
           echo "📦 Verifying node_modules copy:"
+          echo "  - Source server directory contents:"
+          ls -la server/ | grep -E "(node_modules|package|index)"
+          echo "  - Deploy directory contents before copy:"
+          ls -la deploy/ || echo "    Deploy directory empty/missing"
+          
           if [ -d "deploy/node_modules" ]; then
-            echo "✅ node_modules directory exists"
-            ls -la deploy/node_modules/ | head -10
+            echo "✅ node_modules directory exists in deploy"
+            echo "  - Deploy node_modules size: $(du -sh deploy/node_modules/)"
+            echo "  - Deploy node_modules file count: $(find deploy/node_modules -type f | wc -l)"
             if [ -d "deploy/node_modules/express" ]; then
               echo "✅ express module found in deployment package"
-              ls -la deploy/node_modules/express/
+              echo "  - Express files: $(find deploy/node_modules/express -name '*.js' | wc -l) JS files"
             else
               echo "❌ express module NOT found in deployment package"
+              echo "  - Available modules in deploy:"
+              ls -la deploy/node_modules/ | head -5
             fi
           else
             echo "❌ node_modules directory NOT copied to deploy"
-            # Force copy node_modules
-            echo "📦 Force copying node_modules..."
-            cp -r server/node_modules deploy/
+            echo "  - Attempting manual copy..."
+            if [ -d "server/node_modules" ]; then
+              cp -r server/node_modules deploy/
+              echo "  - Manual copy completed"
+            else
+              echo "  - ERROR: server/node_modules does not exist!"
+              ls -la server/
+            fi
           fi
           
           # Copy shared modules
