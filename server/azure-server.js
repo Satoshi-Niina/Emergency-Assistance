@@ -1735,15 +1735,24 @@ app.post('/api/chatgpt', async (req, res) => {
       });
     }
 
-    // OpenAI APIを使用した実際の処理
+    // OpenAI APIを使用した実際の処理 - 一時的に無効化（EISDIR回避）
     try {
-      const { processOpenAIRequest } = await import('./lib/openai.js');
-      const response = await processOpenAIRequest(text, useOnlyKnowledgeBase);
+      // const { processOpenAIRequest } = await import('./lib/openai.ts');
+      // const response = await processOpenAIRequest(text, useOnlyKnowledgeBase);
+
+      // 一時的なフォールバック応答
+      const response = `申し訳ございませんが、現在AIアシスタント機能は一時的に利用できません。お困りの件について、以下の基本的な緊急時対応手順をご参考ください：
+
+1. 緊急事態の場合は、まず119番（消防・救急）または110番（警察）に連絡してください。
+2. 安全な場所に避難してください。
+3. 必要に応じて、近くの避難所や安全な建物に移動してください。
+
+システムの復旧をお待ちください。`;
 
       res.json({
         success: true,
         response: response,
-        message: 'GPT応答を生成しました',
+        message: 'フォールバック応答を返しました（AIサービス一時無効）',
         details: {
           inputText: text || 'no text provided',
           useOnlyKnowledgeBase: useOnlyKnowledgeBase,

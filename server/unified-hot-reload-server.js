@@ -59,21 +59,21 @@ function initializeDatabase() {
 
   try {
     console.log('🔗 Initializing database connection...');
-    
+
     // DATABASE_URLから秘密情報をマスク
     const maskedDbUrl = process.env.DATABASE_URL.replace(/:[^:@]+@/, ':****@');
-    
-    const isLocalhost = process.env.DATABASE_URL.includes('localhost') || 
-                       process.env.DATABASE_URL.includes('127.0.0.1');
-    
-    const sslConfig = isLocalhost 
+
+    const isLocalhost = process.env.DATABASE_URL.includes('localhost') ||
+      process.env.DATABASE_URL.includes('127.0.0.1');
+
+    const sslConfig = isLocalhost
       ? false
-      : process.env.PG_SSL === 'require' 
-      ? { rejectUnauthorized: false }
-      : process.env.PG_SSL === 'disable' 
-      ? false 
-      : { rejectUnauthorized: false };
-    
+      : process.env.PG_SSL === 'require'
+        ? { rejectUnauthorized: false }
+        : process.env.PG_SSL === 'disable'
+          ? false
+          : { rejectUnauthorized: false };
+
     dbPool = new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: sslConfig,
@@ -157,12 +157,12 @@ function startViteServer() {
   }
 
   console.log('🚀 Starting Vite development server...');
-  
+
   const clientDir = path.join(__dirname, '..', 'client');
-  
+
   // Windows環境でのnpmコマンドの解決
   const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  
+
   viteServer = spawn(npmCommand, ['run', 'dev'], {
     cwd: clientDir,
     stdio: 'pipe',
@@ -207,15 +207,15 @@ if (isDevelopment) {
     if (req.path.startsWith('/api/')) {
       return next();
     }
-    
+
     // Viteサーバーが起動していない場合は待機
     if (!viteServer) {
       return res.status(503).send('Vite server is starting, please wait...');
     }
-    
+
     // Viteサーバーへのプロキシ
     const proxyUrl = `http://localhost:${CLIENT_PORT}${req.path}`;
-    
+
     fetch(proxyUrl)
       .then(response => {
         if (response.ok) {
@@ -236,7 +236,7 @@ if (isDevelopment) {
   // 本番環境: ビルド済み静的ファイルを配信
   const publicDir = path.join(__dirname, 'public');
   const clientDistDir = path.join(__dirname, '..', 'client', 'dist');
-  
+
   // publicディレクトリが存在する場合は使用（優先）
   if (fs.existsSync(publicDir)) {
     app.use(express.static(publicDir, { maxAge: '1y' }));
@@ -248,26 +248,26 @@ if (isDevelopment) {
   } else {
     console.warn('⚠️ 静的ファイルディレクトリが見つかりません。publicまたはclient/distが必要です。');
   }
-  
+
   // SPAのルーティング対応: すべてのリクエストをindex.htmlにフォールバック
   app.get('*', (req, res, next) => {
     // APIルートは除外
     if (req.path.startsWith('/api/')) {
       return next();
     }
-    
+
     // 静的ファイル（拡張子あり）は除外
     if (req.path.match(/\.[a-zA-Z0-9]+$/)) {
       return next();
     }
-    
+
     // index.htmlを配信（SPAルーティング）
     const indexPath = fs.existsSync(publicDir)
       ? path.join(publicDir, 'index.html')
       : fs.existsSync(clientDistDir)
-      ? path.join(clientDistDir, 'index.html')
-      : null;
-    
+        ? path.join(clientDistDir, 'index.html')
+        : null;
+
     if (indexPath && fs.existsSync(indexPath)) {
       res.sendFile(indexPath);
     } else {
@@ -282,19 +282,19 @@ function authenticateToken(req, res, next) {
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    return res.status(401).json({ 
-      success: false, 
+    return res.status(401).json({
+      success: false,
       error: 'access_token_required',
-      message: 'アクセストークンが必要です' 
+      message: 'アクセストークンが必要です'
     });
   }
 
   jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-key-32-characters-long', (err, user) => {
     if (err) {
-      return res.status(403).json({ 
-        success: false, 
+      return res.status(403).json({
+        success: false,
         error: 'invalid_token',
-        message: '無効なトークンです' 
+        message: '無効なトークンです'
       });
     }
     req.user = user;
@@ -354,7 +354,7 @@ function findExistingImageByHash(uploadDir, fileHash) {
   if (!fs.existsSync(uploadDir)) {
     return null;
   }
-  
+
   const files = fs.readdirSync(uploadDir);
   for (const file of files) {
     try {
@@ -423,12 +423,12 @@ apiRouter.get('/auth/me', async (req, res) => {
       cookies: req.headers.cookie,
       authHeader: req.headers.authorization
     });
-    
+
     // セッションベースの認証をチェック
     if (req.session?.user) {
       console.log('[auth/me] Session-based auth:', req.session.user);
-      return res.json({ 
-        success: true, 
+      return res.json({
+        success: true,
         user: req.session.user,
         authenticated: true
       });
@@ -442,10 +442,10 @@ apiRouter.get('/auth/me', async (req, res) => {
         const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-key-32-characters-long');
         // セキュリティのため、トークンのペイロードはログに出力しない（ユーザーIDのみ）
         console.log('[auth/me] Token-based auth: user authenticated (userId:', payload.uid || payload.id || 'unknown', ')');
-        return res.json({ 
-          success: true, 
-          user: { 
-            id: payload.id || payload.sub, 
+        return res.json({
+          success: true,
+          user: {
+            id: payload.id || payload.sub,
             username: payload.username,
             role: payload.role
           },
@@ -453,8 +453,8 @@ apiRouter.get('/auth/me', async (req, res) => {
         });
       } catch (tokenError) {
         console.log('[auth/me] Invalid token:', tokenError.message);
-        return res.status(401).json({ 
-          success: false, 
+        return res.status(401).json({
+          success: false,
           error: 'invalid_token',
           message: '無効なトークンです'
         });
@@ -464,8 +464,8 @@ apiRouter.get('/auth/me', async (req, res) => {
     // 開発環境ではダミーユーザーを返す
     if (process.env.NODE_ENV === 'development' || process.env.BYPASS_DB_FOR_LOGIN === 'true') {
       console.log('[auth/me] Development mode: Returning demo user');
-      return res.json({ 
-        success: true, 
+      return res.json({
+        success: true,
         user: {
           id: 'demo',
           username: 'demo',
@@ -479,16 +479,16 @@ apiRouter.get('/auth/me', async (req, res) => {
 
     // 未認証
     console.log('[auth/me] No authentication found');
-    return res.status(401).json({ 
-      success: false, 
+    return res.status(401).json({
+      success: false,
       error: 'authentication_required',
       message: '認証が必要です'
     });
-    
+
   } catch (error) {
     console.error('[auth/me] Unexpected error:', error);
-    return res.status(500).json({ 
-      success: false, 
+    return res.status(500).json({
+      success: false,
       error: 'internal_error',
       message: 'サーバーエラーが発生しました'
     });
@@ -501,11 +501,11 @@ apiRouter.post('/auth/login', async (req, res) => {
     // セキュリティのため、パスワードはログに出力しない
     console.log('Login attempt received:', { username: req.body.username });
     const { username, password } = req.body;
-    
+
     if (!username || !password) {
       console.log('Missing username or password');
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         error: 'bad_request',
         message: 'ユーザー名とパスワードが必要です'
       });
@@ -522,44 +522,44 @@ apiRouter.post('/auth/login', async (req, res) => {
           'SELECT id, username, password, role, display_name, department FROM users WHERE username = $1 LIMIT 1',
           [username]
         );
-        
+
         if (result.rows.length === 0) {
           console.log('User not found in database');
-          return res.status(401).json({ 
-            success: false, 
+          return res.status(401).json({
+            success: false,
             error: 'invalid_credentials',
             message: 'ユーザー名またはパスワードが正しくありません'
           });
         }
-        
+
         const user = result.rows[0];
         console.log('User found in database:', user.username);
         const isValidPassword = await bcrypt.compare(password, user.password);
-        
+
         if (!isValidPassword) {
           console.log('Password validation failed');
-          return res.status(401).json({ 
-            success: false, 
+          return res.status(401).json({
+            success: false,
             error: 'invalid_credentials',
             message: 'ユーザー名またはパスワードが正しくありません'
           });
         }
-        
+
         console.log('Database authentication successful');
-        
+
         // JWTトークンを生成
         const token = jwt.sign(
-          { 
-            id: user.id, 
-            username: user.username, 
-            role: user.role 
+          {
+            id: user.id,
+            username: user.username,
+            role: user.role
           },
           process.env.JWT_SECRET || 'dev-secret-key-32-characters-long',
           { expiresIn: '24h' }
         );
-        
-        res.json({ 
-          success: true, 
+
+        res.json({
+          success: true,
           user: {
             id: user.id,
             username: user.username,
@@ -583,32 +583,32 @@ apiRouter.post('/auth/login', async (req, res) => {
       console.log('Using simple authentication without database');
       console.log(`Login attempt: username="${username}"`);
       // セキュリティのため、パスワードはログに出力しない
-      
+
       const testUsers = {
         'admin': { password: 'admin', role: 'admin', displayName: 'Administrator', department: 'IT' },
         'niina': { password: 'G&896845', role: 'admin', displayName: 'Satoshi Niina', department: 'IT' }
       };
-      
+
       const user = testUsers[username];
       if (user && password === user.password) {
         console.log('Simple authentication successful');
-        
+
         // JWTトークンを生成
         const token = jwt.sign(
-          { 
-            id: 1, 
-            username: username, 
-            role: user.role 
+          {
+            id: 1,
+            username: username,
+            role: user.role
           },
           process.env.JWT_SECRET || 'dev-secret-key-32-characters-long',
           { expiresIn: '24h' }
         );
-        
-        return res.json({ 
-          success: true, 
-          user: { 
-            id: 1, 
-            username: username, 
+
+        return res.json({
+          success: true,
+          user: {
+            id: 1,
+            username: username,
             role: user.role,
             displayName: user.displayName,
             display_name: user.displayName,
@@ -619,8 +619,8 @@ apiRouter.post('/auth/login', async (req, res) => {
         });
       } else {
         console.log('Simple authentication failed - invalid credentials');
-        return res.status(401).json({ 
-          success: false, 
+        return res.status(401).json({
+          success: false,
           error: 'invalid_credentials',
           message: 'ユーザー名またはパスワードが正しくありません'
         });
@@ -628,7 +628,7 @@ apiRouter.post('/auth/login', async (req, res) => {
     }
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'internal_server_error',
       message: 'サーバーエラーが発生しました'
@@ -637,8 +637,8 @@ apiRouter.post('/auth/login', async (req, res) => {
 });
 
 apiRouter.post('/auth/logout', (req, res) => {
-  res.json({ 
-    success: true, 
+  res.json({
+    success: true,
     message: 'ログアウトしました'
   });
 });
@@ -647,15 +647,15 @@ apiRouter.post('/auth/logout', (req, res) => {
 apiRouter.get('/machines/machine-types', async (req, res) => {
   try {
     console.log('🔍 機種一覧取得リクエスト');
-    
+
     if (dbPool) {
       try {
         const result = await dbPool.query(`
-          SELECT id, machine_type_name as machine_type_name 
-          FROM machine_types 
+          SELECT id, machine_type_name as machine_type_name
+          FROM machine_types
           ORDER BY machine_type_name
         `);
-        
+
         return res.json({
           success: true,
           data: result.rows,
@@ -666,14 +666,14 @@ apiRouter.get('/machines/machine-types', async (req, res) => {
         console.error('Database error:', dbError.message);
       }
     }
-    
+
     const dummyData = [
       { id: '1', machine_type_name: 'MT-100' },
       { id: '2', machine_type_name: 'MR-400' },
       { id: '3', machine_type_name: 'TC-250' },
       { id: '4', machine_type_name: 'SS-750' }
     ];
-    
+
     res.json({
       success: true,
       data: dummyData,
@@ -696,7 +696,7 @@ apiRouter.post('/machines/machine-types', authenticateToken, async (req, res) =>
   try {
     console.log('🔧 機種追加リクエスト:', req.body);
     const { name } = req.body;
-    
+
     if (!name || !name.trim()) {
       return res.status(400).json({
         success: false,
@@ -704,15 +704,15 @@ apiRouter.post('/machines/machine-types', authenticateToken, async (req, res) =>
         message: '機種名は必須です'
       });
     }
-    
+
     if (dbPool) {
       try {
         // 重複チェック
         const duplicateCheck = await dbPool.query(`
-          SELECT id FROM machine_types 
+          SELECT id FROM machine_types
           WHERE machine_type_name = $1
         `, [name.trim()]);
-        
+
         if (duplicateCheck.rows.length > 0) {
           return res.status(409).json({
             success: false,
@@ -720,13 +720,13 @@ apiRouter.post('/machines/machine-types', authenticateToken, async (req, res) =>
             message: 'この機種名は既に使用されています'
           });
         }
-        
+
         const result = await dbPool.query(`
           INSERT INTO machine_types (machine_type_name)
           VALUES ($1)
           RETURNING id, machine_type_name
         `, [name.trim()]);
-        
+
         console.log('✅ 機種追加成功:', result.rows[0]);
         return res.json({
           success: true,
@@ -739,7 +739,7 @@ apiRouter.post('/machines/machine-types', authenticateToken, async (req, res) =>
         throw dbError;
       }
     }
-    
+
     res.status(503).json({
       success: false,
       error: 'データベース接続がありません',
@@ -761,9 +761,9 @@ apiRouter.put('/machines/machine-types/:id', authenticateToken, async (req, res)
   try {
     const { id } = req.params;
     const { name } = req.body;
-    
+
     console.log('🔧 機種更新リクエスト:', { id, name });
-    
+
     if (!name || !name.trim()) {
       return res.status(400).json({
         success: false,
@@ -771,15 +771,15 @@ apiRouter.put('/machines/machine-types/:id', authenticateToken, async (req, res)
         message: '機種名は必須です'
       });
     }
-    
+
     if (dbPool) {
       try {
         // 重複チェック（自分以外）
         const duplicateCheck = await dbPool.query(`
-          SELECT id FROM machine_types 
+          SELECT id FROM machine_types
           WHERE machine_type_name = $1 AND id != $2
         `, [name.trim(), id]);
-        
+
         if (duplicateCheck.rows.length > 0) {
           return res.status(409).json({
             success: false,
@@ -787,14 +787,14 @@ apiRouter.put('/machines/machine-types/:id', authenticateToken, async (req, res)
             message: 'この機種名は既に使用されています'
           });
         }
-        
+
         const result = await dbPool.query(`
-          UPDATE machine_types 
+          UPDATE machine_types
           SET machine_type_name = $1
           WHERE id = $2
           RETURNING id, machine_type_name
         `, [name.trim(), id]);
-        
+
         if (result.rows.length === 0) {
           return res.status(404).json({
             success: false,
@@ -802,7 +802,7 @@ apiRouter.put('/machines/machine-types/:id', authenticateToken, async (req, res)
             message: '指定されたIDの機種が存在しません'
           });
         }
-        
+
         console.log('✅ 機種更新成功:', result.rows[0]);
         return res.json({
           success: true,
@@ -815,7 +815,7 @@ apiRouter.put('/machines/machine-types/:id', authenticateToken, async (req, res)
         throw dbError;
       }
     }
-    
+
     res.status(503).json({
       success: false,
       error: 'データベース接続がありません',
@@ -837,14 +837,14 @@ apiRouter.delete('/machines/machine-types/:id', authenticateToken, async (req, r
   try {
     const { id } = req.params;
     console.log('🗑️ 機種削除リクエスト:', { id });
-    
+
     if (dbPool) {
       try {
         // 関連する機械番号があるかチェック
         const relatedMachines = await dbPool.query(`
           SELECT COUNT(*) as count FROM machines WHERE machine_type_id = $1
         `, [id]);
-        
+
         if (relatedMachines.rows[0].count > 0) {
           return res.status(400).json({
             success: false,
@@ -852,13 +852,13 @@ apiRouter.delete('/machines/machine-types/:id', authenticateToken, async (req, r
             message: 'この機種に関連する機械番号があるため削除できません。まず機械番号を削除してください。'
           });
         }
-        
+
         const result = await dbPool.query(`
-          DELETE FROM machine_types 
+          DELETE FROM machine_types
           WHERE id = $1
           RETURNING id, machine_type_name
         `, [id]);
-        
+
         if (result.rows.length === 0) {
           return res.status(404).json({
             success: false,
@@ -866,7 +866,7 @@ apiRouter.delete('/machines/machine-types/:id', authenticateToken, async (req, r
             message: '指定されたIDの機種が存在しません'
           });
         }
-        
+
         console.log('✅ 機種削除成功:', result.rows[0]);
         return res.json({
           success: true,
@@ -879,7 +879,7 @@ apiRouter.delete('/machines/machine-types/:id', authenticateToken, async (req, r
         throw dbError;
       }
     }
-    
+
     res.status(503).json({
       success: false,
       error: 'データベース接続がありません',
@@ -901,18 +901,18 @@ apiRouter.get('/machines', async (req, res) => {
   try {
     const { type_id } = req.query;
     console.log('🔍 機械番号一覧取得リクエスト:', { type_id });
-    
+
     if (dbPool) {
       try {
         let query, params;
-        
+
         if (type_id) {
           // 特定の機種IDの機械番号のみ取得
           query = `
             SELECT m.id, m.machine_number, m.machine_type_id, mt.machine_type_name
             FROM machines m
             LEFT JOIN machine_types mt ON m.machine_type_id = mt.id
-            WHERE m.machine_type_id = $1 
+            WHERE m.machine_type_id = $1
             ORDER BY m.machine_number
           `;
           params = [type_id];
@@ -926,9 +926,9 @@ apiRouter.get('/machines', async (req, res) => {
           `;
           params = [];
         }
-        
+
         const result = await dbPool.query(query, params);
-        
+
         return res.json({
           success: true,
           data: result.rows,
@@ -939,13 +939,13 @@ apiRouter.get('/machines', async (req, res) => {
         console.error('Database error:', dbError.message);
       }
     }
-    
+
     const dummyData = [
       { id: '1', machine_number: 'M001', machine_type_id: '1', machine_type_name: 'MT-100' },
       { id: '2', machine_number: 'M002', machine_type_id: '1', machine_type_name: 'MT-100' },
       { id: '3', machine_number: 'M003', machine_type_id: '2', machine_type_name: 'MR-400' }
     ];
-    
+
     res.json({
       success: true,
       data: dummyData,
@@ -968,7 +968,7 @@ apiRouter.post('/machines', authenticateToken, async (req, res) => {
   try {
     console.log('🔧 機械番号追加リクエスト:', req.body);
     const { machine_number, machine_type_id } = req.body;
-    
+
     if (!machine_number || !machine_type_id) {
       return res.status(400).json({
         success: false,
@@ -976,15 +976,15 @@ apiRouter.post('/machines', authenticateToken, async (req, res) => {
         message: '機械番号と機種IDは必須です'
       });
     }
-    
+
     if (dbPool) {
       try {
         // 重複チェック
         const duplicateCheck = await dbPool.query(`
-          SELECT id FROM machines 
+          SELECT id FROM machines
           WHERE machine_number = $1 AND machine_type_id = $2
         `, [machine_number, machine_type_id]);
-        
+
         if (duplicateCheck.rows.length > 0) {
           return res.status(409).json({
             success: false,
@@ -992,13 +992,13 @@ apiRouter.post('/machines', authenticateToken, async (req, res) => {
             message: 'この機種に同じ機械番号は既に登録されています'
           });
         }
-        
+
         const result = await dbPool.query(`
           INSERT INTO machines (machine_number, machine_type_id)
           VALUES ($1, $2)
           RETURNING id, machine_number, machine_type_id
         `, [machine_number, machine_type_id]);
-        
+
         console.log('✅ 機械番号追加成功:', result.rows[0]);
         return res.json({
           success: true,
@@ -1018,7 +1018,7 @@ apiRouter.post('/machines', authenticateToken, async (req, res) => {
         throw dbError;
       }
     }
-    
+
     res.status(503).json({
       success: false,
       error: 'データベース接続がありません',
@@ -1040,9 +1040,9 @@ apiRouter.put('/machines/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { machine_number, machine_type_id } = req.body;
-    
+
     console.log('🔧 機械番号更新リクエスト:', { id, machine_number, machine_type_id });
-    
+
     if (!machine_number || !machine_type_id) {
       return res.status(400).json({
         success: false,
@@ -1050,15 +1050,15 @@ apiRouter.put('/machines/:id', authenticateToken, async (req, res) => {
         message: '機械番号と機種IDは必須です'
       });
     }
-    
+
     if (dbPool) {
       try {
         // 重複チェック（自分以外）
         const duplicateCheck = await dbPool.query(`
-          SELECT id FROM machines 
+          SELECT id FROM machines
           WHERE machine_number = $1 AND machine_type_id = $2 AND id != $3
         `, [machine_number, machine_type_id, id]);
-        
+
         if (duplicateCheck.rows.length > 0) {
           return res.status(409).json({
             success: false,
@@ -1066,14 +1066,14 @@ apiRouter.put('/machines/:id', authenticateToken, async (req, res) => {
             message: 'この機種に同じ機械番号は既に登録されています'
           });
         }
-        
+
         const result = await dbPool.query(`
-          UPDATE machines 
+          UPDATE machines
           SET machine_number = $1, machine_type_id = $2
           WHERE id = $3
           RETURNING id, machine_number, machine_type_id
         `, [machine_number, machine_type_id, id]);
-        
+
         if (result.rows.length === 0) {
           return res.status(404).json({
             success: false,
@@ -1081,7 +1081,7 @@ apiRouter.put('/machines/:id', authenticateToken, async (req, res) => {
             message: '指定されたIDの機械番号が存在しません'
           });
         }
-        
+
         console.log('✅ 機械番号更新成功:', result.rows[0]);
         return res.json({
           success: true,
@@ -1101,7 +1101,7 @@ apiRouter.put('/machines/:id', authenticateToken, async (req, res) => {
         throw dbError;
       }
     }
-    
+
     res.status(503).json({
       success: false,
       error: 'データベース接続がありません',
@@ -1123,15 +1123,15 @@ apiRouter.delete('/machines/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     console.log('🗑️ 機械番号削除リクエスト:', { id });
-    
+
     if (dbPool) {
       try {
         const result = await dbPool.query(`
-          DELETE FROM machines 
+          DELETE FROM machines
           WHERE id = $1
           RETURNING id, machine_number, machine_type_id
         `, [id]);
-        
+
         if (result.rows.length === 0) {
           return res.status(404).json({
             success: false,
@@ -1139,7 +1139,7 @@ apiRouter.delete('/machines/:id', authenticateToken, async (req, res) => {
             message: '指定されたIDの機械番号が存在しません'
           });
         }
-        
+
         console.log('✅ 機械番号削除成功:', result.rows[0]);
         return res.json({
           success: true,
@@ -1152,7 +1152,7 @@ apiRouter.delete('/machines/:id', authenticateToken, async (req, res) => {
         throw dbError;
       }
     }
-    
+
     res.status(503).json({
       success: false,
       error: 'データベース接続がありません',
@@ -1173,7 +1173,7 @@ apiRouter.delete('/machines/:id', authenticateToken, async (req, res) => {
 apiRouter.get('/users', async (req, res) => {
   try {
     console.log('🔍 ユーザー一覧取得リクエスト');
-    
+
     if (dbPool) {
       try {
         const result = await dbPool.query(`
@@ -1181,7 +1181,7 @@ apiRouter.get('/users', async (req, res) => {
           FROM users
           ORDER BY created_at DESC
         `);
-        
+
         return res.json({
           success: true,
           data: result.rows,
@@ -1192,7 +1192,7 @@ apiRouter.get('/users', async (req, res) => {
         console.error('Database error:', dbError.message);
       }
     }
-    
+
     res.json({
       success: true,
       data: [],
@@ -1218,7 +1218,7 @@ apiRouter.post('/users', async (req, res) => {
     const { password: _password, ...safeBody } = req.body;
     console.log('👤 ユーザー作成リクエスト:', safeBody);
     const { username, password, display_name, role, department, description } = req.body;
-    
+
     if (!username || !password || !display_name) {
       return res.status(400).json({
         success: false,
@@ -1226,18 +1226,18 @@ apiRouter.post('/users', async (req, res) => {
         message: 'ユーザー名、パスワード、表示名は必須です'
       });
     }
-    
+
     if (dbPool) {
       try {
         // パスワードをハッシュ化
         const hashedPassword = await bcrypt.hash(password, 10);
-        
+
         const result = await dbPool.query(`
           INSERT INTO users (username, password, display_name, role, department, description)
           VALUES ($1, $2, $3, $4, $5, $6)
           RETURNING id, username, display_name, role, department, description, created_at
         `, [username, hashedPassword, display_name, role || 'employee', department, description]);
-        
+
         console.log('✅ ユーザー作成成功:', result.rows[0]);
         return res.json({
           success: true,
@@ -1257,7 +1257,7 @@ apiRouter.post('/users', async (req, res) => {
         throw dbError;
       }
     }
-    
+
     res.status(503).json({
       success: false,
       error: 'データベース接続がありません',
@@ -1279,11 +1279,11 @@ apiRouter.put('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { username, password, display_name, role, department, description } = req.body;
-    
+
     // セキュリティのため、パスワードはログに出力しない
     const { password: _password, ...safeBody } = req.body;
     console.log('👤 ユーザー更新リクエスト:', { id, ...safeBody });
-    
+
     if (!id || !username || !display_name) {
       return res.status(400).json({
         success: false,
@@ -1291,16 +1291,16 @@ apiRouter.put('/users/:id', async (req, res) => {
         message: 'ID、ユーザー名、表示名は必須です'
       });
     }
-    
+
     if (dbPool) {
       try {
         let query, params;
-        
+
         if (password) {
           // パスワードも更新する場合
           const hashedPassword = await bcrypt.hash(password, 10);
           query = `
-            UPDATE users 
+            UPDATE users
             SET username = $1, password = $2, display_name = $3, role = $4, department = $5, description = $6
             WHERE id = $7
             RETURNING id, username, display_name, role, department, description, created_at
@@ -1309,16 +1309,16 @@ apiRouter.put('/users/:id', async (req, res) => {
         } else {
           // パスワードは更新しない場合
           query = `
-            UPDATE users 
+            UPDATE users
             SET username = $1, display_name = $2, role = $3, department = $4, description = $5
             WHERE id = $6
             RETURNING id, username, display_name, role, department, description, created_at
           `;
           params = [username, display_name, role, department, description, id];
         }
-        
+
         const result = await dbPool.query(query, params);
-        
+
         if (result.rows.length === 0) {
           return res.status(404).json({
             success: false,
@@ -1326,7 +1326,7 @@ apiRouter.put('/users/:id', async (req, res) => {
             message: '指定されたユーザーが存在しません'
           });
         }
-        
+
         console.log('✅ ユーザー更新成功:', result.rows[0]);
         return res.json({
           success: true,
@@ -1346,7 +1346,7 @@ apiRouter.put('/users/:id', async (req, res) => {
         throw dbError;
       }
     }
-    
+
     res.status(503).json({
       success: false,
       error: 'データベース接続がありません',
@@ -1367,9 +1367,9 @@ apiRouter.put('/users/:id', async (req, res) => {
 apiRouter.delete('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     console.log('👤 ユーザー削除リクエスト:', id);
-    
+
     if (!id) {
       return res.status(400).json({
         success: false,
@@ -1377,15 +1377,15 @@ apiRouter.delete('/users/:id', async (req, res) => {
         message: '削除するユーザーのIDを指定してください'
       });
     }
-    
+
     if (dbPool) {
       try {
         const result = await dbPool.query(`
-          DELETE FROM users 
+          DELETE FROM users
           WHERE id = $1
           RETURNING id, username, display_name
         `, [id]);
-        
+
         if (result.rows.length === 0) {
           return res.status(404).json({
             success: false,
@@ -1393,7 +1393,7 @@ apiRouter.delete('/users/:id', async (req, res) => {
             message: '指定されたユーザーが存在しません'
           });
         }
-        
+
         console.log('✅ ユーザー削除成功:', result.rows[0]);
         return res.json({
           success: true,
@@ -1406,7 +1406,7 @@ apiRouter.delete('/users/:id', async (req, res) => {
         throw dbError;
       }
     }
-    
+
     res.status(503).json({
       success: false,
       error: 'データベース接続がありません',
@@ -1430,7 +1430,7 @@ apiRouter.get('/history/export-files', async (req, res) => {
     console.log('📂 エクスポートファイル一覧取得リクエスト受信');
     const cwd = process.cwd();
     console.log('📁 現在の作業ディレクトリ:', cwd);
-    
+
     // 複数のパス候補を試す
     const projectRoot = path.resolve(__dirname, '..');
     const possiblePaths = [
@@ -1447,7 +1447,7 @@ apiRouter.get('/history/export-files', async (req, res) => {
     ].filter(Boolean); // undefined/nullを除外
 
     console.log('🔍 パス候補:', possiblePaths);
-    
+
     let exportsDir = null;
     for (const testPath of possiblePaths) {
       if (!testPath) continue;
@@ -1471,50 +1471,50 @@ apiRouter.get('/history/export-files', async (req, res) => {
     }
 
     console.log('✅ エクスポートディレクトリ確認:', exportsDir);
-    
+
     // ファイル一覧を取得（日本語ファイル名対応）
     const files = fs.readdirSync(exportsDir);
     console.log('📋 ディレクトリ内の全ファイル:', files);
     console.log('📋 ファイル数:', files.length);
-    
+
     const jsonFiles = files.filter(file => file.endsWith('.json'));
     console.log('📋 JSONファイル数:', jsonFiles.length, 'ファイル:', jsonFiles);
-    
+
     const exportFiles = jsonFiles
       .filter(file => !file.includes('.backup.')) // バックアップファイルを除外
       .filter(file => !file.startsWith('test-backup-')) // テストファイルを除外
       .map(file => {
         const filePath = path.join(exportsDir, file);
         console.log('🔍 ファイル処理中:', filePath);
-        
+
         try {
           // ファイルの存在確認
           if (!fs.existsSync(filePath)) {
             console.warn('❌ ファイルが見つかりません:', filePath);
             return null;
           }
-          
+
           const stats = fs.statSync(filePath);
           if (!stats.isFile()) {
             console.warn('❌ ファイルではありません:', filePath);
             return null;
           }
-          
+
           const content = fs.readFileSync(filePath, 'utf8');
           const data = JSON.parse(content);
-          
+
           // 機種と機械番号を抽出（複数の形式に対応）
-          const machineType = 
-            data.machineType || 
-            data.chatData?.machineInfo?.machineTypeName || 
-            data.machineInfo?.machineTypeName || 
+          const machineType =
+            data.machineType ||
+            data.chatData?.machineInfo?.machineTypeName ||
+            data.machineInfo?.machineTypeName ||
             '';
-          const machineNumber = 
-            data.machineNumber || 
-            data.chatData?.machineInfo?.machineNumber || 
-            data.machineInfo?.machineNumber || 
+          const machineNumber =
+            data.machineNumber ||
+            data.chatData?.machineInfo?.machineNumber ||
+            data.machineInfo?.machineNumber ||
             '';
-          
+
           const fileInfo = {
             fileName: file,
             filePath: filePath,
@@ -1560,10 +1560,10 @@ apiRouter.get('/history/export-files', async (req, res) => {
 apiRouter.get('/history', async (req, res) => {
   try {
     console.log('📋 履歴一覧取得リクエスト（ファイルベース）');
-    
+
     const projectRoot = path.resolve(__dirname, '..');
     const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
-    
+
     if (!fs.existsSync(exportsDir)) {
       return res.json({
         success: true,
@@ -1573,40 +1573,40 @@ apiRouter.get('/history', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     }
-    
+
     const files = fs.readdirSync(exportsDir);
-    const jsonFiles = files.filter(file => 
-      file.endsWith('.json') && 
-      !file.includes('index') && 
+    const jsonFiles = files.filter(file =>
+      file.endsWith('.json') &&
+      !file.includes('index') &&
       !file.includes('railway-maintenance-ai-prompt')
     );
-    
+
     const { limit = 50, offset = 0 } = req.query;
     const startIndex = parseInt(offset);
     const endIndex = startIndex + parseInt(limit);
     const paginatedFiles = jsonFiles.slice(startIndex, endIndex);
-    
+
     const historyItems = paginatedFiles.map(file => {
       try {
         const filePath = path.join(exportsDir, file);
         const content = fs.readFileSync(filePath, { encoding: 'utf8' });
         const data = JSON.parse(content);
-        
+
         const fileName = file.replace('.json', '');
         const uuidMatch = fileName.match(/_([a-f0-9-]{36})_/);
         const actualId = uuidMatch ? uuidMatch[1] : fileName;
-        
+
         const imageDir = path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
         let hasImages = false;
         let imageCount = 0;
         const images = [];
-        
+
         if (fs.existsSync(imageDir)) {
           const imageFiles = fs.readdirSync(imageDir);
-          const matchingImages = imageFiles.filter(imgFile => 
+          const matchingImages = imageFiles.filter(imgFile =>
             imgFile.includes(actualId) && (imgFile.endsWith('.jpg') || imgFile.endsWith('.jpeg'))
           );
-          
+
           if (matchingImages.length > 0) {
             hasImages = true;
             imageCount = matchingImages.length;
@@ -1617,19 +1617,19 @@ apiRouter.get('/history', async (req, res) => {
             })));
           }
         }
-        
+
         // 機種と機械番号を抽出（複数の形式に対応）
-        const machineType = 
-          data.machineType || 
-          data.chatData?.machineInfo?.machineTypeName || 
-          data.machineInfo?.machineTypeName || 
+        const machineType =
+          data.machineType ||
+          data.chatData?.machineInfo?.machineTypeName ||
+          data.machineInfo?.machineTypeName ||
           'Unknown';
-        const machineNumber = 
-          data.machineNumber || 
-          data.chatData?.machineInfo?.machineNumber || 
-          data.machineInfo?.machineNumber || 
+        const machineNumber =
+          data.machineNumber ||
+          data.chatData?.machineInfo?.machineNumber ||
+          data.machineInfo?.machineNumber ||
           'Unknown';
-        
+
         return {
           id: actualId,
           fileName: file,
@@ -1650,9 +1650,9 @@ apiRouter.get('/history', async (req, res) => {
         return null;
       }
     }).filter(item => item !== null);
-    
+
     console.log(`✅ ファイルベース履歴一覧取得成功: ${historyItems.length}件`);
-    
+
     res.json({
       success: true,
       data: historyItems,
@@ -1682,10 +1682,10 @@ apiRouter.get('/history/:id', async (req, res) => {
     const { id } = req.params;
     const { format = 'unified', includeImages = 'true' } = req.query;
     console.log(`📋 履歴詳細取得リクエスト（ファイルベース）: ${id}`);
-    
+
     const projectRoot = path.resolve(__dirname, '..');
     const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
-    
+
     if (!fs.existsSync(exportsDir)) {
       return res.status(404).json({
         success: false,
@@ -1693,28 +1693,28 @@ apiRouter.get('/history/:id', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     }
-    
+
     const files = fs.readdirSync(exportsDir);
-    const jsonFiles = files.filter(file => 
-      file.endsWith('.json') && 
-      !file.includes('index') && 
+    const jsonFiles = files.filter(file =>
+      file.endsWith('.json') &&
+      !file.includes('index') &&
       !file.includes('railway-maintenance-ai-prompt')
     );
-    
+
     let foundFile = null;
     let foundData = null;
-    
+
     for (const file of jsonFiles) {
       const fileName = file.replace('.json', '');
       const uuidMatch = fileName.match(/_([a-f0-9-]{36})_/);
       const fileId = uuidMatch ? uuidMatch[1] : fileName;
-      
+
       if (fileId === id || fileName === id) {
         try {
           const filePath = path.join(exportsDir, file);
           const content = fs.readFileSync(filePath, { encoding: 'utf8' });
           const data = JSON.parse(content);
-          
+
           foundFile = file;
           foundData = data;
           break;
@@ -1723,7 +1723,7 @@ apiRouter.get('/history/:id', async (req, res) => {
         }
       }
     }
-    
+
     if (!foundData) {
       return res.status(404).json({
         success: false,
@@ -1731,23 +1731,23 @@ apiRouter.get('/history/:id', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     }
-    
+
     const imageDir = path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
     let imageInfo = [];
-    
+
     if (includeImages === 'true' && fs.existsSync(imageDir)) {
       const imageFiles = fs.readdirSync(imageDir);
-      const matchingImages = imageFiles.filter(imgFile => 
+      const matchingImages = imageFiles.filter(imgFile =>
         imgFile.includes(id) && (imgFile.endsWith('.jpg') || imgFile.endsWith('.jpeg'))
       );
-      
+
       imageInfo = matchingImages.map(imgFile => ({
         fileName: imgFile,
         url: `/api/images/chat-exports/${imgFile}`,
         path: imgFile
       }));
     }
-    
+
     const response = {
       success: true,
       id: id,
@@ -1767,7 +1767,7 @@ apiRouter.get('/history/:id', async (req, res) => {
       timestamp: new Date().toISOString(),
       version: '2.0'
     };
-    
+
     console.log(`✅ ファイルベース履歴詳細取得成功: ${id}`);
     res.json(response);
   } catch (error) {
@@ -1900,15 +1900,15 @@ apiRouter.delete('/history/:id', async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🗑️ 履歴削除リクエスト（ファイルベース）: ${id}`);
-    
+
     // 履歴一覧取得APIと同じパス解決方法を使用
     const projectRoot = path.resolve(__dirname, '..');
     const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
-    
+
     console.log(`📂 プロジェクトルート: ${projectRoot}`);
     console.log(`📂 エクスポートディレクトリ: ${exportsDir}`);
     console.log(`📂 ディレクトリ存在確認: ${fs.existsSync(exportsDir)}`);
-    
+
     if (!fs.existsSync(exportsDir)) {
       return res.status(404).json({
         success: false,
@@ -1917,30 +1917,30 @@ apiRouter.delete('/history/:id', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     }
-    
+
     const files = fs.readdirSync(exportsDir);
-    const jsonFiles = files.filter(file => 
-      file.endsWith('.json') && 
-      !file.includes('index') && 
+    const jsonFiles = files.filter(file =>
+      file.endsWith('.json') &&
+      !file.includes('index') &&
       !file.includes('railway-maintenance-ai-prompt')
     );
-    
+
     console.log(`📋 検出されたJSONファイル数: ${jsonFiles.length}`);
-    
+
     let foundFile = null;
     let jsonData = null;
-    
+
     for (const file of jsonFiles) {
       const fileName = file.replace('.json', '');
       const uuidMatch = fileName.match(/_([a-f0-9-]{36})_/);
       const fileId = uuidMatch ? uuidMatch[1] : fileName;
-      
+
       console.log(`🔍 ファイルチェック: ${file}, fileName: ${fileName}, fileId: ${fileId}, id: ${id}`);
-      
+
       if (fileId === id || fileName === id) {
         foundFile = file;
         console.log(`✅ マッチするファイルを発見: ${foundFile}`);
-        
+
         // JSONファイルを読み込んで画像情報を取得
         try {
           const filePath = path.join(exportsDir, foundFile);
@@ -1953,7 +1953,7 @@ apiRouter.delete('/history/:id', async (req, res) => {
         break;
       }
     }
-    
+
     if (!foundFile) {
       console.log(`❌ マッチするファイルが見つかりませんでした。検索ID: ${id}`);
       return res.status(404).json({
@@ -1964,9 +1964,9 @@ apiRouter.delete('/history/:id', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     }
-    
+
     const filePath = path.join(exportsDir, foundFile);
-    
+
     // 画像ディレクトリのパス解決
     let imageDir = path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
     if (!fs.existsSync(imageDir)) {
@@ -1981,9 +1981,9 @@ apiRouter.delete('/history/:id', async (req, res) => {
         imageDir = alternativePath;
       }
     }
-    
+
     const imagesToDelete = [];
-    
+
     // JSONファイル内のsavedImagesから画像ファイル名を取得
     if (jsonData && jsonData.savedImages && Array.isArray(jsonData.savedImages)) {
       jsonData.savedImages.forEach((img) => {
@@ -1999,18 +1999,18 @@ apiRouter.delete('/history/:id', async (req, res) => {
       });
       console.log(`📋 JSON内の画像ファイル数: ${imagesToDelete.length}`);
     }
-    
+
     // 画像ファイルを削除
     if (fs.existsSync(imageDir)) {
       const imageFiles = fs.readdirSync(imageDir);
       const matchingImages = imageFiles.filter(imgFile => {
         // JSON内の画像ファイル名と一致するか、IDを含む画像ファイル
-        return imagesToDelete.includes(imgFile) || 
-               (imgFile.includes(id) && (imgFile.endsWith('.jpg') || imgFile.endsWith('.jpeg') || imgFile.endsWith('.png')));
+        return imagesToDelete.includes(imgFile) ||
+          (imgFile.includes(id) && (imgFile.endsWith('.jpg') || imgFile.endsWith('.jpeg') || imgFile.endsWith('.png')));
       });
-      
+
       console.log(`🖼️ 削除対象の画像ファイル数: ${matchingImages.length}`);
-      
+
       matchingImages.forEach(imgFile => {
         const imgPath = path.join(imageDir, imgFile);
         try {
@@ -2025,14 +2025,14 @@ apiRouter.delete('/history/:id', async (req, res) => {
     } else {
       console.log(`📂 画像ディレクトリが存在しません: ${imageDir}`);
     }
-    
+
     // JSONファイルを削除
     console.log(`🗑️ ファイル削除実行: ${filePath}`);
     fs.unlinkSync(filePath);
     console.log(`✅ ファイル削除完了: ${foundFile}`);
-    
+
     console.log(`✅ ファイルベース履歴削除完了: ${foundFile}`);
-    
+
     res.json({
       success: true,
       message: '履歴を削除しました',
@@ -2057,10 +2057,10 @@ apiRouter.delete('/history/:id', async (req, res) => {
 apiRouter.get('/emergency-flow/list', async (req, res) => {
   try {
     console.log('🔍 応急処置フロー一覧取得リクエスト');
-    
+
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
     const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-    
+
     let targetDir = troubleshootingDir;
     if (!fs.existsSync(troubleshootingDir)) {
       if (fs.existsSync(alternativeDir)) {
@@ -2073,16 +2073,16 @@ apiRouter.get('/emergency-flow/list', async (req, res) => {
         });
       }
     }
-    
+
     const files = fs.readdirSync(targetDir);
     const jsonFiles = files.filter(file => file.endsWith('.json'));
-    
+
     const flows = jsonFiles.map(file => {
       try {
         const filePath = path.join(targetDir, file);
         const fileContent = fs.readFileSync(filePath, { encoding: 'utf8' });
         const jsonData = JSON.parse(fileContent);
-        
+
         return {
           id: jsonData.id || file.replace('.json', ''),
           title: jsonData.title || 'タイトルなし',
@@ -2101,12 +2101,12 @@ apiRouter.get('/emergency-flow/list', async (req, res) => {
         return null;
       }
     }).filter(item => item !== null);
-    
+
     // 作成日時でソート（新しい順）
     flows.sort((a, b) => {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-    
+
     res.json({
       success: true,
       data: flows,
@@ -2129,10 +2129,10 @@ apiRouter.get('/emergency-flow/:id', async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🔍 応急処置フロー詳細取得リクエスト (/:id): ${id}`);
-    
+
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
     const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-    
+
     let targetDir = troubleshootingDir;
     if (!fs.existsSync(troubleshootingDir)) {
       if (fs.existsSync(alternativeDir)) {
@@ -2145,19 +2145,19 @@ apiRouter.get('/emergency-flow/:id', async (req, res) => {
         });
       }
     }
-    
+
     const files = fs.readdirSync(targetDir);
     const jsonFiles = files.filter(file => file.endsWith('.json'));
-    
+
     let flowData = null;
     let fileName = null;
-    
+
     for (const file of jsonFiles) {
       try {
         const filePath = path.join(targetDir, file);
         const fileContent = fs.readFileSync(filePath, 'utf-8');
         const data = JSON.parse(fileContent);
-        
+
         if (data.id === id || file.replace('.json', '') === id) {
           flowData = data;
           fileName = file;
@@ -2167,7 +2167,7 @@ apiRouter.get('/emergency-flow/:id', async (req, res) => {
         console.error(`ファイル読み込みエラー: ${file}`, error);
       }
     }
-    
+
     if (!flowData) {
       return res.status(404).json({
         success: false,
@@ -2176,7 +2176,7 @@ apiRouter.get('/emergency-flow/:id', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     }
-    
+
     // 画像URLを変換（相対パスの場合は完全なURLに変換）
     if (flowData.steps) {
       flowData.steps.forEach((step, index) => {
@@ -2194,14 +2194,14 @@ apiRouter.get('/emergency-flow/:id', async (req, res) => {
         }
       });
     }
-    
+
     console.log('✅ 応急処置フロー詳細取得成功:', {
       id: flowData.id,
       title: flowData.title,
       stepsCount: flowData.steps?.length || 0,
       fileName: fileName
     });
-    
+
     res.json({
       success: true,
       data: flowData,
@@ -2223,10 +2223,10 @@ apiRouter.get('/emergency-flow/detail/:id', async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🔍 応急処置フロー詳細取得リクエスト: ${id}`);
-    
+
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
     const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-    
+
     let targetDir = troubleshootingDir;
     if (!fs.existsSync(troubleshootingDir)) {
       if (fs.existsSync(alternativeDir)) {
@@ -2239,19 +2239,19 @@ apiRouter.get('/emergency-flow/detail/:id', async (req, res) => {
         });
       }
     }
-    
+
     const files = fs.readdirSync(targetDir);
     const jsonFiles = files.filter(file => file.endsWith('.json'));
-    
+
     let flowData = null;
     let fileName = null;
-    
+
     for (const file of jsonFiles) {
       try {
         const filePath = path.join(targetDir, file);
         const fileContent = fs.readFileSync(filePath, 'utf-8');
         const data = JSON.parse(fileContent);
-        
+
         if (data.id === id || file.replace('.json', '') === id) {
           flowData = data;
           fileName = file;
@@ -2261,7 +2261,7 @@ apiRouter.get('/emergency-flow/detail/:id', async (req, res) => {
         console.error(`ファイル読み込みエラー: ${file}`, error);
       }
     }
-    
+
     if (!flowData) {
       return res.status(404).json({
         success: false,
@@ -2289,7 +2289,7 @@ apiRouter.get('/emergency-flow/detail/:id', async (req, res) => {
         }
       });
     }
-    
+
     res.json({
       success: true,
       data: flowData,
@@ -2445,7 +2445,7 @@ apiRouter.post('/emergency-flow/upload-image', imageUpload.single('image'), asyn
         })
         .jpeg({ quality: 85 }) // JPEG形式で保存（品質85%）
         .toBuffer();
-      
+
       console.log('✅ 画像リサイズ成功:', {
         originalSize: req.file.size,
         resizedSize: resizedBuffer.length,
@@ -2478,7 +2478,7 @@ apiRouter.post('/emergency-flow/upload-image', imageUpload.single('image'), asyn
       'images',
       'emergency-flows'
     );
-    
+
     let targetDir = uploadDir;
     if (!fs.existsSync(uploadDir)) {
       if (fs.existsSync(alternativeDir)) {
@@ -2488,7 +2488,7 @@ apiRouter.post('/emergency-flow/upload-image', imageUpload.single('image'), asyn
         targetDir = uploadDir;
       }
     }
-    
+
     console.log('📁 アップロードディレクトリ:', targetDir);
 
     // ファイルの重複チェック
@@ -2523,7 +2523,7 @@ apiRouter.post('/emergency-flow/upload-image', imageUpload.single('image'), asyn
         fileSize: resizedBuffer.length,
         fileName,
       });
-      
+
       try {
         fs.writeFileSync(filePath, resizedBuffer);
         console.log('✅ ファイル保存成功:', filePath);
@@ -2586,7 +2586,7 @@ apiRouter.put('/emergency-flow/:id', async (req, res) => {
     // knowledge-baseディレクトリのパス解決
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
     const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-    
+
     let targetDir = troubleshootingDir;
     if (!fs.existsSync(troubleshootingDir)) {
       if (fs.existsSync(alternativeDir)) {
@@ -2694,7 +2694,7 @@ apiRouter.put('/emergency-flow/:id', async (req, res) => {
         if (!step.images) {
           step.images = [];
         }
-        
+
         // 画像配列が存在する場合の処理
         if (step.images && step.images.length > 0) {
           console.log(`🖼️ ステップ[${index}]の画像情報:`, {
@@ -2708,14 +2708,14 @@ apiRouter.put('/emergency-flow/:id', async (req, res) => {
               fileNameValid: img.fileName && img.fileName.trim() !== ''
             }))
           });
-          
+
           // 画像情報の検証と修正
           step.images = step.images.filter(img => {
             if (!img || !img.url || img.url.trim() === '') {
               console.log(`❌ 無効な画像情報を除外:`, img);
               return false;
             }
-            
+
             // ファイル名が無い場合はURLから抽出
             if (!img.fileName || img.fileName.trim() === '') {
               if (img.url.includes('/')) {
@@ -2727,7 +2727,7 @@ apiRouter.put('/emergency-flow/:id', async (req, res) => {
               }
               console.log(`📁 ファイル名を補完:`, { url: img.url, fileName: img.fileName });
             }
-            
+
             return true;
           });
         } else {
@@ -2764,12 +2764,12 @@ apiRouter.put('/emergency-flow/:id', async (req, res) => {
               console.log(`❌ 無効な画像オブジェクトを除外:`, img);
               return false;
             }
-            
+
             if (!img.url || typeof img.url !== 'string' || img.url.trim() === '') {
               console.log(`❌ URLが無効な画像を除外:`, img);
               return false;
             }
-            
+
             // ファイル名が無い場合はURLから抽出
             if (!img.fileName || img.fileName.trim() === '') {
               if (img.url.includes('/')) {
@@ -2781,10 +2781,10 @@ apiRouter.put('/emergency-flow/:id', async (req, res) => {
               }
               console.log(`📁 ファイル名を補完:`, { url: img.url, fileName: img.fileName });
             }
-            
+
             return true;
           });
-          
+
           console.log(`🖼️ ステップ[${index}]の最終画像データ:`, {
             stepId: step.id,
             stepTitle: step.title,
@@ -2829,7 +2829,7 @@ apiRouter.put('/emergency-flow/:id', async (req, res) => {
 apiRouter.post('/emergency-flow/generate', async (req, res) => {
   try {
     const { keyword } = req.body;
-    
+
     if (!keyword || typeof keyword !== 'string') {
       return res.status(400).json({
         success: false,
@@ -2957,11 +2957,11 @@ apiRouter.post('/emergency-flow/generate', async (req, res) => {
 
 2. ステップ形式（一問一答）:
    各ステップは1つの質問または1つの作業指示にしてください。
-   
+
    **通常ステップ（step）:**
    手順1：[1つの具体的な質問または作業指示]
    説明：[簡潔な説明と実施方法]
-   
+
    **条件分岐ステップ（decision）:**
    条件分岐：[判断が必要な状況]
    説明：[判断基準の説明]
@@ -2969,7 +2969,7 @@ apiRouter.post('/emergency-flow/generate', async (req, res) => {
    選択肢2：[選択肢2の内容]
    選択肢3：[選択肢3の内容]
    選択肢4：[選択肢4の内容]
-   
+
    各選択肢の次のステップ：[対応する次のステップの説明]
 
 **重要な要求事項:**
@@ -3064,13 +3064,13 @@ ${toneInstruction}${questionFlowGuide}${customInstructionText}
       let stepNum = 0;
 
       const allLines = content.split('\n').filter(l => l.trim());
-      
+
       for (let i = 0; i < allLines.length; i++) {
         const line = allLines[i].trim();
-        
+
         // タイトル行をスキップ
         if (line.includes('タイトル')) continue;
-        
+
         // 条件分岐の検出
         if (line.includes('条件分岐') || line.match(/条件分岐\d+/)) {
           // 前のステップを保存
@@ -3078,17 +3078,17 @@ ${toneInstruction}${questionFlowGuide}${customInstructionText}
             parsedSteps.push(currentStepObj);
             currentStepObj = null;
           }
-          
+
           inDecision = true;
           decisionTitle = line.replace(/条件分岐\d*[：:]?/, '').trim();
           decisionOptions = [];
           decisionDescription = '';
           continue;
         }
-        
+
         // 通常の手順ステップの検出
         if ((line.includes('手順') && (line.includes('(step)') || line.match(/手順\d+[（(]step[）)]/))) ||
-            (line.match(/^\d+\./) && !inDecision)) {
+          (line.match(/^\d+\./) && !inDecision)) {
           // 前のステップを保存
           if (currentStepObj) {
             parsedSteps.push(currentStepObj);
@@ -3106,7 +3106,7 @@ ${toneInstruction}${questionFlowGuide}${customInstructionText}
                 finalOptions.push(defaultOption);
               }
             }
-            
+
             parsedSteps.push({
               id: `step_${stepNum}`,
               title: decisionTitle || '状態を確認してください',
@@ -3125,13 +3125,13 @@ ${toneInstruction}${questionFlowGuide}${customInstructionText}
             inDecision = false;
             decisionOptions = [];
           }
-          
+
           stepNum++;
           const stepTitle = line
             .replace(/手順\d*[（(]step[）)]?[：:]?/, '')
             .replace(/^\d+\./, '')
             .trim();
-          
+
           currentStepObj = {
             id: `step_${stepNum}`,
             title: stepTitle,
@@ -3143,7 +3143,7 @@ ${toneInstruction}${questionFlowGuide}${customInstructionText}
           };
           continue;
         }
-        
+
         // 説明行の処理
         if (line.includes('説明：') || line.includes('説明:')) {
           const desc = line.replace(/説明[：:]/, '').trim();
@@ -3155,7 +3155,7 @@ ${toneInstruction}${questionFlowGuide}${customInstructionText}
           }
           continue;
         }
-        
+
         // 選択肢の検出（選択肢1-4）
         if (line.match(/選択肢[1234][：:]/) || line.match(/^[1234][．.][：:]/)) {
           if (inDecision) {
@@ -3169,7 +3169,7 @@ ${toneInstruction}${questionFlowGuide}${customInstructionText}
           }
           continue;
         }
-        
+
         // その他の行を説明に追加
         if (line && !line.startsWith('**') && !line.startsWith('例') && !line.match(/^[*-]/)) {
           if (inDecision && !line.includes('選択肢') && !line.includes('タイトル')) {
@@ -3184,7 +3184,7 @@ ${toneInstruction}${questionFlowGuide}${customInstructionText}
           }
         }
       }
-      
+
       // 最後のステップを保存
       if (currentStepObj) {
         parsedSteps.push(currentStepObj);
@@ -3200,7 +3200,7 @@ ${toneInstruction}${questionFlowGuide}${customInstructionText}
             finalOptions.push(defaultOption);
           }
         }
-        
+
         parsedSteps.push({
           id: `step_${stepNum}`,
           title: decisionTitle || '状態を確認してください',
@@ -3217,17 +3217,17 @@ ${toneInstruction}${questionFlowGuide}${customInstructionText}
           })),
         });
       }
-      
+
       return parsedSteps;
     }
 
     // パース処理を実行
     steps.push(...parseStepsFromContent(generatedContent));
-    
+
     // ステップが細かく分割されていない場合、さらに細分化
     if (steps.length < 5) {
       console.log('⚠️ ステップ数が少ないため、さらに細分化します');
-      
+
       const refinedSteps = [];
       steps.forEach((step, index) => {
         if (step.type === 'step' && step.description.length > 150) {
@@ -3248,16 +3248,16 @@ ${toneInstruction}${questionFlowGuide}${customInstructionText}
           refinedSteps.push(step);
         }
       });
-      
+
       steps.length = 0;
       steps.push(...refinedSteps);
     }
-    
+
     // ステップIDを再割り当てし、decisionステップの次のステップリンクを設定
     steps.forEach((step, idx) => {
       const newId = `step_${idx + 1}`;
       step.id = newId;
-      
+
       // decisionステップのoptionsのnextStepIdを更新
       // 選択肢1→次のステップ、選択肢2→その次のステップ...という形でリンク
       if (step.type === 'decision' && step.options && step.options.length > 0) {
@@ -3265,7 +3265,7 @@ ${toneInstruction}${questionFlowGuide}${customInstructionText}
           // 次のステップが存在する場合は次のステップ、存在しない場合は最後のステップにリンク
           const nextStepIdx = Math.min(idx + 1 + optIdx, steps.length - 1);
           opt.nextStepId = `step_${nextStepIdx + 1}`;
-          
+
           // 条件分岐の選択肢が4つ未満の場合は、デフォルトで次のステップに進むように設定
           if (optIdx >= step.options.length - 1 && nextStepIdx < steps.length - 1) {
             opt.nextStepId = `step_${nextStepIdx + 1}`;
@@ -3288,7 +3288,7 @@ ${toneInstruction}${questionFlowGuide}${customInstructionText}
 
       // GPTの生のレスポンスから手順を抽出（一問一答形式に対応）
       const fallbackSteps = extractStepsFromResponse(generatedContent, keyword);
-      
+
       // フォールバック処理でも細分化を試みる
       const refinedFallbackSteps = [];
       fallbackSteps.forEach((step, index) => {
@@ -3310,12 +3310,12 @@ ${toneInstruction}${questionFlowGuide}${customInstructionText}
           refinedFallbackSteps.push(step);
         }
       });
-      
+
       // ステップIDを再割り当て
       refinedFallbackSteps.forEach((step, idx) => {
         step.id = `step_${idx + 1}`;
       });
-      
+
       steps.push(...refinedFallbackSteps);
 
       console.log('🔄 フォールバック手順生成完了:', {
@@ -3339,7 +3339,7 @@ ${toneInstruction}${questionFlowGuide}${customInstructionText}
     try {
       const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
       const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-      
+
       let targetDir = troubleshootingDir;
       if (!fs.existsSync(troubleshootingDir)) {
         if (fs.existsSync(alternativeDir)) {
@@ -3349,7 +3349,7 @@ ${toneInstruction}${questionFlowGuide}${customInstructionText}
           targetDir = troubleshootingDir;
         }
       }
-      
+
       const filePath = path.join(targetDir, `${flowData.id}.json`);
 
       // ファイルに保存
@@ -3420,7 +3420,7 @@ apiRouter.delete('/emergency-flow/:id', async (req, res) => {
     // 複数のパス候補を試す
     const cwd = process.cwd();
     const projectRoot = path.resolve(__dirname, '..');
-    
+
     // トラブルシューティングディレクトリのパス候補
     const troubleshootingPaths = [
       // プロジェクトルートから
@@ -3432,7 +3432,7 @@ apiRouter.delete('/emergency-flow/:id', async (req, res) => {
       // __dirnameから
       path.join(__dirname, '..', 'knowledge-base', 'troubleshooting'),
     ].map(p => path.resolve(p));
-    
+
     console.log('🔍 troubleshooting パス候補:', troubleshootingPaths);
     console.log('📁 現在の作業ディレクトリ:', cwd);
     console.log('📁 プロジェクトルート:', projectRoot);
@@ -3647,7 +3647,7 @@ apiRouter.post('/chats/:id/send-test', async (req, res) => {
     // チャットメッセージから画像を抽出してファイルとして保存
     const savedImages = [];
     const cleanedChatData = JSON.parse(JSON.stringify(chatData)); // ディープコピー
-    
+
     for (const message of cleanedChatData.messages) {
       if (message.content && message.content.startsWith('data:image/')) {
         try {
@@ -3673,7 +3673,7 @@ apiRouter.post('/chats/:id/send-test', async (req, res) => {
           console.log('画像ファイルを保存しました（120pxにリサイズ）:', imagePath);
 
           const imageUrl = `/api/images/chat-exports/${imageFileName}`;
-          
+
           // base64をURLに置き換え
           message.content = imageUrl;
 
@@ -3780,9 +3780,9 @@ apiRouter.post('/chats/:id/send-test', async (req, res) => {
 apiRouter.post('/chats/:id/send', (req, res) => {
   const { id } = req.params;
   const { chatData } = req.body;
-  
+
   console.log('📤 チャット送信リクエスト:', { id, messageCount: chatData?.messages?.length || 0 });
-  
+
   // プロジェクトルートの取得
   const projectRoot = path.resolve(__dirname, '..');
   const cwd = process.cwd();
@@ -3818,10 +3818,10 @@ apiRouter.post('/chats/:id/send', (req, res) => {
     fs.mkdirSync(exportsDir, { recursive: true });
     console.log('exports フォルダを作成しました（フォールバック）:', exportsDir);
   }
-  
+
   const fileName = `chat_${id}_${Date.now()}.json`;
   const filePath = path.join(exportsDir, fileName);
-  
+
   const exportData = {
     chatId: id,
     title: chatData.title || 'チャット履歴',
@@ -3831,9 +3831,9 @@ apiRouter.post('/chats/:id/send', (req, res) => {
     chatData: chatData,
     exportType: 'manual'
   };
-  
+
   fs.writeFileSync(filePath, JSON.stringify(exportData, null, 2), { encoding: 'utf8' });
-  
+
   res.json({
     success: true,
     message: 'チャット内容をサーバーに送信しました',
@@ -3846,7 +3846,7 @@ apiRouter.post('/chats/:id/send', (req, res) => {
 apiRouter.get('/history/machine-data', async (req, res) => {
   try {
     console.log('📋 機種・機械番号データ取得リクエスト（履歴用）');
-    
+
     if (dbPool) {
       try {
         const machineTypesResult = await dbPool.query(`
@@ -3854,15 +3854,15 @@ apiRouter.get('/history/machine-data', async (req, res) => {
           FROM machine_types
           ORDER BY machine_type_name
         `);
-        
+
         const machinesResult = await dbPool.query(`
-          SELECT m.id, m.machine_number as "machineNumber", m.machine_type_id as "machineTypeId", 
+          SELECT m.id, m.machine_number as "machineNumber", m.machine_type_id as "machineTypeId",
                  mt.machine_type_name as "machineTypeName"
           FROM machines m
           LEFT JOIN machine_types mt ON m.machine_type_id = mt.id
           ORDER BY m.machine_number
         `);
-        
+
         return res.json({
           success: true,
           machineTypes: machineTypesResult.rows,
@@ -3873,7 +3873,7 @@ apiRouter.get('/history/machine-data', async (req, res) => {
         console.error('Database error:', dbError.message);
       }
     }
-    
+
     res.json({
       success: true,
       machineTypes: [],
@@ -3896,10 +3896,10 @@ apiRouter.get('/history/machine-data', async (req, res) => {
 apiRouter.get('/knowledge-base', async (req, res) => {
   try {
     console.log('📚 ナレッジベース取得リクエスト');
-    
+
     const knowledgeBaseDir = path.join(process.cwd(), 'knowledge-base');
     const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base');
-    
+
     let targetDir = knowledgeBaseDir;
     if (!fs.existsSync(knowledgeBaseDir)) {
       if (fs.existsSync(alternativeDir)) {
@@ -3913,16 +3913,16 @@ apiRouter.get('/knowledge-base', async (req, res) => {
         });
       }
     }
-    
+
     const files = fs.readdirSync(targetDir);
     const jsonFiles = files.filter(file => file.endsWith('.json'));
-    
+
     const knowledgeItems = jsonFiles.map(file => {
       try {
         const filePath = path.join(targetDir, file);
         const fileContent = fs.readFileSync(filePath, { encoding: 'utf8' });
         const jsonData = JSON.parse(fileContent);
-        
+
         return {
           id: file.replace('.json', ''),
           fileName: file,
@@ -3936,7 +3936,7 @@ apiRouter.get('/knowledge-base', async (req, res) => {
         return null;
       }
     }).filter(item => item !== null);
-    
+
     res.json({
       success: true,
       data: knowledgeItems,
@@ -3958,10 +3958,10 @@ apiRouter.get('/knowledge-base', async (req, res) => {
 apiRouter.get('/knowledge-base/stats', async (req, res) => {
   try {
     console.log('📊 ナレッジベース統計情報取得リクエスト');
-    
+
     const knowledgeBaseDir = path.join(process.cwd(), 'knowledge-base');
     const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base');
-    
+
     let targetDir = knowledgeBaseDir;
     if (!fs.existsSync(knowledgeBaseDir)) {
       if (fs.existsSync(alternativeDir)) {
@@ -3981,21 +3981,21 @@ apiRouter.get('/knowledge-base/stats', async (req, res) => {
         });
       }
     }
-    
+
     // documentsディレクトリから統計情報を取得
     const documentsDir = path.join(targetDir, 'documents');
     let total = 0;
     const categoryCount = {};
     const typeStats = {};
-    
+
     if (fs.existsSync(documentsDir)) {
       const docDirs = fs.readdirSync(documentsDir).filter(item => {
         const itemPath = path.join(documentsDir, item);
         return fs.statSync(itemPath).isDirectory();
       });
-      
+
       total = docDirs.length;
-      
+
       // メタデータからカテゴリとタイプを集計
       for (const dir of docDirs) {
         try {
@@ -4004,7 +4004,7 @@ apiRouter.get('/knowledge-base/stats', async (req, res) => {
             const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
             const category = metadata.category || 'uncategorized';
             const type = metadata.type || 'unknown';
-            
+
             categoryCount[category] = (categoryCount[category] || 0) + 1;
             typeStats[type] = (typeStats[type] || 0) + 1;
           }
@@ -4013,7 +4013,7 @@ apiRouter.get('/knowledge-base/stats', async (req, res) => {
         }
       }
     }
-    
+
     res.json({
       success: true,
       data: {
@@ -4041,7 +4041,7 @@ apiRouter.get('/knowledge-base/stats', async (req, res) => {
 apiRouter.get('/settings/rag', async (req, res) => {
   try {
     console.log('⚙️ RAG設定取得リクエスト');
-    
+
     // RAG設定ファイルから読み込む
     const RAG_SETTINGS_FILE = path.join(__dirname, '../data/rag-settings.json');
     const DEFAULT_RAG_SETTINGS = {
@@ -4061,7 +4061,7 @@ apiRouter.get('/settings/rag', async (req, res) => {
       temperature: 0.7,
       maxTokens: 2000,
     };
-    
+
     let ragSettings = DEFAULT_RAG_SETTINGS;
     try {
       if (fs.existsSync(RAG_SETTINGS_FILE)) {
@@ -4074,7 +4074,7 @@ apiRouter.get('/settings/rag', async (req, res) => {
     } catch (fileError) {
       console.warn('⚠️ RAG設定ファイルの読み込みに失敗。デフォルト設定を使用:', fileError);
     }
-    
+
     res.json({
       success: true,
       data: ragSettings,
@@ -4095,7 +4095,7 @@ apiRouter.get('/settings/rag', async (req, res) => {
 apiRouter.get('/config/rag', async (req, res) => {
   try {
     console.log('⚙️ RAG設定取得リクエスト（エイリアス）');
-    
+
     res.json({
       success: true,
       data: {
@@ -4130,12 +4130,12 @@ apiRouter.get('/config/rag', async (req, res) => {
 apiRouter.get('/ai-assist/settings', async (req, res) => {
   try {
     console.log('⚙️ AI支援設定取得リクエスト');
-    
+
     // AI支援設定ファイルから読み込む
     const AI_ASSIST_SETTINGS_FILE = path.join(__dirname, '../data/ai-assist-settings.json');
     console.log('📁 AI支援設定ファイルパス:', AI_ASSIST_SETTINGS_FILE);
     console.log('📁 __dirname:', __dirname);
-    
+
     const DEFAULT_AI_ASSIST_SETTINGS = {
       initialPrompt: '何か問題がありましたか？お困りの事象を教えてください！',
       conversationStyle: 'frank', // 'frank', 'business', 'technical'
@@ -4157,7 +4157,7 @@ apiRouter.get('/ai-assist/settings', async (req, res) => {
       customInstructions: '',
       enableEmergencyContact: true
     };
-    
+
     let aiAssistSettings = DEFAULT_AI_ASSIST_SETTINGS;
     try {
       if (fs.existsSync(AI_ASSIST_SETTINGS_FILE)) {
@@ -4175,7 +4175,7 @@ apiRouter.get('/ai-assist/settings', async (req, res) => {
       console.warn('⚠️ エラー詳細:', fileError.message);
       console.warn('⚠️ スタック:', fileError.stack);
     }
-    
+
     res.json({
       success: true,
       data: aiAssistSettings,
@@ -4199,23 +4199,23 @@ apiRouter.get('/ai-assist/settings', async (req, res) => {
 apiRouter.post('/ai-assist/settings', async (req, res) => {
   try {
     console.log('💾 AI支援設定保存リクエスト');
-    
+
     const AI_ASSIST_SETTINGS_FILE = path.join(__dirname, '../data/ai-assist-settings.json');
     const settings = req.body;
-    
+
     // データディレクトリを確保
     const dataDir = path.dirname(AI_ASSIST_SETTINGS_FILE);
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
-    
+
     // 設定をファイルに保存
     fs.writeFileSync(
       AI_ASSIST_SETTINGS_FILE,
       JSON.stringify(settings, null, 2),
       'utf-8'
     );
-    
+
     console.log('✅ AI支援設定保存成功');
     res.json({
       success: true,
@@ -4237,7 +4237,7 @@ apiRouter.post('/ai-assist/settings', async (req, res) => {
 apiRouter.get('/admin/dashboard', async (req, res) => {
   try {
     console.log('📊 管理者ダッシュボード取得リクエスト');
-    
+
     res.json({
       success: true,
       data: {
@@ -4266,12 +4266,12 @@ apiRouter.get('/images/emergency-flows/:filename', async (req, res) => {
   try {
     const { filename } = req.params;
     console.log(`🖼️ emergency-flows画像ファイル取得: ${filename}`);
-    
+
     const projectRoot = path.resolve(__dirname, '..');
     const imagesDir = path.join(projectRoot, 'knowledge-base', 'images', 'emergency-flows');
-    
+
     const imagePath = path.resolve(imagesDir, filename);
-    
+
     if (!fs.existsSync(imagePath)) {
       console.log(`❌ 画像ファイルが見つかりません: ${imagePath}`);
       return res.status(404).json({
@@ -4279,14 +4279,14 @@ apiRouter.get('/images/emergency-flows/:filename', async (req, res) => {
         error: '画像ファイルが見つかりません',
       });
     }
-    
+
     // Content-Typeを設定
     const ext = path.extname(filename).toLowerCase();
     let contentType = 'image/jpeg';
     if (ext === '.png') contentType = 'image/png';
     else if (ext === '.gif') contentType = 'image/gif';
     else if (ext === '.webp') contentType = 'image/webp';
-    
+
     res.setHeader('Content-Type', contentType);
     res.sendFile(imagePath);
   } catch (error) {
@@ -4306,13 +4306,13 @@ apiRouter.get('/images/chat-exports/:filename', async (req, res) => {
   try {
     const { filename } = req.params;
     console.log(`🖼️ chat-exports画像ファイル取得: ${filename}`);
-    
+
     // プロジェクトルートを取得（__dirnameベース）
     const projectRoot = path.resolve(__dirname, '..');
     const imagesDir = path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
-    
+
     console.log(`🔍 画像検索開始:`, { filename, imagesDir, exists: fs.existsSync(imagesDir) });
-    
+
     // ディレクトリが存在しない場合は404を返す
     if (!fs.existsSync(imagesDir)) {
       console.log(`❌ 画像ディレクトリが存在しません: ${imagesDir}`);
@@ -4322,12 +4322,12 @@ apiRouter.get('/images/chat-exports/:filename', async (req, res) => {
         imagesDir: imagesDir
       });
     }
-    
+
     let imagePath = null;
     let actualFilename = filename;
     let searchedPatterns = [];
     let patterns = []; // エラーハンドリング用にスコープ外で定義
-    
+
     // 1. 直接ファイル名で検索
     const directPath = path.join(imagesDir, filename);
     if (fs.existsSync(directPath)) {
@@ -4340,12 +4340,12 @@ apiRouter.get('/images/chat-exports/:filename', async (req, res) => {
       if (uuidMatch) {
         const uuid = uuidMatch[1];
         console.log(`🔍 UUID抽出: ${uuid}`);
-        
+
         // UUIDを含むファイルを検索
         try {
           const files = fs.readdirSync(imagesDir);
           console.log(`📁 ディレクトリ内のファイル数: ${files.length}`);
-          
+
           // UUIDを含むファイルを検索（複数のパターンを試行）
           patterns = [
             `${uuid}_3_0.jpeg`,
@@ -4358,17 +4358,17 @@ apiRouter.get('/images/chat-exports/:filename', async (req, res) => {
             `chat_image_${uuid}_*.jpeg`
           ];
           searchedPatterns = patterns;
-          
+
           // パターンマッチング
           for (const pattern of patterns) {
             // ワイルドカードパターンの処理
             if (pattern.includes('*')) {
               const prefix = pattern.replace('*', '');
-              const matchingFile = files.find(file => 
-                file.startsWith(prefix.replace('.jpg', '').replace('.jpeg', '')) && 
+              const matchingFile = files.find(file =>
+                file.startsWith(prefix.replace('.jpg', '').replace('.jpeg', '')) &&
                 (file.endsWith('.jpg') || file.endsWith('.jpeg'))
               );
-              
+
               if (matchingFile) {
                 imagePath = path.join(imagesDir, matchingFile);
                 actualFilename = matchingFile;
@@ -4386,14 +4386,14 @@ apiRouter.get('/images/chat-exports/:filename', async (req, res) => {
               }
             }
           }
-          
+
           // UUIDを含むすべてのファイルを検索（フォールバック）
           if (!imagePath) {
-            const uuidFiles = files.filter(file => 
-              file.includes(uuid) && 
+            const uuidFiles = files.filter(file =>
+              file.includes(uuid) &&
               (file.endsWith('.jpg') || file.endsWith('.jpeg') || file.endsWith('.png'))
             );
-            
+
             if (uuidFiles.length > 0) {
               // 最初に見つかったファイルを使用
               imagePath = path.join(imagesDir, uuidFiles[0]);
@@ -4406,7 +4406,7 @@ apiRouter.get('/images/chat-exports/:filename', async (req, res) => {
           console.error('ディレクトリパス:', imagesDir);
         }
       }
-      
+
       // 3. ファイル名から履歴IDを抽出して検索
       if (!imagePath) {
         const historyId = filename.replace(/\.(jpg|jpeg|png)$/i, '').replace(/_3_0$|_2_0$|_1_0$|_0_0$/, '');
@@ -4414,11 +4414,11 @@ apiRouter.get('/images/chat-exports/:filename', async (req, res) => {
           console.log(`🔍 履歴ID抽出: ${historyId}`);
           try {
             const files = fs.readdirSync(imagesDir);
-            const matchingFile = files.find(file => 
-              file.includes(historyId) && 
+            const matchingFile = files.find(file =>
+              file.includes(historyId) &&
               (file.endsWith('.jpg') || file.endsWith('.jpeg') || file.endsWith('.png'))
             );
-            
+
             if (matchingFile) {
               imagePath = path.join(imagesDir, matchingFile);
               actualFilename = matchingFile;
@@ -4430,7 +4430,7 @@ apiRouter.get('/images/chat-exports/:filename', async (req, res) => {
         }
       }
     }
-    
+
     if (!imagePath) {
       console.log(`❌ 画像ファイルが見つかりません: ${filename}`);
       return res.status(404).json({
@@ -4441,11 +4441,11 @@ apiRouter.get('/images/chat-exports/:filename', async (req, res) => {
         imagesDir: imagesDir
       });
     }
-    
+
     const stat = fs.statSync(imagePath);
     const ext = path.extname(actualFilename).toLowerCase();
     let contentType = 'application/octet-stream';
-    
+
     switch (ext) {
       case '.jpg':
       case '.jpeg':
@@ -4461,14 +4461,14 @@ apiRouter.get('/images/chat-exports/:filename', async (req, res) => {
         contentType = 'image/webp';
         break;
     }
-    
+
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Length', stat.size);
     res.setHeader('Cache-Control', 'public, max-age=31536000');
-    
+
     console.log(`✅ 画像ファイル配信: ${actualFilename} (${stat.size} bytes)`);
     const readStream = fs.createReadStream(imagePath);
-    
+
     // ストリーミングエラーハンドリング
     readStream.on('error', (streamError) => {
       console.error('❌ 画像ストリーミングエラー:', streamError);
@@ -4480,9 +4480,9 @@ apiRouter.get('/images/chat-exports/:filename', async (req, res) => {
         });
       }
     });
-    
+
     readStream.pipe(res);
-    
+
   } catch (error) {
     console.error('❌ chat-exports画像ファイル取得エラー:', error);
     if (!res.headersSent) {
@@ -4502,7 +4502,7 @@ apiRouter.get('/images/*', (req, res) => {
     const imagePath = req.params[0];
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
     const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-    
+
     let targetDir = troubleshootingDir;
     if (!fs.existsSync(troubleshootingDir)) {
       if (fs.existsSync(alternativeDir)) {
@@ -4511,9 +4511,9 @@ apiRouter.get('/images/*', (req, res) => {
         return res.status(404).json({ error: 'ディレクトリが見つかりません' });
       }
     }
-    
+
     const fullPath = path.join(targetDir, imagePath);
-    
+
     if (fs.existsSync(fullPath)) {
       res.sendFile(fullPath);
     } else {
@@ -4541,15 +4541,15 @@ apiRouter.get('/emergency-flow/image/:fileName', async (req, res) => {
       if (!fs.existsSync(dir)) {
         return null;
       }
-      
+
       const files = fs.readdirSync(dir);
       const lowerTarget = targetFileName.toLowerCase();
-      
+
       // 完全一致を優先
       if (files.includes(targetFileName)) {
         return path.join(dir, targetFileName);
       }
-      
+
       // 大文字小文字を区別しない検索
       const foundFile = files.find(file => file.toLowerCase() === lowerTarget);
       if (foundFile) {
@@ -4559,14 +4559,14 @@ apiRouter.get('/emergency-flow/image/:fileName', async (req, res) => {
         });
         return path.join(dir, foundFile);
       }
-      
+
       return null;
     };
 
     // 複数のパス候補を試す
     const cwd = process.cwd();
     const projectRoot = path.resolve(__dirname, '..');
-    
+
     // emergency-flowsディレクトリのパス候補
     const emergencyFlowsPaths = [
       // プロジェクトルートから
@@ -4578,7 +4578,7 @@ apiRouter.get('/emergency-flow/image/:fileName', async (req, res) => {
       // __dirnameから
       path.join(__dirname, '..', 'knowledge-base', 'images', 'emergency-flows'),
     ].map(p => path.resolve(p));
-    
+
     console.log('🔍 emergency-flows パス候補:', emergencyFlowsPaths);
     console.log('📁 現在の作業ディレクトリ:', cwd);
     console.log('📁 プロジェクトルート:', projectRoot);
@@ -4613,12 +4613,12 @@ apiRouter.get('/emergency-flow/image/:fileName', async (req, res) => {
         path.join(cwd, '..', 'knowledge-base', 'images', 'chat-exports'),
         path.join(__dirname, '..', 'knowledge-base', 'images', 'chat-exports'),
       ].map(p => path.resolve(p));
-      
+
       console.log('🔄 emergency-flows にファイルが見つからないため、chat-exports を確認:', {
         fileName,
         chatExportsPaths,
       });
-      
+
       for (const testDir of chatExportsPaths) {
         if (!fs.existsSync(testDir)) {
           continue;
@@ -4668,7 +4668,7 @@ apiRouter.get('/emergency-flow/image/:fileName', async (req, res) => {
       };
 
       console.error('❌ 画像ファイルが見つかりません:', debugInfo);
-      
+
       return res.status(404).json(debugInfo);
     }
 
@@ -4720,9 +4720,9 @@ apiRouter.get('/emergency-flow/image/:fileName', async (req, res) => {
 apiRouter.get('/history/exports/search', async (req, res) => {
   try {
     const { keyword } = req.query;
-    
+
     console.log('🔍 検索リクエスト受信:', { keyword, type: typeof keyword });
-    
+
     if (!keyword || typeof keyword !== 'string') {
       return res.json({
         success: true,
@@ -4735,7 +4735,7 @@ apiRouter.get('/history/exports/search', async (req, res) => {
     // 既存のhistoryエンドポイントと同じパス解決ロジックを使用
     const projectRoot = path.resolve(__dirname, '..');
     const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
-    
+
     if (!fs.existsSync(exportsDir)) {
       return res.json({
         success: true,
@@ -4747,11 +4747,11 @@ apiRouter.get('/history/exports/search', async (req, res) => {
 
     const files = fs.readdirSync(exportsDir);
     const jsonFiles = files.filter(f => f.endsWith('.json'));
-    
+
     // 検索語を正規化（小文字化）
     const keywordLower = keyword.toLowerCase().trim();
     const searchTerms = keywordLower.split(/\s+/).filter(term => term.length > 0);
-    
+
     if (searchTerms.length === 0) {
       return res.json({
         success: true,
@@ -4760,9 +4760,9 @@ apiRouter.get('/history/exports/search', async (req, res) => {
         message: 'キーワードが無効です',
       });
     }
-    
+
     console.log('🔍 検索開始:', { keyword, keywordLower, searchTerms, totalFiles: jsonFiles.length });
-    
+
     const results = [];
 
     for (const fileName of jsonFiles) {
@@ -4770,13 +4770,13 @@ apiRouter.get('/history/exports/search', async (req, res) => {
         const filePath = path.join(exportsDir, fileName);
         const fileContent = fs.readFileSync(filePath, 'utf8');
         const jsonData = JSON.parse(fileContent);
-        
+
         // JSON全体を文字列化して検索対象にする
         const fullText = JSON.stringify(jsonData).toLowerCase();
-        
+
         // すべての検索語が含まれているか確認
         const matches = searchTerms.every(term => fullText.includes(term));
-        
+
         if (matches) {
           // SupportHistoryItem形式に変換
           // savedImagesを画像URL形式に変換
@@ -4800,7 +4800,7 @@ apiRouter.get('/history/exports/search', async (req, res) => {
             }
             return img;
           });
-          
+
           const item = {
             id: jsonData.chatId || fileName.replace('.json', ''),
             type: 'export',
@@ -4838,12 +4838,12 @@ apiRouter.get('/history/exports/search', async (req, res) => {
       }
     }
 
-    console.log('🔍 検索完了:', { 
-      keyword, 
-      totalFiles: jsonFiles.length, 
+    console.log('🔍 検索完了:', {
+      keyword,
+      totalFiles: jsonFiles.length,
       resultsCount: results.length
     });
-    
+
     res.json({
       success: true,
       data: results,
@@ -4867,7 +4867,7 @@ apiRouter.get('/history/exports/filter-data', async (req, res) => {
     // 既存のhistoryエンドポイントと同じパス解決ロジックを使用
     const projectRoot = path.resolve(__dirname, '..');
     const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
-    
+
     if (!fs.existsSync(exportsDir)) {
       return res.json({
         success: true,
@@ -4879,7 +4879,7 @@ apiRouter.get('/history/exports/filter-data', async (req, res) => {
 
     const files = fs.readdirSync(exportsDir);
     const jsonFiles = files.filter(f => f.endsWith('.json'));
-    
+
     const machineTypeSet = new Set();
     const machineNumberSet = new Set();
 
@@ -4888,13 +4888,13 @@ apiRouter.get('/history/exports/filter-data', async (req, res) => {
         const filePath = path.join(exportsDir, fileName);
         const fileContent = fs.readFileSync(filePath, 'utf8');
         const jsonData = JSON.parse(fileContent);
-        
+
         // 機種を抽出
         const machineType = jsonData.machineType || jsonData.chatData?.machineInfo?.machineTypeName || '';
         if (machineType && machineType.trim()) {
           machineTypeSet.add(machineType.trim());
         }
-        
+
         // 機械番号を抽出
         const machineNumber = jsonData.machineNumber || jsonData.chatData?.machineInfo?.machineNumber || '';
         if (machineNumber && machineNumber.trim()) {
@@ -5081,7 +5081,7 @@ apiRouter.put('/history/update-item/:id', async (req, res) => {
 
     const files = fs.readdirSync(exportsDir);
     const jsonFiles = files.filter(f => f.endsWith('.json'));
-    
+
     console.log('📂 検索対象ファイル数:', jsonFiles.length);
 
     let targetFile = null;
@@ -5090,13 +5090,13 @@ apiRouter.put('/history/update-item/:id', async (req, res) => {
     // ファイルを検索（chatIdを含むファイルを探す）
     for (const file of jsonFiles) {
       const filePath = path.join(exportsDir, file);
-      
+
       // ファイル名にIDが含まれているかチェック
       if (file.includes(normalizedId)) {
         try {
           const content = fs.readFileSync(filePath, 'utf8');
           const data = JSON.parse(content);
-          
+
           // chatIdで確認
           if (data.chatId === normalizedId || data.id === normalizedId || file.includes(normalizedId)) {
             targetFile = filePath;
@@ -5170,7 +5170,7 @@ apiRouter.put('/history/update-item/:id', async (req, res) => {
     if (!updatedJsonData.updateHistory || !Array.isArray(updatedJsonData.updateHistory)) {
       updatedJsonData.updateHistory = [];
     }
-    
+
     // 新しい更新履歴を追加（既存の履歴は保持）
     updatedJsonData.updateHistory.push({
       timestamp: new Date().toISOString(),
@@ -5231,30 +5231,30 @@ console.log('✅ History exports endpoints registered');
 async function autoArchiveOldData() {
   try {
     console.log('📦 自動アーカイブ処理開始（1年以上経過データ）');
-    
+
     const projectRoot = path.resolve(__dirname, '..');
     const knowledgeBaseDir = path.join(projectRoot, 'knowledge-base');
     const archivesDir = path.join(knowledgeBaseDir, 'archives');
-    
+
     // アーカイブディレクトリが存在しない場合は作成
     if (!fs.existsSync(archivesDir)) {
       fs.mkdirSync(archivesDir, { recursive: true });
       console.log('📁 アーカイブディレクトリを作成しました:', archivesDir);
     }
-    
+
     // アーカイブ対象ディレクトリ
     const directoriesToArchive = ['documents', 'text', 'qa', 'troubleshooting'];
     const oneYearAgo = Date.now() - (365 * 24 * 60 * 60 * 1000);
     let archivedCount = 0;
     let filesToArchive = [];
-    
+
     // 1年以上経過したファイルを収集
     for (const dirName of directoriesToArchive) {
       const targetDir = path.join(knowledgeBaseDir, dirName);
       if (!fs.existsSync(targetDir)) {
         continue;
       }
-      
+
       try {
         const files = fs.readdirSync(targetDir);
         for (const file of files) {
@@ -5276,20 +5276,20 @@ async function autoArchiveOldData() {
         console.error(`❌ ディレクトリ処理エラー: ${targetDir}`, dirError);
       }
     }
-    
+
     // アーカイブ対象がある場合のみ処理
     if (filesToArchive.length > 0) {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
       const archiveFileName = `auto-archive-${timestamp}.zip`;
       const archiveFilePath = path.join(archivesDir, archiveFileName);
-      
+
       const output = fs.createWriteStream(archiveFilePath);
       const archive = archiver('zip', {
         zlib: { level: 9 }
       });
-      
+
       archive.pipe(output);
-      
+
       // ファイルをアーカイブに追加
       for (const fileInfo of filesToArchive) {
         try {
@@ -5303,7 +5303,7 @@ async function autoArchiveOldData() {
           console.error(`❌ アーカイブ追加エラー: ${fileInfo.path}`, err);
         }
       }
-      
+
       // アーカイブ完了を待つ
       await new Promise((resolve, reject) => {
         output.on('close', () => {
@@ -5314,7 +5314,7 @@ async function autoArchiveOldData() {
         });
         archive.finalize();
       });
-      
+
       // アーカイブ後、元のファイルを削除
       for (const fileInfo of filesToArchive) {
         try {
@@ -5327,7 +5327,7 @@ async function autoArchiveOldData() {
           console.error(`❌ ファイル削除エラー: ${fileInfo.path}`, err);
         }
       }
-      
+
       const stats = fs.statSync(archiveFilePath);
       console.log(`✅ 自動アーカイブ完了: ${archivedCount}件をアーカイブ (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
     } else {
@@ -5342,18 +5342,18 @@ async function autoArchiveOldData() {
 async function autoMaintenance() {
   try {
     console.log('🔧 自動メンテナンス処理開始');
-    
+
     const projectRoot = path.resolve(__dirname, '..');
     const knowledgeBaseDir = path.join(projectRoot, 'knowledge-base');
-    
+
     // 1. 自動整理: 空のディレクトリや一時ファイルのクリーンアップ
     const directoriesToCheck = ['documents', 'text', 'qa', 'troubleshooting'];
     let cleanedCount = 0;
-    
+
     for (const dirName of directoriesToCheck) {
       const targetDir = path.join(knowledgeBaseDir, dirName);
       if (!fs.existsSync(targetDir)) continue;
-      
+
       try {
         const files = fs.readdirSync(targetDir);
         for (const file of files) {
@@ -5373,16 +5373,16 @@ async function autoMaintenance() {
         // エラーは無視
       }
     }
-    
+
     if (cleanedCount > 0) {
       console.log(`🧹 自動整理完了: ${cleanedCount}件のファイルを整理`);
     }
-    
+
     // 2. 重複解消: 重複ファイルの検出と削除（将来的に拡張可能）
     // 現在は基本的な重複チェックのみ
-    
+
     // 3. 状況更新: 統計情報は自動的に更新される
-    
+
     console.log('✅ 自動メンテナンス処理完了');
   } catch (error) {
     console.error('❌ 自動メンテナンスエラー:', error);
@@ -5398,26 +5398,26 @@ function setupAutoSchedules() {
   if (nextArchiveTime <= now) {
     nextArchiveTime.setDate(nextArchiveTime.getDate() + 1);
   }
-  
+
   const archiveInterval = 24 * 60 * 60 * 1000; // 24時間
   setTimeout(() => {
     autoArchiveOldData();
     setInterval(autoArchiveOldData, archiveInterval);
   }, nextArchiveTime.getTime() - now.getTime());
-  
+
   // 毎日午前3時に自動メンテナンス
   const nextMaintenanceTime = new Date(now);
   nextMaintenanceTime.setHours(3, 0, 0, 0);
   if (nextMaintenanceTime <= now) {
     nextMaintenanceTime.setDate(nextMaintenanceTime.getDate() + 1);
   }
-  
+
   const maintenanceInterval = 24 * 60 * 60 * 1000; // 24時間
   setTimeout(() => {
     autoMaintenance();
     setInterval(autoMaintenance, maintenanceInterval);
   }, nextMaintenanceTime.getTime() - now.getTime());
-  
+
   console.log('⏰ 自動スケジュールを設定しました（アーカイブ: 毎日午前2時、メンテナンス: 毎日午前3時）');
 }
 
@@ -5425,9 +5425,9 @@ function setupAutoSchedules() {
 apiRouter.post('/knowledge-base/cleanup/auto', async (req, res) => {
   try {
     console.log('🗑️ 自動アーカイブリクエスト（1年以上経過データ）');
-    
+
     await autoArchiveOldData();
-    
+
     res.json({
       success: true,
       message: '1年以上経過データをアーカイブしました',
@@ -5449,10 +5449,10 @@ apiRouter.post('/knowledge-base/cleanup/manual', async (req, res) => {
   try {
     const { olderThanDays, deleteAll } = req.body;
     console.log('🗑️ 手動クリーンアップリクエスト:', { olderThanDays, deleteAll });
-    
+
     const projectRoot = path.resolve(__dirname, '..');
     const knowledgeBaseDir = path.join(projectRoot, 'knowledge-base');
-    
+
     // 削除対象ディレクトリ
     const directoriesToClean = [
       'documents',
@@ -5460,7 +5460,7 @@ apiRouter.post('/knowledge-base/cleanup/manual', async (req, res) => {
       'qa',
       'troubleshooting'
     ];
-    
+
     let cutoffTime;
     if (deleteAll) {
       cutoffTime = Date.now() + (365 * 24 * 60 * 60 * 1000); // 未来の日時 = すべて削除
@@ -5475,17 +5475,17 @@ apiRouter.post('/knowledge-base/cleanup/manual', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     }
-    
+
     let deletedCount = 0;
     let errorCount = 0;
-    
+
     for (const dirName of directoriesToClean) {
       const targetDir = path.join(knowledgeBaseDir, dirName);
       if (!fs.existsSync(targetDir)) {
         console.log(`📂 ディレクトリが存在しません: ${targetDir}`);
         continue;
       }
-      
+
       try {
         const files = fs.readdirSync(targetDir);
         for (const file of files) {
@@ -5514,9 +5514,9 @@ apiRouter.post('/knowledge-base/cleanup/manual', async (req, res) => {
         errorCount++;
       }
     }
-    
+
     console.log(`✅ 手動クリーンアップ完了: ${deletedCount}件削除, ${errorCount}件エラー`);
-    
+
     res.json({
       success: true,
       deletedCount: deletedCount,
@@ -5539,33 +5539,33 @@ apiRouter.post('/knowledge-base/cleanup/manual', async (req, res) => {
 apiRouter.post('/knowledge-base/archive', async (req, res) => {
   try {
     console.log('📦 アーカイブ作成リクエスト');
-    
+
     const projectRoot = path.resolve(__dirname, '..');
     const knowledgeBaseDir = path.join(projectRoot, 'knowledge-base');
     const archivesDir = path.join(knowledgeBaseDir, 'archives');
-    
+
     // アーカイブディレクトリが存在しない場合は作成
     if (!fs.existsSync(archivesDir)) {
       fs.mkdirSync(archivesDir, { recursive: true });
       console.log('📁 アーカイブディレクトリを作成しました:', archivesDir);
     }
-    
+
     // アーカイブファイル名（タイムスタンプ付き）
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
     const archiveFileName = `knowledge-archive-${timestamp}.zip`;
     const archiveFilePath = path.join(archivesDir, archiveFileName);
-    
+
     // アーカイブ作成
     const output = fs.createWriteStream(archiveFilePath);
     const archive = archiver('zip', {
       zlib: { level: 9 } // 最高圧縮
     });
-    
+
     archive.pipe(output);
-    
+
     // knowledge-base の主要なフォルダをアーカイブに追加
     const foldersToArchive = ['documents', 'data', 'exports'];
-    
+
     for (const folder of foldersToArchive) {
       const folderPath = path.join(knowledgeBaseDir, folder);
       if (fs.existsSync(folderPath)) {
@@ -5573,14 +5573,14 @@ apiRouter.post('/knowledge-base/archive', async (req, res) => {
         console.log(`📁 ${folder} をアーカイブに追加`);
       }
     }
-    
+
     // index.json がある場合は追加
     const indexFile = path.join(knowledgeBaseDir, 'index.json');
     if (fs.existsSync(indexFile)) {
       archive.file(indexFile, { name: 'index.json' });
       console.log('📄 index.json をアーカイブに追加');
     }
-    
+
     // アーカイブ完了を待つ（Promiseでラップ）
     await new Promise((resolve, reject) => {
       output.on('close', () => {
@@ -5591,11 +5591,11 @@ apiRouter.post('/knowledge-base/archive', async (req, res) => {
       });
       archive.finalize();
     });
-    
+
     const stats = fs.statSync(archiveFilePath);
-    
+
     console.log(`✅ アーカイブ作成完了: ${archiveFileName} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
-    
+
     res.json({
       success: true,
       message: 'アーカイブが正常に作成されました',
@@ -5622,10 +5622,10 @@ apiRouter.post('/knowledge-base/archive', async (req, res) => {
 apiRouter.get('/knowledge-base/archives', async (req, res) => {
   try {
     console.log('📁 アーカイブ一覧取得リクエスト');
-    
+
     const projectRoot = path.resolve(__dirname, '..');
     const archivesDir = path.join(projectRoot, 'knowledge-base', 'archives');
-    
+
     if (!fs.existsSync(archivesDir)) {
       return res.json({
         success: true,
@@ -5635,7 +5635,7 @@ apiRouter.get('/knowledge-base/archives', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     }
-    
+
     const files = fs.readdirSync(archivesDir);
     const archiveFiles = files
       .filter(file => file.endsWith('.zip') || file.endsWith('.tar.gz'))
@@ -5650,7 +5650,7 @@ apiRouter.get('/knowledge-base/archives', async (req, res) => {
         };
       })
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    
+
     res.json({
       success: true,
       data: archiveFiles,
@@ -5673,18 +5673,18 @@ apiRouter.post('/knowledge-base/export', async (req, res) => {
   try {
     const { type = 'all', destination = 'local', externalPath } = req.body;
     console.log('📦 全データエクスポートリクエスト:', { type, destination, externalPath });
-    
+
     const projectRoot = path.resolve(__dirname, '..');
     const knowledgeBaseDir = path.join(projectRoot, 'knowledge-base');
-    
+
     // エクスポートファイル名（タイムスタンプ付き）
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
     const exportFileName = `knowledge-export-${timestamp}.zip`;
-    
+
     // 一時ファイルまたはストリームを作成
     let tempFilePath = null;
     let output = null;
-    
+
     if (destination === 'local') {
       // ローカルの場合: 一時ファイルを作成
       tempFilePath = path.join(projectRoot, `temp-${Date.now()}.zip`);
@@ -5701,16 +5701,16 @@ apiRouter.post('/knowledge-base/export', async (req, res) => {
       const savedFilePath = path.join(saveDir, exportFileName);
       output = fs.createWriteStream(savedFilePath);
     }
-    
+
     const archive = archiver('zip', {
       zlib: { level: 9 } // 最高圧縮
     });
-    
+
     archive.pipe(output);
-    
+
     // knowledge-base の主要なフォルダをエクスポートに追加
     const foldersToExport = ['documents', 'data', 'exports'];
-    
+
     for (const folder of foldersToExport) {
       const folderPath = path.join(knowledgeBaseDir, folder);
       if (fs.existsSync(folderPath)) {
@@ -5718,14 +5718,14 @@ apiRouter.post('/knowledge-base/export', async (req, res) => {
         console.log(`📁 ${folder} をエクスポートに追加`);
       }
     }
-    
+
     // index.json がある場合は追加
     const indexFile = path.join(knowledgeBaseDir, 'index.json');
     if (fs.existsSync(indexFile)) {
       archive.file(indexFile, { name: 'index.json' });
       console.log('📄 index.json をエクスポートに追加');
     }
-    
+
     // エクスポート完了を待つ（Promiseでラップ）
     await new Promise((resolve, reject) => {
       output.on('close', () => {
@@ -5736,17 +5736,17 @@ apiRouter.post('/knowledge-base/export', async (req, res) => {
       });
       archive.finalize();
     });
-    
+
     if (destination === 'local') {
       // ローカルダウンロード: ファイルを読み込んで送信
       const fileStats = fs.statSync(tempFilePath);
       const fileBuffer = fs.readFileSync(tempFilePath);
-      
+
       res.setHeader('Content-Type', 'application/zip');
       res.setHeader('Content-Disposition', `attachment; filename="${exportFileName}"`);
       res.setHeader('Content-Length', fileStats.size);
       res.send(fileBuffer);
-      
+
       // 一時ファイルを削除
       fs.unlinkSync(tempFilePath);
     } else {
@@ -5754,9 +5754,9 @@ apiRouter.post('/knowledge-base/export', async (req, res) => {
       const saveDir = path.join(knowledgeBaseDir, externalPath === 'exports' ? 'exports' : 'archives');
       const savedFilePath = path.join(saveDir, exportFileName);
       const stats = fs.statSync(savedFilePath);
-      
+
       console.log(`✅ エクスポート完了: ${exportFileName} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
-      
+
       res.json({
         success: true,
         message: 'エクスポートが正常に完了しました',
@@ -5829,9 +5829,9 @@ console.log('✅ Knowledge Base cleanup endpoints registered');
 apiRouter.post('/files/import', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'ファイルが選択されていません' 
+        error: 'ファイルが選択されていません'
       });
     }
 
@@ -5856,7 +5856,7 @@ apiRouter.post('/files/import', upload.single('file'), async (req, res) => {
     // knowledge-baseディレクトリのパス解決
     const knowledgeBaseDir = path.join(process.cwd(), 'knowledge-base');
     const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base');
-    
+
     let targetDir = knowledgeBaseDir;
     if (!fs.existsSync(knowledgeBaseDir)) {
       if (fs.existsSync(alternativeDir)) {
@@ -5893,7 +5893,7 @@ apiRouter.post('/files/import', upload.single('file'), async (req, res) => {
               // URLエンコードでない場合はそのまま
             }
           }
-          
+
           // BufferからUTF-8として解釈（文字化け修正）
           // 既に文字化けしている場合は、Bufferを使って正しいエンコーディングで再構築
           const buffer = Buffer.from(fileName, 'latin1');  // 文字化けした文字列をlatin1として解釈
@@ -5905,30 +5905,30 @@ apiRouter.post('/files/import', upload.single('file'), async (req, res) => {
         return fileName;
       }
     }
-    
+
     // 元のファイル名をデコード
     const decodedFileName = decodeFileName(originalname);
-    
+
     // 安全なファイル名に変換（Windowsのファイルシステム制限に対応）
     function sanitizeFileName(fileName) {
       // 拡張子を取得
       const ext = path.extname(fileName);
       const baseName = path.basename(fileName, ext);
-      
+
       // 危険な文字を除去・置換（Windowsファイル名の制限文字）
       let safeName = baseName
         .replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')  // Windowsで使用不可の文字をアンダースコアに
         .replace(/\s+/g, ' ')                     // 連続する空白を1つに
         .substring(0, 200);                       // ファイル名の長さ制限
-      
+
       // 空の場合はタイムスタンプを使用
       if (!safeName || safeName.trim().length === 0) {
         safeName = `file_${Date.now()}`;
       }
-      
+
       return safeName + ext;
     }
-    
+
     const safeFileName = sanitizeFileName(decodedFileName);
 
     // キーワード抽出関数（日本語対応）
@@ -5936,13 +5936,13 @@ apiRouter.post('/files/import', upload.single('file'), async (req, res) => {
       // 簡単なキーワード抽出：2文字以上の連続する文字列を抽出
       const words = text.match(/[ぁ-んァ-ヶー一-龠々]{2,}/g) || [];
       const wordCount = {};
-      
+
       words.forEach(word => {
         if (word.length >= 2 && word.length <= 10) {
           wordCount[word] = (wordCount[word] || 0) + 1;
         }
       });
-      
+
       // 出現頻度の高い順に最大10個のキーワードを返す
       return Object.entries(wordCount)
         .sort((a, b) => b[1] - a[1])
@@ -5969,7 +5969,7 @@ apiRouter.post('/files/import', upload.single('file'), async (req, res) => {
     function findBestSplitPoint(text, startPos, targetEndPos) {
       const maxSearchBack = 150;  // 最大150文字戻って境界を探す
       const searchStart = Math.max(startPos, targetEndPos - maxSearchBack);
-      
+
       // 優先順位: 段落境界 > 改行 > 句点 > 空白
       const boundaries = [
         /\n\n/,  // 段落境界
@@ -5982,35 +5982,35 @@ apiRouter.post('/files/import', upload.single('file'), async (req, res) => {
       // 後ろから探す（文の途中で切れないように）
       for (let pos = targetEndPos; pos >= searchStart; pos--) {
         const char = text[pos];
-        
+
         // 段落境界を最優先
         if (pos > 0 && text.substring(pos - 1, pos + 1) === '\n\n') {
           return pos + 1;
         }
-        
+
         // 改行
         if (char === '\n') {
           return pos + 1;
         }
-        
+
         // 句点
         if (['。', '．', '！', '？'].includes(char)) {
           return pos + 1;
         }
-        
+
         // 読点（最小限の戻り）
         if (['、', '，'].includes(char) && pos >= targetEndPos - 20) {
           return pos + 1;
         }
       }
-      
+
       // 境界が見つからない場合は空白で分割
       for (let pos = targetEndPos; pos >= searchStart; pos--) {
         if (/\s/.test(text[pos])) {
           return pos + 1;
         }
       }
-      
+
       // それでも見つからない場合は指定位置で分割
       return targetEndPos;
     }
@@ -6021,7 +6021,7 @@ apiRouter.post('/files/import', upload.single('file'), async (req, res) => {
 
     while (startPos < processedText.length) {
       const targetEndPos = Math.min(startPos + chunkSize, processedText.length);
-      
+
       // 最後のチャンクの場合
       if (targetEndPos >= processedText.length) {
         const chunkText = processedText.substring(startPos).trim();
@@ -6048,7 +6048,7 @@ apiRouter.post('/files/import', upload.single('file'), async (req, res) => {
       if (chunkText.length >= minChunkSize) {
         // キーワード抽出（簡単な方法：名詞らしき語を抽出）
         const keywords = extractKeywords(chunkText);
-        
+
         chunks.push({
           text: chunkText,
           index: chunkIndex++,
@@ -6063,7 +6063,7 @@ apiRouter.post('/files/import', upload.single('file'), async (req, res) => {
 
       // オーバーラップ処理：前のチャンクと重複させて文脈を保持
       startPos = Math.max(startPos + 1, splitPos - overlap);
-      
+
       // 無限ループ防止
       if (startPos >= splitPos) {
         startPos = splitPos;
@@ -6170,18 +6170,18 @@ apiRouter.post('/files/import', upload.single('file'), async (req, res) => {
 apiRouter.post('/chatgpt', async (req, res) => {
   try {
     const { text, useOnlyKnowledgeBase = false, conversationHistory = [] } = req.body;
-    
-    console.log('[api/chatgpt] GPT request:', { 
-      text: text?.substring(0, 100) + '...', 
+
+    console.log('[api/chatgpt] GPT request:', {
+      text: text?.substring(0, 100) + '...',
       useOnlyKnowledgeBase,
       conversationHistoryLength: conversationHistory.length,
-      openaiAvailable: !!openai 
+      openaiAvailable: !!openai
     });
 
     if (!text) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Text is required' 
+        message: 'Text is required'
       });
     }
 
@@ -6207,8 +6207,9 @@ apiRouter.post('/chatgpt', async (req, res) => {
       try {
         // まず、.jsファイルを試す（本番環境用）
         const openaiJsPath = path.join(__dirname, 'lib', 'openai.js');
-        const openaiTsPath = path.join(__dirname, 'lib', 'openai.ts');
-        
+        // FIXME: TypeScript file cannot be imported directly in Node.js
+        // const openaiTsPath = path.join(__dirname, 'lib', 'openai.ts');
+
         if (fs.existsSync(openaiJsPath)) {
           // .jsファイルが存在する場合
           try {
@@ -6226,197 +6227,171 @@ apiRouter.post('/chatgpt', async (req, res) => {
               throw new Error(`openai.js の読み込みに失敗: ${jsError.message}`);
             }
           }
-        } else if (fs.existsSync(openaiTsPath)) {
-          // .tsファイルのみ存在する場合、tsx/esmローダーを使ってロード
-          try {
-            // tsx/esmローダーを有効化
-            await import('tsx/esm/api');
-            
-            // TypeScriptファイルをインポート
-            const fileUrl = pathToFileURL(openaiTsPath).href;
-            const module = await import(fileUrl + '?tsx');
-            processOpenAIRequest = module.processOpenAIRequest;
-            console.log('[api/chatgpt] ✅ openai.ts をtsx/esmで読み込みました');
-          } catch (tsxError) {
-            // tsx/esmが利用できない場合、別の方法を試す
-            try {
-              // tsxのregister関数を使う
-              const tsxModule = await import('tsx');
-              if (tsxModule.register) {
-                tsxModule.register();
-              }
-              
-              const fileUrl = pathToFileURL(openaiTsPath).href;
-              const module = await import(fileUrl);
-              processOpenAIRequest = module.processOpenAIRequest;
-              console.log('[api/chatgpt] ✅ openai.ts をtsx registerで読み込みました');
-            } catch (registerError) {
-              // 最後の手段：tsxコマンドを使って実行（非推奨だが動作する可能性がある）
-              console.warn('[api/chatgpt] ⚠️ tsx/esmとtsx registerの両方が失敗しました。TypeScriptファイルをコンパイルするか、tsxでサーバーを起動してください。');
-              throw new Error(`openai.ts の読み込みに失敗。tsxがインストールされているか確認してください。エラー: ${tsxError.message}`);
-            }
-          }
         } else {
-          throw new Error('openai.js と openai.ts の両方が見つかりません');
+          // FIXME: TypeScriptインポートを一時的に無効化
+          console.warn('[api/chatgpt] ⚠️ OpenAI機能は一時的に無効化されています（TypeScriptインポート問題のため）');
+          processOpenAIRequest = async (prompt) => {
+            return 'OpenAI機能は現在一時的に無効化されています。サーバー管理者にお問い合わせください。';
+          };
         }
       } catch (importError) {
-        console.error('[api/chatgpt] Failed to import openai module:', importError);
-        console.error('[api/chatgpt] Import error details:', {
-          message: importError instanceof Error ? importError.message : String(importError),
-          stack: importError instanceof Error ? importError.stack : undefined
-        });
-        throw new Error('OpenAI module could not be loaded. In production, ensure TypeScript files are compiled to .js files.');
-      }
-      
-      // knowledge-baseからのデータのみを使用（useOnlyKnowledgeBaseがtrueの場合）
-      const useKnowledgeBase = useOnlyKnowledgeBase !== false; // デフォルトはtrue
-      
-      // AI支援カスタマイズ設定を読み込む
-      let aiAssistSettings = null;
-      try {
-        // クライアントから送信された設定を使用（リクエストボディに含まれている場合）
-        if (req.body.aiAssistSettings) {
-          aiAssistSettings = req.body.aiAssistSettings;
-        } else {
-          // サーバー側の設定ファイルから読み込む
-          const AI_ASSIST_SETTINGS_FILE = path.join(__dirname, '../data/ai-assist-settings.json');
-          if (fs.existsSync(AI_ASSIST_SETTINGS_FILE)) {
-            const settingsData = fs.readFileSync(AI_ASSIST_SETTINGS_FILE, 'utf-8');
-            aiAssistSettings = JSON.parse(settingsData);
-            console.log('✅ AI支援設定をサーバーから読み込みました');
-          } else {
-            // デフォルト設定を使用
-            aiAssistSettings = {
-              responsePattern: 'step_by_step',
-              customInstructions: '',
-              conversationStyle: 'frank',
-              questionFlow: {
-                step1: '具体的な症状を教えてください',
-                step2: 'いつ頃から発生していますか？',
-                step3: '作業環境や状況を教えてください',
-                step4: '他に気になることはありますか？',
-                step5: '緊急度を教えてください'
-              },
-            };
-          }
-        }
-      } catch (error) {
-        console.warn('AI支援設定の読み込みに失敗しました。デフォルト値を使用します:', error);
-        aiAssistSettings = {
-          responsePattern: 'step_by_step',
-          customInstructions: '',
-          conversationStyle: 'frank',
-          questionFlow: {
-            step1: '具体的な症状を教えてください',
-            step2: 'いつ頃から発生していますか？',
-            step3: '作業環境や状況を教えてください',
-            step4: '他に気になることはありますか？',
-            step5: '緊急度を教えてください'
-          },
-        };
-      }
-      
-      // 会話スタイルに応じたシステムプロンプトの調整
-      let styleInstruction = '';
-      if (aiAssistSettings.conversationStyle === 'business') {
-        styleInstruction = '丁寧で正式なビジネス用語を使用してください。';
-      } else if (aiAssistSettings.conversationStyle === 'technical') {
-        styleInstruction = '専門用語を中心に、技術的な説明を重視してください。';
+      console.error('[api/chatgpt] Failed to import openai module:', importError);
+      console.error('[api/chatgpt] Import error details:', {
+        message: importError instanceof Error ? importError.message : String(importError),
+        stack: importError instanceof Error ? importError.stack : undefined
+      });
+      throw new Error('OpenAI module could not be loaded. In production, ensure TypeScript files are compiled to .js files.');
+    }
+
+    // knowledge-baseからのデータのみを使用（useOnlyKnowledgeBaseがtrueの場合）
+    const useKnowledgeBase = useOnlyKnowledgeBase !== false; // デフォルトはtrue
+
+    // AI支援カスタマイズ設定を読み込む
+    let aiAssistSettings = null;
+    try {
+      // クライアントから送信された設定を使用（リクエストボディに含まれている場合）
+      if (req.body.aiAssistSettings) {
+        aiAssistSettings = req.body.aiAssistSettings;
       } else {
-        styleInstruction = '親しみやすく、フランクな口調で話してください。';
-      }
-      
-      // 1問1答形式で端的な応答を生成するためのシステムプロンプト調整
-      let prompt = text;
-      
-      // カスタム指示を追加
-      let customInstructionText = '';
-      if (aiAssistSettings.customInstructions) {
-        customInstructionText = `\n\n【追加指示】\n${aiAssistSettings.customInstructions}`;
-      }
-      
-      // 応答パターンに応じた指示を追加
-      let responsePatternInstruction = '';
-      if (aiAssistSettings.responsePattern === 'minimal') {
-        responsePatternInstruction = '要点のみ簡潔に回答してください。';
-      } else if (aiAssistSettings.responsePattern === 'comprehensive') {
-        responsePatternInstruction = '包括的に複数の対策をまとめて表示してください。';
-      } else {
-        // 段階的表示：質問フロー設定を活用
-        if (aiAssistSettings.questionFlow) {
-          const questionFlowGuide = Object.values(aiAssistSettings.questionFlow)
-            .filter(q => q && q.trim())
-            .map((q, idx) => `ステップ${idx + 1}: ${q}`)
-            .join('\n');
-          responsePatternInstruction = `端的に1問1答形式で回答してください。必要に応じて、以下の質問フローを参考に、ユーザーから追加情報を確認する質問を1つだけしてください。\n\n【推奨質問フロー】\n${questionFlowGuide}`;
+        // サーバー側の設定ファイルから読み込む
+        const AI_ASSIST_SETTINGS_FILE = path.join(__dirname, '../data/ai-assist-settings.json');
+        if (fs.existsSync(AI_ASSIST_SETTINGS_FILE)) {
+          const settingsData = fs.readFileSync(AI_ASSIST_SETTINGS_FILE, 'utf-8');
+          aiAssistSettings = JSON.parse(settingsData);
+          console.log('✅ AI支援設定をサーバーから読み込みました');
         } else {
-          responsePatternInstruction = '端的に1問1答形式で回答してください。必要に応じて、ユーザーから追加情報を確認する質問を1つだけしてください。';
+          // デフォルト設定を使用
+          aiAssistSettings = {
+            responsePattern: 'step_by_step',
+            customInstructions: '',
+            conversationStyle: 'frank',
+            questionFlow: {
+              step1: '具体的な症状を教えてください',
+              step2: 'いつ頃から発生していますか？',
+              step3: '作業環境や状況を教えてください',
+              step4: '他に気になることはありますか？',
+              step5: '緊急度を教えてください'
+            },
+          };
         }
       }
-      
-      // 会話履歴がある場合は、1問1答形式を維持するように指示を追加
-      if (conversationHistory && conversationHistory.length > 0) {
-        const recentHistory = conversationHistory.slice(-4).map(msg => ({
-          role: msg.isAiResponse ? 'assistant' : 'user',
-          content: msg.content
-        }));
-        
-        // 会話履歴を考慮したプロンプト構築
-        prompt = `【会話の流れ】
+    } catch (error) {
+      console.warn('AI支援設定の読み込みに失敗しました。デフォルト値を使用します:', error);
+      aiAssistSettings = {
+        responsePattern: 'step_by_step',
+        customInstructions: '',
+        conversationStyle: 'frank',
+        questionFlow: {
+          step1: '具体的な症状を教えてください',
+          step2: 'いつ頃から発生していますか？',
+          step3: '作業環境や状況を教えてください',
+          step4: '他に気になることはありますか？',
+          step5: '緊急度を教えてください'
+        },
+      };
+    }
+
+    // 会話スタイルに応じたシステムプロンプトの調整
+    let styleInstruction = '';
+    if (aiAssistSettings.conversationStyle === 'business') {
+      styleInstruction = '丁寧で正式なビジネス用語を使用してください。';
+    } else if (aiAssistSettings.conversationStyle === 'technical') {
+      styleInstruction = '専門用語を中心に、技術的な説明を重視してください。';
+    } else {
+      styleInstruction = '親しみやすく、フランクな口調で話してください。';
+    }
+
+    // 1問1答形式で端的な応答を生成するためのシステムプロンプト調整
+    let prompt = text;
+
+    // カスタム指示を追加
+    let customInstructionText = '';
+    if (aiAssistSettings.customInstructions) {
+      customInstructionText = `\n\n【追加指示】\n${aiAssistSettings.customInstructions}`;
+    }
+
+    // 応答パターンに応じた指示を追加
+    let responsePatternInstruction = '';
+    if (aiAssistSettings.responsePattern === 'minimal') {
+      responsePatternInstruction = '要点のみ簡潔に回答してください。';
+    } else if (aiAssistSettings.responsePattern === 'comprehensive') {
+      responsePatternInstruction = '包括的に複数の対策をまとめて表示してください。';
+    } else {
+      // 段階的表示：質問フロー設定を活用
+      if (aiAssistSettings.questionFlow) {
+        const questionFlowGuide = Object.values(aiAssistSettings.questionFlow)
+          .filter(q => q && q.trim())
+          .map((q, idx) => `ステップ${idx + 1}: ${q}`)
+          .join('\n');
+        responsePatternInstruction = `端的に1問1答形式で回答してください。必要に応じて、以下の質問フローを参考に、ユーザーから追加情報を確認する質問を1つだけしてください。\n\n【推奨質問フロー】\n${questionFlowGuide}`;
+      } else {
+        responsePatternInstruction = '端的に1問1答形式で回答してください。必要に応じて、ユーザーから追加情報を確認する質問を1つだけしてください。';
+      }
+    }
+
+    // 会話履歴がある場合は、1問1答形式を維持するように指示を追加
+    if (conversationHistory && conversationHistory.length > 0) {
+      const recentHistory = conversationHistory.slice(-4).map(msg => ({
+        role: msg.isAiResponse ? 'assistant' : 'user',
+        content: msg.content
+      }));
+
+      // 会話履歴を考慮したプロンプト構築
+      prompt = `【会話の流れ】
 ${recentHistory.map(msg => `${msg.role === 'assistant' ? 'AI' : 'ユーザー'}: ${msg.content}`).join('\n')}
 
 【現在の質問】
 ${text}
 
 上記の会話を踏まえ、knowledge-baseの情報のみを基に、${styleInstruction}${responsePatternInstruction}${customInstructionText}`;
-      } else {
-        // 初回の質問の場合
-        prompt = `${text}\n\nknowledge-baseの情報のみを基に、${styleInstruction}${responsePatternInstruction}${customInstructionText}`;
-      }
-      
-      const response = await processOpenAIRequest(prompt, useKnowledgeBase);
-      
-      res.json({
-        success: true,
-        response: response,
-        message: 'GPT応答を生成しました',
-        details: {
-          inputText: text || 'no text provided',
-          useOnlyKnowledgeBase: useKnowledgeBase,
-          environment: 'development',
-          model: 'gpt-4o'
-        },
-        timestamp: new Date().toISOString()
-      });
-    } catch (apiError) {
-      console.error('[api/chatgpt] OpenAI API error:', apiError);
-      console.error('[api/chatgpt] Error stack:', apiError instanceof Error ? apiError.stack : 'No stack trace');
-      res.status(500).json({
-        success: false,
-        response: 'AI支援機能は現在利用できません。しばらくしてから再度お試しください。',
-        message: 'OpenAI APIの呼び出しに失敗しました',
-        details: {
-          environment: 'development',
-          error: apiError instanceof Error ? apiError.message : String(apiError),
-          stack: isDevelopment && apiError instanceof Error ? apiError.stack : undefined
-        },
-        timestamp: new Date().toISOString()
-      });
+    } else {
+      // 初回の質問の場合
+      prompt = `${text}\n\nknowledge-baseの情報のみを基に、${styleInstruction}${responsePatternInstruction}${customInstructionText}`;
     }
 
-  } catch (error) {
-    console.error('[api/chatgpt] Error:', error);
-    console.error('[api/chatgpt] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    const response = await processOpenAIRequest(prompt, useKnowledgeBase);
+
+    res.json({
+      success: true,
+      response: response,
+      message: 'GPT応答を生成しました',
+      details: {
+        inputText: text || 'no text provided',
+        useOnlyKnowledgeBase: useKnowledgeBase,
+        environment: 'development',
+        model: 'gpt-4o'
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (apiError) {
+    console.error('[api/chatgpt] OpenAI API error:', apiError);
+    console.error('[api/chatgpt] Error stack:', apiError instanceof Error ? apiError.stack : 'No stack trace');
     res.status(500).json({
       success: false,
-      message: 'Error processing request',
-      error: error instanceof Error ? error.message : String(error),
+      response: 'AI支援機能は現在利用できません。しばらくしてから再度お試しください。',
+      message: 'OpenAI APIの呼び出しに失敗しました',
       details: {
-        stack: isDevelopment && error instanceof Error ? error.stack : undefined
+        environment: 'development',
+        error: apiError instanceof Error ? apiError.message : String(apiError),
+        stack: isDevelopment && apiError instanceof Error ? apiError.stack : undefined
       },
       timestamp: new Date().toISOString()
     });
   }
+
+} catch (error) {
+  console.error('[api/chatgpt] Error:', error);
+  console.error('[api/chatgpt] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+  res.status(500).json({
+    success: false,
+    message: 'Error processing request',
+    error: error instanceof Error ? error.message : String(error),
+    details: {
+      stack: isDevelopment && error instanceof Error ? error.stack : undefined
+    },
+    timestamp: new Date().toISOString()
+  });
+}
 });
 
 // 診断用エンドポイントをマウント
@@ -6433,7 +6408,7 @@ app.use('/api', apiRouter);
 // エラーハンドリング
 app.use((err, req, res, next) => {
   console.error('Server Error:', err);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Internal Server Error',
     message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
   });
@@ -6444,7 +6419,7 @@ app.listen(PORT, '0.0.0.0', () => {
   const env = process.env.NODE_ENV || 'development';
   console.log(`🚀 Emergency Assistance Unified Server running on port ${PORT}`);
   console.log(`📊 Environment: ${env}`);
-  
+
   if (isDevelopment) {
     console.log(`🌐 Frontend: http://localhost:${PORT} (proxied to Vite on port ${CLIENT_PORT})`);
     console.log(`🔥 Hot reload: Enabled`);
@@ -6456,9 +6431,9 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🌐 Frontend: http://localhost:${PORT} (static files from ${staticDir})`);
     console.log(`📦 Production mode: Static files only`);
   }
-  
+
   console.log(`🔗 API: http://localhost:${PORT}/api`);
-  
+
   // 自動スケジュールを開始
   setupAutoSchedules();
 });
