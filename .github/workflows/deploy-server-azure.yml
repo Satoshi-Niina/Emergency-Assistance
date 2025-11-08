@@ -159,15 +159,38 @@ jobs:
           echo "� Startup command: node index.js"
           echo ""
           
-          echo "⏰ Waiting 30 seconds for app to start..."
-          sleep 30
+          echo "⏰ Starting health check with retries..."
+          HEALTH_CHECK_SUCCESS=false
           
-          echo "🔍 Testing health check at $APP_URL/api/health..."
-          # ヘルスチェックに失敗した場合、ワークフロー全体を失敗させる
-          if curl -f "$APP_URL/api/health"; then
-            echo "✅ Health check PASSED - Server is responding correctly"
+          # 5回リトライ（初回30秒待機、その後60秒間隔）
+          for i in {1..5}; do
+            if [ $i -eq 1 ]; then
+              echo "🔍 Attempt $i/5: Waiting 30 seconds for initial startup..."
+              sleep 30
+            else
+              echo "🔍 Attempt $i/5: Waiting 60 seconds for retry..."
+              sleep 60
+            fi
+            
+            echo "🔍 Testing health check at $APP_URL/api/health..."
+            if curl -f "$APP_URL/api/health" --max-time 30; then
+              echo "✅ Health check PASSED on attempt $i - Server is responding correctly"
+              HEALTH_CHECK_SUCCESS=true
+              break
+            else
+              echo "❌ Health check attempt $i failed"
+              echo "📋 Diagnostic info:"
+              curl -I "$APP_URL/api/health" --max-time 10 || echo "No HTTP response received"
+            fi
+          done
+          
+          if [ "$HEALTH_CHECK_SUCCESS" = "true" ]; then
+            echo "🎉 Deployment successful - Server is healthy!"
           else
-            echo "❌ Health check FAILED - Check App Service logs in Azure Portal"
+            echo "❌ All health check attempts failed"
+            echo "🔍 Please check Azure App Service logs:"
+            echo "   Azure Portal → App Service → Log stream"
+            echo "⚠️ Server might need more startup time or have configuration issues"
             exit 1
           fi
 
