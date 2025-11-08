@@ -56,18 +56,17 @@ jobs:
           echo "📁 Current directory: $(pwd)"
           echo "📄 Package.json exists: $(test -f package.json && echo 'YES' || echo 'NO')"
           
-          # Check if node_modules exists from local installation
-          if [ -d "node_modules" ]; then
-            echo "✅ node_modules directory found (pre-installed locally)"
-            echo "📦 Node modules count: $(ls node_modules | wc -l)"
-            echo "📦 Node modules size: $(du -sh node_modules/)"
-            echo "🎯 Skipping npm install - using pre-installed dependencies"
-          else
-            echo "❌ node_modules directory not found - installing dependencies..."
-            npm install --production=false --no-audit --no-fund
-          fi
+          # Always install dependencies (node_modules excluded by .gitignore)
+          echo "📦 Installing dependencies..."
+          rm -rf node_modules package-lock.json
+          npm install --no-audit --no-fund
           
-          # Verify critical dependencies exist
+          # Show installation results
+          echo "📦 Installation completed:"
+          echo "  - Node modules count: $(ls node_modules | wc -l)"
+          echo "  - Node modules size: $(du -sh node_modules/)"
+          
+          # Verify critical dependencies exist with fallback installation
           echo "🔍 Verifying critical dependencies..."
           CRITICAL_DEPS=("express" "cors" "dotenv" "bcryptjs" "jsonwebtoken")
           
@@ -75,8 +74,14 @@ jobs:
             if [ -d "node_modules/$dep" ]; then
               echo "✅ $dep: OK"
             else
-              echo "❌ $dep: MISSING!"
-              exit 1
+              echo "⚠️ $dep: MISSING - installing individually..."
+              npm install $dep --save
+              if [ -d "node_modules/$dep" ]; then
+                echo "✅ $dep: Installed successfully"
+              else
+                echo "❌ $dep: Failed to install!"
+                exit 1
+              fi
             fi
           done
           
@@ -85,11 +90,18 @@ jobs:
             echo "✅ Express main file verified"
             echo "📦 Express version: $(node -p "require('./node_modules/express/package.json').version")"
           else
-            echo "❌ Express main file missing!"
-            exit 1
+            echo "❌ Express main file missing - attempting direct installation..."
+            npm install express@4.21.2 --save
+            if [ -f "node_modules/express/index.js" ]; then
+              echo "✅ Express installed successfully via direct installation"
+            else
+              echo "❌ Express installation failed completely!"
+              exit 1
+            fi
           fi
           
-          echo "✅ All dependencies verified successfully"
+          echo "✅ All dependencies verified and installed successfully"
+          echo "📦 Final package count: $(ls node_modules | wc -l) modules"
 
       - name: Prepare deployment package
         run: |
