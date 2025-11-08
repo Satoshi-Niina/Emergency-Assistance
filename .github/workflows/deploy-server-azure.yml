@@ -49,8 +49,14 @@ jobs:
         run: |
           echo "📦 Installing dependencies in server directory..."
           cd server
-          npm ci --production --no-audit --no-fund
+          # Clean install with all dependencies first
+          npm ci --no-audit --no-fund
           echo "📦 Dependencies installed successfully"
+          
+          # Check if express is installed
+          echo "📦 Checking express installation:"
+          npm list express || echo "Express not found in npm list"
+          ls -la node_modules/express/ || echo "Express directory not found"
 
       - name: Prepare deployment package
         run: |
@@ -59,11 +65,27 @@ jobs:
           # Create deployment directory
           mkdir -p deploy
           
-          # Copy server files (including node_modules)
+          # Copy all server files including node_modules
+          echo "📦 Copying server files..."
           cp -r server/* deploy/
           
-          echo "📦 Verifying node_modules in deploy directory:"
-          ls -la deploy/node_modules/ | head -5
+          # Double check node_modules copy
+          echo "📦 Verifying node_modules copy:"
+          if [ -d "deploy/node_modules" ]; then
+            echo "✅ node_modules directory exists"
+            ls -la deploy/node_modules/ | head -10
+            if [ -d "deploy/node_modules/express" ]; then
+              echo "✅ express module found in deployment package"
+              ls -la deploy/node_modules/express/
+            else
+              echo "❌ express module NOT found in deployment package"
+            fi
+          else
+            echo "❌ node_modules directory NOT copied to deploy"
+            # Force copy node_modules
+            echo "📦 Force copying node_modules..."
+            cp -r server/node_modules deploy/
+          fi
           
           # Copy shared modules
           cp -r shared deploy/
@@ -76,13 +98,14 @@ jobs:
           mkdir -p deploy/app-logs/history
           mkdir -p deploy/uploads
           
-          # Remove dev dependencies and dev files
+          # Only remove specific dev files, keep all production dependencies
           rm -f deploy/tsconfig*.json
-          rm -rf deploy/node_modules/@types
           rm -rf deploy/.env*
           
-          echo "� Deployment package contents:"
+          echo "📦 Final deployment package contents:"
           ls -la deploy/
+          echo "📦 Final node_modules check:"
+          ls -la deploy/node_modules/express/ || echo "Express still missing!"
           echo "📦 Package size:"
           du -sh deploy/
 
