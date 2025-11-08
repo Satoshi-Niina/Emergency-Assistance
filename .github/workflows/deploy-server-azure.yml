@@ -84,6 +84,14 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64
 
+      - name: Make Docker package public
+        run: |
+          echo "📦 Making Docker package public for Azure access..."
+          # GitHub CLI を使用してパッケージの可視性を設定
+          gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
+          gh api --method PATCH /user/packages/container/emergency-assistance%2Fserver \
+            --field visibility=public || echo "⚠️ Failed to set public visibility, may already be public"
+
       - name: Azure Login
         uses: azure/login@v2
         with:
@@ -126,24 +134,19 @@ jobs:
         run: |
           REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           IMAGE_NAME="ghcr.io/${REPO_LOWER}/server:azure-${{ github.sha }}"
-          # GitHub Container Registryがプライベートの場合、認証情報を設定
-          REGISTRY_TOKEN="${{ secrets.GITHUB_REGISTRY_TOKEN || secrets.GITHUB_TOKEN }}"
-          if [ -n "${REGISTRY_TOKEN}" ]; then
-            az webapp config container set \
-              --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
-              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-              --docker-custom-image-name "${IMAGE_NAME}" \
-              --docker-registry-server-url https://ghcr.io \
-              --docker-registry-server-user ${{ secrets.GITHUB_REGISTRY_USERNAME || github.repository_owner }} \
-              --docker-registry-server-password "${REGISTRY_TOKEN}"
-          else
-            # パブリックイメージの場合
-            az webapp config container set \
-              --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
-              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-              --docker-custom-image-name "${IMAGE_NAME}" \
-              --docker-registry-server-url https://ghcr.io
-          fi
+          echo "🐳 Configuring Docker image: ${IMAGE_NAME}"
+          
+          # パブリックイメージとして設定（認証なし）
+          az webapp config container set \
+            --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --docker-custom-image-name "${IMAGE_NAME}"
+          
+          # Docker認証を明示的にクリア（パブリックイメージ用）
+          az webapp config appsettings delete \
+            --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --setting-names DOCKER_REGISTRY_SERVER_USERNAME DOCKER_REGISTRY_SERVER_PASSWORD || true
 
       - name: Configure CORS for Azure App Service
         run: |
