@@ -1,4 +1,4 @@
-name: Deploy Server to Azure App Service (Docker)
+name: Deploy Server to Azure App Service (ZIP)
 
 on:
   push:
@@ -10,8 +10,6 @@ on:
       - 'server/**'
       - 'shared/**'
       - 'knowledge-base/**'
-      - 'Dockerfile'
-      - 'server/Dockerfile'
       - '.github/workflows/deploy-server-azure.yml'
   workflow_dispatch:
     inputs:
@@ -22,80 +20,93 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    name: Build Docker Image and Deploy to Azure App Service
+    name: Build and Deploy to Azure App Service (Node.js)
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       
       - name: Debug workflow trigger
         run: |
           echo "🔍 Workflow triggered by: ${{ github.event_name }}"
           echo "🔍 Branch: ${{ github.ref }}"
           echo "🔍 Commit SHA: ${{ github.sha }}"
-          echo "🔍 Default branch: ${{ github.event.repository.default_branch }}"
           echo "🔍 Changed files:"
           git diff --name-only HEAD~1 HEAD || echo "No previous commit"
-          echo "🔍 All files in server/:"
-          find server -type f | head -20 || echo "No server files found"
-          echo "🔍 Current directory structure:"
-          ls -la
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_REGISTRY_TOKEN || secrets.GITHUB_TOKEN }}
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: server/package.json
 
-      - name: Set image name (lowercase)
-        id: image
+      - name: Install dependencies
         run: |
-          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          echo "image_name=ghcr.io/${REPO_LOWER}/server" >> $GITHUB_OUTPUT
-          echo "Image name: ghcr.io/${REPO_LOWER}/server"
+          cd server
+          npm ci --production
+          echo "📦 Dependencies installed"
 
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ steps.image.outputs.image_name }}
-          tags: |
-            type=sha,prefix=azure-
-            type=raw,value=latest
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./server/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64
-
-      - name: Make Docker package public
+      - name: Prepare deployment package
         run: |
-          echo "📦 Making Docker package public for Azure access..."
-          # GitHub CLI を使用してパッケージの可視性を設定
-          gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
-          gh api --method PATCH /user/packages/container/emergency-assistance%2Fserver \
-            --field visibility=public || echo "⚠️ Failed to set public visibility, may already be public"
+          echo "📦 Preparing deployment package..."
+          
+          # Create deployment directory
+          mkdir -p deploy
+          
+          # Copy server files
+          cp -r server/* deploy/
+          
+          # Copy shared modules
+          cp -r shared deploy/
+          
+          # Copy knowledge base
+          cp -r knowledge-base deploy/
+          
+          # Create necessary directories
+          mkdir -p deploy/app-logs/exports
+          mkdir -p deploy/app-logs/history
+          mkdir -p deploy/uploads
+          
+          # Remove dev dependencies and dev files
+          rm -f deploy/tsconfig*.json
+          rm -rf deploy/node_modules/@types
+          rm -rf deploy/.env*
+          
+          echo "� Deployment package contents:"
+          ls -la deploy/
+          echo "📦 Package size:"
+          du -sh deploy/
 
       - name: Azure Login
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Configure Azure App Service for Node.js
+        run: |
+          echo "🔧 Configuring Azure App Service for Node.js runtime..."
+          
+          # Set Node.js runtime version
+          az webapp config set \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
+            --linux-fx-version "NODE|20-lts" \
+            --startup-file "node index.js"
+          
+          echo "✅ Node.js 20 LTS runtime configured"
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ secrets.AZURE_APP_SERVICE_NAME }}
+          resource-group: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          package: deploy
+          startup-command: 'node index.js'
 
       - name: Set environment variables on Azure App Service
         run: |
@@ -104,7 +115,9 @@ jobs:
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --settings \
               NODE_ENV=production \
-              PORT=${{ secrets.PORT || '8080' }} \
+              PORT=8080 \
+              SCM_DO_BUILD_DURING_DEPLOYMENT=false \
+              ENABLE_ORYX_BUILD=false \
               API_PREFIX="${{ secrets.API_PREFIX || '/api' }}" \
               DATABASE_URL="${{ secrets.DATABASE_URL }}" \
               JWT_SECRET="${{ secrets.JWT_SECRET }}" \
@@ -124,29 +137,7 @@ jobs:
               BACKUP_ENABLED="${{ secrets.BACKUP_ENABLED || 'true' }}" \
               BACKUP_MAX_FILES="${{ secrets.BACKUP_MAX_FILES || '3' }}" \
               BACKUP_FOLDER_NAME="${{ secrets.BACKUP_FOLDER_NAME || 'backups' }}" \
-              OPENAI_MODEL="${{ secrets.OPENAI_MODEL || 'gpt-4o' }}" \
-              DOCKER_ENABLE_CI=true \
-              DOCKER_REGISTRY_SERVER_URL=https://ghcr.io \
-              DOCKER_REGISTRY_SERVER_USERNAME=${{ secrets.GITHUB_REGISTRY_USERNAME || github.repository_owner }} \
-              DOCKER_REGISTRY_SERVER_PASSWORD="${{ secrets.GITHUB_REGISTRY_TOKEN || secrets.GITHUB_TOKEN }}"
-
-      - name: Configure Azure App Service for Docker
-        run: |
-          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          IMAGE_NAME="ghcr.io/${REPO_LOWER}/server:azure-${{ github.sha }}"
-          echo "🐳 Configuring Docker image: ${IMAGE_NAME}"
-          
-          # パブリックイメージとして設定（認証なし）
-          az webapp config container set \
-            --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --docker-custom-image-name "${IMAGE_NAME}"
-          
-          # Docker認証を明示的にクリア（パブリックイメージ用）
-          az webapp config appsettings delete \
-            --name ${{ secrets.AZURE_APP_SERVICE_NAME }} \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --setting-names DOCKER_REGISTRY_SERVER_USERNAME DOCKER_REGISTRY_SERVER_PASSWORD || true
+              OPENAI_MODEL="${{ secrets.OPENAI_MODEL || 'gpt-4o' }}"
 
       - name: Configure CORS for Azure App Service
         run: |
@@ -188,11 +179,9 @@ jobs:
 
       - name: Deploy summary
         run: |
-          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          echo "✅ Docker image built and pushed to GitHub Container Registry"
-          echo "📦 Image: ghcr.io/${REPO_LOWER}/server:azure-${{ github.sha }}"
-          echo "🚀 Server deployed to Azure App Service"
+          echo "✅ Node.js application deployed to Azure App Service"
+          echo "🚀 Server deployed via ZIP deployment"
           echo "🌐 Backend URL: ${{ secrets.BACKEND_SERVICE_URL }}"
-          echo "📦 Package: Public access enabled for Docker image pull"
           echo "✅ All environment variables have been set on Azure App Service"
+          echo "🔧 Startup command: node index.js"
 
