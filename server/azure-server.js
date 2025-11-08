@@ -39,8 +39,8 @@ if (fs.existsSync(envPath)) {
 // Environment validation (warnings only, don't exit)
 // OpenAI API設定の確認とフォールバック
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const isOpenAIAvailable = OPENAI_API_KEY && 
-  OPENAI_API_KEY !== 'your-openai-api-key-here' && 
+const isOpenAIAvailable = OPENAI_API_KEY &&
+  OPENAI_API_KEY !== 'your-openai-api-key-here' &&
   OPENAI_API_KEY.startsWith('sk' + '-');
 
 console.log('🤖 OpenAI API Status:', {
@@ -110,11 +110,11 @@ function initializeDatabase() {
     console.log('📊 DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
     console.log('🔒 PG_SSL:', process.env.PG_SSL || 'not set');
 
-    const sslConfig = process.env.PG_SSL === 'require' 
+    const sslConfig = process.env.PG_SSL === 'require'
       ? { rejectUnauthorized: false }
-      : process.env.PG_SSL === 'disable' 
-      ? false 
-      : { rejectUnauthorized: false };
+      : process.env.PG_SSL === 'disable'
+        ? false
+        : { rejectUnauthorized: false };
 
     dbPool = new Pool({
       connectionString: process.env.DATABASE_URL,
@@ -129,7 +129,7 @@ function initializeDatabase() {
     });
 
     console.log('✅ Database pool initialized for Azure production');
-    
+
     // 接続テスト（非同期で実行、エラーでもサーバーは継続）
     setTimeout(async () => {
       try {
@@ -155,27 +155,27 @@ initializeDatabase();
 async function startupSequence() {
   try {
     console.log('🚀 Starting Azure application startup sequence...');
-    
+
     // データベースマイグレーションを実行
     // データベースマイグレーション実行（強制版）
     console.log('🔄 Running database migrations (FORCED)...');
     try {
       await runMigrations();
       console.log('✅ Database migrations completed successfully');
-      
+
       // マイグレーション後のテーブル確認
       if (dbPool) {
         const client = await dbPool.connect();
         const tablesResult = await client.query(`
-          SELECT table_name FROM information_schema.tables 
-          WHERE table_schema = 'public' 
+          SELECT table_name FROM information_schema.tables
+          WHERE table_schema = 'public'
           AND table_name IN ('users', 'machine_types', 'machines')
           ORDER BY table_name
         `);
         await client.release();
-        
+
         console.log('📋 Database tables after migration:', tablesResult.rows.map(r => r.table_name));
-        
+
         if (tablesResult.rows.length === 0) {
           console.warn('⚠️ No required tables found after migration');
           console.warn('⚠️ Manual database setup may be required');
@@ -185,7 +185,7 @@ async function startupSequence() {
       console.warn('⚠️ Database migration failed:', migrationError.message);
       console.warn('⚠️ Manual execution of EMERGENCY_DATABASE_SETUP.sql may be required');
     }
-    
+
     console.log('✅ Azure startup sequence completed successfully');
     console.log('🎉 Production server is ready for operation');
   } catch (error) {
@@ -236,49 +236,59 @@ console.log('  CORS_ALLOW_ORIGINS from env:', process.env.CORS_ALLOW_ORIGINS || 
 // CORS設定（修正版）- プリフライトエラー対応
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  
-  console.log('🔍 CORS Request:', { 
-    method: req.method, 
-    origin: origin, 
+
+  console.log('🔍 CORS Request:', {
+    method: req.method,
+    origin: origin,
     path: req.path,
     userAgent: req.headers['user-agent']
   });
-  
+
   // Azure Static Web Apps のオリジンを強制許可（最優先）
   const AZURE_STATIC_ORIGIN = 'https://witty-river-012f39e00.1.azurestaticapps.net';
-  
+
   // CORS ヘッダーを常に設定（プリフライトエラー回避）
-  res.header('Access-Control-Allow-Origin', origin || AZURE_STATIC_ORIGIN);
+  // Azure Static Web Apps からのリクエストまたは許可されたオリジンを設定
+  let allowedOrigin = AZURE_STATIC_ORIGIN; // デフォルトはAzure Static Web Apps
+
+  if (origin && (ALLOWED_ORIGINS.includes(origin) || origin.includes('azurestaticapps.net'))) {
+    allowedOrigin = origin;
+  }
+
+  res.header('Access-Control-Allow-Origin', allowedOrigin);
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma, Expires, Cookie, Set-Cookie, x-requested-with');
   res.header('Access-Control-Expose-Headers', 'Set-Cookie, X-Total-Count');
   res.header('Access-Control-Max-Age', '86400');
-  
+
   // プリフライトリクエスト（OPTIONS）の処理を最優先
   if (req.method === 'OPTIONS') {
-    console.log('✅ OPTIONS プリフライト処理:', { 
-      origin, 
-      allowOrigin: origin || AZURE_STATIC_ORIGIN,
+    console.log('✅ OPTIONS プリフライト処理:', {
+      origin,
+      allowOrigin: allowedOrigin,
+      isAzureStaticWebApp: origin?.includes('azurestaticapps.net'),
       headers: req.headers
     });
-    
+
     // 200 OKレスポンスでプリフライトを完了
     return res.status(200).json({
       success: true,
       message: 'CORS Preflight OK',
       origin: origin,
+      allowedOrigin: allowedOrigin,
       timestamp: new Date().toISOString()
     });
   }
-  
+
   console.log('✅ CORS Headers Set:', {
     origin: origin,
-    allowOrigin: origin || AZURE_STATIC_ORIGIN,
+    allowOrigin: allowedOrigin,
     method: req.method,
-    path: req.path
+    path: req.path,
+    isAllowed: origin ? ALLOWED_ORIGINS.includes(origin) || origin.includes('azurestaticapps.net') : false
   });
-  
+
   next();
 });
 
@@ -308,7 +318,7 @@ app.use(session({
 app.get('/api/health', async (req, res) => {
   let dbStatus = 'not_initialized';
   let dbTestResult = null;
-  
+
   if (dbPool) {
     try {
       const client = await dbPool.connect();
@@ -324,7 +334,7 @@ app.get('/api/health', async (req, res) => {
 
   let blobStatus = 'not_configured';
   let blobTestResult = null;
-  
+
   if (connectionString) {
     try {
       const blobServiceClient = getBlobServiceClient();
@@ -424,16 +434,16 @@ app.get('/api/_diag/env', (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password } = req.body || {};
-    
-    console.log('[auth/login] Login attempt:', { 
-      username, 
+
+    console.log('[auth/login] Login attempt:', {
+      username,
       timestamp: new Date().toISOString()
     });
-    
+
     // 入力検証
     if (!username || !password) {
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         error: 'bad_request',
         message: 'ユーザー名とパスワードが必要です'
       });
@@ -456,37 +466,37 @@ app.post('/api/auth/login', async (req, res) => {
         'SELECT id, username, password, role, display_name, department FROM users WHERE username = $1 LIMIT 1',
         [username]
       );
-      
-      console.log('[auth/login] ユーザー検索結果:', { 
+
+      console.log('[auth/login] ユーザー検索結果:', {
         found: result.rows.length > 0,
-        userCount: result.rows.length 
+        userCount: result.rows.length
       });
 
       if (result.rows.length === 0) {
         console.log('[auth/login] ユーザーが見つかりません');
-        return res.status(401).json({ 
-          success: false, 
+        return res.status(401).json({
+          success: false,
           error: 'invalid_credentials',
           message: 'ユーザー名またはパスワードが正しくありません'
         });
       }
 
       const foundUser = result.rows[0];
-      console.log('[auth/login] ユーザー情報取得:', { 
-        id: foundUser.id, 
-        username: foundUser.username, 
-        role: foundUser.role 
+      console.log('[auth/login] ユーザー情報取得:', {
+        id: foundUser.id,
+        username: foundUser.username,
+        role: foundUser.role
       });
 
       // パスワード比較（bcryptjs）
       console.log('[auth/login] パスワード比較開始');
       const isPasswordValid = await bcrypt.compare(password, foundUser.password);
       console.log('[auth/login] パスワード比較結果:', { isValid: isPasswordValid });
-      
+
       if (!isPasswordValid) {
         console.log('[auth/login] パスワードが一致しません');
-        return res.status(401).json({ 
-          success: false, 
+        return res.status(401).json({
+          success: false,
           error: 'invalid_credentials',
           message: 'ユーザー名またはパスワードが正しくありません'
         });
@@ -494,7 +504,7 @@ app.post('/api/auth/login', async (req, res) => {
 
       // 成功レスポンス
       console.log('[auth/login] Login successful:', { username, role: foundUser.role });
-      
+
       // セッションにユーザー情報を保存
       req.session.user = {
         id: foundUser.id,
@@ -503,7 +513,7 @@ app.post('/api/auth/login', async (req, res) => {
         displayName: foundUser.display_name,
         department: foundUser.department
       };
-      
+
       res.json({
         success: true,
         user: {
@@ -686,7 +696,7 @@ app.get('/api/troubleshooting/:id', (req, res) => {
 app.get('/api/history/machine-data', async (req, res) => {
   try {
     console.log('[api/history] 機種・機械番号データ取得リクエスト');
-    
+
     if (!dbPool) {
       return res.json({
         success: true,
@@ -699,7 +709,7 @@ app.get('/api/history/machine-data', async (req, res) => {
 
     const client = await dbPool.connect();
     const result = await client.query(`
-      SELECT 
+      SELECT
         mt.id as machine_type_id,
         mt.machine_type_name,
         m.id as machine_id,
@@ -760,7 +770,7 @@ app.get('/api/history/machine-data', async (req, res) => {
 app.get('/api/users', async (req, res) => {
   try {
     console.log('[api/users] ユーザー一覧取得リクエスト');
-    
+
     if (!dbPool) {
       return res.json({
         success: true,
@@ -801,7 +811,7 @@ app.get('/api/users', async (req, res) => {
 app.get('/api/machines/machine-types', async (req, res) => {
   try {
     console.log('[api/machines] 機種一覧取得リクエスト');
-    
+
     if (!dbPool) {
       return res.json({
         success: true,
@@ -843,7 +853,7 @@ app.get('/api/machines/machines', async (req, res) => {
   try {
     const { type_id } = req.query;
     console.log('[api/machines] 機械番号一覧取得リクエスト:', { type_id });
-    
+
     if (!dbPool) {
       return res.json({
         success: true,
@@ -856,14 +866,14 @@ app.get('/api/machines/machines', async (req, res) => {
     const client = await dbPool.connect();
     let query = 'SELECT id, machine_number FROM machines';
     const params = [];
-    
+
     if (type_id) {
       query += ' WHERE machine_type_id = $1';
       params.push(type_id);
     }
-    
+
     query += ' ORDER BY machine_number';
-    
+
     const result = await client.query(query, params);
     await client.release();
 
@@ -907,7 +917,7 @@ app.get('/api/storage/list', async (req, res) => {
 
     const blobServiceClient = getBlobServiceClient();
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    
+
     const listOptions = {
       prefix: norm(prefix)
     };
@@ -956,17 +966,17 @@ app.get('/api/storage/get', async (req, res) => {
     const blockBlobClient = containerClient.getBlockBlobClient(norm(name));
 
     const downloadResponse = await blockBlobClient.download();
-    
+
     if (downloadResponse.readableStreamBody) {
       const chunks = [];
       for await (const chunk of downloadResponse.readableStreamBody) {
         chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
       }
       const content = Buffer.concat(chunks).toString('utf-8');
-      
+
       // BOM除去
       const cleanContent = content.replace(/^\uFEFF/, '');
-      
+
       res.json({
         success: true,
         content: cleanContent,
@@ -1075,7 +1085,7 @@ app.delete('/api/storage/delete', async (req, res) => {
 app.get('/api/knowledge-base', async (req, res) => {
   try {
     console.log('[api/knowledge-base] ナレッジベース取得リクエスト');
-    
+
     if (!connectionString) {
       return res.json({
         success: true,
@@ -1087,7 +1097,7 @@ app.get('/api/knowledge-base', async (req, res) => {
 
     const blobServiceClient = getBlobServiceClient();
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    
+
     const listOptions = {
       prefix: norm('documents/')
     };
@@ -1098,7 +1108,7 @@ app.get('/api/knowledge-base', async (req, res) => {
         try {
           const blockBlobClient = containerClient.getBlockBlobClient(blob.name);
           const downloadResponse = await blockBlobClient.download();
-          
+
           if (downloadResponse.readableStreamBody) {
             const chunks = [];
             for await (const chunk of downloadResponse.readableStreamBody) {
@@ -1107,7 +1117,7 @@ app.get('/api/knowledge-base', async (req, res) => {
             const content = Buffer.concat(chunks).toString('utf-8');
             const cleanContent = content.replace(/^\uFEFF/, '');
             const jsonData = JSON.parse(cleanContent);
-            
+
             documents.push({
               id: blob.name,
               name: jsonData.title || jsonData.name || blob.name.split('/').pop(),
@@ -1146,7 +1156,7 @@ app.get('/api/knowledge-base', async (req, res) => {
 app.get('/api/emergency-flows', async (req, res) => {
   try {
     console.log('[api/emergency-flows] 応急処置フロー取得リクエスト');
-    
+
     if (!connectionString) {
       return res.json({
         success: true,
@@ -1158,7 +1168,7 @@ app.get('/api/emergency-flows', async (req, res) => {
 
     const blobServiceClient = getBlobServiceClient();
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    
+
     const listOptions = {
       prefix: norm('flows/')
     };
@@ -1169,7 +1179,7 @@ app.get('/api/emergency-flows', async (req, res) => {
         try {
           const blockBlobClient = containerClient.getBlockBlobClient(blob.name);
           const downloadResponse = await blockBlobClient.download();
-          
+
           if (downloadResponse.readableStreamBody) {
             const chunks = [];
             for await (const chunk of downloadResponse.readableStreamBody) {
@@ -1178,7 +1188,7 @@ app.get('/api/emergency-flows', async (req, res) => {
             const content = Buffer.concat(chunks).toString('utf-8');
             const cleanContent = content.replace(/^\uFEFF/, '');
             const jsonData = JSON.parse(cleanContent);
-            
+
             flows.push({
               id: blob.name,
               name: jsonData.name || jsonData.title || blob.name.split('/').pop(),
@@ -1217,7 +1227,7 @@ app.get('/api/emergency-flows', async (req, res) => {
 app.get('/api/emergency-flow/list', async (req, res) => {
   try {
     console.log('[api/emergency-flow/list] 応急処置フロー一覧取得リクエスト');
-    
+
     if (!connectionString) {
       return res.json({
         success: true,
@@ -1229,7 +1239,7 @@ app.get('/api/emergency-flow/list', async (req, res) => {
 
     const blobServiceClient = getBlobServiceClient();
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    
+
     const listOptions = {
       prefix: norm('flows/')
     };
@@ -1240,7 +1250,7 @@ app.get('/api/emergency-flow/list', async (req, res) => {
         try {
           const blockBlobClient = containerClient.getBlockBlobClient(blob.name);
           const downloadResponse = await blockBlobClient.download();
-          
+
           if (downloadResponse.readableStreamBody) {
             const chunks = [];
             for await (const chunk of downloadResponse.readableStreamBody) {
@@ -1249,7 +1259,7 @@ app.get('/api/emergency-flow/list', async (req, res) => {
             const content = Buffer.concat(chunks).toString('utf-8');
             const cleanContent = content.replace(/^\uFEFF/, '');
             const jsonData = JSON.parse(cleanContent);
-            
+
             flows.push({
               id: blob.name,
               name: jsonData.name || jsonData.title || blob.name.split('/').pop(),
@@ -1332,10 +1342,10 @@ app.get('/api/history', async (req, res) => {
     }
 
     const client = await dbPool.connect();
-    
+
     // 履歴データを取得（実際のテーブル構造に応じて調整）
     let query = `
-      SELECT 
+      SELECT
         h.id,
         h.title,
         h.machine_type,
@@ -1392,16 +1402,16 @@ app.get('/api/history', async (req, res) => {
 app.get('/api/history/local-files', async (req, res) => {
   try {
     console.log('[api/history/local-files] ローカルファイル一覧取得リクエスト');
-    
+
     const fs = require('fs').promises;
     const path = require('path');
-    
+
     // 履歴ファイルを保存するディレクトリを指定（環境変数対応）
     const historyDir = process.env.LOCAL_HISTORY_DIR || path.join(__dirname, 'app-logs', 'history');
     const exportDir = process.env.LOCAL_EXPORT_DIR || path.join(__dirname, 'app-logs', 'exports');
-    
+
     let files = [];
-    
+
     try {
       // historyディレクトリから.jsonファイルを取得
       try {
@@ -1411,7 +1421,7 @@ app.get('/api/history/local-files', async (req, res) => {
       } catch (error) {
         console.log('[api/history/local-files] historyディレクトリが存在しません');
       }
-      
+
       // exportsディレクトリから.jsonファイルを取得
       try {
         const exportFiles = await fs.readdir(exportDir);
@@ -1420,9 +1430,9 @@ app.get('/api/history/local-files', async (req, res) => {
       } catch (error) {
         console.log('[api/history/local-files] exportsディレクトリが存在しません');
       }
-      
+
       console.log('[api/history/local-files] ファイル一覧取得成功:', files.length + '件');
-      
+
       res.json({
         success: true,
         files: files.map(f => f.file),
@@ -1456,10 +1466,10 @@ app.get('/api/history/local-files/:filename', async (req, res) => {
   try {
     const { filename } = req.params;
     console.log('[api/history/local-files/:filename] ファイル内容取得リクエスト:', filename);
-    
+
     const fs = require('fs').promises;
     const path = require('path');
-    
+
     // セキュリティチェック: ファイル名に不正な文字が含まれていないかチェック
     if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
       return res.status(400).json({
@@ -1468,13 +1478,13 @@ app.get('/api/history/local-files/:filename', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     }
-    
+
     // 履歴ファイルを保存するディレクトリから検索（環境変数対応）
     const historyDir = process.env.LOCAL_HISTORY_DIR || path.join(__dirname, 'app-logs', 'history');
     const exportDir = process.env.LOCAL_EXPORT_DIR || path.join(__dirname, 'app-logs', 'exports');
-    
+
     let filePath = null;
-    
+
     // historyディレクトリから検索
     try {
       const historyPath = path.join(historyDir, filename);
@@ -1490,7 +1500,7 @@ app.get('/api/history/local-files/:filename', async (req, res) => {
         // どちらにもない場合
       }
     }
-    
+
     if (!filePath) {
       return res.status(404).json({
         success: false,
@@ -1499,13 +1509,13 @@ app.get('/api/history/local-files/:filename', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     }
-    
+
     // ファイル内容を読み込み
     const fileContent = await fs.readFile(filePath, 'utf8');
     const jsonData = JSON.parse(fileContent);
-    
+
     console.log('[api/history/local-files/:filename] ファイル内容取得成功:', filename);
-    
+
     res.json({
       success: true,
       filename: filename,
@@ -1529,7 +1539,7 @@ app.get('/api/history/local-files/:filename', async (req, res) => {
 app.get('/api/flows', async (req, res) => {
   try {
     console.log('[api/flows] フロー一覧取得リクエスト');
-    
+
     if (!dbPool) {
       return res.json({
         success: true,
@@ -1570,7 +1580,7 @@ app.get('/api/flows', async (req, res) => {
 app.get('/api/db-check', async (req, res) => {
   try {
     console.log('[api/db-check] データベース接続チェックリクエスト');
-    
+
     if (!dbPool) {
       return res.json({
         success: true,
@@ -1592,9 +1602,9 @@ app.get('/api/db-check', async (req, res) => {
     });
 
     const queryPromise = dbPool.query('SELECT NOW() as current_time, version() as version');
-    
+
     const result = await Promise.race([queryPromise, timeoutPromise]);
-    
+
     res.json({
       success: true,
       connected: true,
@@ -1651,11 +1661,11 @@ app.post('/api/gpt-check', (req, res) => {
 app.post('/api/chatgpt', async (req, res) => {
   try {
     const { text, useOnlyKnowledgeBase = false } = req.body;
-    
-    console.log('[api/chatgpt] GPT request:', { 
-      text: text?.substring(0, 100) + '...', 
+
+    console.log('[api/chatgpt] GPT request:', {
+      text: text?.substring(0, 100) + '...',
       useOnlyKnowledgeBase,
-      openaiAvailable: isOpenAIAvailable 
+      openaiAvailable: isOpenAIAvailable
     });
 
     if (!isOpenAIAvailable) {
@@ -1676,7 +1686,7 @@ app.post('/api/chatgpt', async (req, res) => {
     try {
       const { processOpenAIRequest } = await import('./lib/openai.js');
       const response = await processOpenAIRequest(text, useOnlyKnowledgeBase);
-      
+
       res.json({
         success: true,
         response: response,
