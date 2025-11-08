@@ -58,6 +58,15 @@ if (hasCriticalEnvVars) {
   } catch (debugError) {
     console.error('❌ Debug server failed to start:', debugError);
     console.error('❌ Debug server stack trace:', debugError.stack);
-    process.exit(1);
+    
+    // 最後の手段: 最小限フォールバックサーバー
+    console.log('🆘 Starting minimal fallback server as last resort...');
+    try {
+      await import('./fallback-server.js');
+      console.log('✅ Fallback server started successfully');
+    } catch (fallbackError) {
+      console.error('❌ Even fallback server failed:', fallbackError);
+      process.exit(1);
+    }
   }
 }
