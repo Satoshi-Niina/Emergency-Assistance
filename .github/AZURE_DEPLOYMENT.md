@@ -2,43 +2,67 @@
 
 このドキュメントでは、Azure App Serviceへのデプロイ設定とトラブルシューティング方法を説明します。
 
-## スタートアップコマンド設定
+## デプロイ方式
 
-Azure App Serviceでアプリケーションが正しく起動するように、以下のスタートアップコマンドを設定してください。
+このプロジェクトは**Oryx Build**を使用したデプロイ方式を採用しています。
+
+- ZIP Deployは使用しません
+- GitHub Actionsから`azure/webapps-deploy@v3`を使用して`package: .`をデプロイ
+- Oryx Buildが自動的に`npm install`、`npm build`、`npm start`を実行
+
+## アプリケーション設定（必須）
+
+Azure Portalで以下の環境変数を設定してください：
 
 ### Azure Portalでの設定手順
 
 1. Azure Portalにログイン
 2. App Service（`Emergency-Assistance`）を選択
-3. **設定** → **構成** → **全般設定** を開く
-4. **スタートアップコマンド** に以下を設定：
+3. **設定** → **構成** → **アプリケーション設定** を開く
+4. 以下の設定を追加または確認：
 
-```bash
-bash -lc "cd server && npm ci && npm start"
-```
-
-または、よりシンプルに：
-
-```bash
-cd server && npm start
-```
+| 設定名 | 値 | 説明 |
+|--------|-----|------|
+| `SCM_DO_BUILD_DURING_DEPLOYMENT` | `true` | Oryx Buildを有効化 |
+| `WEBSITE_NODE_DEFAULT_VERSION` | `20-lts` | Node.js 20 LTSを使用 |
 
 ### Azure CLIでの設定
 
 ```bash
-az webapp config set \
+az webapp config appsettings set \
   --name Emergency-Assistance \
   --resource-group <ResourceGroupName> \
-  --startup-file "cd server && npm start"
+  --settings \
+    SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+    WEBSITE_NODE_DEFAULT_VERSION=20-lts
 ```
 
-または、より詳細な設定：
+## スタートアップコマンド設定
+
+**重要**: Oryx Buildを使用する場合、スタートアップコマンドは**未指定でOK**です。
+
+Oryxが自動的にルートの`package.json`の`start`スクリプトを実行します。
+
+ルートの`package.json`には以下の`start`スクリプトが設定されています：
+
+```json
+{
+  "scripts": {
+    "start": "cd server && npm start"
+  }
+}
+```
+
+もし明示的に設定する場合は：
 
 ```bash
-az webapp config set \
-  --name Emergency-Assistance \
-  --resource-group <ResourceGroupName> \
-  --startup-file "bash -lc 'cd server && npm ci && npm start'"
+npm start
+```
+
+または：
+
+```bash
+bash -lc "npm start"
 ```
 
 ## ヘルスチェックエンドポイント

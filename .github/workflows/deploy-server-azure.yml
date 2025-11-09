@@ -1,4 +1,4 @@
-name: Deploy Server to Azure App Service (Simplified)
+name: Deploy Server to Azure App Service (Oryx Build)
 
 on:
   push:
@@ -11,219 +11,24 @@ on:
 permissions:
   contents: read
 
+env:
+  APP_URL: "https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net"
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    name: Build and Deploy to Azure App Service
+    name: Deploy to Azure App Service using Oryx Build
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20.18.0'
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'npm'
-          cache-dependency-path: 'server/package-lock.json'
-
-      - name: Install dependencies (isolated npm)
-        run: |
-          echo "📦 Installing server dependencies..."
-
-          # Navigate to server directory and work in isolation
-          cd server
-
-          # Clean start - remove any conflicting files
-          rm -rf node_modules package-lock.json yarn.lock .npm .npmrc
-
-          # Create isolated npm environment with environment variables
-          echo "🔧 Setting up isolated npm environment..."
-
-          # Set npm environment variables (safer than config commands)
-          export NPM_CONFIG_AUDIT=false
-          export NPM_CONFIG_FUND=false
-          export NPM_CONFIG_WORKSPACES=false
-          export NPM_CONFIG_WORKSPACE=""
-          export npm_config_workspaces=false
-
-          # Install dependencies with isolation flags
-          echo "📦 Installing dependencies with isolation..."
-          INSTALL_SUCCESS=false
-          for attempt in 1 2 3; do
-            echo "📦 Installation attempt $attempt/3..."
-
-            # Use modern npm flags and isolation
-            if npm install --ignore-workspace-root-check --no-workspaces --omit=optional --loglevel=error; then
-              INSTALL_SUCCESS=true
-              echo "✅ npm install completed successfully on attempt $attempt"
-              break
-            else
-              echo "⚠️ Attempt $attempt failed, cleaning up..."
-              rm -rf node_modules package-lock.json
-              sleep 5
-            fi
-          done
-
-          if [ "$INSTALL_SUCCESS" = false ]; then
-            echo "❌ All installation attempts failed"
-            exit 1
-          fi
-
-          # Verify installation
-          echo "📦 Installation verification:"
-          if [ -d "node_modules" ]; then
-            MODULE_COUNT=$(ls node_modules 2>/dev/null | wc -l || echo '0')
-            echo "  - Modules installed: $MODULE_COUNT"
-
-            # Check critical dependencies
-            for module in express cors dotenv bcryptjs; do
-              if [ -d "node_modules/$module" ]; then
-                echo "  ✅ $module: Found"
-              else
-                echo "  ❌ $module: Missing"
-                exit 1
-              fi
-            done
-          else
-            echo "  ❌ node_modules directory not created"
-            exit 1
-          fi
-
-      - name: Prepare deployment package
-        run: |
-          echo "📦 Creating deployment package..."
-
-          # Create deployment directory
-          mkdir -p deploy
-
-          # Copy server files (explicitly include node_modules)
-          cp -r server/* deploy/
-
-          # Ensure node_modules is copied (critical for deployment)
-          if [ -d "server/node_modules" ]; then
-            echo "📦 Copying node_modules to deployment package..."
-            cp -r server/node_modules deploy/
-            echo "✅ node_modules copied successfully"
-          else
-            echo "❌ server/node_modules not found - attempting emergency install in deploy directory"
-
-            # Emergency npm install directly in deploy directory
-            cd deploy
-            echo "🚨 Running emergency npm install in deploy directory..."
-            npm install --production --no-optional --omit=dev
-            cd ..
-
-            if [ -d "deploy/node_modules" ]; then
-              echo "✅ Emergency npm install successful"
-            else
-              echo "❌ Emergency npm install failed - deployment will fail"
-              exit 1
-            fi
-          fi
-
-          # Copy additional resources
-          cp -r shared deploy/shared 2>/dev/null || echo "No shared directory"
-          cp -r knowledge-base deploy/knowledge-base 2>/dev/null || echo "No knowledge-base directory"
-
-          # Create required directories
-          mkdir -p deploy/app-logs/{exports,history}
-          mkdir -p deploy/uploads
-
-          # Clean up files that might cause EISDIR errors
-          echo "🧹 Cleaning up potentially problematic files..."
-          rm -f deploy/.env* deploy/tsconfig*.json
-          rm -rf deploy/lib deploy/routes deploy/compat deploy/config
-          rm -f deploy/*hot-reload* deploy/unified-*.js deploy/fallback-*.js
-          rm -f deploy/*.ts deploy/*.md deploy/*.sql deploy/*.cjs deploy/*.mjs
-          find deploy -name "*.ts" -delete 2>/dev/null || true
-          find deploy -name "*.md" -delete 2>/dev/null || true
-          find deploy -type d -name ".git" -exec rm -rf {} + 2>/dev/null || true
-
-          echo "📦 Keeping only essential files for minimal deployment..."
-
-          # Ensure web.config exists for IIS/Azure App Service
-          if [ ! -f deploy/web.config ]; then
-            echo "⚠️ web.config missing, creating default..."
-            cat > deploy/web.config << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <configuration>
-            <system.webServer>
-              <handlers>
-                <add name="iisnode" path="index.js" verb="*" modules="iisnode"/>
-              </handlers>
-              <rewrite>
-                <rules>
-                  <rule name="DynamicContent">
-                    <conditions>
-                      <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="True"/>
-                    </conditions>
-                    <action type="Rewrite" url="index.js"/>
-                  </rule>
-                </rules>
-              </rewrite>
-              <iisnode node_env="production" />
-            </system.webServer>
-          </configuration>
-          EOF
-          fi
-
-          # Comprehensive deployment package verification
-          echo "🔍 Deployment package verification:"
-          echo "  - Entry point: $(test -f deploy/index.js && echo 'OK' || echo 'MISSING')"
-          echo "  - Package.json: $(test -f deploy/package.json && echo 'OK' || echo 'MISSING')"
-          echo "  - Web.config: $(test -f deploy/web.config && echo 'OK' || echo 'MISSING')"
-          echo "  - Node modules: $(test -d deploy/node_modules && echo 'OK' || echo 'MISSING')"
-          echo "  - Express: $(test -f deploy/node_modules/express/package.json && echo 'OK' || echo 'MISSING')"
-
-          # Detailed node_modules verification
-          if [ -d deploy/node_modules ]; then
-            echo "📦 Node modules details:"
-            echo "  - Modules count: $(ls deploy/node_modules | wc -l)"
-            echo "  - Express version: $(cat deploy/node_modules/express/package.json | grep '"version"' || echo 'Not found')"
-            echo "  - Core modules present:"
-            for module in express cors dotenv bcryptjs jsonwebtoken; do
-              if [ -d "deploy/node_modules/$module" ]; then
-                echo "    ✅ $module"
-              else
-                echo "    ❌ $module (CRITICAL MISSING)"
-              fi
-            done
-          else
-            echo "❌ CRITICAL: node_modules directory missing completely"
-            echo "📋 Deploy directory contents:"
-            ls -la deploy/ || echo "Deploy directory not accessible"
-            exit 1
-          fi
-
-          # Check file permissions and structure
-          echo "📂 Deploy directory structure:"
-          echo "  - Total files: $(find deploy -type f | wc -l)"
-          echo "  - JavaScript files: $(find deploy -name '*.js' | wc -l)"
-          echo "  - Index.js size: $(stat -c%s deploy/index.js 2>/dev/null || echo 'N/A') bytes"
-
-          # Display package.json engines
-          if [ -f deploy/package.json ]; then
-            echo "  - Node version requirement: $(grep -A2 '"engines"' deploy/package.json || echo 'Not specified')"
-          fi
-
-      - name: Create deployment ZIP package
-        run: |
-          echo "📦 Creating deployment ZIP package..."
-          cd deploy
-          zip -r ../deploy.zip . -x "*.git*" -x "*.DS_Store" -x "*node_modules/.cache/*"
-          cd ..
-          echo "✅ ZIP package created: deploy.zip"
-          ls -lh deploy.zip
-
-      - name: Deploy to Azure App Service
+      - name: Deploy to Azure Web App (Oryx Build)
         uses: azure/webapps-deploy@v3
         with:
           app-name: Emergency-Assistance
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: deploy.zip
-          clean: true
+          package: .
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
@@ -236,26 +41,21 @@ jobs:
 
       - name: Wait for app to be ready
         run: |
-          APP_URL="https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net"
-
           echo "🚀 Deployment completed"
           echo "⏰ Waiting 120 seconds for app startup..."
           sleep 120
-
           echo "🔍 Starting health check..."
 
       - name: Health check
         run: |
-          APP_URL="https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net"
-
-          # First check /ping endpoint (lightweight)
+          # Check /ping endpoint (lightweight)
           echo "🔍 Checking /ping endpoint..."
           PING_SUCCESS=false
           
           for i in {1..5}; do
             echo "  Attempt $i/5 for /ping..."
             
-            if curl -fsSL --retry 1 --retry-all-errors --max-time 10 "$APP_URL/ping" 2>/dev/null; then
+            if curl -fsSL --retry 1 --retry-all-errors --max-time 10 "${{ env.APP_URL }}/ping" 2>/dev/null; then
               echo "  ✅ SUCCESS - /ping is responding"
               PING_SUCCESS=true
               break
@@ -275,7 +75,7 @@ jobs:
             for i in {1..5}; do
               echo "  Attempt $i/5 for /api/ping..."
               
-              if curl -fsSL --retry 1 --retry-all-errors --max-time 10 "$APP_URL/api/ping" 2>/dev/null; then
+              if curl -fsSL --retry 1 --retry-all-errors --max-time 10 "${{ env.APP_URL }}/api/ping" 2>/dev/null; then
                 echo "  ✅ SUCCESS - /api/ping is responding"
                 PING_SUCCESS=true
                 break
@@ -288,7 +88,7 @@ jobs:
             done
           fi
 
-          # Then check /health endpoint
+          # Check /health endpoint
           if [ "$PING_SUCCESS" = true ]; then
             echo "🔍 Checking /health endpoint..."
             HEALTH_SUCCESS=false
@@ -296,7 +96,7 @@ jobs:
             for i in {1..5}; do
               echo "  Attempt $i/5 for /health..."
               
-              if curl -fsSL --retry 1 --retry-all-errors --max-time 10 "$APP_URL/health" 2>/dev/null; then
+              if curl -fsSL --retry 1 --retry-all-errors --max-time 10 "${{ env.APP_URL }}/health" 2>/dev/null; then
                 echo "  ✅ SUCCESS - /health is responding"
                 HEALTH_SUCCESS=true
                 break
@@ -314,7 +114,7 @@ jobs:
               for i in {1..5}; do
                 echo "  Attempt $i/5 for /api/health..."
                 
-                if curl -fsSL --retry 1 --retry-all-errors --max-time 10 "$APP_URL/api/health" 2>/dev/null; then
+                if curl -fsSL --retry 1 --retry-all-errors --max-time 10 "${{ env.APP_URL }}/api/health" 2>/dev/null; then
                   echo "  ✅ SUCCESS - /api/health is responding"
                   HEALTH_SUCCESS=true
                   break
@@ -330,15 +130,6 @@ jobs:
 
           if [ "$PING_SUCCESS" = true ] && [ "$HEALTH_SUCCESS" = true ]; then
             echo "✅ Health check PASSED - Both ping and health endpoints are responding"
-
-            # Additional verification with detailed health check
-            echo "🔍 Running detailed health verification..."
-            if curl -f "$APP_URL/api/health" --max-time 30 --silent; then
-              echo "✅ Detailed health check also passed"
-            else
-              echo "⚠️ Detailed health check failed, but basic health is OK"
-            fi
-
             exit 0
           else
             echo "❌ Health check failed - No endpoints responding after multiple attempts"
