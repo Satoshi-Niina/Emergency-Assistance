@@ -307,10 +307,17 @@ app.use(session({
   rolling: false // セッション更新を無効化
 }));
 
-// ヘルスチェックエンドポイント
-// ヘルスチェックエンドポイント（詳細版）
-// Health check endpoint with timeout protection
-app.get('/api/health', (req, res) => {
+// Health endpoints (即200 - DB待ちや外部接続に依存しない)
+// シンプルなヘルスチェックエンドポイント（先に定義して優先）
+const ok = (_req, res) => res.status(200).send('ok');
+app.get('/ping', ok);
+app.get('/api/ping', ok);
+app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));
+app.get('/api/health', (_req, res) => res.status(200).json({ status: 'ok' }));
+
+// 詳細なヘルスチェックエンドポイント（詳細情報が必要な場合用）
+// Health check endpoint with timeout protection (詳細版)
+app.get('/api/health/detailed', (req, res) => {
   // Set response timeout to prevent hanging
   const timeout = setTimeout(() => {
     if (!res.headersSent) {
@@ -357,8 +364,8 @@ app.get('/api/health', (req, res) => {
   res.status(200).json(healthResponse);
 });
 
-// Detailed health check with full database testing
-app.get('/api/health/detailed', async (req, res) => {
+// Full database testing health check (別エンドポイント)
+app.get('/api/health/full', async (req, res) => {
   let dbStatus = 'not_initialized';
   let dbTestResult = null;
 
@@ -423,24 +430,6 @@ app.get('/api/health/detailed', async (req, res) => {
   });
 });
 
-// Azure App Service用シンプルなヘルスチェック (プローブ用)
-app.get('/health', (req, res) => {
-  res.status(200).send('OK');
-});
-
-// プローブ用極軽量エンドポイント
-app.get('/ping', (req, res) => {
-  res.status(200).send('pong');
-});
-
-// Azure App Service用ヘルスプローブ
-app.get('/api/ping', (req, res) => {
-  res.status(200).json({
-    status: 'up',
-    timestamp: Date.now(),
-    pid: process.pid
-  });
-});
 
 // 環境情報（詳細版）
 app.get('/api/_diag/env', (req, res) => {
@@ -1851,16 +1840,11 @@ app.get('/', (req, res) => {
   }
 });
 
-// SPAルーティング対応: APIルート以外をindex.htmlにフォールバック
-app.get('*', (req, res, next) => {
-  // APIルートは除外
-  if (req.path.startsWith('/api/')) {
-    return next();
-  }
-
-  // 静的ファイル（拡張子あり）は除外
+// SPAルーティング（/api* 以外を index.html へ）
+app.get(/^(?!\/api).*/, (req, res) => {
+  // 静的ファイル（拡張子あり）は除外（express.staticで処理済み）
   if (req.path.match(/\.[a-zA-Z0-9]+$/)) {
-    return next();
+    return res.status(404).send('File not found');
   }
 
   // index.htmlを配信（SPAルーティング）
@@ -1868,7 +1852,7 @@ app.get('*', (req, res, next) => {
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
-    next();
+    res.status(404).send('index.html not found');
   }
 });
 

@@ -23,6 +23,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Ensure no ZIP steps remain
+        run: |
+          if grep -Rqi "zip\|artifact\|unzip" .github/workflows/deploy-server-azure.yml; then
+            echo "❌ Found residual ZIP/artifact steps. Remove them."
+            exit 1
+          fi
+          echo "✅ No ZIP-related steps found"
+
       - name: Deploy to Azure Web App (Oryx Build)
         uses: azure/webapps-deploy@v3
         with:
@@ -40,6 +48,8 @@ jobs:
           SCM_DO_BUILD_DURING_DEPLOYMENT: "true"
 
       - name: Wait for app to be ready
+        env:
+          APP_URL: ${{ env.APP_URL }}
         run: |
           echo "🚀 Deployment completed"
           echo "⏰ Waiting 120 seconds for startup..."
@@ -47,13 +57,15 @@ jobs:
           echo "🔍 Starting health check..."
 
       - name: Health check
+        env:
+          APP_URL: ${{ env.APP_URL }}
         run: |
           for path in "/ping" "/api/ping" "/health" "/api/health"; do
             echo "🔍 Checking $path..."
-            if curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 "${{ env.APP_URL }}$path" > /dev/null; then
+            if curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 "$APP_URL$path" > /dev/null; then
               echo "✅ $path OK"
               exit 0
             fi
           done
-          echo "❌ All endpoints failed"
+          echo "❌ Health check failed"
           exit 1
