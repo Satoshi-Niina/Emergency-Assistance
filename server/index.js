@@ -30,10 +30,10 @@ console.log('  - Exists (relative):', existsSync(azureServerPathRelative));
 // azure-server.jsをインポートして起動
 try {
   console.log('📦 Loading azure-server.js...');
-  
+
   // 相対パスでインポート（ESModule形式）
   await import(azureServerPathRelative);
-  
+
   console.log('✅ azure-server.js loaded successfully');
 } catch (error) {
   console.error('❌ FATAL ERROR loading azure-server.js:', error);
@@ -45,7 +45,7 @@ try {
   if (error.stack) {
     console.error('❌ Stack trace:', error.stack);
   }
-  
+
   console.error('❌ Production server failed to start. Exiting process...');
   process.exit(1);
 }
