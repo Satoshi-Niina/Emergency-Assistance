@@ -18,39 +18,45 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install and Build Server
+      - name: Install Server Dependencies
+        working-directory: ./server
         run: |
-          cd server
-          npm install
+          npm ci --production=false
           echo "✅ Server dependencies installed"
 
-      - name: Install and Build Client
+      - name: Build Client
+        working-directory: ./client
         run: |
-          cd client
-          npm install
+          npm ci
           npm run build
           echo "✅ Client built successfully"
 
-      - name: Prepare Deployment
+      - name: Prepare Deployment Package
+        shell: bash
         run: |
-          # Create deployment directory
-          mkdir deploy-package
+          echo "📦 Creating deployment package..."
+          mkdir -p deploy-package
 
-          # Copy server files
-          cp -r server/* deploy-package/
+          # Copy server files to deployment package
+          echo "Copying server files..."
+          tar --exclude='node_modules' -cf - -C server . | tar -xf - -C deploy-package
 
-          # Copy client build to server
+          # Copy client build
+          echo "Copying client build..."
           mkdir -p deploy-package/client
-          cp -r client/dist deploy-package/client/
+          if [ -d "client/dist" ]; then
+            tar -cf - -C client/dist . | tar -xf - -C deploy-package/client/dist
+          else
+            echo "❌ Client dist not found"
+            exit 1
+          fi
 
-          # Remove node_modules (Oryx will rebuild)
-          rm -rf deploy-package/node_modules
-
-          # Verify structure
-          echo "📦 Deployment package structure:"
+          echo "📋 Deployment structure verification:"
           ls -la deploy-package/
-          echo "📁 Client files:"
-          ls -la deploy-package/client/dist/ || echo "No client dist"
+          echo "📁 Essential files check:"
+          [ -f "deploy-package/package.json" ] && echo "✅ package.json" || echo "❌ package.json missing"
+          [ -f "deploy-package/azure-server.js" ] && echo "✅ azure-server.js" || echo "❌ azure-server.js missing"
+          [ -d "deploy-package/client/dist" ] && echo "✅ client/dist" || echo "❌ client/dist missing"
 
       - name: Deploy to Azure
         uses: azure/webapps-deploy@v3
