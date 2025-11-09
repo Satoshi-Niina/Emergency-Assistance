@@ -3,16 +3,12 @@
   "version": "1.0.2",
   "description": "Emergency Assistance System - Full Stack Application",
   "engines": {
-    "node": ">=20.0.0",
-    "npm": ">=10.0.0"
+    "node": ">=20.0.0"
   },
   "scripts": {
     "start": "npm --prefix server run start",
     "build": "npm --prefix client run build",
-    "install:server": "cd server && npm install",
-    "start:server": "cd server && npm start",
-    "dev:server": "cd server && npm run dev",
-    "test": "echo 'No root tests specified'"
+    "postinstall": "npm --prefix server ci --no-audit --no-fund || npm --prefix server install && npm --prefix client ci --no-audit --no-fund || npm --prefix client install"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

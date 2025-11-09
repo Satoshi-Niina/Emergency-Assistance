@@ -2,7 +2,7 @@
   "name": "emergency-assistance-server",
   "version": "1.0.3",
   "type": "module",
-  "main": "index.js",
+  "main": "azure-server.js",
   "description": "Emergency Assistance System - Azure App Service Backend",
   "engines": {
     "node": ">=20.0.0",
@@ -32,6 +32,7 @@
     "fs-extra": "^11.2.0",
     "fuse.js": "^7.1.0",
     "helmet": "^8.1.0",
+    "compression": "^1.7.4",
     "http-proxy-middleware": "^3.0.5",
     "jsonwebtoken": "^9.0.2",
     "memorystore": "^1.6.7",

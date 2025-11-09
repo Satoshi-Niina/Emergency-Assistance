@@ -1,69 +1,77 @@
-name: Deploy Server to Azure App Service (Oryx Build)
+name: Deploy Server to Azure App Service (Oryx)
 
 on:
   push:
-    branches:
-      - main
-      - master
-      - backup
+    branches: ['main']
   workflow_dispatch:
+
+env:
+  # あなたのApp ServiceのURLに合わせて変更
+  APP_URL: 'https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net'
+  # 一時的にガードを無効化したい場合は 'false' にする
+  ZIP_GUARD: 'true'
 
 permissions:
   contents: read
 
-env:
-  APP_URL: "https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net"
+concurrency:
+  group: 'azure-appservice-deploy'
+  cancel-in-progress: true
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    name: Deploy to Azure App Service using Oryx Build
+    timeout-minutes: 30
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Ensure no ZIP steps remain
+      # Zip/Artifact系の残骸があれば明示的に失敗させる（コメントは除外）
+      - name: Ensure no ZIP/artifact steps remain
+        if: ${{ env.ZIP_GUARD != 'false' }}
         run: |
-          if grep -Rqi "zip\|artifact\|unzip" .github/workflows/deploy-server-azure.yml; then
-            echo "❌ Found residual ZIP/artifact steps. Remove them."
-            exit 1
-          fi
-          echo "✅ No ZIP-related steps found"
+          awk '!/^[[:space:]]*#/' .github/workflows/deploy-server-azure.yml \
+          | grep -RqiE '\b(uses:\s*actions/(upload-artifact|download-artifact)|[[:space:]]zip[[:space:]]|[[:space:]]unzip[[:space:]])' \
+          && { echo "❌ Found residual ZIP/artifact steps. Remove them."; exit 1; } || echo "✅ No ZIP/artifact steps found."
 
-      - name: Deploy to Azure Web App (Oryx Build)
+      # Oryx Build を用いたデプロイ（Zipは使わない）
+      - name: Deploy to Azure Web App (Oryx)
         uses: azure/webapps-deploy@v3
         with:
-          app-name: Emergency-Assistance
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          # 例: emergency-assistance など。App Service名をSecretsに入れておくか直書きでも可
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
+          # ← ここがポイント。ZIPではなくソース一式をそのまま送る
           package: .
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          FRONTEND_URL: "https://witty-river-012f39e00.1.azurestaticapps.net"
-          NODE_ENV: "production"
-          WEBSITE_NODE_DEFAULT_VERSION: "20-lts"
-          SCM_DO_BUILD_DURING_DEPLOYMENT: "true"
 
-      - name: Wait for app to be ready
+      - name: Show Kudu deployment logs link
+        run: |
+          echo "Kudu deployments: https://${{ secrets.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net/api/deployments"
+
+      # 起動待ち → /live → /ready → /ping → /api/ping → /health → /api/health（成功したら即OK）
+      - name: Wait for app to be ready (Health Check)
         env:
           APP_URL: ${{ env.APP_URL }}
+          HEALTH_TOKEN: ${{ secrets.HEALTH_TOKEN }} # 任意設定（App Service と一致させる）
         run: |
-          echo "🚀 Deployment completed"
           echo "⏰ Waiting 120 seconds for startup..."
           sleep 120
-          echo "🔍 Starting health check..."
-
-      - name: Health check
-        env:
-          APP_URL: ${{ env.APP_URL }}
-        run: |
-          for path in "/ping" "/api/ping" "/health" "/api/health"; do
-            echo "🔍 Checking $path..."
-            if curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 "$APP_URL$path" > /dev/null; then
-              echo "✅ $path OK"
+          check() {
+            url="$1"
+            echo "🔍 Checking $url"
+            if [ -n "${HEALTH_TOKEN}" ]; then
+              curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 \
+                -H "x-health-token: ${HEALTH_TOKEN}" "$url" > /dev/null
+            else
+              curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 "$url" > /dev/null
+            fi
+          }
+          for p in /live /ready /ping /api/ping /health /api/health; do
+            if check "${APP_URL}${p}"; then
+              echo "✅ $p OK"
               exit 0
             fi
           done

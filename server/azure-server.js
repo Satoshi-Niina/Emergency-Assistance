@@ -2,43 +2,58 @@
 
 // Azure App Service専用サーバー
 // Linux環境で確実に動作する最小限のサーバー
-// Updated: CORS configuration fixed for frontend-backend communication
 
 import express from 'express';
+import path, { join } from 'path';
+import { fileURLToPath } from 'url';
+import helmet from 'helmet';
+import compression from 'compression';
+import morgan from 'morgan';
 import cors from 'cors';
 import { Pool } from 'pg';
-import { BlobServiceClient, generateBlobSASQueryParameters, BlobSASPermissions } from '@azure/storage-blob';
-// FIXME: Temporarily disable migration import to isolate EISDIR
-// import { runMigrations } from './startup-migration.js';
+import { BlobServiceClient } from '@azure/storage-blob';
 import bcrypt from 'bcryptjs';
 import session from 'express-session';
-import dotenv from 'dotenv';
 import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
-// ESM __dirname equivalent
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// ==== まず環境値（ログより前に宣言）=====
+const FRONTEND_URL =
+  process.env.FRONTEND_URL ||
+  process.env.STATIC_WEB_APP_URL ||
+  (process.env.NODE_ENV === 'production'
+    ? 'https://example-static.azurestaticapps.net'
+    : 'http://localhost:8080');
 
-// FIXME: Temporarily disable .env loading to prevent EISDIR errors
-// Azure App Service uses environment variables, not .env files
-console.log('📄 Using system environment variables (Azure App Service - .env loading disabled)');
+const STATIC_WEB_APP_URL = process.env.STATIC_WEB_APP_URL || FRONTEND_URL;
+const HEALTH_TOKEN = process.env.HEALTH_TOKEN || ''; // 任意。設定時は /ready に x-health-token を要求
+const PORT = process.env.PORT || 3000;
 
-// Environment validation (warnings only, don't exit)
+// ==== アプリ初期化 =====
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const app = express();
+
+app.disable('x-powered-by');
+app.set('trust proxy', true);
+
+// 本番ミドルウェア群
+app.use(helmet({ contentSecurityPolicy: false })); // 必要に応じてCSPを調整
+app.use(compression());
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'tiny' : 'dev'));
+app.use(cors({ origin: [FRONTEND_URL, STATIC_WEB_APP_URL].filter(Boolean), credentials: true }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false }));
+
+console.log('🔗 Frontend URL:', STATIC_WEB_APP_URL);
+
+// BLOBストレージ関連の設定
+const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
+
 // OpenAI API設定の確認とフォールバック
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const isOpenAIAvailable = OPENAI_API_KEY &&
   OPENAI_API_KEY !== 'your-openai-api-key-here' &&
   OPENAI_API_KEY.startsWith('sk' + '-');
-
-console.log('🤖 OpenAI API Status:', {
-  keyExists: !!OPENAI_API_KEY,
-  isValidFormat: OPENAI_API_KEY ? OPENAI_API_KEY.startsWith('sk' + '-') : false,
-  isAvailable: isOpenAIAvailable,
-  fallbackMode: !isOpenAIAvailable
-});
 
 if (!isOpenAIAvailable) {
   console.warn('⚠️ OpenAI API key not configured - GPT features will use fallback responses');
@@ -47,16 +62,6 @@ if (!isOpenAIAvailable) {
 // バージョン情報（デプロイ確認用）
 const VERSION = '1.0.5-PUBLIC-PACKAGE-FIX-' + new Date().toISOString().slice(0, 19).replace(/[-:]/g, '');
 console.log('🚀 Azure Server Starting - Version:', VERSION);
-console.log('🎯 Environment: PRODUCTION ONLY (no local.env)');
-console.log('🌐 CORS: Explicit Azure Static Web App URL support');
-console.log('📦 Package: Public GitHub Container Registry access');
-console.log('🔗 Frontend URL:', STATIC_WEB_APP_URL);
-
-const app = express();
-
-// BLOBストレージ関連の設定
-const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
-const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
 
 // BLOBサービスクライアントの初期化（警告版）
 const getBlobServiceClient = () => {
@@ -190,105 +195,6 @@ async function startupSequence() {
 // 非同期でスタートアップシーケンスを実行
 startupSequence();
 
-// Azure App Service用のCORS設定
-// 注意: 本番環境では必ず環境変数を設定してください
-const FRONTEND_URL = process.env.FRONTEND_URL || process.env.STATIC_WEB_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://witty-river-012f39e00.1.azurestaticapps.net' : 'http://localhost:8080');
-const STATIC_WEB_APP_URL = process.env.STATIC_WEB_APP_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
-const BACKEND_SERVICE_URL = process.env.BACKEND_SERVICE_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080');
-const CLIENT_PORT = process.env.CLIENT_PORT || '5173';
-
-// 確実にAzure Static Web AppsのURLを含める
-const ALLOWED_ORIGINS = [
-  FRONTEND_URL,
-  STATIC_WEB_APP_URL,
-  'https://witty-river-012f39e00.1.azurestaticapps.net', // 明示的に追加
-  `http://localhost:${CLIENT_PORT}`,
-  `http://localhost:${parseInt(CLIENT_PORT) + 1}`,
-  `http://localhost:${parseInt(CLIENT_PORT) + 2}`,
-  `http://localhost:${parseInt(CLIENT_PORT) + 3}`,
-  `http://localhost:${parseInt(CLIENT_PORT) + 4}`,
-  `http://localhost:${parseInt(CLIENT_PORT) + 5}`,
-  `http://127.0.0.1:${CLIENT_PORT}`,
-  `http://127.0.0.1:${parseInt(CLIENT_PORT) + 1}`,
-  `http://127.0.0.1:${parseInt(CLIENT_PORT) + 2}`,
-  `http://127.0.0.1:${parseInt(CLIENT_PORT) + 3}`,
-  `http://127.0.0.1:${parseInt(CLIENT_PORT) + 4}`,
-  `http://127.0.0.1:${parseInt(CLIENT_PORT) + 5}`,
-  ...(process.env.CORS_ALLOW_ORIGINS?.split(',') || [])
-].filter(Boolean);
-
-// CORS設定の詳細をログ出力
-console.log('🔧 CORS Configuration:');
-console.log('  FRONTEND_URL:', FRONTEND_URL);
-console.log('  STATIC_WEB_APP_URL:', STATIC_WEB_APP_URL);
-console.log('  ALLOWED_ORIGINS:', ALLOWED_ORIGINS.slice(0, 5), ALLOWED_ORIGINS.length > 5 ? `... and ${ALLOWED_ORIGINS.length - 5} more` : '');
-console.log('  CORS_ALLOW_ORIGINS from env:', process.env.CORS_ALLOW_ORIGINS || 'not set');
-
-// CORS設定（修正版）- プリフライトエラー対応
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-
-  console.log('🔍 CORS Request:', {
-    method: req.method,
-    origin: origin,
-    path: req.path,
-    userAgent: req.headers['user-agent']
-  });
-
-  // Azure Static Web Apps のオリジンを強制許可（最優先）
-  const AZURE_STATIC_ORIGIN = 'https://witty-river-012f39e00.1.azurestaticapps.net';
-
-  // CORS ヘッダーを常に設定（プリフライトエラー回避）
-  // Azure Static Web Apps からのリクエストまたは許可されたオリジンを設定
-  let allowedOrigin = AZURE_STATIC_ORIGIN; // デフォルトはAzure Static Web Apps
-
-  // オリジンのチェック（より確実に）
-  if (origin) {
-    // Azure Static Web Apps のオリジンを許可
-    if (origin.includes('azurestaticapps.net')) {
-      allowedOrigin = origin;
-    }
-    // ALLOWED_ORIGINSに含まれている場合も許可
-    else if (ALLOWED_ORIGINS.includes(origin)) {
-      allowedOrigin = origin;
-    }
-  }
-
-  // CORS ヘッダーを常に設定（プリフライトリクエストでも確実に設定）
-  res.header('Access-Control-Allow-Origin', allowedOrigin);
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma, Expires, Cookie, Set-Cookie, x-requested-with');
-  res.header('Access-Control-Expose-Headers', 'Set-Cookie, X-Total-Count');
-  res.header('Access-Control-Max-Age', '86400');
-
-  // プリフライトリクエスト（OPTIONS）の処理を最優先
-  if (req.method === 'OPTIONS') {
-    console.log('✅ OPTIONS プリフライト処理:', {
-      origin,
-      allowOrigin: allowedOrigin,
-      isAzureStaticWebApp: origin?.includes('azurestaticapps.net'),
-      headers: req.headers
-    });
-
-    // 204 No Contentでプリフライトを完了（標準的な方法）
-    return res.status(204).end();
-  }
-
-  console.log('✅ CORS Headers Set:', {
-    origin: origin,
-    allowOrigin: allowedOrigin,
-    method: req.method,
-    path: req.path,
-    isAllowed: origin ? (ALLOWED_ORIGINS.includes(origin) || origin.includes('azurestaticapps.net')) : false
-  });
-
-  next();
-});
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
 // セッション管理の設定（CORS対応修正版）
 app.use(session({
   secret: process.env.SESSION_SECRET || 'azure-production-session-secret-32-chars-fixed',
@@ -307,9 +213,28 @@ app.use(session({
   rolling: false // セッション更新を無効化
 }));
 
-// Health endpoints (即200 - DB待ちや外部接続に依存しない)
-// シンプルなヘルスチェックエンドポイント（先に定義して優先）
+// ===== ヘルスエンドポイント =====
 const ok = (_req, res) => res.status(200).send('ok');
+
+// liveness：軽量・常に200
+app.get('/live', ok);
+
+// readiness：最低限の自己診断（重い外部依存はソフト評価）
+app.get('/ready', (req, res) => {
+  if (HEALTH_TOKEN && req.headers['x-health-token'] !== HEALTH_TOKEN) {
+    return res.status(401).json({ status: 'unauthorized' });
+  }
+  const essentials = ['NODE_ENV']; // 必須ENVなどを列挙
+  const missing = essentials.filter(k => !process.env[k]);
+  const ready = missing.length === 0;
+  res.status(200).json({
+    status: ready ? 'ok' : 'degraded',
+    missing,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// 互換エンドポイント（即200）
 app.get('/ping', ok);
 app.get('/api/ping', ok);
 app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));
@@ -590,16 +515,6 @@ app.get('/api/auth/handshake', (req, res) => {
     ok: true,
     mode: 'session',
     env: 'azure-production',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// 1. 認証ハンドシェイクエンドポイント
-app.get('/api/auth/handshake', (req, res) => {
-  res.json({
-    ok: true,
-    mode: 'session',
-    env: 'azure-production',
     timestamp: new Date().toISOString(),
     sessionId: req.sessionID
   });
@@ -688,8 +603,8 @@ app.post('/api/auth/logout', (req, res) => {
   });
 });
 
-// 6. Ping endpoint
-app.get('/api/ping', (req, res) => {
+// 6. Ping endpoint（詳細版 - 既に /api/ping は上で定義済み）
+app.get('/api/ping/detailed', (req, res) => {
   res.json({
     ping: 'pong',
     timestamp: new Date().toISOString(),
@@ -1439,8 +1354,7 @@ app.get('/api/history/local-files', async (req, res) => {
   try {
     console.log('[api/history/local-files] ローカルファイル一覧取得リクエスト');
 
-    const fs = require('fs').promises;
-    const path = require('path');
+    const fsPromises = fs.promises;
 
     // 履歴ファイルを保存するディレクトリを指定（環境変数対応）
     const historyDir = process.env.LOCAL_HISTORY_DIR || path.join(__dirname, 'app-logs', 'history');
@@ -1451,7 +1365,7 @@ app.get('/api/history/local-files', async (req, res) => {
     try {
       // historyディレクトリから.jsonファイルを取得
       try {
-        const historyFiles = await fs.readdir(historyDir);
+        const historyFiles = await fsPromises.readdir(historyDir);
         const historyJsonFiles = historyFiles.filter(file => file.endsWith('.json'));
         files = [...files, ...historyJsonFiles.map(file => ({ file, dir: 'history' }))];
       } catch (error) {
@@ -1460,7 +1374,7 @@ app.get('/api/history/local-files', async (req, res) => {
 
       // exportsディレクトリから.jsonファイルを取得
       try {
-        const exportFiles = await fs.readdir(exportDir);
+        const exportFiles = await fsPromises.readdir(exportDir);
         const exportJsonFiles = exportFiles.filter(file => file.endsWith('.json'));
         files = [...files, ...exportJsonFiles.map(file => ({ file, dir: 'exports' }))];
       } catch (error) {
@@ -1503,8 +1417,7 @@ app.get('/api/history/local-files/:filename', async (req, res) => {
     const { filename } = req.params;
     console.log('[api/history/local-files/:filename] ファイル内容取得リクエスト:', filename);
 
-    const fs = require('fs').promises;
-    const path = require('path');
+    const fsPromises = fs.promises;
 
     // セキュリティチェック: ファイル名に不正な文字が含まれていないかチェック
     if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
@@ -1524,13 +1437,13 @@ app.get('/api/history/local-files/:filename', async (req, res) => {
     // historyディレクトリから検索
     try {
       const historyPath = path.join(historyDir, filename);
-      await fs.access(historyPath);
+      await fsPromises.access(historyPath);
       filePath = historyPath;
     } catch (error) {
       // historyディレクトリにない場合、exportsディレクトリから検索
       try {
         const exportPath = path.join(exportDir, filename);
-        await fs.access(exportPath);
+        await fsPromises.access(exportPath);
         filePath = exportPath;
       } catch (error) {
         // どちらにもない場合
@@ -1547,7 +1460,7 @@ app.get('/api/history/local-files/:filename', async (req, res) => {
     }
 
     // ファイル内容を読み込み
-    const fileContent = await fs.readFile(filePath, 'utf8');
+    const fileContent = await fsPromises.readFile(filePath, 'utf8');
     const jsonData = JSON.parse(fileContent);
 
     console.log('[api/history/local-files/:filename] ファイル内容取得成功:', filename);
@@ -1815,117 +1728,30 @@ app.get('/api/_diag/status', (req, res) => {
   });
 });
 
-// 静的ファイル配信（client/distを配信対象）
-const clientDistDir = path.join(__dirname, '..', 'client', 'dist');
-if (fs.existsSync(clientDistDir)) {
-  app.use(express.static(clientDistDir, { maxAge: '1y' }));
-  console.log('✅ Static files serving: client/dist directory');
-} else {
-  console.warn('⚠️ client/dist directory not found - static files will not be served');
-}
+// ===== 静的配信（Vite出力） & SPA =====
+app.use(express.static(join(__dirname, '../client/dist'), {
+  maxAge: '7d', etag: true, lastModified: true, immutable: true
+}));
 
-// ルートエンドポイント（API情報を返す）
-app.get('/', (req, res) => {
-  // 静的ファイルが存在する場合はindex.htmlを返す（SPAルーティング）
-  const indexPath = path.join(clientDistDir, 'index.html');
-  if (fs.existsSync(indexPath)) {
-    res.sendFile(indexPath);
-  } else {
-    res.json({
-      message: 'Emergency Assistance API Server (Azure)',
-      status: 'running',
-      timestamp: new Date().toISOString(),
-      environment: 'azure-production'
-    });
-  }
+// API以外は index.html へ（API定義の「後ろ」に置く）
+app.get(/^(?!\/api).*/, (_req, res) => {
+  res.sendFile(join(__dirname, '../client/dist/index.html'));
 });
 
-// SPAルーティング（/api* 以外を index.html へ）
-app.get(/^(?!\/api).*/, (req, res) => {
-  // 静的ファイル（拡張子あり）は除外（express.staticで処理済み）
-  if (req.path.match(/\.[a-zA-Z0-9]+$/)) {
-    return res.status(404).send('File not found');
-  }
-
-  // index.htmlを配信（SPAルーティング）
-  const indexPath = path.join(clientDistDir, 'index.html');
-  if (fs.existsSync(indexPath)) {
-    res.sendFile(indexPath);
-  } else {
-    res.status(404).send('index.html not found');
-  }
+// ===== エラーハンドラ（最後尾）=====
+app.use((err, _req, res, _next) => {
+  console.error('❌ Unhandled Error:', err);
+  res.status(500).json({ error: 'internal_error' });
 });
 
-// エラーハンドリング
-app.use((err, req, res, next) => {
-  console.error('Azure Server Error:', err);
-  res.status(500).json({
-    error: 'Internal Server Error',
-    message: 'Azure server error',
-    timestamp: new Date().toISOString()
-  });
+// ===== 優雅なシャットダウン =====
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Server listening on port ${PORT} (env: ${process.env.NODE_ENV || 'dev'})`);
 });
 
-// 404ハンドラー（APIルートのみ）
-app.use((req, res) => {
-  if (req.path.startsWith('/api/')) {
-    res.status(404).json({
-      error: 'Not Found',
-      message: `Route ${req.method} ${req.path} not found`,
-      timestamp: new Date().toISOString()
-    });
-  } else {
-    // 静的ファイルやSPAルーティングの場合は404を返さない（既にindex.htmlが返されている）
-    res.status(404).send('Page not found');
-  }
-});
-
-// Azure App Service用の起動設定
-
-const port = process.env.PORT || 8080;
-const host = '0.0.0.0';
-
-try {
-  const server = app.listen(port, host, () => {
-    console.log(`✅ Server listening on port ${port}`);
-    console.log(`🚀 Azure Server running on ${host}:${port}`);
-    console.log(`📊 Health check: /api/health`);
-    console.log(`🌍 Environment: azure-production`);
-    console.log(`📦 Node.js: ${process.version}`);
-    console.log(`💻 Platform: ${process.platform}`);
-    console.log(`🎯 Version: ${VERSION}`);
-    console.log('✅ Server successfully started and listening for requests');
-  });
-
-  server.on('error', (error) => {
-    console.error('❌ Server failed to start:', error);
-    console.error('❌ Error code:', error.code);
-    console.error('❌ Error message:', error.message);
-    process.exit(1);
-  });
-} catch (error) {
-  console.error('❌ Failed to create server:', error);
-  console.error('❌ Stack trace:', error.stack);
-  process.exit(1);
-}
-
-// グレースフルシャットダウン
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully');
-  if (dbPool) {
-    dbPool.end(() => {
-      console.log('Database pool closed');
-      process.exit(0);
-    });
-  } else {
-    process.exit(0);
-  }
-});
-
-// 開発環境でのSIGINT処理（本番環境では無視）
-process.on('SIGINT', () => {
-  if (process.env.NODE_ENV === 'development') {
-    console.log('SIGINT received in development, shutting down gracefully');
+const shutdown = (sig) => () => {
+  console.log(`↩️  Received ${sig}, shutting down gracefully...`);
+  server.close(() => {
     if (dbPool) {
       dbPool.end(() => {
         console.log('Database pool closed');
@@ -1934,10 +1760,12 @@ process.on('SIGINT', () => {
     } else {
       process.exit(0);
     }
-  } else {
-    console.log('SIGINT received in production, ignoring (use SIGTERM for graceful shutdown)');
-  }
-});
+  });
+  setTimeout(() => process.exit(1), 10000);
+};
+
+process.on('SIGTERM', shutdown('SIGTERM'));
+process.on('SIGINT', shutdown('SIGINT'));
 
 // 未処理の例外をキャッチ（ログのみ、プロセスは継続）
 process.on('uncaughtException', (err) => {
@@ -1951,3 +1779,5 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('Promise:', promise);
   // プロセスを終了させない - ログのみ記録
 });
+
+export default app;
