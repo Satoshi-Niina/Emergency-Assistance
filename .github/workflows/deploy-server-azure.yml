@@ -85,14 +85,16 @@ jobs:
         run: |
           echo "🔧 Clearing npm cache..."
           npm cache clean --force
-          
+
           echo "🔧 Installing root dependencies..."
           npm install --no-audit --no-fund
-          
+
           echo "🔧 Installing server dependencies..."
           cd server
           npm cache clean --force
-          npm install --no-audit --no-fund      # 基本的なビルドチェック
+          npm install --no-audit --no-fund
+
+      # 基本的なビルドチェック
       - name: Run build check
         shell: bash
         run: |
@@ -118,12 +120,35 @@ jobs:
 
           echo "✅ All required files present"
 
-      # Oryx Build を用いた App Service デプロイ（サーバーのみ）
+      # サーバーファイルの準備とデプロイ
+      - name: Prepare deployment package
+        shell: bash
+        run: |
+          echo "📦 Preparing deployment package..."
+
+          # デプロイ用ディレクトリを作成
+          mkdir -p deploy-package
+
+          # サーバーのファイルをコピー
+          cp -r server/* deploy-package/
+
+          # 不要なファイルを除外
+          rm -rf deploy-package/node_modules
+          rm -f deploy-package/package-lock.json
+
+          echo "📋 Deployment package contents:"
+          ls -la deploy-package/
+
+          echo "✅ Package preparation completed"
+
+      # Oryx Build を用いた App Service デプロイ
       - name: Deploy to Azure Web App (Oryx)
         uses: azure/webapps-deploy@v3
         with:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./server
+          package: ./deploy-package
+          clean: true
+          restart: true
           # 🔧 重要：以下の設定をAzure Portal > App Service > Configuration > Application settingsで設定する:
           # - SCM_DO_BUILD_DURING_DEPLOYMENT=true (Oryxビルドを有効化)
           # - WEBSITE_NODE_DEFAULT_VERSION=20-lts (Node.jsバージョン)
