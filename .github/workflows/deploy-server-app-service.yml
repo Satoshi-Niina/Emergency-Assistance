@@ -96,8 +96,23 @@ jobs:
           rm -rf deploy-package/node_modules
 
           echo "📁 Step 2: Copy client build..."
+
+          # Verify client build exists before copying
+          if [ ! -d "client/dist" ]; then
+            echo "❌ Error: client/dist directory not found"
+            echo "📋 Client directory contents:"
+            ls -la client/ || echo "Client directory does not exist"
+            exit 1
+          fi
+
+          echo "📋 Client/dist contents before copy:"
+          ls -la client/dist/
+
           mkdir -p deploy-package/client/dist
           cp -r client/dist/* deploy-package/client/dist/
+
+          echo "📋 Deploy package client/dist contents after copy:"
+          ls -la deploy-package/client/dist/
 
           echo "� Step 3: Source package validation..."
 
@@ -135,11 +150,14 @@ jobs:
           echo "📊 Source Package Statistics:"
           echo "   📦 Total Size: $package_size"
           echo "   📄 File Count: $file_count"
-          echo "   🗂️ Structure:"
+          echo "   🗂️ Root Structure:"
           ls -la deploy-package/
 
-          echo "📋 Package.json contents:"
-          cat deploy-package/package.json | head -20
+          echo "   🗂️ Client Structure:"
+          find deploy-package/client -type f | head -10
+
+          echo "   📋 Package.json (main fields):"
+          cat deploy-package/package.json | grep -E '"(name|main|scripts|dependencies)"' -A 3
 
           echo "✅ Source package ready for Oryx build"
 
@@ -157,9 +175,37 @@ jobs:
         run: |
           echo "⏳ Waiting for Oryx build and deployment..."
           echo "🔧 Azure is building and installing dependencies..."
-          echo "� This includes: npm install, build processes, and app startup"
+          echo "💡 This includes: npm install, build processes, and app startup"
           echo "⏰ Allowing extra time for build completion..."
           sleep 120
+
+      - name: Check Azure Deployment Structure
+        run: |
+          echo "🔍 Checking deployed structure on Azure App Service..."
+          
+          # Use Azure CLI to check file structure in the app service
+          echo "📁 Checking deployment files via Azure CLI..."
+          
+          # Since we can't access the actual file system directly, we'll use Kudu API
+          app_name="${{ env.AZURE_APP_NAME }}"
+          kudu_url="https://${app_name}.scm.azurewebsites.net"
+          
+          echo "🌐 Kudu URL: $kudu_url"
+          echo "📋 App Service Name: $app_name"
+          echo ""
+          
+          echo "💡 To manually check deployment structure:"
+          echo "   1. Visit: $kudu_url"
+          echo "   2. Go to Debug Console > CMD or PowerShell"
+          echo "   3. Navigate to D:\\home\\site\\wwwroot"
+          echo "   4. Check for client/dist/index.html"
+          echo ""
+          
+          echo "🔍 Expected structure after Oryx build:"
+          echo "   /home/site/wwwroot/azure-server.js"
+          echo "   /home/site/wwwroot/client/dist/index.html"
+          echo "   /home/site/wwwroot/package.json"
+          echo "   /home/site/wwwroot/node_modules/"
 
       - name: Comprehensive Health Check
         env:
