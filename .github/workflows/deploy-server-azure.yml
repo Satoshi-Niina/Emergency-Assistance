@@ -29,6 +29,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Azureログイン
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
       # Zip/Artifact 系の残骸があれば明示的に失敗させる（厳密判定・コメントは無視）
       - name: Ensure no ZIP/artifact steps remain
         if: ${{ env.ZIP_GUARD != 'false' }}
