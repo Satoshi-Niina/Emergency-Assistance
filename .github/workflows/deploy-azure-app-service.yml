@@ -96,8 +96,8 @@ jobs:
           rm -rf deploy-package/node_modules
 
           echo "📁 Step 2: Copy client build..."
-          mkdir -p deploy-package/client
-          cp -r client/dist deploy-package/client/
+          mkdir -p deploy-package/client/dist
+          cp -r client/dist/* deploy-package/client/dist/
 
           echo "� Step 3: Source package validation..."
 
