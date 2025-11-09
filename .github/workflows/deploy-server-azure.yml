@@ -67,18 +67,18 @@ jobs:
         run: |
           echo "🔍 Validating required secrets for Publish Profile deployment..."
           echo ""
-          
+
           MISSING_SECRETS=()
-          
+
           # Publish Profile方式に必要なSecretをチェック
-          if [ -z "${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}" ]; then
-            MISSING_SECRETS+=("AZUREAPPSERVICE_PUBLISHPROFILE")
+          if [ -z "${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}" ]; then
+            MISSING_SECRETS+=("AZURE_WEBAPP_PUBLISH_PROFILE")
           fi
-          
+
           if [ -z "${{ secrets.APP_URL }}" ]; then
             MISSING_SECRETS+=("APP_URL")
           fi
-          
+
           if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then
             echo "❌ Missing required secrets:"
             for secret in "${MISSING_SECRETS[@]}"; do
@@ -89,7 +89,7 @@ jobs:
             echo "   https://github.com/${{ github.repository }}/settings/secrets/actions"
             echo ""
             echo "📝 Required Secrets:"
-            echo "   1. AZUREAPPSERVICE_PUBLISHPROFILE"
+            echo "   1. AZURE_WEBAPP_PUBLISH_PROFILE"
             echo "      - Azure Portal > App Service > Overview > Get publish profile"
             echo "      - Download .PublishSettings file and copy entire XML content"
             echo ""
@@ -98,14 +98,14 @@ jobs:
             echo ""
             exit 1
           fi
-          
+
           echo "✅ All required secrets are set"
 
       # Oryx Build を用いた App Service デプロイ（Publish Profile方式）
       - name: Deploy to Azure Web App (Oryx)
         uses: azure/webapps-deploy@v3
         with:
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: .
           # Publish ProfileにはApp Service名が含まれているため、app-nameは不要
 
