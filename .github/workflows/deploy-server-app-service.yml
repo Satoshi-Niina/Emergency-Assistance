@@ -205,10 +205,12 @@ jobs:
           echo "   5. Check: type client\\dist\\index.html"
           echo ""
 
-          echo "� Enhanced server now includes path resolution:"
+          echo "🔧 Enhanced server now includes path resolution:"
           echo "   - Tries multiple client/dist locations"
           echo "   - Shows detailed debug info on startup"
-          echo "   - Exits gracefully if client files not found"      - name: Comprehensive Health Check
+          echo "   - Exits gracefully if client files not found"
+
+      - name: Comprehensive Health Check
         env:
           MAX_RETRIES: 6
           RETRY_INTERVAL: 20
