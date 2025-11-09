@@ -1,4 +1,4 @@
-name: Deploy to Azure App Service
+name: deploy-server-app-service
 
 on:
   push:
