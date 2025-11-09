@@ -1,8 +1,9 @@
-name: Simple Deploy to Azure App Service
+name: Simple Deploy to Azure App Service (DISABLED)
 
 on:
-  push:
-    branches: [main]
+  # Disabled - using deploy-azure-app-service.yml instead
+  # push:
+  #   branches: [main]
   workflow_dispatch:
 
 jobs:
