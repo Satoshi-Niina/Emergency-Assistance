@@ -87,7 +87,11 @@ jobs:
           npm cache clean --force
 
           echo "🔧 Installing root dependencies..."
-          npm install --no-audit --no-fund
+          if [ -f package.json ]; then
+            npm install --no-audit --no-fund
+          else
+            echo "No root package.json found, skipping root install"
+          fi
 
           echo "🔧 Installing server dependencies..."
           cd server
@@ -125,10 +129,30 @@ jobs:
         shell: bash
         run: |
           echo "🏗️ Building client for server static files..."
+
+          if [ ! -d "client" ]; then
+            echo "❌ Client directory not found"
+            exit 1
+          fi
+
           cd client
+
+          if [ ! -f "package.json" ]; then
+            echo "❌ Client package.json not found"
+            exit 1
+          fi
+
+          echo "📦 Installing client dependencies..."
           npm cache clean --force
           npm install --no-audit --no-fund
+
+          echo "🔨 Building client..."
           npm run build
+
+          if [ ! -d "dist" ]; then
+            echo "❌ Client build failed - dist directory not created"
+            exit 1
+          fi
 
           echo "📋 Client build output:"
           ls -la dist/
