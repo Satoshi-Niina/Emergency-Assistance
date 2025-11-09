@@ -1826,14 +1826,50 @@ app.get('/api/_diag/status', (req, res) => {
   });
 });
 
-// ルートエンドポイント
+// 静的ファイル配信（client/distを配信対象）
+const clientDistDir = path.join(__dirname, '..', 'client', 'dist');
+if (fs.existsSync(clientDistDir)) {
+  app.use(express.static(clientDistDir, { maxAge: '1y' }));
+  console.log('✅ Static files serving: client/dist directory');
+} else {
+  console.warn('⚠️ client/dist directory not found - static files will not be served');
+}
+
+// ルートエンドポイント（API情報を返す）
 app.get('/', (req, res) => {
-  res.json({
-    message: 'Emergency Assistance API Server (Azure)',
-    status: 'running',
-    timestamp: new Date().toISOString(),
-    environment: 'azure-production'
-  });
+  // 静的ファイルが存在する場合はindex.htmlを返す（SPAルーティング）
+  const indexPath = path.join(clientDistDir, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.json({
+      message: 'Emergency Assistance API Server (Azure)',
+      status: 'running',
+      timestamp: new Date().toISOString(),
+      environment: 'azure-production'
+    });
+  }
+});
+
+// SPAルーティング対応: APIルート以外をindex.htmlにフォールバック
+app.get('*', (req, res, next) => {
+  // APIルートは除外
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+
+  // 静的ファイル（拡張子あり）は除外
+  if (req.path.match(/\.[a-zA-Z0-9]+$/)) {
+    return next();
+  }
+
+  // index.htmlを配信（SPAルーティング）
+  const indexPath = path.join(clientDistDir, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    next();
+  }
 });
 
 // エラーハンドリング
@@ -1846,13 +1882,18 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404ハンドラー
+// 404ハンドラー（APIルートのみ）
 app.use((req, res) => {
-  res.status(404).json({
-    error: 'Not Found',
-    message: `Route ${req.method} ${req.path} not found`,
-    timestamp: new Date().toISOString()
-  });
+  if (req.path.startsWith('/api/')) {
+    res.status(404).json({
+      error: 'Not Found',
+      message: `Route ${req.method} ${req.path} not found`,
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    // 静的ファイルやSPAルーティングの場合は404を返さない（既にindex.htmlが返されている）
+    res.status(404).send('Page not found');
+  }
 });
 
 // Azure App Service用の起動設定
@@ -1862,6 +1903,7 @@ const host = '0.0.0.0';
 
 try {
   const server = app.listen(port, host, () => {
+    console.log(`✅ Server listening on port ${port}`);
     console.log(`🚀 Azure Server running on ${host}:${port}`);
     console.log(`📊 Health check: /api/health`);
     console.log(`🌍 Environment: azure-production`);

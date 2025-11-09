@@ -7,11 +7,11 @@
     "npm": ">=10.0.0"
   },
   "scripts": {
-    "start": "cd server && npm start",
+    "start": "npm --prefix server run start",
+    "build": "npm --prefix client run build",
     "install:server": "cd server && npm install",
     "start:server": "cd server && npm start",
     "dev:server": "cd server && npm run dev",
-    "build": "echo 'Root build step completed'",
     "test": "echo 'No root tests specified'"
   },
   "devDependencies": {
