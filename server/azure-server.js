@@ -1729,13 +1729,41 @@ app.get('/api/_diag/status', (req, res) => {
 });
 
 // ===== 静的配信（Vite出力） & SPA =====
-app.use(express.static(join(__dirname, '../client/dist'), {
+// Azure App Service対応：複数のパス候補を試行
+const clientDistPaths = [
+  join(__dirname, 'client/dist'),      // Azureでの実際の配置
+  join(__dirname, '../client/dist'),   // ローカル開発用
+  join(process.cwd(), 'client/dist')   // プロセス実行パス基準
+];
+
+let clientDistPath = null;
+for (const testPath of clientDistPaths) {
+  const indexPath = join(testPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    clientDistPath = testPath;
+    console.log('✅ Client files found at:', clientDistPath);
+    break;
+  } else {
+    console.log('❌ Client files not found at:', testPath);
+  }
+}
+
+if (!clientDistPath) {
+  console.error('❌ ERROR: Client dist directory not found in any expected location');
+  console.error('📋 Checked paths:', clientDistPaths);
+  console.error('🔍 Current working directory:', process.cwd());
+  console.error('📁 __dirname:', __dirname);
+  process.exit(1);
+}
+
+app.use(express.static(clientDistPath, {
   maxAge: '7d', etag: true, lastModified: true, immutable: true
 }));
 
 // API以外は index.html へ（API定義の「後ろ」に置く）
 app.get(/^(?!\/api).*/, (_req, res) => {
-  res.sendFile(join(__dirname, '../client/dist/index.html'));
+  const indexPath = join(clientDistPath, 'index.html');
+  res.sendFile(indexPath);
 });
 
 // ===== エラーハンドラ（最後尾）=====
@@ -1747,6 +1775,21 @@ app.use((err, _req, res, _next) => {
 // ===== 優雅なシャットダウン =====
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server listening on port ${PORT} (env: ${process.env.NODE_ENV || 'dev'})`);
+  console.log(`🗂️ Serving static files from: ${clientDistPath}`);
+  console.log(`🌍 Frontend URL: ${FRONTEND_URL}`);
+
+  // デバッグ用：ディレクトリ構造を表示
+  console.log('📋 Directory structure debug:');
+  console.log(`   Current working directory: ${process.cwd()}`);
+  console.log(`   __dirname: ${__dirname}`);
+  console.log(`   Client dist path: ${clientDistPath}`);
+
+  try {
+    const files = fs.readdirSync(clientDistPath);
+    console.log(`   Client dist contents: ${files.join(', ')}`);
+  } catch (err) {
+    console.error(`   ❌ Cannot read client dist directory: ${err.message}`);
+  }
 });
 
 const shutdown = (sig) => () => {

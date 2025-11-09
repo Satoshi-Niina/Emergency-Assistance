@@ -182,32 +182,33 @@ jobs:
       - name: Check Azure Deployment Structure
         run: |
           echo "🔍 Checking deployed structure on Azure App Service..."
-          
-          # Use Azure CLI to check file structure in the app service
-          echo "📁 Checking deployment files via Azure CLI..."
-          
-          # Since we can't access the actual file system directly, we'll use Kudu API
+
           app_name="${{ env.AZURE_APP_NAME }}"
           kudu_url="https://${app_name}.scm.azurewebsites.net"
-          
+
           echo "🌐 Kudu URL: $kudu_url"
           echo "📋 App Service Name: $app_name"
           echo ""
-          
-          echo "💡 To manually check deployment structure:"
-          echo "   1. Visit: $kudu_url"
-          echo "   2. Go to Debug Console > CMD or PowerShell"
-          echo "   3. Navigate to D:\\home\\site\\wwwroot"
-          echo "   4. Check for client/dist/index.html"
-          echo ""
-          
-          echo "🔍 Expected structure after Oryx build:"
+
+          echo "� Expected structure after Oryx build:"
           echo "   /home/site/wwwroot/azure-server.js"
           echo "   /home/site/wwwroot/client/dist/index.html"
           echo "   /home/site/wwwroot/package.json"
           echo "   /home/site/wwwroot/node_modules/"
+          echo ""
 
-      - name: Comprehensive Health Check
+          echo "💡 Manual verification steps:"
+          echo "   1. Visit: $kudu_url"
+          echo "   2. Go to Debug Console > CMD or PowerShell"
+          echo "   3. Run: cd D:\\home\\site\\wwwroot"
+          echo "   4. Run: dir /s client"
+          echo "   5. Check: type client\\dist\\index.html"
+          echo ""
+
+          echo "� Enhanced server now includes path resolution:"
+          echo "   - Tries multiple client/dist locations"
+          echo "   - Shows detailed debug info on startup"
+          echo "   - Exits gracefully if client files not found"      - name: Comprehensive Health Check
         env:
           MAX_RETRIES: 6
           RETRY_INTERVAL: 20
