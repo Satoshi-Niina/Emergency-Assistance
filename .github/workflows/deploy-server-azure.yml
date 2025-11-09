@@ -3,13 +3,7 @@ name: Deploy Server to Azure App Service (Oryx)
 on:
   push:
     branches: ['main']
-  workflow_dispatch:
-
-env:
-  # あなたのApp ServiceのURLに合わせて変更
-  APP_URL: 'https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net'
-  # 一時的にガードを無効化したい場合は 'false' にする
-  ZIP_GUARD: 'true'
+  workflow_dispatch: # 手動実行も可能
 
 permissions:
   contents: read
@@ -18,10 +12,16 @@ concurrency:
   group: 'azure-appservice-deploy'
   cancel-in-progress: true
 
+env:
+  # 本番の App Service URL（例: https://xxxx.azurewebsites.net）
+  APP_URL: ${{ secrets.APP_URL }}
+  # ガードを一時的に無効化したい場合は "false" にする
+  ZIP_GUARD: 'true'
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -29,51 +29,83 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Zip/Artifact系の残骸があれば明示的に失敗させる（コメントは除外）
+      # Zip/Artifact 系の残骸があれば明示的に失敗させる（厳密判定・コメントは無視）
       - name: Ensure no ZIP/artifact steps remain
         if: ${{ env.ZIP_GUARD != 'false' }}
+        shell: bash
         run: |
-          awk '!/^[[:space:]]*#/' .github/workflows/deploy-server-azure.yml \
-          | grep -RqiE '\b(uses:\s*actions/(upload-artifact|download-artifact)|[[:space:]]zip[[:space:]]|[[:space:]]unzip[[:space:]])' \
-          && { echo "❌ Found residual ZIP/artifact steps. Remove them."; exit 1; } || echo "✅ No ZIP/artifact steps found."
+          set -eo pipefail
+          WF=".github/workflows/deploy-server-azure.yml"
+          echo "🔎 Checking residual zip/artifact usage in ${WF}"
 
-      # Oryx Build を用いたデプロイ（Zipは使わない）
+          # コメント行を除外して検査対象を生成
+          awk '!/^[[:space:]]*#/' "${WF}" > /tmp/_wf.yml
+
+          echo "🔎 Searching for actions upload/download-artifact..."
+          if grep -niE '^[[:space:]]*uses:[[:space:]]*actions/(upload-artifact|download-artifact)@' /tmp/_wf.yml; then
+            echo "❌ Found actions/upload-artifact or actions/download-artifact. Remove them."; exit 1
+          fi
+
+          echo "🔎 Searching for raw zip/unzip commands..."
+          # zip/unzip コマンドのみ検出（gzip, gunzip 等にはマッチしない）
+          if grep -niE '(^|[[:space:]])zip([[:space:]]|$|-)' /tmp/_wf.yml; then
+            echo "❌ Found raw 'zip' command usage. Remove it."; exit 1
+          fi
+          if grep -niE '(^|[[:space:]])unzip([[:space:]]|$|-)' /tmp/_wf.yml; then
+            echo "❌ Found raw 'unzip' command usage. Remove it."; exit 1
+          fi
+
+          echo "✅ No residual ZIP/artifact steps found."
+
+      # Oryx Build を用いた App Service デプロイ（Zip Deploy は使用しない）
       - name: Deploy to Azure Web App (Oryx)
         uses: azure/webapps-deploy@v3
         with:
-          # 例: emergency-assistance など。App Service名をSecretsに入れておくか直書きでも可
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
-          # ← ここがポイント。ZIPではなくソース一式をそのまま送る
           package: .
 
       - name: Show Kudu deployment logs link
+        shell: bash
         run: |
-          echo "Kudu deployments: https://${{ secrets.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net/api/deployments"
+          echo "Kudu deployments:"
+          echo "https://${{ secrets.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net/api/deployments"
 
       # 起動待ち → /live → /ready → /ping → /api/ping → /health → /api/health（成功したら即OK）
       - name: Wait for app to be ready (Health Check)
         env:
           APP_URL: ${{ env.APP_URL }}
-          HEALTH_TOKEN: ${{ secrets.HEALTH_TOKEN }} # 任意設定（App Service と一致させる）
+          HEALTH_TOKEN: ${{ secrets.HEALTH_TOKEN }}
+        shell: bash
         run: |
+          set -eo pipefail
+          if [ -z "${APP_URL}" ]; then
+            echo "❌ APP_URL is not set. Define it in GitHub Secrets (APP_URL)."
+            exit 1
+          fi
+
           echo "⏰ Waiting 120 seconds for startup..."
           sleep 120
+
           check() {
-            url="$1"
-            echo "🔍 Checking $url"
+            local url="$1"
+            echo "🔍 Checking ${url}"
             if [ -n "${HEALTH_TOKEN}" ]; then
               curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 \
-                -H "x-health-token: ${HEALTH_TOKEN}" "$url" > /dev/null
+                -H "x-health-token: ${HEALTH_TOKEN}" \
+                "${url}" > /dev/null
             else
-              curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 "$url" > /dev/null
+              curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 \
+                "${url}" > /dev/null
             fi
           }
+
           for p in /live /ready /ping /api/ping /health /api/health; do
             if check "${APP_URL}${p}"; then
-              echo "✅ $p OK"
+              echo "✅ ${p} OK"
               exit 0
             fi
           done
-          echo "❌ Health check failed"
+
+          echo "❌ Health check failed for all endpoints."
           exit 1
