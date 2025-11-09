@@ -234,48 +234,102 @@ jobs:
           WEBSITE_NODE_DEFAULT_VERSION: "20-lts"
           SCM_DO_BUILD_DURING_DEPLOYMENT: "true"
 
-      - name: Health check
+      - name: Wait for app to be ready
         run: |
           APP_URL="https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net"
 
           echo "🚀 Deployment completed"
-          echo "⏰ Starting health check in 30 seconds..."
-          sleep 30
+          echo "⏰ Waiting 120 seconds for app startup..."
+          sleep 120
 
-          # Multi-endpoint health check with retries
-          HEALTH_ENDPOINTS=(
-            "$APP_URL/ping"
-            "$APP_URL/health"
-            "$APP_URL/api/ping"
-            "$APP_URL/api/health"
-          )
+          echo "🔍 Starting health check..."
 
-          SUCCESS=false
+      - name: Health check
+        run: |
+          APP_URL="https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net"
 
-          for endpoint in "${HEALTH_ENDPOINTS[@]}"; do
-            echo "🔍 Testing endpoint: $endpoint"
+          # First check /ping endpoint (lightweight)
+          echo "🔍 Checking /ping endpoint..."
+          PING_SUCCESS=false
+          
+          for i in {1..5}; do
+            echo "  Attempt $i/5 for /ping..."
+            
+            if curl -fsSL --retry 1 --retry-all-errors --max-time 10 "$APP_URL/ping" 2>/dev/null; then
+              echo "  ✅ SUCCESS - /ping is responding"
+              PING_SUCCESS=true
+              break
+            else
+              echo "  ⚠️ Attempt $i failed for /ping"
+              if [ $i -lt 5 ]; then
+                echo "  ⏰ Waiting 5 seconds before retry..."
+                sleep 5
+              fi
+            fi
+          done
 
-            for i in {1..3}; do
-              echo "  Attempt $i/3..."
-
-              if curl -f "$endpoint" --max-time 15 --silent --show-error; then
-                echo "  ✅ SUCCESS - $endpoint is responding"
-                SUCCESS=true
-                break 2  # Break out of both loops
+          if [ "$PING_SUCCESS" = false ]; then
+            echo "❌ /ping endpoint failed after 5 attempts"
+            echo "🔍 Trying /api/ping as fallback..."
+            
+            for i in {1..5}; do
+              echo "  Attempt $i/5 for /api/ping..."
+              
+              if curl -fsSL --retry 1 --retry-all-errors --max-time 10 "$APP_URL/api/ping" 2>/dev/null; then
+                echo "  ✅ SUCCESS - /api/ping is responding"
+                PING_SUCCESS=true
+                break
               else
-                echo "  ⚠️ Attempt $i failed for $endpoint"
-                if [ $i -lt 3 ]; then
-                  sleep 30
+                echo "  ⚠️ Attempt $i failed for /api/ping"
+                if [ $i -lt 5 ]; then
+                  sleep 5
+                fi
+              fi
+            done
+          fi
+
+          # Then check /health endpoint
+          if [ "$PING_SUCCESS" = true ]; then
+            echo "🔍 Checking /health endpoint..."
+            HEALTH_SUCCESS=false
+            
+            for i in {1..5}; do
+              echo "  Attempt $i/5 for /health..."
+              
+              if curl -fsSL --retry 1 --retry-all-errors --max-time 10 "$APP_URL/health" 2>/dev/null; then
+                echo "  ✅ SUCCESS - /health is responding"
+                HEALTH_SUCCESS=true
+                break
+              else
+                echo "  ⚠️ Attempt $i failed for /health"
+                if [ $i -lt 5 ]; then
+                  sleep 5
                 fi
               fi
             done
 
-            # Short delay between endpoints
-            sleep 10
-          done
+            if [ "$HEALTH_SUCCESS" = false ]; then
+              echo "⚠️ /health failed, trying /api/health..."
+              
+              for i in {1..5}; do
+                echo "  Attempt $i/5 for /api/health..."
+                
+                if curl -fsSL --retry 1 --retry-all-errors --max-time 10 "$APP_URL/api/health" 2>/dev/null; then
+                  echo "  ✅ SUCCESS - /api/health is responding"
+                  HEALTH_SUCCESS=true
+                  break
+                else
+                  echo "  ⚠️ Attempt $i failed for /api/health"
+                  if [ $i -lt 5 ]; then
+                    sleep 5
+                  fi
+                fi
+              done
+            fi
+          fi
 
-          if [ "$SUCCESS" = true ]; then
-            echo "✅ Health check PASSED - At least one endpoint is responding"
+          if [ "$PING_SUCCESS" = true ] && [ "$HEALTH_SUCCESS" = true ]; then
+            echo "✅ Health check PASSED - Both ping and health endpoints are responding"
 
             # Additional verification with detailed health check
             echo "🔍 Running detailed health verification..."
