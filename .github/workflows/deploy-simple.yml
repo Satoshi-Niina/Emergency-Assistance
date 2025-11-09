@@ -1,0 +1,66 @@
+name: Simple Deploy to Azure App Service
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install and Build Server
+        run: |
+          cd server
+          npm install
+          echo "✅ Server dependencies installed"
+
+      - name: Install and Build Client
+        run: |
+          cd client
+          npm install
+          npm run build
+          echo "✅ Client built successfully"
+
+      - name: Prepare Deployment
+        run: |
+          # Create deployment directory
+          mkdir deploy-package
+
+          # Copy server files
+          cp -r server/* deploy-package/
+
+          # Copy client build to server
+          mkdir -p deploy-package/client
+          cp -r client/dist deploy-package/client/
+
+          # Remove node_modules (Oryx will rebuild)
+          rm -rf deploy-package/node_modules
+
+          # Verify structure
+          echo "📦 Deployment package structure:"
+          ls -la deploy-package/
+          echo "📁 Client files:"
+          ls -la deploy-package/client/dist/ || echo "No client dist"
+
+      - name: Deploy to Azure
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'Emergency-Assistance'
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./deploy-package
+
+      - name: Test Deployment
+        run: |
+          echo "🔍 Testing deployment..."
+          sleep 30
+          curl -f https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net/ping || echo "❌ Health check failed"
