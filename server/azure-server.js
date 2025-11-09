@@ -95,14 +95,24 @@ let dbPool = null;
 
 // データベース接続初期化（改善版）
 function initializeDatabase() {
-  if (!process.env.DATABASE_URL) {
-    console.warn('⚠️ DATABASE_URL is not set - running without database');
-    return;
+  // Azure App Service用の複数の環境変数候補をチェック
+  const databaseUrl = process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.AZURE_POSTGRESQL_CONNECTIONSTRING;
+
+  if (!databaseUrl) {
+    console.error('❌ Database URL not found in any environment variable:');
+    console.error('   - DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
+    console.error('   - POSTGRES_URL:', process.env.POSTGRES_URL ? 'Set' : 'Not set');
+    console.error('   - AZURE_POSTGRESQL_CONNECTIONSTRING:', process.env.AZURE_POSTGRESQL_CONNECTIONSTRING ? 'Set' : 'Not set');
+    console.warn('⚠️ Running without database connection');
+    return false;
   }
 
   try {
     console.log('🔗 Initializing database connection...');
-    console.log('📊 DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
+    console.log('📊 Database URL source:', databaseUrl === process.env.DATABASE_URL ? 'DATABASE_URL' :
+      databaseUrl === process.env.POSTGRES_URL ? 'POSTGRES_URL' : 'AZURE_POSTGRESQL_CONNECTIONSTRING');
     console.log('🔒 PG_SSL:', process.env.PG_SSL || 'not set');
 
     const sslConfig = process.env.PG_SSL === 'require'
@@ -112,7 +122,7 @@ function initializeDatabase() {
         : { rejectUnauthorized: false };
 
     dbPool = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString: databaseUrl,
       ssl: sslConfig,
       max: 3, // 接続数をさらに減らす
       idleTimeoutMillis: 5000, // アイドルタイムアウトを短く
@@ -138,8 +148,11 @@ function initializeDatabase() {
         // DB接続に失敗してもサーバーは継続
       }
     }, 1000);
+
+    return true;
   } catch (error) {
     console.error('❌ Database initialization failed:', error);
+    return false;
   }
 }
 
@@ -279,6 +292,14 @@ app.get('/api/health/detailed', (req, res) => {
     healthResponse.database_status = 'not_initialized';
   }
 
+  // Database environment variables check (for debugging)
+  healthResponse.database_env = {
+    DATABASE_URL: !!process.env.DATABASE_URL,
+    POSTGRES_URL: !!process.env.POSTGRES_URL,
+    AZURE_POSTGRESQL_CONNECTIONSTRING: !!process.env.AZURE_POSTGRESQL_CONNECTIONSTRING,
+    PG_SSL: process.env.PG_SSL || 'not_set'
+  };
+
   // Quick blob storage status
   if (connectionString) {
     healthResponse.blob_storage_status = 'configured';
@@ -413,6 +434,11 @@ app.post('/api/auth/login', async (req, res) => {
     // データベース接続がない場合はエラー
     if (!dbPool) {
       console.error('[auth/login] Database pool not initialized');
+      console.error('[auth/login] Environment variables check:');
+      console.error('  - DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
+      console.error('  - POSTGRES_URL:', process.env.POSTGRES_URL ? 'Set' : 'Not set');
+      console.error('  - AZURE_POSTGRESQL_CONNECTIONSTRING:', process.env.AZURE_POSTGRESQL_CONNECTIONSTRING ? 'Set' : 'Not set');
+
       return res.status(500).json({
         success: false,
         error: 'database_unavailable',
