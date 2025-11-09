@@ -25,16 +25,31 @@ router.use((req, res, next) => {
     ...(process.env.CORS_ALLOW_ORIGINS?.split(',') || [])
   ].filter(Boolean);
 
-  if (origin && (allowedOrigins.includes(origin) || allowedOrigins.includes('*'))) {
-    res.header('Access-Control-Allow-Origin', origin);
-  } else if (!origin) {
-    // オリジンなし（同一オリジン）を許可
-    res.header('Access-Control-Allow-Origin', '*');
+  // Azure Static Web Apps のオリジンを強制許可（最優先）
+  const AZURE_STATIC_ORIGIN = 'https://witty-river-012f39e00.1.azurestaticapps.net';
+  let allowedOrigin = AZURE_STATIC_ORIGIN; // デフォルトはAzure Static Web Apps
+
+  // オリジンのチェック（より確実に）
+  if (origin) {
+    // Azure Static Web Apps のオリジンを許可
+    if (origin.includes('azurestaticapps.net')) {
+      allowedOrigin = origin;
+    }
+    // ALLOWED_ORIGINSに含まれている場合も許可
+    else if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      allowedOrigin = origin;
+    }
+  } else {
+    // オリジンなし（同一オリジン）の場合も許可
+    allowedOrigin = '*';
   }
 
+  // CORS ヘッダーを常に設定
+  res.header('Access-Control-Allow-Origin', allowedOrigin);
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Cache-Control, Pragma, Expires, Cookie');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Cache-Control, Pragma, Expires, Cookie, Set-Cookie');
+  res.header('Access-Control-Expose-Headers', 'Set-Cookie');
   res.header('Access-Control-Max-Age', '86400');
 
   // プリフライトリクエスト（OPTIONS）の処理
@@ -59,11 +74,11 @@ const issueJwt = (userId, options = {}) => {
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body || {};
-    
+
     // 入力検証
     if (!username || !password) {
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         error: 'bad_request',
         message: 'ユーザー名とパスワードが必要です'
       });
@@ -71,9 +86,9 @@ router.post('/login', async (req, res) => {
 
     // バイパスフラグ確認（最初に判定）
     const bypassDb = process.env.BYPASS_DB_FOR_LOGIN === 'true';
-    
-    console.log('[auth/login] Login attempt:', { 
-      username, 
+
+    console.log('[auth/login] Login attempt:', {
+      username,
       bypassDb,
       timestamp: new Date().toISOString()
     });
@@ -81,24 +96,24 @@ router.post('/login', async (req, res) => {
     // バイパスモード時は即リターン（DBに触れない）
     if (bypassDb) {
       console.log('[auth/login] Bypass mode: Creating demo session');
-      
+
       // セッションにユーザー情報を設定
       req.session.userId = 'demo';
-      req.session.user = { 
-        id: 'demo', 
+      req.session.user = {
+        id: 'demo',
         name: username,
         role: 'user'
       };
-      
+
       // JWTトークンも生成
       const token = jwt.sign(
-        { id: 'demo', username, role: 'user' }, 
+        { id: 'demo', username, role: 'user' },
         process.env.JWT_SECRET,
         { expiresIn: '1d' }
       );
-      
-      return res.json({ 
-        success: true, 
+
+      return res.json({
+        success: true,
         mode: 'session',
         user: req.session.user,
         token,
@@ -114,7 +129,7 @@ router.post('/login', async (req, res) => {
       const isDevelopment = process.env.NODE_ENV === 'development';
       const sslMode = process.env.PG_SSL || 'prefer';
       let sslConfig;
-      
+
       if (isDevelopment) {
         sslConfig = false;
       } else if (sslMode === 'disable') {
@@ -135,7 +150,7 @@ router.post('/login', async (req, res) => {
 
       // 接続テスト
       const client = await pool.connect();
-      
+
       // prefer モードで SSL エラーが出た場合は disable に再接続
       if (sslMode === 'prefer') {
         try {
@@ -145,7 +160,7 @@ router.post('/login', async (req, res) => {
             console.log('[auth/login] SSL not supported, reconnecting with SSL disabled');
             await client.release();
             await pool.end();
-            
+
             pool = new Pool({
               connectionString: process.env.DATABASE_URL,
               ssl: false,
@@ -153,7 +168,7 @@ router.post('/login', async (req, res) => {
               idleTimeoutMillis: 30000,
               connectionTimeoutMillis: 5000,
             });
-            
+
             const newClient = await pool.connect();
             await newClient.query('SELECT 1');
             await newClient.release();
@@ -171,38 +186,38 @@ router.post('/login', async (req, res) => {
         'SELECT id, username, password, role, display_name, department FROM users WHERE username = $1 LIMIT 1',
         [username]
       );
-      console.log('[auth/login] ユーザー検索結果:', { 
+      console.log('[auth/login] ユーザー検索結果:', {
         found: result.rows.length > 0,
-        userCount: result.rows.length 
+        userCount: result.rows.length
       });
 
       if (result.rows.length === 0) {
         console.log('[auth/login] ユーザーが見つかりません');
         await pool.end();
-        return res.status(401).json({ 
-          success: false, 
+        return res.status(401).json({
+          success: false,
           error: 'invalid_credentials',
           message: 'ユーザー名またはパスワードが正しくありません'
         });
       }
 
       const foundUser = result.rows[0];
-      console.log('[auth/login] ユーザー情報取得:', { 
-        id: foundUser.id, 
-        username: foundUser.username, 
-        role: foundUser.role 
+      console.log('[auth/login] ユーザー情報取得:', {
+        id: foundUser.id,
+        username: foundUser.username,
+        role: foundUser.role
       });
 
       // パスワード比較（bcryptjs）
       console.log('[auth/login] パスワード比較開始');
       const isPasswordValid = await bcrypt.compare(password, foundUser.password);
       console.log('[auth/login] パスワード比較結果:', { isValid: isPasswordValid });
-      
+
       if (!isPasswordValid) {
         console.log('[auth/login] パスワードが一致しません');
         await pool.end();
-        return res.status(401).json({ 
-          success: false, 
+        return res.status(401).json({
+          success: false,
           error: 'invalid_credentials',
           message: 'ユーザー名またはパスワードが正しくありません'
         });
@@ -215,29 +230,29 @@ router.post('/login', async (req, res) => {
       req.session.regenerate(err => {
         if (err) {
           console.error('[auth/login] Session regenerate error:', err);
-          return res.status(503).json({ 
-            success: false, 
+          return res.status(503).json({
+            success: false,
             error: 'session_error',
             message: 'セッション作成に失敗しました'
           });
         }
-        
+
         req.session.userId = foundUser.id;
-        req.session.user = { 
-          id: foundUser.id, 
+        req.session.user = {
+          id: foundUser.id,
           username: foundUser.username,
           displayName: foundUser.display_name,
           display_name: foundUser.display_name,
           role: foundUser.role || 'user',
           department: foundUser.department
         };
-        
+
         req.session.save(() => {
           console.log('[auth/login] Login success for user:', foundUser.username);
-          res.json({ 
-            success: true, 
-            token, 
-            accessToken: token, 
+          res.json({
+            success: true,
+            token,
+            accessToken: token,
             expiresIn: '1d',
             user: req.session.user
           });
@@ -245,7 +260,7 @@ router.post('/login', async (req, res) => {
       });
 
       await pool.end();
-      
+
     } catch (dbError) {
       console.error('[auth/login] Database error:', dbError);
       if (pool) {
@@ -255,14 +270,14 @@ router.post('/login', async (req, res) => {
           console.error('[auth/login] Pool end error:', endError);
         }
       }
-      
+
       return res.status(503).json({
         success: false,
         error: 'auth_backend_unavailable',
         message: '認証サービスが一時的に利用できません'
       });
     }
-    
+
   } catch (error) {
     console.error('[auth/login] Unexpected error:', error);
     return res.status(503).json({
@@ -291,12 +306,12 @@ router.get('/me', (req, res) => {
       sessionUserId: req.session?.userId,
       cookies: req.headers.cookie
     });
-    
+
     // セッションベースの認証をチェック
     if (req.session?.user) {
       console.log('[auth/me] Session-based auth:', req.session.user);
-      return res.json({ 
-        success: true, 
+      return res.json({
+        success: true,
         user: req.session.user,
         authenticated: true
       });
@@ -309,15 +324,15 @@ router.get('/me', (req, res) => {
         const token = auth.slice(7);
         const payload = jwt.verify(token, process.env.JWT_SECRET);
         console.log('[auth/me] Token-based auth:', payload);
-        return res.json({ 
-          success: true, 
+        return res.json({
+          success: true,
           user: { id: payload.sub || payload.id, ...payload },
           authenticated: true
         });
       } catch (tokenError) {
         console.log('[auth/me] Invalid token:', tokenError.message);
-        return res.status(401).json({ 
-          success: false, 
+        return res.status(401).json({
+          success: false,
           error: 'invalid_token',
           message: '無効なトークンです'
         });
@@ -326,16 +341,16 @@ router.get('/me', (req, res) => {
 
     // 未認証
     console.log('[auth/me] No authentication found');
-    return res.status(401).json({ 
-      success: false, 
+    return res.status(401).json({
+      success: false,
       error: 'authentication_required',
       message: '認証が必要です'
     });
-    
+
   } catch (error) {
     console.error('[auth/me] Unexpected error:', error);
-    return res.status(401).json({ 
-      success: false, 
+    return res.status(401).json({
+      success: false,
       error: 'authentication_required',
       message: '認証が必要です'
     });
@@ -346,13 +361,13 @@ router.get('/me', (req, res) => {
 router.get('/db-check', async (req, res) => {
   try {
     console.log('[db-check] データベース接続チェック開始');
-    
+
     // データベース接続テスト
     const { Pool } = require('pg');
     const isDevelopment = process.env.NODE_ENV === 'development';
     const sslMode = process.env.PG_SSL || 'prefer';
     let sslConfig;
-    
+
     if (isDevelopment) {
       sslConfig = false;
     } else if (sslMode === 'disable') {

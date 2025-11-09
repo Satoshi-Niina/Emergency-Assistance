@@ -242,10 +242,19 @@ app.use((req, res, next) => {
   // Azure Static Web Apps からのリクエストまたは許可されたオリジンを設定
   let allowedOrigin = AZURE_STATIC_ORIGIN; // デフォルトはAzure Static Web Apps
 
-  if (origin && (ALLOWED_ORIGINS.includes(origin) || origin.includes('azurestaticapps.net'))) {
-    allowedOrigin = origin;
+  // オリジンのチェック（より確実に）
+  if (origin) {
+    // Azure Static Web Apps のオリジンを許可
+    if (origin.includes('azurestaticapps.net')) {
+      allowedOrigin = origin;
+    }
+    // ALLOWED_ORIGINSに含まれている場合も許可
+    else if (ALLOWED_ORIGINS.includes(origin)) {
+      allowedOrigin = origin;
+    }
   }
 
+  // CORS ヘッダーを常に設定（プリフライトリクエストでも確実に設定）
   res.header('Access-Control-Allow-Origin', allowedOrigin);
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
@@ -262,14 +271,8 @@ app.use((req, res, next) => {
       headers: req.headers
     });
 
-    // 200 OKレスポンスでプリフライトを完了
-    return res.status(200).json({
-      success: true,
-      message: 'CORS Preflight OK',
-      origin: origin,
-      allowedOrigin: allowedOrigin,
-      timestamp: new Date().toISOString()
-    });
+    // 204 No Contentでプリフライトを完了（標準的な方法）
+    return res.status(204).end();
   }
 
   console.log('✅ CORS Headers Set:', {
@@ -277,7 +280,7 @@ app.use((req, res, next) => {
     allowOrigin: allowedOrigin,
     method: req.method,
     path: req.path,
-    isAllowed: origin ? ALLOWED_ORIGINS.includes(origin) || origin.includes('azurestaticapps.net') : false
+    isAllowed: origin ? (ALLOWED_ORIGINS.includes(origin) || origin.includes('azurestaticapps.net')) : false
   });
 
   next();
