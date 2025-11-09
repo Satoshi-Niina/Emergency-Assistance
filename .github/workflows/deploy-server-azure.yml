@@ -63,11 +63,28 @@ jobs:
 
           echo "✅ No residual ZIP/artifact steps found."
 
+      # AZURE_WEBAPP_NAME の確認
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.AZURE_WEBAPP_NAME }}" ]; then
+            echo "❌ Error: AZURE_WEBAPP_NAME secret is not set"
+            echo "Please set AZURE_WEBAPP_NAME in GitHub Secrets (Settings > Secrets and variables > Actions)"
+            exit 1
+          fi
+          if [ -z "${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}" ]; then
+            echo "❌ Error: AZUREAPPSERVICE_PUBLISHPROFILE secret is not set"
+            echo "Please set AZUREAPPSERVICE_PUBLISHPROFILE in GitHub Secrets"
+            exit 1
+          fi
+          echo "✅ Required secrets are set"
+          echo "App Name: ${{ secrets.AZURE_WEBAPP_NAME }}"
+
       # Oryx Build を用いた App Service デプロイ（Zip Deploy は使用しない）
       - name: Deploy to Azure Web App (Oryx)
         uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ secrets.AZURE_WEBAPP_NAME || 'emergency-assistance-bfckhjejb3fbf9du' }}
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
           package: .
 
