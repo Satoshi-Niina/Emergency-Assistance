@@ -2,7 +2,7 @@ name: Deploy Server to Azure App Service (Oryx)
 
 on:
   push:
-    branches: 
+    branches:
       - main
       - master
   workflow_dispatch: # 手動実行も可能
@@ -71,16 +71,36 @@ jobs:
       - name: Validate required secrets
         shell: bash
         run: |
+          echo "🔍 Checking required secrets..."
+          echo ""
+          
           if [ -z "${{ secrets.AZURE_WEBAPP_NAME }}" ]; then
             echo "❌ Error: AZURE_WEBAPP_NAME secret is not set"
-            echo "Please set AZURE_WEBAPP_NAME in GitHub Secrets (Settings > Secrets and variables > Actions)"
+            echo ""
+            echo "📋 Setup Instructions:"
+            echo "1. Go to: https://github.com/${{ github.repository }}/settings/secrets/actions"
+            echo "2. Click 'New repository secret'"
+            echo "3. Name: AZURE_WEBAPP_NAME"
+            echo "4. Value: Your App Service name (check Azure Portal > App Service > Overview > Name)"
+            echo "5. Click 'Add secret'"
+            echo ""
+            echo "💡 To find your App Service name:"
+            echo "   - Azure Portal > App Services > Select your app > Overview tab > Name field"
             exit 1
           fi
+          
           if [ -z "${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}" ]; then
             echo "❌ Error: AZUREAPPSERVICE_PUBLISHPROFILE secret is not set"
-            echo "Please set AZUREAPPSERVICE_PUBLISHPROFILE in GitHub Secrets"
+            echo ""
+            echo "📋 Setup Instructions:"
+            echo "1. Go to: https://github.com/${{ github.repository }}/settings/secrets/actions"
+            echo "2. Click 'New repository secret'"
+            echo "3. Name: AZUREAPPSERVICE_PUBLISHPROFILE"
+            echo "4. Value: Publish Profile XML (Azure Portal > App Service > Overview > Get publish profile)"
+            echo "5. Click 'Add secret'"
             exit 1
           fi
+          
           echo "✅ Required secrets are set"
           echo "App Name: ${{ secrets.AZURE_WEBAPP_NAME }}"
 
