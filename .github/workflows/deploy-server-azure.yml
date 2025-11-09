@@ -2,8 +2,12 @@ name: Deploy Server to Azure App Service (Oryx)
 
 on:
   push:
-    branches: ['main']
+    branches: 
+      - main
+      - master
   workflow_dispatch: # 手動実行も可能
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
