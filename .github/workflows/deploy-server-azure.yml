@@ -33,12 +33,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Azureログイン
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
       # Zip/Artifact 系の残骸があれば明示的に失敗させる（厳密判定・コメントは無視）
       - name: Ensure no ZIP/artifact steps remain
         if: ${{ env.ZIP_GUARD != 'false' }}
@@ -67,56 +61,53 @@ jobs:
 
           echo "✅ No residual ZIP/artifact steps found."
 
-      # AZURE_WEBAPP_NAME の確認
+      # 必須Secretの確認（Publish Profile方式）
       - name: Validate required secrets
         shell: bash
         run: |
-          echo "🔍 Checking required secrets..."
+          echo "🔍 Validating required secrets for Publish Profile deployment..."
           echo ""
           
-          if [ -z "${{ secrets.AZURE_WEBAPP_NAME }}" ]; then
-            echo "❌ Error: AZURE_WEBAPP_NAME secret is not set"
-            echo ""
-            echo "📋 Setup Instructions:"
-            echo "1. Go to: https://github.com/${{ github.repository }}/settings/secrets/actions"
-            echo "2. Click 'New repository secret'"
-            echo "3. Name: AZURE_WEBAPP_NAME"
-            echo "4. Value: Your App Service name (check Azure Portal > App Service > Overview > Name)"
-            echo "5. Click 'Add secret'"
-            echo ""
-            echo "💡 To find your App Service name:"
-            echo "   - Azure Portal > App Services > Select your app > Overview tab > Name field"
-            exit 1
-          fi
+          MISSING_SECRETS=()
           
+          # Publish Profile方式に必要なSecretをチェック
           if [ -z "${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}" ]; then
-            echo "❌ Error: AZUREAPPSERVICE_PUBLISHPROFILE secret is not set"
+            MISSING_SECRETS+=("AZUREAPPSERVICE_PUBLISHPROFILE")
+          fi
+          
+          if [ -z "${{ secrets.APP_URL }}" ]; then
+            MISSING_SECRETS+=("APP_URL")
+          fi
+          
+          if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then
+            echo "❌ Missing required secrets:"
+            for secret in "${MISSING_SECRETS[@]}"; do
+              echo "   - $secret"
+            done
             echo ""
-            echo "📋 Setup Instructions:"
-            echo "1. Go to: https://github.com/${{ github.repository }}/settings/secrets/actions"
-            echo "2. Click 'New repository secret'"
-            echo "3. Name: AZUREAPPSERVICE_PUBLISHPROFILE"
-            echo "4. Value: Publish Profile XML (Azure Portal > App Service > Overview > Get publish profile)"
-            echo "5. Click 'Add secret'"
+            echo "📋 Quick Setup:"
+            echo "   https://github.com/${{ github.repository }}/settings/secrets/actions"
+            echo ""
+            echo "📝 Required Secrets:"
+            echo "   1. AZUREAPPSERVICE_PUBLISHPROFILE"
+            echo "      - Azure Portal > App Service > Overview > Get publish profile"
+            echo "      - Download .PublishSettings file and copy entire XML content"
+            echo ""
+            echo "   2. APP_URL"
+            echo "      - Your App Service URL (e.g., https://your-app.azurewebsites.net)"
+            echo ""
             exit 1
           fi
           
-          echo "✅ Required secrets are set"
-          echo "App Name: ${{ secrets.AZURE_WEBAPP_NAME }}"
+          echo "✅ All required secrets are set"
 
-      # Oryx Build を用いた App Service デプロイ（Zip Deploy は使用しない）
+      # Oryx Build を用いた App Service デプロイ（Publish Profile方式）
       - name: Deploy to Azure Web App (Oryx)
         uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
           package: .
-
-      - name: Show Kudu deployment logs link
-        shell: bash
-        run: |
-          echo "Kudu deployments:"
-          echo "https://${{ secrets.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net/api/deployments"
+          # Publish ProfileにはApp Service名が含まれているため、app-nameは不要
 
       # 起動待ち → /live → /ready → /ping → /api/ping → /health → /api/health（成功したら即OK）
       - name: Wait for app to be ready (Health Check)
