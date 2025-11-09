@@ -37,19 +37,24 @@ jobs:
           echo "📦 Creating deployment package..."
           mkdir -p deploy-package
 
-          # Copy server files to deployment package
+          # Copy server files (exclude node_modules)
           echo "Copying server files..."
-          tar --exclude='node_modules' -cf - -C server . | tar -xf - -C deploy-package
+          find server -type f -name "*.js" -o -name "*.json" -o -name "*.ts" -o -name "*.md" | while read file; do
+            target="deploy-package/${file#server/}"
+            mkdir -p "$(dirname "$target")"
+            cp "$file" "$target"
+          done
 
-          # Copy client build
-          echo "Copying client build..."
-          mkdir -p deploy-package/client
-          if [ -d "client/dist" ]; then
-            tar -cf - -C client/dist . | tar -xf - -C deploy-package/client/dist
-          else
+          # Verify client build exists
+          if [ ! -d "client/dist" ]; then
             echo "❌ Client dist not found"
             exit 1
           fi
+
+          # Copy client build
+          echo "Copying client build..."
+          mkdir -p deploy-package/client/dist
+          cp -r client/dist/* deploy-package/client/dist/
 
           echo "📋 Deployment structure verification:"
           ls -la deploy-package/
@@ -57,6 +62,7 @@ jobs:
           [ -f "deploy-package/package.json" ] && echo "✅ package.json" || echo "❌ package.json missing"
           [ -f "deploy-package/azure-server.js" ] && echo "✅ azure-server.js" || echo "❌ azure-server.js missing"
           [ -d "deploy-package/client/dist" ] && echo "✅ client/dist" || echo "❌ client/dist missing"
+          [ -f "deploy-package/client/dist/index.html" ] && echo "✅ index.html" || echo "❌ index.html missing"
 
       - name: Deploy to Azure
         uses: azure/webapps-deploy@v3
