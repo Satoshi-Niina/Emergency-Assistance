@@ -120,6 +120,21 @@ jobs:
 
           echo "✅ All required files present"
 
+      # クライアントのビルド（サーバーが参照するため）
+      - name: Build client
+        shell: bash
+        run: |
+          echo "🏗️ Building client for server static files..."
+          cd client
+          npm cache clean --force
+          npm install --no-audit --no-fund
+          npm run build
+
+          echo "📋 Client build output:"
+          ls -la dist/
+
+          echo "✅ Client build completed"
+
       # サーバーファイルの準備とデプロイ
       - name: Prepare deployment package
         shell: bash
@@ -129,15 +144,24 @@ jobs:
           # デプロイ用ディレクトリを作成
           mkdir -p deploy-package
 
-          # サーバーのファイルをコピー
+          # サーバーのファイルをコピー（package.json含む - Oryxビルド用）
           cp -r server/* deploy-package/
 
-          # 不要なファイルを除外
+          # クライアントのdistフォルダーをコピー（azure-server.jsが参照するため）
+          mkdir -p deploy-package/client
+          cp -r client/dist deploy-package/client/
+
+          # 開発用ファイルを除外（Oryxが依存関係を自動インストールするため node_modules は除外）
           rm -rf deploy-package/node_modules
           rm -f deploy-package/package-lock.json
 
+          # package.jsonが存在することを確認（Oryxビルド用）
+          test -f deploy-package/package.json || { echo "❌ package.json missing"; exit 1; }
+
           echo "📋 Deployment package contents:"
           ls -la deploy-package/
+          echo "📋 Client files:"
+          ls -la deploy-package/client/ || echo "No client directory"
 
           echo "✅ Package preparation completed"
 
@@ -154,52 +178,121 @@ jobs:
           # - WEBSITE_NODE_DEFAULT_VERSION=20-lts (Node.jsバージョン)
           # - NPM_CONFIG_PRODUCTION=false (devDependenciesもインストール)
 
-      # デプロイ後の健全性確認（段階的チェック）
-      - name: Wait for app to be ready (Health Check)
+      # 段階的Health Check - より実用的なアプローチ
+      - name: Comprehensive Health Check
         env:
           APP_URL: ${{ env.APP_URL }}
           HEALTH_TOKEN: ${{ secrets.HEALTH_TOKEN }}
         shell: bash
         run: |
           set -eo pipefail
+
           if [ -z "${APP_URL}" ]; then
             echo "❌ APP_URL is not set. Define it in GitHub Secrets (APP_URL)."
             exit 1
           fi
 
-          echo "📋 Post-deployment health check for: ${APP_URL}"
-          echo "⏰ Initial startup wait (180 seconds)..."
-          sleep 180
+          echo "🏥 Starting comprehensive health check for: ${APP_URL}"
 
-          check_endpoint() {
-            local url="$1"
-            local timeout="${2:-10}"
-            echo "🔍 Testing ${url} (timeout: ${timeout}s)"
+          # Stage 1: アプリケーションの基本起動チェック
+          echo "📋 Stage 1: Basic availability check"
+          MAX_WAIT=300  # 5分
+          WAIT_INTERVAL=30
+          elapsed=0
+
+          while [ $elapsed -lt $MAX_WAIT ]; do
+            echo "⏰ Waiting for application startup... ($elapsed/$MAX_WAIT seconds)"
+
+            # 基本的な接続テスト
+            if curl -fsSL --max-time 10 "${APP_URL}/" >/dev/null 2>&1; then
+              echo "✅ Stage 1 PASSED: Basic connectivity established"
+              break
+            fi
+
+            sleep $WAIT_INTERVAL
+            elapsed=$((elapsed + WAIT_INTERVAL))
+          done
+
+          if [ $elapsed -ge $MAX_WAIT ]; then
+            echo "❌ Stage 1 FAILED: Application did not respond within $MAX_WAIT seconds"
+            echo "🔍 Debugging info:"
+            curl -v "${APP_URL}/" || true
+            exit 1
+          fi
+
+          # Stage 2: Health endpointの詳細チェック
+          echo ""
+          echo "📋 Stage 2: Health endpoint verification"
+
+          check_health_endpoint() {
+            local endpoint="$1"
+            local required="${2:-false}"
+            local url="${APP_URL}${endpoint}"
+
+            echo "🔍 Testing: ${endpoint}"
+
+            local response
+            local status_code
 
             if [ -n "${HEALTH_TOKEN}" ]; then
-              curl -fsSL --max-time "${timeout}" --retry 3 --retry-delay 10 \
+              response=$(curl -w "%{http_code}" -s --max-time 15 \
                 -H "x-health-token: ${HEALTH_TOKEN}" \
-                "${url}" 2>/dev/null || return 1
+                "${url}" 2>/dev/null || echo "000")
             else
-              curl -fsSL --max-time "${timeout}" --retry 3 --retry-delay 10 \
-                "${url}" 2>/dev/null || return 1
+              response=$(curl -w "%{http_code}" -s --max-time 15 \
+                "${url}" 2>/dev/null || echo "000")
+            fi
+
+            status_code="${response: -3}"
+            body="${response%???}"
+
+            if [[ "$status_code" =~ ^2[0-9][0-9]$ ]]; then
+              echo "  ✅ ${endpoint} - HTTP ${status_code} (${body:0:50}...)"
+              return 0
+            else
+              echo "  ⚠️  ${endpoint} - HTTP ${status_code}"
+              if [ "$required" = "true" ]; then
+                return 1
+              fi
+              return 0
             fi
           }
 
-          # 順次テスト（1つでも成功すればOK）
-          for endpoint in /live /ready /ping /api/ping /health /api/health; do
-            if check_endpoint "${APP_URL}${endpoint}" 15; then
-              echo "✅ Health check PASSED: ${endpoint}"
-              echo "🚀 Deployment successful!"
-              exit 0
-            else
-              echo "⚠️  ${endpoint} - Not available (continuing...)"
+          # 必須エンドポイントのチェック
+          CRITICAL_ENDPOINTS=("/ping" "/health")
+          OPTIONAL_ENDPOINTS=("/live" "/ready" "/api/ping" "/api/health")
+
+          critical_failed=false
+
+          echo "🚨 Checking critical endpoints:"
+          for endpoint in "${CRITICAL_ENDPOINTS[@]}"; do
+            if ! check_health_endpoint "$endpoint" "true"; then
+              critical_failed=true
             fi
           done
 
-          echo "❌ All health check endpoints failed."
-          echo "📊 Manual verification required:"
-          echo "   - Check Azure Portal > App Service > Log stream"
-          echo "   - Verify environment variables are set correctly"
-          echo "   - Check ${APP_URL} directly in browser"
-          exit 1
+          echo "� Checking optional endpoints:"
+          for endpoint in "${OPTIONAL_ENDPOINTS[@]}"; do
+            check_health_endpoint "$endpoint" "false"
+          done
+
+          # Stage 3: 最終判定
+          echo ""
+          echo "📋 Stage 3: Final health assessment"
+
+          if [ "$critical_failed" = "true" ]; then
+            echo "❌ HEALTH CHECK FAILED: Critical endpoints are not responding"
+            echo ""
+            echo "� Troubleshooting steps:"
+            echo "  1. Check Azure Portal > App Service > Log stream"
+            echo "  2. Verify environment variables: SCM_DO_BUILD_DURING_DEPLOYMENT=true"
+            echo "  3. Check Kudu console: ${APP_URL%/}.scm.azurewebsites.net"
+            echo "  4. Review application logs for startup errors"
+            echo ""
+            echo "📊 Manual verification URL: ${APP_URL}"
+            exit 1
+          else
+            echo "✅ HEALTH CHECK PASSED: Application is healthy and ready"
+            echo "🚀 Deployment completed successfully!"
+            echo "🌐 Application URL: ${APP_URL}"
+          fi

@@ -60,7 +60,7 @@ coverage/
 .svelte-kit/
 # Environment variables - HANDLED ABOVE
 #.env
-#.env.local  
+#.env.local
 #.env.development
 #.env.test
 #.env.production
@@ -82,6 +82,7 @@ coverage/
 # nyc test coverage
 .nyc_output
 # Dependency directories
+node_modules/
 jspm_packages/
 # Optional npm cache directory
 .npm
