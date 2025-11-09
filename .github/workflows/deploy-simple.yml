@@ -37,13 +37,9 @@ jobs:
           echo "📦 Creating deployment package..."
           mkdir -p deploy-package
 
-          # Copy server files (exclude node_modules)
+          # Copy all server files (excluding node_modules but keeping structure)
           echo "Copying server files..."
-          find server -type f -name "*.js" -o -name "*.json" -o -name "*.ts" -o -name "*.md" | while read file; do
-            target="deploy-package/${file#server/}"
-            mkdir -p "$(dirname "$target")"
-            cp "$file" "$target"
-          done
+          rsync -av --exclude='node_modules' server/ deploy-package/
 
           # Verify client build exists
           if [ ! -d "client/dist" ]; then
@@ -51,10 +47,16 @@ jobs:
             exit 1
           fi
 
-          # Copy client build
+          # Copy client build to correct location
           echo "Copying client build..."
           mkdir -p deploy-package/client/dist
           cp -r client/dist/* deploy-package/client/dist/
+
+          # Install production dependencies in deploy package
+          echo "Installing production dependencies..."
+          cd deploy-package
+          npm ci --production
+          cd ..
 
           echo "📋 Deployment structure verification:"
           ls -la deploy-package/
@@ -63,6 +65,8 @@ jobs:
           [ -f "deploy-package/azure-server.js" ] && echo "✅ azure-server.js" || echo "❌ azure-server.js missing"
           [ -d "deploy-package/client/dist" ] && echo "✅ client/dist" || echo "❌ client/dist missing"
           [ -f "deploy-package/client/dist/index.html" ] && echo "✅ index.html" || echo "❌ index.html missing"
+          [ -d "deploy-package/node_modules" ] && echo "✅ node_modules" || echo "❌ node_modules missing"
+          [ -f "deploy-package/node_modules/express/package.json" ] && echo "✅ express installed" || echo "❌ express missing"
 
       - name: Deploy to Azure
         uses: azure/webapps-deploy@v3
