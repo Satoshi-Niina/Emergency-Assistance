@@ -80,6 +80,10 @@ console.log('🚀 Azure Server Starting - Version:', VERSION);
 
 // BLOBサービスクライアントの初期化（警告版）
 const getBlobServiceClient = () => {
+  console.log('🔍 getBlobServiceClient called');
+  console.log('🔍 connectionString exists:', !!connectionString);
+  console.log('🔍 connectionString starts with:', connectionString ? connectionString.substring(0, 20) + '...' : 'null');
+
   if (!connectionString) {
     console.warn('⚠️ AZURE_STORAGE_CONNECTION_STRING is not configured');
     console.warn('⚠️ BLOB storage features will be disabled');
@@ -87,10 +91,11 @@ const getBlobServiceClient = () => {
   }
   try {
     const client = BlobServiceClient.fromConnectionString(connectionString);
-    console.log('✅ BLOB service client initialized');
+    console.log('✅ BLOB service client initialized successfully');
     return client;
   } catch (error) {
-    console.warn('⚠️ BLOB service client initialization failed:', error.message);
+    console.error('❌ BLOB service client initialization failed:', error);
+    console.error('❌ Error stack:', error.stack);
     return null;
   }
 };
@@ -949,6 +954,10 @@ app.get('/api/storage/list', async (req, res) => {
     }
 
     const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      console.warn('⚠️ Blob service client unavailable, returning empty list');
+      return res.json([]);
+    }
     const containerClient = blobServiceClient.getContainerClient(containerName);
 
     const listOptions = {
@@ -995,6 +1004,11 @@ app.get('/api/storage/get', async (req, res) => {
     }
 
     const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(500).json({
+        error: 'Blob service client unavailable'
+      });
+    }
     const containerClient = blobServiceClient.getContainerClient(containerName);
     const blockBlobClient = containerClient.getBlockBlobClient(norm(name));
 
@@ -1049,6 +1063,11 @@ app.post('/api/storage/save', async (req, res) => {
     }
 
     const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(500).json({
+        error: 'Blob service client unavailable'
+      });
+    }
     const containerClient = blobServiceClient.getContainerClient(containerName);
     const blockBlobClient = containerClient.getBlockBlobClient(norm(name));
 
@@ -1093,6 +1112,11 @@ app.delete('/api/storage/delete', async (req, res) => {
     }
 
     const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(500).json({
+        error: 'Blob service client unavailable'
+      });
+    }
     const containerClient = blobServiceClient.getContainerClient(containerName);
     const blockBlobClient = containerClient.getBlockBlobClient(norm(name));
 
@@ -1129,6 +1153,15 @@ app.get('/api/knowledge-base', async (req, res) => {
     }
 
     const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.json({
+        success: true,
+        data: [],
+        message: 'Blob service client unavailable',
+        timestamp: new Date().toISOString()
+      });
+    }
+
     const containerClient = blobServiceClient.getContainerClient(containerName);
 
     const listOptions = {
@@ -1200,6 +1233,14 @@ app.get('/api/emergency-flows', async (req, res) => {
     }
 
     const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.json({
+        success: true,
+        data: [],
+        message: 'Blob service client unavailable',
+        timestamp: new Date().toISOString()
+      });
+    }
     const containerClient = blobServiceClient.getContainerClient(containerName);
 
     const listOptions = {
@@ -1271,6 +1312,14 @@ app.get('/api/emergency-flow/list', async (req, res) => {
     }
 
     const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.json({
+        success: true,
+        data: [],
+        message: 'Blob service client unavailable',
+        timestamp: new Date().toISOString()
+      });
+    }
     const containerClient = blobServiceClient.getContainerClient(containerName);
 
     const listOptions = {
