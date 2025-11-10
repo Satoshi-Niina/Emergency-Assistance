@@ -9,7 +9,9 @@
     "npm": ">=10.0.0"
   },
   "scripts": {
-    "start": "node azure-server.js",
+    "start": "node app.js",
+    "start:server": "node server.js",
+    "start:direct": "node azure-server.js",
     "dev": "cross-env NODE_ENV=development PORT=8000 node azure-server.js",
     "build": "echo Build step completed",
     "test": "echo No tests specified"

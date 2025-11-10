@@ -1,7 +1,14 @@
 #!/usr/bin/env node
 
 // Azure App Service専用サーバー
-// Linux環境で確実に動作する最小限のサーバー
+// Windows/Linux環境で確実に動作する最小限のサーバー
+
+// Azure App Service environment setup
+console.log('🚀 Azure Server Starting...');
+console.log('📍 Working directory:', process.cwd());
+console.log('🗂️ __filename equivalent:', import.meta.url);
+console.log('🌍 Environment:', process.env.NODE_ENV || 'production');
+console.log('🔌 Port:', process.env.PORT || 'not set');
 
 import express from 'express';
 import path, { join } from 'path';

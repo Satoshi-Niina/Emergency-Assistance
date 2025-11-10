@@ -170,6 +170,7 @@ jobs:
           package: ./deploy-package
           clean: true
           restart: true
+          startup-command: 'node app.js'
 
       - name: Post-Deploy Wait (Oryx Build Time)
         run: |
