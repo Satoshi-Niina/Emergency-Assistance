@@ -29,7 +29,7 @@ export const API_BASE_URL = (() => {
     console.log('✅ Azure Static Web App: BACKEND_SERVICE_URLから取得:', backendUrl);
     return backendUrl;
   }
-  
+
   // まずruntime-configから取得を試行
   try {
     const runtimeConfig = getRuntimeConfig();
@@ -40,13 +40,13 @@ export const API_BASE_URL = (() => {
   } catch (error) {
     console.warn('⚠️ Runtime config取得エラー:', error);
   }
-  
+
   // 環境変数による設定
   if (import.meta.env.VITE_API_BASE_URL) {
     console.log('✅ 環境変数からAPI_BASE_URLを取得:', import.meta.env.VITE_API_BASE_URL);
     return import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '');
   }
-  
+
   // フォールバック: 環境判定
   if (isLocalhost) {
     const defaultUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
@@ -63,58 +63,61 @@ export const API_BASE_URL = (() => {
 export function buildApiUrl(path: string): string {
   // パスを正規化（先頭の/を確保）
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  
+
   // パスが既に/apiで始まっている場合は重複を避ける
-  const pathWithoutApi = cleanPath.startsWith('/api/') 
-    ? cleanPath.replace(/^\/api/, '') 
+  const pathWithoutApi = cleanPath.startsWith('/api/')
+    ? cleanPath.replace(/^\/api/, '')
     : cleanPath.startsWith('/api')
-    ? '/' 
-    : cleanPath;
-  
-  // Azure Static Web Apps環境の場合、必ず外部バックエンドURLを使用（強制）
+      ? '/'
+      : cleanPath;
+
+  // Azure Static Web Apps環境の場合、runtime-configまたはハードコードされたURLを使用
   if (isAzureStaticWebApp && typeof window !== 'undefined') {
-    const backendUrl = (window as any).BACKEND_SERVICE_URL;
-    console.log('🔍 buildApiUrl (Azure SWA): window.BACKEND_SERVICE_URLの値:', backendUrl);
-    
-    // バックエンドURLを取得（プレースホルダーまたは空の場合はフォールバック）
+    // runtime-configから取得を試行
     let baseUrl = '';
-    if (backendUrl && backendUrl.trim() !== '' && backendUrl !== 'PLACEHOLDER_BACKEND_SERVICE_URL') {
-      baseUrl = backendUrl.replace(/\/$/, '').replace(/\/api$/, '');
-      console.log('✅ buildApiUrl: window.BACKEND_SERVICE_URLを使用:', baseUrl);
-    } else {
-      console.warn('⚠️ buildApiUrl: window.BACKEND_SERVICE_URLが無効、フォールバックを使用');
-      // フォールバック: ハードコードされたURL
-      baseUrl = 'https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net';
+    try {
+      const runtimeConfig = getRuntimeConfig();
+      if (runtimeConfig && runtimeConfig.API_BASE_URL && !runtimeConfig.API_BASE_URL.startsWith('/')) {
+        baseUrl = runtimeConfig.API_BASE_URL.replace(/\/$/, '').replace(/\/api$/, '');
+        console.log('✅ buildApiUrl: runtime-configから取得:', baseUrl);
+      }
+    } catch (error) {
+      console.warn('⚠️ buildApiUrl: runtime-config取得エラー:', error);
     }
-    
+
+    // フォールバック: ハードコードされたURL
+    if (!baseUrl) {
+      baseUrl = 'https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net';
+      console.log('✅ buildApiUrl: フォールバックURLを使用:', baseUrl);
+    }
+
     // 最終的なURLを構築（必ず/apiを含める）
     const result = `${baseUrl}/api${pathWithoutApi.startsWith('/') ? pathWithoutApi : '/' + pathWithoutApi}`;
-    
+
     console.log('🔧 buildApiUrl (Azure SWA):', {
       originalPath: path,
       cleanPath,
       pathWithoutApi,
       baseUrl,
-      finalUrl: result,
-      windowBackendUrl: backendUrl
+      finalUrl: result
     });
-    
+
     return result;
   }
-  
+
   // 非Azure Static Web Apps環境の場合
   const baseUrl = API_BASE_URL.replace(/\/$/, '').replace(/\/api$/, '');
-  const result = baseUrl 
+  const result = baseUrl
     ? `${baseUrl}/api${pathWithoutApi.startsWith('/') ? pathWithoutApi : '/' + pathWithoutApi}`
     : `/api${pathWithoutApi.startsWith('/') ? pathWithoutApi : '/' + pathWithoutApi}`;
-  
+
   console.log('🔧 buildApiUrl (非Azure SWA):', {
     originalPath: path,
     cleanPath,
     baseUrl,
     finalUrl: result
   });
-  
+
   return result;
 }
 
@@ -129,7 +132,7 @@ export async function userApiRequest<T = any>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = buildApiUrl(path);
-  
+
   const config: RequestInit = {
     ...options,
     headers: {
@@ -144,7 +147,7 @@ export async function userApiRequest<T = any>(
 
   try {
     const response = await fetch(url, config);
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ User API Error: ${response.status} ${response.statusText}`, errorText);
@@ -167,7 +170,7 @@ export async function apiRequest<T = any>(
 ): Promise<T> {
   const url = buildApiUrl(path);
   const token = getAuthToken();
-  
+
   const config: RequestInit = {
     ...options,
     headers: {
@@ -183,11 +186,11 @@ export async function apiRequest<T = any>(
 
   try {
     const response = await fetch(url, config);
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ API Error: ${response.status} ${response.statusText}`, errorText);
-      
+
       // 401エラーの場合は認証エラーとして処理
       if (response.status === 401) {
         console.log('🔐 認証エラー: トークンをクリア');
@@ -195,7 +198,7 @@ export async function apiRequest<T = any>(
         // 認証エラーの場合は特別なエラーを投げる
         throw new Error('AUTHENTICATION_ERROR');
       }
-      
+
       throw new Error(`API Error ${response.status}: ${errorText}`);
     }
 
@@ -211,15 +214,15 @@ export async function apiRequest<T = any>(
 // HTTPメソッド別のヘルパー
 export const api = {
   get: <T = any>(path: string) => apiRequest<T>(path, { method: 'GET' }),
-  post: <T = any>(path: string, data?: any) => 
-    apiRequest<T>(path, { 
-      method: 'POST', 
-      body: data ? JSON.stringify(data) : undefined 
+  post: <T = any>(path: string, data?: any) =>
+    apiRequest<T>(path, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined
     }),
-  put: <T = any>(path: string, data?: any) => 
-    apiRequest<T>(path, { 
-      method: 'PUT', 
-      body: data ? JSON.stringify(data) : undefined 
+  put: <T = any>(path: string, data?: any) =>
+    apiRequest<T>(path, {
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined
     }),
   delete: <T = any>(path: string) => apiRequest<T>(path, { method: 'DELETE' }),
 };
@@ -227,15 +230,15 @@ export const api = {
 // ユーザー管理API専用のヘルパー（認証なし）
 export const userApi = {
   get: <T = any>(path: string) => userApiRequest<T>(path, { method: 'GET' }),
-  post: <T = any>(path: string, data?: any) => 
-    userApiRequest<T>(path, { 
-      method: 'POST', 
-      body: data ? JSON.stringify(data) : undefined 
+  post: <T = any>(path: string, data?: any) =>
+    userApiRequest<T>(path, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined
     }),
-  put: <T = any>(path: string, data?: any) => 
-    userApiRequest<T>(path, { 
-      method: 'PUT', 
-      body: data ? JSON.stringify(data) : undefined 
+  put: <T = any>(path: string, data?: any) =>
+    userApiRequest<T>(path, {
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined
     }),
   delete: <T = any>(path: string) => userApiRequest<T>(path, { method: 'DELETE' }),
 };
