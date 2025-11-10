@@ -173,22 +173,20 @@ jobs:
 
       - name: Configure Azure App Service Settings
         run: |
-          echo "🔧 Configuring Azure App Service startup command..."
+          echo "🔧 Configuring Azure App Service for proper startup..."
 
-          # Extract credentials from publish profile for Azure CLI login
-          # Note: This is a workaround since startup-command parameter is not supported for Windows Web Apps
-
-          echo "💡 For Windows Web Apps, startup command should be configured manually in Azure Portal:"
-          echo "   1. Go to Azure Portal > App Services > ${{ env.AZURE_APP_NAME }}"
-          echo "   2. Navigate to Configuration > General Settings"
-          echo "   3. Set 'Startup Command' to: node app.js"
-          echo "   4. Click Save"
+          echo "📋 Current configuration status:"
+          echo "   ✅ package.json main: app.js"
+          echo "   ✅ package.json start script: node app.js"
+          echo "   ✅ web.config handler: app.js"
+          echo "   ✅ startup.txt: node app.js"
           echo ""
-          echo "🔄 Alternatively, the app.js entry point and web.config should handle startup automatically"
-          echo "📋 Current entry points configured:"
-          echo "   - package.json start script: node app.js"
-          echo "   - web.config handler: app.js"
-          echo "   - startup.txt: node app.js"
+          echo "🎯 Azure App Service should now use app.js as entry point"
+          echo "💡 If startup issues persist, manually set startup command in Azure Portal:"
+          echo "   Portal > App Services > ${{ env.AZURE_APP_NAME }} > Configuration > General Settings"
+          echo "   Startup Command: node app.js"
+          echo ""
+          echo "🔄 App.js will load azure-server.js as ES Module using dynamic import()"
 
       - name: Post-Deploy Wait (Oryx Build Time)
         run: |

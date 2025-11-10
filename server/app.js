@@ -1,17 +1,16 @@
 #!/usr/bin/env node
 
 /**
- * Azure App Service Entry Point (CommonJS)
- * Spawns ES Module azure-server.js as child process
- * Windows Web App compatible
+ * Azure App Service Entry Point (CommonJS -> ESModules)
+ * Direct dynamic import of ES Module azure-server.js
+ * Maintains ESModules architecture while ensuring Azure compatibility
  */
 
 const path = require('path');
-const { spawn } = require('child_process');
 const fs = require('fs');
 
 // Azure App Service environment setup
-console.log('🚀 Azure App Service Entry Point Starting (CommonJS)...');
+console.log('🚀 Azure App Service Entry Point Starting...');
 console.log(`📍 Working Directory: ${process.cwd()}`);
 console.log(`🏗️ Node.js Version: ${process.version}`);
 console.log(`🌍 Environment: ${process.env.NODE_ENV || 'production'}`);
@@ -21,7 +20,7 @@ console.log(`🔌 Port: ${process.env.PORT || 'not set'}`);
 process.env.PORT = process.env.PORT || 8000;
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 
-function startServer() {
+async function startServer() {
     try {
         const serverPath = path.join(__dirname, 'azure-server.js');
 
@@ -43,53 +42,48 @@ function startServer() {
             process.exit(1);
         }
 
-        console.log('✅ azure-server.js found, spawning process...');
+        console.log('✅ azure-server.js found, loading ES Module directly...');
 
-        // Spawn Node.js process for ES Module
-        const nodeArgs = [serverPath];
-        const child = spawn('node', nodeArgs, {
-            stdio: 'inherit', // Pass through stdin, stdout, stderr
-            env: process.env,
-            cwd: __dirname
-        });
+        // Direct dynamic import of ES Module - maintains ESModules architecture
+        // This approach keeps the azure-server.js as ES Module while providing CommonJS compatibility
+        const serverModule = await import('./azure-server.js');
 
-        child.on('error', (err) => {
-            console.error('❌ Failed to spawn azure-server.js:', err);
-            process.exit(1);
-        });
+        console.log('✅ ES Module azure-server.js loaded successfully');
+        console.log('🎉 Server should be starting now...');
 
-        child.on('exit', (code, signal) => {
-            console.log('� azure-server.js exited with code:', code, 'signal:', signal);
-            if (code !== 0) {
-                console.error('❌ Server exited with non-zero code');
-                process.exit(code || 1);
-            }
-        });
-
-        // Forward signals to child process
-        process.on('SIGTERM', () => {
-            console.log('� Received SIGTERM, forwarding to child...');
-            child.kill('SIGTERM');
-        });
-
-        process.on('SIGINT', () => {
-            console.log('📤 Received SIGINT, forwarding to child...');
-            child.kill('SIGINT');
-        });
-
-        console.log('🎉 Azure server process spawned successfully');
-        console.log('🔄 Waiting for server to start...');
+        // Keep the process alive - azure-server.js handles its own lifecycle
+        console.log('🔄 Keeping wrapper process alive for Azure App Service...');
 
     } catch (error) {
-        console.error('❌ Failed to start server process:', error);
-        console.error('� Error details:', {
+        console.error('❌ Failed to load azure-server.js ES Module:', error);
+        console.error('📋 Error details:', {
             name: error.name,
             message: error.message,
-            stack: error.stack?.split('\n').slice(0, 5).join('\n')
+            stack: error.stack?.split('\n').slice(0, 10).join('\n')
         });
+
+        // Enhanced debugging for Azure App Service
+        console.error('🔍 Azure App Service Debug Info:');
+        console.error('   Current working directory:', process.cwd());
+        console.error('   __dirname:', __dirname);
+        console.error('   process.argv:', process.argv);
+        console.error('   Node.js version:', process.version);
+        console.error('   Platform:', process.platform);
+
         process.exit(1);
     }
 }
+
+// Handle graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('📤 Received SIGTERM, shutting down gracefully...');
+    process.exit(0);
+});
+
+process.on('SIGINT', () => {
+    console.log('📤 Received SIGINT, shutting down gracefully...');
+    process.exit(0);
+});
 
 // Global error handlers
 process.on('uncaughtException', (error) => {
