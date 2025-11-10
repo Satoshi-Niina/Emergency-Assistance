@@ -48,7 +48,12 @@ console.log('🔧 API設定詳細:', {
 
 // APIエンドポイントの構築
 export const buildApiUrl = (endpoint: string): string => {
-  const fullUrl = `${API_BASE_URL}${endpoint}`;
+  // エンドポイントが/apiで始まっていない場合は追加
+  const normalizedEndpoint = endpoint.startsWith('/api') 
+    ? endpoint 
+    : `/api${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
+  
+  const fullUrl = `${API_BASE_URL}${normalizedEndpoint}`;
   console.log(`🔗 API URL構築: ${endpoint} -> ${fullUrl}`);
   return fullUrl;
 };
