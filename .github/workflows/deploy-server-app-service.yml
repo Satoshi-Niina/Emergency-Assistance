@@ -119,7 +119,8 @@ jobs:
           # Critical source files validation
           CRITICAL_FILES=(
             "package.json:Server package configuration"
-            "azure-server.js:Main application file"
+            "azure-server.mjs:Main application file (ES Module)"
+            "app.js:Entry point wrapper (CommonJS)"
             "client/dist/index.html:Frontend entry point"
           )
 
