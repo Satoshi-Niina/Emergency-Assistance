@@ -236,9 +236,7 @@ export default function MachineManagementPage() {
         method,
         headers,
         body: JSON.stringify({ 
-          name: newTypeName.trim(), 
-          category: newTypeName.trim(),
-          machine_type_name: newTypeName.trim() // サーバー側の期待フィールド
+          machine_type_name: newTypeName.trim()
         }),
       });
 

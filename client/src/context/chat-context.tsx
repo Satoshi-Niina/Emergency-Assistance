@@ -7,7 +7,7 @@ import React, {
   useCallback,
 } from 'react';
 import { useToast } from '../hooks/use-toast.ts';
-import { apiRequest } from '../lib/queryClient.ts';
+import { apiRequest } from '../lib/api-unified';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   startSpeechRecognition,
@@ -845,23 +845,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
       console.log('エクスポート開始:', chatId);
       setIsExporting(true);
 
-      const response = await apiRequest('POST', `/api/chats/${chatId}/export`);
+      const data = await apiRequest(`/api/chats/${chatId}/export`, { method: 'POST' });
 
-      console.log('エクスポートレスポンス:', {
-        status: response.status,
-        ok: response.ok,
-        statusText: response.statusText,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('エクスポートレスポンスエラー:', errorText);
-        throw new Error(
-          `チャット履歴のエクスポートに失敗しました: ${response.status} ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
       console.log('エクスポート成功:', data);
 
       toast({
@@ -895,16 +880,12 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
     try {
       if (!chatId) return {};
 
-      const response = await apiRequest(
-        'GET',
-        `/api/chats/${chatId}/formatted-export`
+      const data = await apiRequest(
+        `/api/chats/${chatId}/formatted-export`,
+        { method: 'GET' }
       );
 
-      if (!response.ok) {
-        throw new Error('フォーマット済みデータの取得に失敗しました');
-      }
-
-      return await response.json();
+      return data;
     } catch (error) {
       console.error('フォーマット済みデータの取得エラー:', error);
       return {};
@@ -1392,21 +1373,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
         origin: window.location.origin
       });
 
-      const response = await apiRequest('GET', `/api/chats/${chatId}/last-export`);
+      const data = await apiRequest(`/api/chats/${chatId}/last-export`, { method: 'GET' });
 
-      console.log('📡 最後のエクスポート履歴レスポンス:', {
-        status: response.status,
-        statusText: response.statusText,
-        contentType: response.headers.get('content-type'),
-        url: response.url
-      });
-
-      // レスポンスの内容を確認
-      const responseText = await response.text();
-      console.log('📄 レスポンス内容:', responseText);
-
-      // JSONとして解析
-      const data = JSON.parse(responseText);
+      console.log('📄 最後のエクスポート履歴データ:', data);
 
       if (data.timestamp) {
         setLastExportTimestamp(new Date(data.timestamp));
