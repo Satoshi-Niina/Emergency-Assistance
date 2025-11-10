@@ -1,20 +1,13 @@
 <!doctype html>
 <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1"
-    />
-    <title>Tech Support Assistant</title>
-    <link
-      rel="icon"
-      type="image/x-icon"
-      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔧</text></svg>"
-    />
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+  <title>Tech Support Assistant</title>
+  <link rel="icon" type="image/x-icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔧</text></svg>" />
+  <meta http-equiv="Content-Security-Policy" content="
       default-src 'self' data: blob:;
       script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:;
       script-src-elem 'self' 'unsafe-inline' blob:;
@@ -25,64 +18,67 @@
       font-src 'self' data: https://fonts.gstatic.com;
       worker-src 'self' blob:;
       frame-src 'self';
-    "
-    />
-    <!-- Runtime configuration -->
-    <script>
-      // バックエンドURLの設定（デプロイ時に埋め込まれる）
-      // この値はデプロイワークフローで自動的に置換されます
-      // PLACEHOLDER_BACKEND_SERVICE_URL はデプロイ時に実際のURLに置換されます
-      window.BACKEND_SERVICE_URL = 'PLACEHOLDER_BACKEND_SERVICE_URL';
-      console.log('🔧 Initial BACKEND_SERVICE_URL:', window.BACKEND_SERVICE_URL);
-      // 動的環境設定（インライン）
-      (function() {
-        const isLocalhost = window.location.hostname === 'localhost' || 
-                           window.location.hostname === '127.0.0.1' ||
-                           window.location.hostname.includes('localhost');
-        
-        const isAzureStaticWebApp = window.location.hostname.includes('azurestaticapps.net');
-        
-        // 環境別設定
-        let config;
-        
-        if (isLocalhost) {
-          // ローカル開発環境: ホットリロード統合サーバー使用
-          config = {
-            "API_BASE_URL": "http://localhost:8080/api",
-            "CORS_ALLOW_ORIGINS": "http://localhost:5173,http://localhost:8080",
-            "ENVIRONMENT": "development"
-          };
-        } else if (isAzureStaticWebApp) {
-          // Azure Static Web Apps: 外部バックエンドに直接リクエスト
-          // 環境変数からバックエンドURLを取得（ビルド時に埋め込まれる）
-          // API_BASE_URLには/apiを含めない（buildApiUrlで追加されるため）
-          const backendUrl = window.BACKEND_SERVICE_URL || '';
-          config = {
-            "API_BASE_URL": backendUrl || "",
-            "CORS_ALLOW_ORIGINS": window.location.origin,
-            "ENVIRONMENT": "production"
-          };
-        } else {
-          // その他の環境: Static Web App統合Functions使用
-          config = {
-            "API_BASE_URL": "/api",
-            "CORS_ALLOW_ORIGINS": "*",
-            "ENVIRONMENT": "production"
-          };
-        }
-        
-        console.log('🔧 Runtime Config Applied:', {
-          hostname: window.location.hostname,
-          environment: config.ENVIRONMENT,
-          "API_BASE_URL": config.API_BASE_URL,
-        });
-        
-        window.runtimeConfig = config;
-      })();
-    </script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+    " />
+  <!-- Runtime configuration -->
+  <script>
+    // バックエンドURLの設定（デプロイ時に埋め込まれる）
+    // この値はデプロイワークフローで自動的に置換されます
+    // PLACEHOLDER_BACKEND_SERVICE_URL はデプロイ時に実際のURLに置換されます
+    window.BACKEND_SERVICE_URL = 'https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net';
+    console.log('🔧 Initial BACKEND_SERVICE_URL:', window.BACKEND_SERVICE_URL);
+    // 動的環境設定（インライン）
+    (function () {
+      const isLocalhost = window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname.includes('localhost');
+
+      const isAzureStaticWebApp = window.location.hostname.includes('azurestaticapps.net');
+
+      // 環境別設定
+      let config;
+
+      if (isLocalhost) {
+        // ローカル開発環境: ホットリロード統合サーバー使用
+        config = {
+          "API_BASE_URL": "http://localhost:8080/api",
+          "CORS_ALLOW_ORIGINS": "http://localhost:5173,http://localhost:8080",
+          "ENVIRONMENT": "development"
+        };
+      } else if (isAzureStaticWebApp) {
+        // Azure Static Web Apps: 外部バックエンドに直接リクエスト
+        // 環境変数からバックエンドURLを取得（ビルド時に埋め込まれる）
+        // API_BASE_URLには/apiを含める（完全なAPIエンドポイントURL）
+        const backendUrl = window.BACKEND_SERVICE_URL || '';
+        config = {
+          "API_BASE_URL": (backendUrl && backendUrl !== 'PLACEHOLDER_BACKEND_SERVICE_URL')
+            ? backendUrl + "/api"
+            : "https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net/api",
+          "CORS_ALLOW_ORIGINS": window.location.origin,
+          "ENVIRONMENT": "production"
+        };
+      } else {
+        // その他の環境: Static Web App統合Functions使用
+        config = {
+          "API_BASE_URL": "/api",
+          "CORS_ALLOW_ORIGINS": "*",
+          "ENVIRONMENT": "production"
+        };
+      }
+
+      console.log('🔧 Runtime Config Applied:', {
+        hostname: window.location.hostname,
+        environment: config.ENVIRONMENT,
+        "API_BASE_URL": config.API_BASE_URL,
+      });
+
+      window.runtimeConfig = config;
+    })();
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>
