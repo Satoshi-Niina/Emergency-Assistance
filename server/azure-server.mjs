@@ -446,8 +446,11 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    // データベース接続がない場合はエラー
-    if (!dbPool) {
+    // データベースバイパスモードの確認
+    const bypassDb = process.env.BYPASS_DB_FOR_LOGIN === 'true';
+
+    // データベース接続がない場合はエラー（バイパスモード以外）
+    if (!dbPool && !bypassDb) {
       console.error('[auth/login] Database pool not initialized');
       console.error('[auth/login] Environment variables check:');
       console.error('  - DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
@@ -458,6 +461,44 @@ app.post('/api/auth/login', async (req, res) => {
         success: false,
         error: 'database_unavailable',
         message: 'データベース接続が利用できません'
+      });
+    }
+
+    // バイパスモード: データベースなしでダミーログイン
+    if (bypassDb || !dbPool) {
+      console.log('[auth/login] バイパスモードでログイン:', { username });
+
+      // ダミーユーザー情報
+      const dummyUser = {
+        id: 1,
+        username: username,
+        role: 'admin',
+        display_name: `テストユーザー (${username})`,
+        department: 'システム管理'
+      };
+
+      // セッション設定
+      req.session.userId = dummyUser.id;
+      req.session.username = dummyUser.username;
+      req.session.role = dummyUser.role;
+      req.session.displayName = dummyUser.display_name;
+
+      console.log('[auth/login] バイパスログイン成功:', {
+        userId: dummyUser.id,
+        username: dummyUser.username,
+        role: dummyUser.role
+      });
+
+      return res.json({
+        success: true,
+        message: 'ログインしました（バイパスモード）',
+        user: {
+          id: dummyUser.id,
+          username: dummyUser.username,
+          role: dummyUser.role,
+          display_name: dummyUser.display_name,
+          department: dummyUser.department
+        }
       });
     }
 
