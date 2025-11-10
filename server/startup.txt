@@ -1,10 +1,13 @@
 # Azure App Service Startup Configuration
-# This file is automatically read by Azure App Service for Node.js applications
+# Windows Web App - Node.js Application
 
-# Primary startup command for Azure App Service
+# Primary startup command (CommonJS wrapper -> ES Module)
 node app.js
 
-# Alternative startup commands (commented out):
+# Fallback startup commands (if primary fails):
 # npm start
 # node server.js
 # node azure-server.js
+
+# Debug startup command:
+# node --inspect app.js

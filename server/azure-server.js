@@ -4,11 +4,19 @@
 // Windows/Linux環境で確実に動作する最小限のサーバー
 
 // Azure App Service environment setup
-console.log('🚀 Azure Server Starting...');
+console.log('🚀 Azure Server Starting (ES Module)...');
 console.log('📍 Working directory:', process.cwd());
 console.log('🗂️ __filename equivalent:', import.meta.url);
 console.log('🌍 Environment:', process.env.NODE_ENV || 'production');
 console.log('🔌 Port:', process.env.PORT || 'not set');
+
+// Azure App Service specific environment variables
+console.log('📋 Azure Environment Variables:');
+console.log('   WEBSITE_SITE_NAME:', process.env.WEBSITE_SITE_NAME || 'not set');
+console.log('   WEBSITE_RESOURCE_GROUP:', process.env.WEBSITE_RESOURCE_GROUP || 'not set');
+console.log('   WEBSITE_OWNER_NAME:', process.env.WEBSITE_OWNER_NAME || 'not set');
+console.log('   SCM_COMMIT_ID:', process.env.SCM_COMMIT_ID || 'not set');
+console.log('   WEBSITE_HOSTNAME:', process.env.WEBSITE_HOSTNAME || 'not set');
 
 import express from 'express';
 import path, { join } from 'path';

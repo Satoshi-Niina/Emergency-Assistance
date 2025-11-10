@@ -10,8 +10,9 @@
   },
   "scripts": {
     "start": "node app.js",
-    "start:server": "node server.js",
+    "start:fallback": "node server.js",
     "start:direct": "node azure-server.js",
+    "start:debug": "node --inspect app.js",
     "dev": "cross-env NODE_ENV=development PORT=8000 node azure-server.js",
     "build": "echo Build step completed",
     "test": "echo No tests specified"
