@@ -1391,6 +1391,127 @@ app.get('/api/settings/rag', (req, res) => {
   });
 });
 
+// AI支援設定API
+app.get('/api/ai-assist/settings', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      enabled: true,
+      autoSuggestions: true,
+      model: 'gpt-3.5-turbo',
+      temperature: 0.7,
+      maxTokens: 1000
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.post('/api/ai-assist/settings', (req, res) => {
+  res.json({
+    success: true,
+    message: 'AI支援設定を更新しました',
+    data: req.body,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// RAG設定API(別エンドポイント)
+app.get('/api/config/rag', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      enabled: false,
+      model: 'gpt-3.5-turbo',
+      temperature: 0.7,
+      maxTokens: 1000,
+      message: 'RAG設定は本番環境では無効です'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// ナレッジベース統計API
+app.get('/api/knowledge-base/stats', async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: {
+        totalDocuments: 0,
+        totalSize: 0,
+        lastUpdated: new Date().toISOString()
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'ナレッジベース統計の取得に失敗しました',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 管理画面ダッシュボードAPI
+app.get('/api/admin/dashboard', async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: {
+        totalUsers: 0,
+        totalChats: 0,
+        totalMachines: 0,
+        recentActivity: []
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'ダッシュボードデータの取得に失敗しました',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// エクスポートファイル一覧API
+app.get('/api/history/export-files', async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: [],
+      message: 'エクスポートファイルはありません',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'エクスポートファイル一覧の取得に失敗しました',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// フィルターデータ取得API
+app.get('/api/history/exports/filter-data', async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: {
+        machineTypes: [],
+        machineNumbers: [],
+        userNames: []
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'フィルターデータの取得に失敗しました',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // 21. チャット履歴保存API
 app.post('/api/chat-history', (req, res) => {
   const { messages, chatId, machineType, machineNumber } = req.body;
