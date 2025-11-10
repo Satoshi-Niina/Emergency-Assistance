@@ -1,7 +1,6 @@
 {
   "name": "emergency-assistance-server",
   "version": "1.0.3",
-  "type": "module",
   "main": "app.js",
   "description": "Emergency Assistance System - Azure App Service Backend",
   "engines": {
@@ -11,9 +10,9 @@
   "scripts": {
     "start": "node app.js",
     "start:fallback": "node server.js",
-    "start:direct": "node azure-server.js",
+    "start:direct": "node azure-server.mjs",
     "start:debug": "node --inspect app.js",
-    "dev": "cross-env NODE_ENV=development PORT=8000 node azure-server.js",
+    "dev": "cross-env NODE_ENV=development PORT=8000 node azure-server.mjs",
     "build": "echo Build step completed",
     "test": "echo No tests specified"
   },

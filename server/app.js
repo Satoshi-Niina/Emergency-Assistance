@@ -22,13 +22,13 @@ process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 
 async function startServer() {
     try {
-        const serverPath = path.join(__dirname, 'azure-server.js');
+        const serverPath = path.join(__dirname, 'azure-server.mjs');
 
         console.log('🎯 Target server file:', serverPath);
 
-        // Check if azure-server.js exists
+        // Check if azure-server.mjs exists
         if (!fs.existsSync(serverPath)) {
-            console.error('❌ ERROR: azure-server.js not found at:', serverPath);
+            console.error('❌ ERROR: azure-server.mjs not found at:', serverPath);
             console.error('📁 Files in current directory:');
             try {
                 const files = fs.readdirSync(__dirname);
@@ -46,7 +46,7 @@ async function startServer() {
 
         // Direct dynamic import of ES Module - maintains ESModules architecture
         // This approach keeps the azure-server.js as ES Module while providing CommonJS compatibility
-        const serverModule = await import('./azure-server.js');
+        const serverModule = await import('./azure-server.mjs');
 
         console.log('✅ ES Module azure-server.js loaded successfully');
         console.log('🎉 Server should be starting now...');
@@ -55,7 +55,7 @@ async function startServer() {
         console.log('🔄 Keeping wrapper process alive for Azure App Service...');
 
     } catch (error) {
-        console.error('❌ Failed to load azure-server.js ES Module:', error);
+        console.error('❌ Failed to load azure-server.mjs ES Module:', error);
         console.error('📋 Error details:', {
             name: error.name,
             message: error.message,
