@@ -220,7 +220,17 @@ if (isDevelopment) {
       .then(response => {
         if (response.ok) {
           response.text().then(text => {
-            res.set(response.headers);
+            // ヘッダーを安全に設定する
+            response.headers.forEach((value, key) => {
+              try {
+                // 特定のヘッダーのみを転送し、有効な値のみを設定
+                if (key.toLowerCase() === 'content-type' && value && typeof value === 'string') {
+                  res.set(key, value);
+                }
+              } catch (headerError) {
+                console.warn(`Header setting error for ${key}:`, headerError.message);
+              }
+            });
             res.send(text);
           });
         } else {
@@ -650,11 +660,17 @@ apiRouter.get('/machines/machine-types', async (req, res) => {
 
     if (dbPool) {
       try {
-        const result = await dbPool.query(`
-          SELECT id, machine_type_name as machine_type_name
-          FROM machine_types
-          ORDER BY machine_type_name
-        `);
+        // タイムアウトを短くしてすぐにフォールバックする
+        const result = await Promise.race([
+          dbPool.query(`
+            SELECT id, machine_type_name as machine_type_name
+            FROM machine_types
+            ORDER BY machine_type_name
+          `),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Database query timeout')), 3000)
+          )
+        ]);
 
         return res.json({
           success: true,
@@ -663,10 +679,12 @@ apiRouter.get('/machines/machine-types', async (req, res) => {
           timestamp: new Date().toISOString()
         });
       } catch (dbError) {
-        console.error('Database error:', dbError.message);
+        console.error('Database error, falling back to dummy data:', dbError.message);
+        // データベースエラーの場合はダミーデータにフォールバック
       }
     }
 
+    console.log('📋 データベース接続なし、ダミーデータを返します');
     const dummyData = [
       { id: '1', machine_type_name: 'MT-100' },
       { id: '2', machine_type_name: 'MR-400' },

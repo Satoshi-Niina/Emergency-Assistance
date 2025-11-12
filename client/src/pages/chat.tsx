@@ -217,7 +217,7 @@ export default function ChatPage() {
       // 統一API設定を使用
       const { buildApiUrl } = await import('../lib/api-unified');
       const apiUrl = buildApiUrl('/knowledge-base/process');
-      
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -425,9 +425,9 @@ export default function ChatPage() {
       setIsLoadingMachineTypes(true);
       console.log('🔍 機種一覧取得開始');
 
-        // 統一API設定を使用
-        const { buildApiUrl } = await import('../lib/api-unified');
-        const apiUrl = buildApiUrl('/machines/machine-types');
+      // 統一API設定を使用
+      const { buildApiUrl } = await import('../lib/api-unified');
+      const apiUrl = buildApiUrl('/machines/machine-types');
       console.log('🔍 機種一覧取得URL:', apiUrl);
       console.log('🔍 現在のURL:', window.location.href);
       console.log('🔍 環境変数:', {
@@ -458,13 +458,13 @@ export default function ChatPage() {
           const typesData = result.machineTypes || result.data || [];
           console.log('✅ 機種一覧設定完了:', typesData.length, '件');
           console.log('✅ 機種データ:', typesData);
-          
+
           // データ形式を統一（machine_type_nameフィールドに統一）
           const formattedData = typesData.map((type: any) => ({
             id: type.id,
             machine_type_name: type.name || type.machine_type_name || type.category
           }));
-          
+
           setMachineTypes(formattedData);
           setFilteredMachineTypes(formattedData); // 初期表示用にも設定
 
@@ -563,7 +563,7 @@ export default function ChatPage() {
       setMachineNumberInput('');
       setMachines([]);
       setFilteredMachines([]);
-      
+
       // 警告メッセージのrefをリセット（機種が変更されたため）
       lastWarningMessageRef.current = null;
 
@@ -589,13 +589,13 @@ export default function ChatPage() {
       selectedMachineNumberRef.current = machine.id; // refも更新
       setMachineNumberInput(machine.machine_number);
       setShowMachineNumberSuggestions(false);
-      
+
       // 機種・機械番号が両方入力された場合は警告メッセージのrefをリセット
       // refとstateの両方を確認
       const hasMachineType = (selectedMachineTypeRef.current && selectedMachineTypeRef.current.trim() !== '') ||
-                             (selectedMachineType && selectedMachineType.trim() !== '');
+        (selectedMachineType && selectedMachineType.trim() !== '');
       const hasMachineNumber = machine.id && machine.id.trim() !== '';
-      
+
       if (hasMachineType && hasMachineNumber) {
         lastWarningMessageRef.current = null;
         console.log('✅ 機種・機械番号が両方入力されました。警告メッセージをリセットします。', {
@@ -643,13 +643,13 @@ export default function ChatPage() {
             const machinesData = result.machines || result.data || [];
             console.log('✅ 機械番号一覧設定完了:', machinesData.length, '件');
             console.log('✅ 機械番号データ:', machinesData);
-            
+
             // データ形式を統一（machine_numberフィールドに統一）
             const formattedMachines = machinesData.map((machine: any) => ({
               id: machine.id,
               machine_number: machine.machine_number
             }));
-            
+
             setMachines(formattedMachines);
             setFilteredMachines(formattedMachines); // 初期表示用
 
@@ -776,7 +776,7 @@ export default function ChatPage() {
         try {
           // AI支援設定を読み込み（結果を待つ）
           const loadedSettings = await loadAiAssistSettings();
-          
+
           // AI支援モードを開始
           setAiSupportMode(true);
           setAiSupportStartTime(new Date());
@@ -872,19 +872,19 @@ export default function ChatPage() {
   // AI支援時間表示とエスカレーション機能のためのuseEffect
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    
+
     if (aiSupportMode && aiSupportStartTime) {
       interval = setInterval(() => {
         const now = new Date();
         const elapsed = Math.floor((now.getTime() - aiSupportStartTime.getTime()) / 1000);
         setElapsedTime(elapsed);
-        
+
         // エスカレーション時間をチェック（カスタム設定対応）
         const elapsedMinutes = Math.floor(elapsed / 60);
-        if (aiAssistSettings.enableEmergencyContact && 
-            elapsedMinutes >= aiAssistSettings.escalationTime && 
-            elapsedMinutes % 5 === 0) { // 5分ごとに通知
-          
+        if (aiAssistSettings.enableEmergencyContact &&
+          elapsedMinutes >= aiAssistSettings.escalationTime &&
+          elapsedMinutes % 5 === 0) { // 5分ごとに通知
+
           const escalationMessage = {
             id: Date.now().toString(),
             content: `🚨 **救援要請の検討**\n\nAI支援開始から${elapsedMinutes}分が経過しました。\n\n**技術支援センター:**\n📞 0123-456-789\n\n**または**\n現場の専門家に連絡することをお勧めします。\n\n安全を最優先に行動してください。`,
@@ -897,7 +897,7 @@ export default function ChatPage() {
         }
       }, 1000);
     }
-    
+
     return () => {
       if (interval) {
         clearInterval(interval);
@@ -910,7 +910,7 @@ export default function ChatPage() {
     try {
       // AI支援設定を読み込み（結果を待つ）
       const loadedSettings = await loadAiAssistSettings();
-      
+
       // AI支援モードを開始
       setAiSupportMode(true);
       setAiSupportStartTime(new Date());
@@ -1092,13 +1092,13 @@ export default function ChatPage() {
 
       // 統一API設定を使用してサーバーに送信
       const { buildApiUrl } = await import('../lib/api-unified');
-      
+
       // 環境に応じてエンドポイントを選択
       const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost';
-      const endpoint = isDevelopment 
+      const endpoint = isDevelopment
         ? `/chats/${chatId}/send-test`  // 開発環境ではテスト用エンドポイント
         : `/chats/${chatId}/send`;      // 本番環境では本番用エンドポイント
-      
+
       const apiUrl = buildApiUrl(endpoint);
 
       console.log('🌐 送信URL:', apiUrl);
@@ -1142,7 +1142,7 @@ export default function ChatPage() {
         console.log('✅ サーバー送信成功:', result);
 
         // ナレッジベース自動更新の情報を含む成功メッセージ
-        const knowledgeUpdateInfo = result.knowledgeUpdateScheduled 
+        const knowledgeUpdateInfo = result.knowledgeUpdateScheduled
           ? ' ナレッジベースに自動追加されます。'
           : '';
 
@@ -1165,14 +1165,19 @@ export default function ChatPage() {
         // 送信完了後にチャットをクリア
         await clearChatHistory();
 
-        // 機種と機械番号の選択状態もリセット
+        // 機種と機械番号の選択状態のみリセット（選択肢データは保持）
         setSelectedMachineType('');
         selectedMachineTypeRef.current = '';
         setSelectedMachineNumber('');
         selectedMachineNumberRef.current = '';
         setMachineTypeInput('');
         setMachineNumberInput('');
-        setFilteredMachineTypes([]);
+        // 選択肢データは保持するため、filteredMachineTypes と filteredMachines はクリアしない
+        // setFilteredMachineTypes([]); // コメントアウト
+        // setFilteredMachines([]);     // コメントアウト
+
+        // 機械番号は機種選択後に再取得されるため、一旦クリア
+        setMachines([]);
         setFilteredMachines([]);
         lastWarningMessageRef.current = null;
 
@@ -1262,18 +1267,18 @@ export default function ChatPage() {
     try {
       setIsLoadingGuides(true);
       console.log('🔄 応急処置ガイド一覧取得開始');
-      
+
       // キャッシュ無効化のためにタイムスタンプを追加
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2);
       const cacheBuster = `?ts=${timestamp}&r=${randomId}`;
-      
+
       // 統一API設定を使用 - emergency-flow APIを使用
       const { buildApiUrl } = await import('../lib/api-unified');
       const apiUrl = buildApiUrl(`/emergency-flow/list${cacheBuster}`);
-      
+
       console.log('🌐 API URL:', apiUrl);
-      
+
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
@@ -1289,13 +1294,13 @@ export default function ChatPage() {
       if (response.ok) {
         const data = await response.json();
         console.log('📊 取得したデータ:', data);
-        
+
         if (data.success) {
           const guides = data.data || [];
           setAvailableGuides(guides);
           setFilteredGuides(guides);
           console.log('✅ 応急処置ガイド取得成功:', guides.length + '件');
-          
+
           // デバッグ用：各ガイドの詳細をログ出力
           guides.forEach((guide: any, index: number) => {
             console.log(`📋 ガイド ${index + 1}:`, {
@@ -1398,7 +1403,7 @@ export default function ChatPage() {
       // 統一API設定を使用してトラブルシューティングQA APIを呼び出し
       const { buildApiUrl } = await import('../lib/api-unified');
       const apiUrl = buildApiUrl('/troubleshooting-qa/start');
-      
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -1461,7 +1466,7 @@ export default function ChatPage() {
       // 統一API設定を使用してトラブルシューティングQA APIを呼び出し
       const { buildApiUrl } = await import('../lib/api-unified');
       const apiUrl = buildApiUrl('/troubleshooting-qa/answer');
-      
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -1531,31 +1536,31 @@ export default function ChatPage() {
       const refMachineNumber = selectedMachineNumberRef.current;
       const stateMachineType = selectedMachineType;
       const stateMachineNumber = selectedMachineNumber;
-      
+
       // refとstateの両方を確認し、どちらかが有効な値を持っているかを確認
       // refが優先、なければstateを使用
       // 機種は、selectedMachineType（ID）またはmachineTypeInput（表示値）のどちらかがあればOK
       const currentMachineType = (refMachineType && refMachineType.trim() !== '' && refMachineType !== 'null' && refMachineType !== 'undefined')
-        ? refMachineType 
+        ? refMachineType
         : (stateMachineType && stateMachineType.trim() !== '' && stateMachineType !== 'null' && stateMachineType !== 'undefined')
-          ? stateMachineType 
+          ? stateMachineType
           : (machineTypeInput && machineTypeInput.trim() !== '')
             ? machineTypeInput.trim()
             : '';
-      
+
       // 機械番号は、selectedMachineNumber（ID）またはmachineNumberInput（表示値）のどちらかがあればOK
       const currentMachineNumber = (refMachineNumber && refMachineNumber.trim() !== '' && refMachineNumber !== 'null' && refMachineNumber !== 'undefined')
-        ? refMachineNumber 
+        ? refMachineNumber
         : (stateMachineNumber && stateMachineNumber.trim() !== '' && stateMachineNumber !== 'null' && stateMachineNumber !== 'undefined')
-          ? stateMachineNumber 
+          ? stateMachineNumber
           : (machineNumberInput && machineNumberInput.trim() !== '')
             ? machineNumberInput.trim()
             : '';
-      
+
       // 最終的な判定（空文字列でないことを確認）
       const hasMachineType = currentMachineType !== '';
       const hasMachineNumber = currentMachineNumber !== '';
-      
+
       console.log('🔍 機種・機械番号チェック:', {
         refMachineType,
         refMachineNumber,
@@ -1568,7 +1573,7 @@ export default function ChatPage() {
         hasMachineType,
         hasMachineNumber
       });
-      
+
       // ユーザーメッセージを先に追加（常に表示する）
       const userMessage = {
         id: Date.now().toString(),
@@ -1591,13 +1596,13 @@ export default function ChatPage() {
         // 機種・機械番号が入力されていない場合の警告メッセージ（連続表示を防ぐ）
         const warningContent = '機種及び機械番号を選択入力してください！';
         const currentTime = Date.now();
-        
+
         // 前回の警告メッセージから5秒以上経過している場合のみ表示
-        const lastWarningTime = lastWarningMessageRef.current 
-          ? parseInt(lastWarningMessageRef.current) 
+        const lastWarningTime = lastWarningMessageRef.current
+          ? parseInt(lastWarningMessageRef.current)
           : 0;
         const timeSinceLastWarning = currentTime - lastWarningTime;
-        
+
         if (timeSinceLastWarning > 5000) {
           lastWarningMessageRef.current = currentTime.toString();
           const warningMessage = {
@@ -1614,7 +1619,7 @@ export default function ChatPage() {
         }
         return; // GPT応答を生成せずに終了
       }
-      
+
       // 機種・機械番号が入力されている場合は、警告メッセージのrefをリセット
       lastWarningMessageRef.current = null;
       console.log('✅ 機種・機械番号が入力されています。GPT応答を生成します。');
@@ -1631,7 +1636,7 @@ export default function ChatPage() {
 
       // GPTにリクエストを送信してAI応答を生成
       const aiResponse = await generateAiSupportResponse(content, conversationHistory);
-      
+
       // AI応答メッセージを追加
       const aiMessage = {
         id: (Date.now() + 1).toString(),
@@ -1645,7 +1650,7 @@ export default function ChatPage() {
 
     } catch (error) {
       console.error('AI支援メッセージ処理エラー:', error);
-      
+
       // エラー時のフォールバック応答
       const errorMessage = {
         id: (Date.now() + 1).toString(),
@@ -1654,9 +1659,9 @@ export default function ChatPage() {
         timestamp: new Date(),
         type: 'ai_support_response',
       };
-      
+
       setMessages(prev => [...prev, errorMessage]);
-      
+
       toast({
         title: 'エラー',
         description: 'AI支援の応答生成に失敗しました',
@@ -1684,12 +1689,12 @@ export default function ChatPage() {
         aiAssistSettings.questionFlow.step4,
         aiAssistSettings.questionFlow.step5
       ];
-      
+
       const fallbackQuestion = fallbackQuestions[emergencyStep % fallbackQuestions.length];
-      
+
       // ステップの更新
       updateEmergencyStep(userInput, fallbackQuestion);
-      
+
       return applyConversationStyle(fallbackQuestion);
     } catch (_error) {
       return '申し訳ございません。現在AI支援の応答を生成できません。しばらく時間をおいてから再度お試しください。';
@@ -1699,7 +1704,7 @@ export default function ChatPage() {
   // カスタム設定に基づく質問を取得
   const getCustomQuestion = (userInput: string, step: number): string | null => {
     const lowerInput = userInput.toLowerCase();
-    
+
     // ステップに応じてカスタム質問を返す
     switch (step) {
       case 0:
@@ -1708,8 +1713,8 @@ export default function ChatPage() {
         return aiAssistSettings.questionFlow.step2;
       case 2:
         // 分岐条件をチェック
-        if (aiAssistSettings.branchingConditions.timeCheck && 
-            (lowerInput.includes('急') || lowerInput.includes('すぐ'))) {
+        if (aiAssistSettings.branchingConditions.timeCheck &&
+          (lowerInput.includes('急') || lowerInput.includes('すぐ'))) {
           return '時間はありますか？';
         }
         return aiAssistSettings.questionFlow.step3;
@@ -1748,14 +1753,14 @@ export default function ChatPage() {
   // ハードコードされた質問を取得
   const getHardcodedQuestion = (userInput: string, step: number, problemType: string): string | null => {
     const lowerInput = userInput.toLowerCase();
-    
+
     console.log('🔍 getHardcodedQuestion:', {
       userInput,
       lowerInput,
       step,
       problemType
     });
-    
+
     // エンジン回転上昇しない問題の質問リスト
     if (problemType === 'engine_rpm' || lowerInput.includes('エンジン') && lowerInput.includes('回転')) {
       const questions = [
@@ -1764,7 +1769,7 @@ export default function ChatPage() {
         "アクセルレバーを指で押して動きますか？",
         "アクセルレバーを押した時、エンジン回転が上昇しますか？"
       ];
-      
+
       if (step < questions.length) {
         console.log('✅ ハードコード質問選択:', questions[step]);
         return questions[step];
@@ -1774,7 +1779,7 @@ export default function ChatPage() {
         return "応急処置完了です。";
       }
     }
-    
+
     // エンジン始動しない問題の質問リスト
     if (problemType === 'engine_start' || lowerInput.includes('エンジン') && lowerInput.includes('かからない')) {
       const questions = [
@@ -1783,7 +1788,7 @@ export default function ChatPage() {
         "バッテリー電圧は正常ですか？",
         "スターターモーターは回りますか？"
       ];
-      
+
       if (step < questions.length) {
         console.log('✅ ハードコード質問選択:', questions[step]);
         return questions[step];
@@ -1793,12 +1798,12 @@ export default function ChatPage() {
         return "応急処置完了です。";
       }
     }
-    
+
     // その他の問題
     if (step === 0) {
       return "応急処置する時間がありますか？";
     }
-    
+
     // デフォルトの質問リスト（確実に質問を返す）
     const defaultQuestions = [
       "応急処置する時間がありますか？",
@@ -1806,7 +1811,7 @@ export default function ChatPage() {
       "他に症状はありますか？",
       "応急処置を試してみてください"
     ];
-    
+
     return defaultQuestions[step % defaultQuestions.length];
   };
 
@@ -1814,14 +1819,14 @@ export default function ChatPage() {
   const updateEmergencyStep = (userInput: string, aiResponse: string) => {
     const lowerInput = userInput.toLowerCase();
     const lowerResponse = aiResponse.toLowerCase();
-    
+
     console.log('🔍 updateEmergencyStep:', {
       userInput,
       lowerInput,
       currentStep: emergencyStep,
       currentProblemType: problemType
     });
-    
+
     // 問題タイプの設定（初回のみ）
     if (emergencyStep === 0 && !problemType) {
       if (lowerInput.includes('エンジン') && lowerInput.includes('回転')) {
@@ -1834,19 +1839,19 @@ export default function ChatPage() {
         setProblemType('general');
       }
     }
-    
+
     // ユーザーの回答に基づくステップ進行（より確実に）
     console.log('🔄 Processing user input for step progression:', lowerInput);
-    
+
     // 完了・困難・退避の場合はリセット
-    if (lowerInput.includes('完了') || lowerInput.includes('困難') || lowerInput.includes('退避') || 
-        lowerInput.includes('変わらない') || lowerInput.includes('変化なし')) {
+    if (lowerInput.includes('完了') || lowerInput.includes('困難') || lowerInput.includes('退避') ||
+      lowerInput.includes('変わらない') || lowerInput.includes('変化なし')) {
       console.log('🔄 Resetting due to completion/difficulty');
       setEmergencyStep(0);
       setProblemType('');
       return;
     }
-    
+
     // その他の場合は確実にステップを進める
     console.log('🔄 Advancing step from', emergencyStep, 'to', emergencyStep + 1);
     setEmergencyStep(prev => prev + 1);
@@ -1903,28 +1908,28 @@ export default function ChatPage() {
       // 統一API設定を使用
       const { buildApiUrl } = await import('../lib/api-unified');
       const apiUrl = buildApiUrl('/chatgpt');
-      
+
       // 会話履歴から経過時間を計算
-      const startTime = conversationHistory.find(msg => 
+      const startTime = conversationHistory.find(msg =>
         msg.type === 'ai_support'
       )?.timestamp;
-      
-      const elapsedMinutes = startTime ? 
+
+      const elapsedMinutes = startTime ?
         Math.floor((Date.now() - new Date(startTime).getTime()) / (1000 * 60)) : 0;
-      
+
       // 時間制限チェック（20分）
       if (elapsedMinutes >= 20) {
         return `⏰ 診断時間が20分を超えました。\n\n技術支援センターへの救援要請をお勧めします：\n📞 技術支援センター: 0123-456-789\n\nお疲れ様でした！また何かお困りのことがあれば、いつでもお声がけください。`;
       }
-      
+
       // 会話履歴を構築（ナレッジベース検索用のコンテキストとして使用）
       const conversationContext = conversationHistory
         .slice(-6) // 直近6件の履歴を使用
         .map(msg => `${msg.isAiResponse ? 'AI' : 'ユーザー'}: ${msg.content}`)
         .join('\n');
-      
+
       // ユーザーメッセージと会話履歴を組み合わせたプロンプト
-      const enhancedPrompt = conversationContext 
+      const enhancedPrompt = conversationContext
         ? `【これまでの会話】\n${conversationContext}\n\n【現在の質問】\n${userMessage}`
         : userMessage;
 
@@ -1956,10 +1961,10 @@ export default function ChatPage() {
 
       const data = await response.json();
       let aiResponse = data.response || '申し訳ございません。現在AI支援の応答を生成できません。';
-      
+
       // 会話スタイルを適用
       aiResponse = applyConversationStyle(aiResponse);
-      
+
       // 応答パターンに応じて調整
       if (aiAssistSettings.responsePattern === 'minimal') {
         // 最小限表示：要点のみ簡潔に
@@ -1971,21 +1976,21 @@ export default function ChatPage() {
         // 段階的表示（デフォルト）：1問1答形式を維持
         // 既に1問1答形式なので、そのまま
       }
-      
+
       // カスタム指示を適用
       if (aiAssistSettings.customInstructions) {
         // カスタム指示があれば、応答の最後に追加（必要に応じて）
         // ただし、1問1答形式を維持するため、ここでは適用しない
       }
-      
+
       // フレンドリーな言い回しに調整
       aiResponse = makeFriendlyResponse(aiResponse);
-      
+
       // 時間制限の警告を追加（15分経過時）
       if (elapsedMinutes >= 15 && elapsedMinutes < 20) {
         aiResponse += `\n\n⏰ 診断開始から${elapsedMinutes}分経過しています。あと5分で技術支援センターへの救援要請をお勧めします。`;
       }
-      
+
       return aiResponse;
     } catch (error) {
       console.error('AI支援応答生成エラー:', error);
@@ -1997,20 +2002,20 @@ export default function ChatPage() {
   const makeFriendlyResponse = (response: string): string => {
     // テキストをクリーンアップ
     let cleanResponse = response.trim();
-    
+
     // 複数の質問がある場合は最初の質問のみを抽出
     const questionMarks = cleanResponse.split('？');
     if (questionMarks.length > 1) {
       cleanResponse = questionMarks[0] + '？';
     }
-    
+
     // 改行で分割して最初の質問のみを取得
     const lines = cleanResponse.split('\n');
     for (const line of lines) {
       const trimmedLine = line.trim();
       if (trimmedLine && (
-        trimmedLine.includes('？') || 
-        trimmedLine.includes('ですか') || 
+        trimmedLine.includes('？') ||
+        trimmedLine.includes('ですか') ||
         trimmedLine.includes('ますか') ||
         trimmedLine.includes('ありますか') ||
         trimmedLine.includes('でしょうか')
@@ -2019,12 +2024,12 @@ export default function ChatPage() {
         break;
       }
     }
-    
+
     // 長すぎる場合は短縮
     if (cleanResponse.length > 100) {
       cleanResponse = cleanResponse.substring(0, 100);
     }
-    
+
     // 硬い表現をフレンドリーに変更
     const friendlyReplacements = [
       { from: /確認してください/g, to: '確認してみてくださいね' },
@@ -2036,12 +2041,12 @@ export default function ChatPage() {
       { from: /です。/g, to: 'ですね。' },
       { from: /ます。/g, to: 'ますね。' },
     ];
-    
+
     let friendlyResponse = cleanResponse;
     friendlyReplacements.forEach(({ from, to }) => {
       friendlyResponse = friendlyResponse.replace(from, to);
     });
-    
+
     return friendlyResponse;
   };
 
@@ -2097,23 +2102,27 @@ export default function ChatPage() {
       setTroubleshootingMode(false);
       setTroubleshootingSession(null);
       setAiSupportMode(false);
-      
-      // 機種・機械番号もクリア
+
+      // 機種・機械番号の選択状態のみクリア（選択肢データは保持）
       setSelectedMachineType('');
       selectedMachineTypeRef.current = '';
       setSelectedMachineNumber('');
       selectedMachineNumberRef.current = '';
       setMachineTypeInput('');
       setMachineNumberInput('');
+      // 機種の選択肢データは保持（ユーザーが再選択できるように）
+      // setFilteredMachineTypes([]); // 削除：機種の選択肢は保持
+
+      // 機械番号は機種選択後に再取得されるため、クリア
       setMachines([]);
       setFilteredMachines([]);
-      
+
       // AI支援モードの初期化フラグもリセット
       aiSupportInitializedRef.current = false;
       machineInfoMessageSentRef.current = false;
       initialPromptSentRef.current = false;
       lastWarningMessageRef.current = null;
-      
+
       toast({
         title: '成功',
         description: 'チャット履歴をクリアしました',
@@ -2281,8 +2290,8 @@ export default function ChatPage() {
             <div className='relative'>
               <TooltipProvider>
                 <Tooltip open={
-                  aiSupportMode && 
-                  !selectedMachineTypeRef.current && 
+                  aiSupportMode &&
+                  !selectedMachineTypeRef.current &&
                   !selectedMachineType &&
                   !machineTypeInput.trim()
                 }>
@@ -2402,9 +2411,9 @@ export default function ChatPage() {
             <div className='relative'>
               <TooltipProvider>
                 <Tooltip open={
-                  aiSupportMode && 
+                  aiSupportMode &&
                   (selectedMachineTypeRef.current || selectedMachineType) &&
-                  !selectedMachineNumberRef.current && 
+                  !selectedMachineNumberRef.current &&
                   !selectedMachineNumber &&
                   !machineNumberInput.trim()
                 }>
@@ -2553,13 +2562,12 @@ export default function ChatPage() {
 
           {/* 時間表示（AI支援モードが有効な時のみ表示） */}
           {aiSupportMode && (
-            <div className={`px-4 py-2 rounded-lg border text-sm font-medium ${
-              getTimeWarningLevel(elapsedTime) === 'critical'
+            <div className={`px-4 py-2 rounded-lg border text-sm font-medium ${getTimeWarningLevel(elapsedTime) === 'critical'
                 ? 'bg-red-100 text-red-800 border-red-200'
                 : getTimeWarningLevel(elapsedTime) === 'warning'
-                ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
-                : 'bg-green-100 text-green-800 border-green-200'
-            }`}>
+                  ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                  : 'bg-green-100 text-green-800 border-green-200'
+              }`}>
               <div className='flex items-center gap-2'>
                 <span>⏰</span>
                 <span>{formatElapsedTime(elapsedTime)}</span>
@@ -2579,15 +2587,14 @@ export default function ChatPage() {
             size='lg'
             onClick={handleAiSupportExit}
             disabled={!aiSupportMode || isLoading}
-            className={`px-8 py-3 text-base font-semibold mr-6 ${
-              !aiSupportMode
+            className={`px-8 py-3 text-base font-semibold mr-6 ${!aiSupportMode
                 ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
                 : getTimeWarningLevel(elapsedTime) === 'critical'
-                ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
-                : getTimeWarningLevel(elapsedTime) === 'warning'
-                ? 'bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100'
-                : 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100'
-            }`}
+                  ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
+                  : getTimeWarningLevel(elapsedTime) === 'warning'
+                    ? 'bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100'
+                    : 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100'
+              }`}
           >
             <X className='w-6 h-6 mr-3' />
             支援終了
@@ -2638,8 +2645,8 @@ export default function ChatPage() {
                   className={`max-w-2xl ${message.isAiResponse ? 'w-auto' : 'w-full'}`}
                 >
                   {message.isAiResponse &&
-                  troubleshootingMode &&
-                  troubleshootingSession?.currentQuestion ===
+                    troubleshootingMode &&
+                    troubleshootingSession?.currentQuestion ===
                     message.content ? (
                     // トラブルシューティングQAバブル
                     <TroubleshootingQABubble
@@ -2678,7 +2685,7 @@ export default function ChatPage() {
                 </div>
               </div>
             )}
-            
+
             {/* スクロール用の余白 */}
             <div ref={messagesEndRef} className='h-4' />
           </div>
@@ -2763,11 +2770,10 @@ export default function ChatPage() {
                       filteredGuides.map(guide => (
                         <tr
                           key={guide.id}
-                          className={`hover:bg-gray-50 cursor-pointer ${
-                            selectedGuideId === guide.id
+                          className={`hover:bg-gray-50 cursor-pointer ${selectedGuideId === guide.id
                               ? 'bg-blue-50 ring-2 ring-blue-500'
                               : ''
-                          }`}
+                            }`}
                           onClick={() => handleSelectGuide(guide.id)}
                         >
                           <td className='border border-gray-300 p-3'>
