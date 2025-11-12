@@ -40,7 +40,7 @@ trigger.txt
 !server/web.config
 # Build outputs
 dist/
-client/dist/
+# client/dist/ - Allow client build output for deployment
 client/dist-dev/
 # server/dist/ - Commented out in case compiled JS files are needed
 shared/dist/

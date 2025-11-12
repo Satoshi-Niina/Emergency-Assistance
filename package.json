@@ -8,6 +8,10 @@
   "scripts": {
     "start": "npm --prefix server run start",
     "build": "npm --prefix client run build",
+    "prebuild": "echo 🔨 Building client for production deployment...",
+    "postbuild": "echo ✅ Client build completed. Ready for deployment!",
+    "deploy-check": "node scripts/check-build-before-push.js",
+    "pre-push": "npm run deploy-check",
     "postinstall": "npm --prefix server ci --no-audit --no-fund || npm --prefix server install && npm --prefix client ci --no-audit --no-fund || npm --prefix client install"
   },
   "devDependencies": {

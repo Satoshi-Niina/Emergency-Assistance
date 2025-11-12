@@ -72,39 +72,32 @@ jobs:
           cache: 'npm'
           cache-dependency-path: client/package-lock.json
 
-      - name: Install Client Dependencies
+      - name: Verify Pre-built Client
         working-directory: ./client
         run: |
-          echo "📦 Installing client dependencies..."
-          npm ci --prefer-offline --no-audit --no-fund --progress=false
-          echo "✅ Client dependencies installed"
+          echo "� Verifying pre-built client files..."
 
-      - name: Clean Previous Build
-        working-directory: ./client
-        run: |
-          if [ -d "dist" ]; then
-            rm -rf dist
-            echo "🧹 Cleaned previous build directory"
-          else
-            echo "ℹ️ No previous build directory found"
+          if [ ! -d "dist" ]; then
+            echo "❌ ERROR: client/dist directory not found"
+            echo "📋 Required: Run 'npm run build' locally before pushing"
+            exit 1
           fi
 
-      - name: Build Client Application
-        working-directory: ./client
-        env:
-          NODE_ENV: production
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || '/api' }}
-        run: |
-          echo "🔨 Building client for $ENVIRONMENT environment..."
-          echo "   Backend URL: $BACKEND_URL"
-          echo "   Static Web App URL: $STATIC_WEB_APP_URL"
+          required_files=("index.html" "main.js" "style.css" "runtime-config.js")
+          for file in "${required_files[@]}"; do
+            if [ ! -f "dist/$file" ]; then
+              echo "❌ ERROR: Required file missing: dist/$file"
+              echo "📋 Required: Run 'npm run build' locally before pushing"
+              exit 1
+            fi
+          done
 
-          # 環境変数をViteに渡す
-          export VITE_BACKEND_SERVICE_URL="$BACKEND_URL"
-          export VITE_STATIC_WEB_APP_URL="$STATIC_WEB_APP_URL"
-          export VITE_ENVIRONMENT="$ENVIRONMENT"
+          file_count=$(find dist -type f | wc -l)
+          echo "✅ Pre-built client verified: $file_count files"
 
-          npm run build
+          if [ $file_count -gt 10 ]; then
+            echo "⚠️ WARNING: File count ($file_count) may exceed Azure limits"
+          fi
 
           # ビルド結果検証
           if [ ! -f "dist/index.html" ]; then
@@ -113,56 +106,20 @@ jobs:
             exit 1
           fi
 
-          echo "📊 Build Statistics BEFORE optimization:"
-          echo "   Files: $(find dist -type f | wc -l)"
-          echo "   Size: $(du -sh dist/ | cut -f1)"
-
-          # Azure Static Web Apps のファイル数制限対策（強化版）
-          echo "🔧 Aggressively optimizing for Azure Static Web Apps file limits..."
-
-          # 不要なファイル・ディレクトリを削除
-          find dist -name "*.map" -delete 2>/dev/null || true
-          find dist -name "*.txt" -delete 2>/dev/null || true
-          find dist -name "README*" -delete 2>/dev/null || true
-          find dist -name "LICENSE*" -delete 2>/dev/null || true
-          find dist -name ".DS_Store" -delete 2>/dev/null || true
-          find dist -name "Thumbs.db" -delete 2>/dev/null || true
-
-          # 開発用ファイルを削除
-          find dist -name "*.dev.*" -delete 2>/dev/null || true
-          find dist -name "*.development.*" -delete 2>/dev/null || true
-          find dist -name "*.test.*" -delete 2>/dev/null || true
-          find dist -name "*.spec.*" -delete 2>/dev/null || true
-
-          # ネストした空ディレクトリを削除
-          find dist -type d -empty -delete 2>/dev/null || true
-
-          # 小さなファイルを削除（1KB未満、重要ファイル以外）
-          find dist -type f -size -1024c ! -name "index.html" ! -name "*.ico" ! -name "favicon.*" ! -name "*.css" ! -name "*.js" -delete 2>/dev/null || true
-
-          # 重複するCSSファイルがあれば統合（同じサイズのファイル）
-          if [ $(find dist -name "*.css" | wc -l) -gt 1 ]; then
-            echo "🔧 Consolidating CSS files..."
-            cat dist/assets/*.css > dist/assets/style.css 2>/dev/null || true
-            find dist/assets -name "*.css" ! -name "style.css" -delete 2>/dev/null || true
-          fi
-
-          echo "📊 Build Statistics AFTER optimization:"
-          echo "   Files: $(find dist -type f | wc -l)"
-          echo "   Size: $(du -sh dist/ | cut -f1)"
-          echo "   File breakdown:"
-          find dist -type f -exec basename {} \; | sort | uniq -c | sort -nr | head -10
-
-          # ファイル数制限チェック
+          # Pre-built filesの最終確認
+          echo "� Pre-built client statistics:"
           file_count=$(find dist -type f | wc -l)
-          if [ $file_count -gt 10000 ]; then
-            echo "⚠️ Warning: File count ($file_count) exceeds Azure Static Web Apps recommendation (10,000)"
-            echo "🔧 Consider further optimization if deployment fails"
-          else
-            echo "✅ File count ($file_count) is within limits"
-          fi
+          echo "   Files: $file_count"
+          echo "   Size: $(du -sh dist/ | cut -f1)"
+          echo "   Contents:"
+          ls -la dist/
 
-          echo "✅ Optimized client build completed successfully"
+          if [ $file_count -gt 10 ]; then
+            echo "⚠️ WARNING: File count ($file_count) higher than expected"
+            echo "� Consider rebuilding with latest vite.config.js"
+          else
+            echo "✅ File count ($file_count) is optimal for Azure Static Web Apps"
+          fi
 
       - name: Update Configuration Files
         run: |
