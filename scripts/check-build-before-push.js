@@ -10,7 +10,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 const CLIENT_DIST_PATH = path.join(__dirname, '../client/dist');
-const REQUIRED_FILES = ['index.html', 'main.js', 'style.css', 'runtime-config.js'];
+const REQUIRED_FILES = ['index.html', 'main.mjs', 'style.css', 'runtime-config.js'];
 
 console.log('🔍 Pre-push build verification...');
 
