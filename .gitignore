@@ -26,7 +26,7 @@ trigger.txt
 # Exclude only specific .env files (not patterns)
 .env
 .env.local
-.env.production
+# .env.production - Allow for deployment configuration
 .env.staging
 # Allow template files and examples
 !*.env.example
@@ -186,7 +186,7 @@ secrets.json
 *api-key*
 *secret*
 *token*
-*.env.production
+# *.env.production - Allow for deployment configuration
 *.env.staging
 # SSL certificates
 *.crt

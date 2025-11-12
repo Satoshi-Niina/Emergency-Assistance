@@ -54,11 +54,41 @@ app.set('trust proxy', true);
 app.use(helmet({ contentSecurityPolicy: false })); // 必要に応じてCSPを調整
 app.use(compression());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'tiny' : 'dev'));
-app.use(cors({ origin: [FRONTEND_URL, STATIC_WEB_APP_URL].filter(Boolean), credentials: true }));
+
+// 強化されたCORS設定 - Azure Static Web Apps対応
+const allowedOrigins = [
+  FRONTEND_URL,
+  STATIC_WEB_APP_URL,
+  'https://witty-river-012f39e00.1.azurestaticapps.net', // 明示的なStatic Web Apps URL
+  ...(process.env.CORS_ALLOW_ORIGINS?.split(',').map(url => url.trim()) || [])
+].filter(Boolean);
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
+// OPTIONSリクエスト（プリフライト）の明示的な処理
+app.options('*', (req, res) => {
+  const origin = req.headers.origin;
+  if (origin && (origin.includes('azurestaticapps.net') || allowedOrigins.includes(origin))) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.header('Access-Control-Max-Age', '86400'); // 24時間キャッシュ
+  }
+  res.status(204).end();
+});
+
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));
 
-console.log('🔗 Frontend URL:', STATIC_WEB_APP_URL);
+console.log('🔗 Frontend URL:', FRONTEND_URL);
+console.log('🌐 Static Web App URL:', STATIC_WEB_APP_URL);
+console.log('✅ CORS Allowed Origins:', allowedOrigins);
 
 // BLOBストレージ関連の設定
 const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
@@ -434,11 +464,19 @@ app.get('/api/_diag/env', (req, res) => {
 
 // 認証エンドポイント（データベース認証）
 app.post('/api/auth/login', async (req, res) => {
+  // 明示的なCORSヘッダー設定（Azure Static Web Apps対応）
+  const origin = req.headers.origin;
+  if (origin && (origin.includes('azurestaticapps.net') || allowedOrigins.includes(origin))) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
+
   try {
     const { username, password } = req.body || {};
 
     console.log('[auth/login] Login attempt:', {
       username,
+      origin: origin,
       timestamp: new Date().toISOString()
     });
 

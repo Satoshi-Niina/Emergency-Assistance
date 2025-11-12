@@ -28,7 +28,7 @@ Reason: The number of static files was too large.
 {
   "dependencies": {
     "express": "^4.21.2",
-    "cors": "^2.8.5", 
+    "cors": "^2.8.5",
     "helmet": "^8.1.0",
     "compression": "^1.7.4",
     "dotenv": "^16.6.1",
@@ -75,7 +75,7 @@ dist/
 ├── index.html
 ├── assets/
 │   ├── vendor.js    (全ライブラリ統合)
-│   ├── app.js       (アプリコード統合)  
+│   ├── app.js       (アプリコード統合)
 │   └── style.css    (CSS統合)
 └── favicon.ico
 ```

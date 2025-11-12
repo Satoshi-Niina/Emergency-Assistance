@@ -98,43 +98,43 @@ jobs:
           echo "🔨 Building client for $ENVIRONMENT environment..."
           echo "   Backend URL: $BACKEND_URL"
           echo "   Static Web App URL: $STATIC_WEB_APP_URL"
-          
+
           # 環境変数をViteに渡す
           export VITE_BACKEND_SERVICE_URL="$BACKEND_URL"
           export VITE_STATIC_WEB_APP_URL="$STATIC_WEB_APP_URL"
           export VITE_ENVIRONMENT="$ENVIRONMENT"
-          
+
           npm run build
-          
+
           # ビルド結果検証
           if [ ! -f "dist/index.html" ]; then
             echo "❌ Client build failed - index.html not found"
             ls -la dist/ || echo "dist directory not found"
             exit 1
           fi
-          
+
           echo "📊 Build Statistics BEFORE optimization:"
           echo "   Files: $(find dist -type f | wc -l)"
           echo "   Size: $(du -sh dist/ | cut -f1)"
-          
+
           # Azure Static Web Apps のファイル数制限対策
           echo "🔧 Optimizing for Azure Static Web Apps file limits..."
-          
+
           # 不要なファイルを削除
           find dist -name "*.map" -delete 2>/dev/null || true
           find dist -name "*.txt" -delete 2>/dev/null || true
           find dist -name "README*" -delete 2>/dev/null || true
           find dist -name "LICENSE*" -delete 2>/dev/null || true
-          
+
           # 小さなファイルを統合（1KB未満）
           find dist -type f -size -1024c ! -name "index.html" ! -name "*.ico" -delete 2>/dev/null || true
-          
+
           echo "📊 Build Statistics AFTER optimization:"
           echo "   Files: $(find dist -type f | wc -l)"
           echo "   Size: $(du -sh dist/ | cut -f1)"
           echo "   File breakdown:"
           find dist -type f -exec basename {} \; | sort | uniq -c | sort -nr | head -10
-          
+
           # ファイル数制限チェック
           file_count=$(find dist -type f | wc -l)
           if [ $file_count -gt 10000 ]; then
@@ -143,7 +143,7 @@ jobs:
           else
             echo "✅ File count ($file_count) is within limits"
           fi
-          
+
           echo "✅ Optimized client build completed successfully"
 
       - name: Update Configuration Files

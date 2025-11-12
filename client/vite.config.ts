@@ -13,7 +13,7 @@ export default defineConfig(({ command, mode }) => {
   // 環境変数を読み込み（productionモードの場合は明示的に指定）
   const envFile = mode === 'production' ? '.env.production' : '.env';
   const env = loadEnv(mode, process.cwd(), '');
-  
+
   // デバッグ用：環境変数の確認
   console.log('🔍 環境変数デバッグ:', {
     mode,
@@ -26,7 +26,7 @@ export default defineConfig(({ command, mode }) => {
   // 環境別APIベースURL自動設定
   const isDev = command === 'serve';
   const isProd = mode === 'production';
-  
+
   const apiBaseUrl = (() => {
     // 環境変数が設定されている場合は最優先
     if (env.VITE_API_BASE_URL && env.VITE_API_BASE_URL.trim() !== '') {
@@ -35,37 +35,37 @@ export default defineConfig(({ command, mode }) => {
     if (env.VITE_API_BASE && env.VITE_API_BASE.trim() !== '') {
       return env.VITE_API_BASE;
     }
-    
+
     // 開発環境: 統合サーバーを使用（相対パス）
     if (isDev) {
       return '/api';
     }
-    
+
     // 本番環境: 相対パス（Static Web Appのリライトルール使用）
     if (isProd) {
       return '/api';
     }
-    
+
     // フォールバック
     return 'http://localhost:8080';
   })();
-  
+
   // プロキシのtargetを計算（相対パスの場合は絶対URLに変換）
   const proxyTarget = (() => {
     // apiBaseUrlが相対パスの場合（/apiで始まる）
     if (apiBaseUrl.startsWith('/')) {
       return 'http://localhost:8080';
     }
-    
+
     // apiBaseUrlが有効なURLかチェック
     if (apiBaseUrl && apiBaseUrl.trim() !== '' && (apiBaseUrl.startsWith('http://') || apiBaseUrl.startsWith('https://'))) {
       return apiBaseUrl;
     }
-    
+
     // フォールバック: 統合サーバーのデフォルトポート
     return 'http://localhost:8080';
   })();
-  
+
   const serverPort = parseInt(env.PORT || env.VITE_SERVER_PORT || '3003');
   const clientPort = parseInt(env.VITE_CLIENT_PORT || '5173');
 
