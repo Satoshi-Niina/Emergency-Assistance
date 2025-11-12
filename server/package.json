@@ -8,10 +8,10 @@
     "npm": ">=10.0.0"
   },
   "scripts": {
-    "start": "cross-env NODE_ENV=production node unified-hot-reload-server.js",
+    "start": "node app.js",
     "start:fallback": "node app.js",
     "start:legacy": "node server.js",
-    "start:debug": "node --inspect unified-hot-reload-server.js",
+    "start:debug": "node --inspect app.js",
     "dev": "cross-env NODE_ENV=development PORT=8000 node unified-hot-reload-server.js",
     "build": "echo Build step completed",
     "test": "echo No tests specified"
