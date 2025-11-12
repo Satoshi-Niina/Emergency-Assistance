@@ -14,14 +14,16 @@ export default defineConfig(({ command, mode }) => {
   const envFile = mode === 'production' ? '.env.production' : '.env';
   const env = loadEnv(mode, process.cwd(), '');
 
-  // デバッグ用：環境変数の確認
-  console.log('🔍 環境変数デバッグ:', {
-    mode,
-    envFile,
-    VITE_API_BASE_URL: env.VITE_API_BASE_URL,
-    VITE_API_BASE: env.VITE_API_BASE,
-    NODE_ENV: env.NODE_ENV
-  });
+  // デバッグ用：環境変数の確認（開発時のみ）
+  if (mode === 'development') {
+    console.log('🔍 環境変数デバッグ:', {
+      mode,
+      envFile,
+      VITE_API_BASE_URL: env.VITE_API_BASE_URL,
+      VITE_API_BASE: env.VITE_API_BASE,
+      NODE_ENV: env.NODE_ENV
+    });
+  }
 
   // 環境別APIベースURL自動設定
   const isDev = command === 'serve';
@@ -69,30 +71,33 @@ export default defineConfig(({ command, mode }) => {
   const serverPort = parseInt(env.PORT || env.VITE_SERVER_PORT || '3003');
   const clientPort = parseInt(env.VITE_CLIENT_PORT || '5173');
 
-  console.log('🔧 Vite環境変数確認:', {
-    VITE_API_BASE: env.VITE_API_BASE,
-    VITE_API_BASE_URL: env.VITE_API_BASE_URL,
-    VITE_API_BASE_TYPE: typeof env.VITE_API_BASE,
-    VITE_API_BASE_LENGTH: env.VITE_API_BASE?.length,
-    apiBaseUrl,
-    proxyTarget,
-    serverPort,
-    clientPort,
-  });
+  // デバッグログ（開発時のみ）
+  if (mode === 'development') {
+    console.log('🔧 Vite環境変数確認:', {
+      VITE_API_BASE: env.VITE_API_BASE,
+      VITE_API_BASE_URL: env.VITE_API_BASE_URL,
+      VITE_API_BASE_TYPE: typeof env.VITE_API_BASE,
+      VITE_API_BASE_LENGTH: env.VITE_API_BASE?.length,
+      apiBaseUrl,
+      proxyTarget,
+      serverPort,
+      clientPort,
+    });
 
-  console.log('🔧 Vite設定:', {
-    command,
-    mode,
-    apiBaseUrl,
-    serverPort,
-    clientPort,
-    env: {
-      VITE_API_BASE: env.VITE_API_BASE, // 使用中: APIのベースURL
-      VITE_API_BASE_URL: env.VITE_API_BASE_URL, // 使用中: APIのベースURL（後方互換性）
-      PORT: env.PORT, // 使用中: サーバーポート
-      NODE_ENV: env.NODE_ENV, // 使用中: 環境判別
-    },
-  });
+    console.log('🔧 Vite設定:', {
+      command,
+      mode,
+      apiBaseUrl,
+      serverPort,
+      clientPort,
+      env: {
+        VITE_API_BASE: env.VITE_API_BASE,
+        VITE_API_BASE_URL: env.VITE_API_BASE_URL,
+        PORT: env.PORT,
+        NODE_ENV: env.NODE_ENV,
+      },
+    });
+  }
 
   return {
     base: '/',
@@ -100,24 +105,27 @@ export default defineConfig(({ command, mode }) => {
     server: {
       port: clientPort,
       host: true,
-      proxy: {
-        '/api': {
-          target: proxyTarget,
-          changeOrigin: true,
-          secure: false,
-          configure: (proxy, _options) => {
-            proxy.on('error', (err, _req, _res) => {
-              console.log('proxy error', err);
-            });
-            proxy.on('proxyReq', (proxyReq, req, _res) => {
-              console.log('Sending Request to the Target:', req.method, req.url);
-            });
-            proxy.on('proxyRes', (proxyRes, req, _res) => {
-              console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
-            });
-          },
+      // プロキシ設定（開発時のみ）
+      ...(isDev && {
+        proxy: {
+          '/api': {
+            target: proxyTarget,
+            changeOrigin: true,
+            secure: false,
+            configure: (proxy: any, _options: any) => {
+              proxy.on('error', (err: any, _req: any, _res: any) => {
+                console.log('proxy error', err);
+              });
+              proxy.on('proxyReq', (proxyReq: any, req: any, _res: any) => {
+                console.log('Sending Request to the Target:', req.method, req.url);
+              });
+              proxy.on('proxyRes', (proxyRes: any, req: any, _res: any) => {
+                console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
+              });
+            },
+          }
         }
-      }
+      })
     },
     resolve: {
       alias: {
@@ -130,38 +138,48 @@ export default defineConfig(({ command, mode }) => {
       sourcemap: false,
       minify: 'terser',
       cssCodeSplit: false, // CSS分割を無効化してファイル数削減
+      copyPublicDir: true,
+      emptyOutDir: true,
+      // チャンクサイズ警告の閾値を大幅に上げる
+      chunkSizeWarningLimit: 10000,
+      // より積極的な最適化
+      target: 'es2015',
+      // 小さなアセットはすべてインライン化（ファイル数削減）
+      assetsInlineLimit: 8192, // 8KB未満はインライン化
+      // 本番最適化設定
+      reportCompressedSize: false, // 圧縮サイズレポートを無効化（ビルド時間短縮）
+      write: true, // ファイル書き込みを有効化
       rollupOptions: {
         input: path.resolve(__dirname, 'index.html'),
         output: {
-          // 完全な単一ファイル化（最小限のファイル数）
-          manualChunks: () => {
-            // すべてのコードを単一のchunkに統合
-            return 'app';
-          },
           // ファイル名をシンプルに（ハッシュなし、最小限）
           entryFileNames: 'main.js',
-          chunkFileNames: 'app.js',
+          chunkFileNames: 'chunk.js',
           assetFileNames: (assetInfo: any) => {
             // CSSファイルは単一ファイルに
             if (assetInfo.name?.endsWith('.css')) {
               return 'style.css';
             }
-            // 画像・フォントなど最小限のアセットのみ
+            // 必要最小限のアセットのみ
             const ext = assetInfo.name?.split('.').pop();
-            return `${ext === 'ico' ? 'favicon' : 'asset'}.${ext}`;
+            if (ext === 'ico' || ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'svg') {
+              return `favicon.${ext}`;
+            }
+            return `asset.${ext}`;
           },
-          // インライン化を最大限活用
+          // すべてを単一ファイルにインライン化
           inlineDynamicImports: true
+        },
+        // 外部依存関係（CDNから読み込む場合）
+        external: [],
+        // Tree shaking設定（不要コード削除）
+        treeshake: {
+          moduleSideEffects: false,
+          propertyReadSideEffects: false,
+          tryCatchDeoptimization: false,
+          unknownGlobalSideEffects: false
         }
-      },
-      copyPublicDir: true,
-      emptyOutDir: true,
-      // チャンクサイズ警告の閾値を大幅に上げる
-      chunkSizeWarningLimit: 5000,
-      // より積極的な最適化
-      target: 'es2015',
-      // アセットのインライン化を制限
-      assetsInlineLimit: 0
+      }
     },
     publicDir: 'public'
   };
