@@ -129,18 +129,29 @@ export default defineConfig(({ command, mode }) => {
       assetsDir: 'assets',
       sourcemap: false,
       minify: 'terser',
+      cssCodeSplit: false, // CSS分割を無効化してファイル数削減
       rollupOptions: {
         input: path.resolve(__dirname, 'index.html'),
         output: {
-          manualChunks: {
-            vendor: ['react', 'react-dom'],
-            ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu']
-          }
+          // ファイル数を大幅に削減するために単一チャンクに統合
+          manualChunks: (id) => {
+            // すべてをvendorチャンクに統合してファイル数削減
+            if (id.includes('node_modules')) {
+              return 'vendor';
+            }
+            // アプリケーションコードも単一チャンクに
+            return 'app';
+          },
+          // ファイル名を簡潔に
+          entryFileNames: 'assets/[name].js',
+          chunkFileNames: 'assets/[name].js',
+          assetFileNames: 'assets/[name].[ext]'
         }
       },
       copyPublicDir: true,
-      // ビルド後のフックでruntime-config.jsを確実にコピー
-      emptyOutDir: true
+      emptyOutDir: true,
+      // チャンクサイズ警告の閾値を上げる（単一ファイル化のため）
+      chunkSizeWarningLimit: 2000
     },
     publicDir: 'public'
   };

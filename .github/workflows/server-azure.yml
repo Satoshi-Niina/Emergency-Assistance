@@ -119,37 +119,82 @@ jobs:
           rm -rf deploy-package
           mkdir -p deploy-package
 
-          echo "📁 Copying server files..."
-          # サーバーファイルをコピー（node_modules除外）
-          rsync -av --exclude='node_modules' server/ deploy-package/
+          echo "📁 Copying essential server files..."
+          # 必要最小限のサーバーファイルをコピー
+          cp server/package.json deploy-package/
+          cp server/app.js deploy-package/ 2>/dev/null || echo "app.js not found"
+          cp server/azure-server.mjs deploy-package/ 2>/dev/null || echo "azure-server.mjs not found"
+          cp server/unified-hot-reload-server.js deploy-package/ 2>/dev/null || echo "unified-hot-reload-server.js not found"
+          cp server/web.config deploy-package/ 2>/dev/null || echo "web.config not found"
+          
+          # 重要なディレクトリをコピー（存在する場合のみ）
+          [ -d "server/routes" ] && cp -r server/routes deploy-package/ || echo "routes directory not found"
+          [ -d "server/middleware" ] && cp -r server/middleware deploy-package/ || echo "middleware directory not found"
+          [ -d "server/models" ] && cp -r server/models deploy-package/ || echo "models directory not found"
+          [ -d "server/utils" ] && cp -r server/utils deploy-package/ || echo "utils directory not found"
+          
+          # .js, .mjs, .json ファイルのみをコピー
+          find server/ -maxdepth 1 -name "*.js" -o -name "*.mjs" -o -name "*.json" | while read file; do
+            cp "$file" deploy-package/ 2>/dev/null || true
+          done
 
-          echo "📁 Copying client build..."
+          echo "📁 Copying optimized client build..."
           mkdir -p deploy-package/client/dist
-          cp -r client/dist/* deploy-package/client/dist/
+          
+          # クライアントビルドの重要ファイルのみコピー
+          cp client/dist/index.html deploy-package/client/dist/ 2>/dev/null || echo "client index.html not found"
+          
+          # アセットディレクトリがある場合のみコピー
+          [ -d "client/dist/assets" ] && cp -r client/dist/assets deploy-package/client/dist/ || echo "client assets not found"
+          
+          # その他の重要ファイル
+          [ -f "client/dist/favicon.ico" ] && cp client/dist/favicon.ico deploy-package/client/dist/ || true
+          [ -f "client/dist/manifest.json" ] && cp client/dist/manifest.json deploy-package/client/dist/ || true
 
           echo "⚡ Optimizing package.json for production..."
 
           cd deploy-package
 
-          # 本番環境では開発依存関係を削除
-          npm pkg delete devDependencies scripts.dev scripts.test
-
-          # スタートスクリプトの最適化
-          npm pkg set scripts.start="node app.js"
-
-          # 最小限の検証
-          echo "📋 Package validation:"
-          ls -la | head -5
-          ls -la client/dist/ | head -5
+          # 最小限のpackage.jsonを作成
+          echo '{
+            "name": "emergency-assistance-server",
+            "version": "1.0.3",
+            "main": "app.js",
+            "engines": {
+              "node": ">=20.0.0",
+              "npm": ">=10.0.0"
+            },
+            "scripts": {
+              "start": "node app.js"
+            },
+            "dependencies": {
+              "express": "^4.21.2",
+              "cors": "^2.8.5",
+              "helmet": "^8.1.0",
+              "compression": "^1.7.4",
+              "dotenv": "^16.6.1",
+              "cookie-parser": "^1.4.7",
+              "express-session": "^1.18.2",
+              "express-rate-limit": "^8.1.0",
+              "morgan": "^1.10.1"
+            }
+          }' > package.json
 
           # パッケージサイズ確認
           package_size=$(du -sh . | cut -f1)
           file_count=$(find . -type f | wc -l)
-          echo "📊 Package Statistics:"
+          echo "📊 Optimized Package Statistics:"
           echo "   Size: $package_size"
           echo "   Files: $file_count"
+          echo "   Main files:"
+          ls -la *.js *.mjs *.json 2>/dev/null || echo "   No main files found"
+          
+          if [ -d "client/dist" ]; then
+            echo "   Client files:"
+            ls -la client/dist/ | head -5
+          fi
 
-          echo "✅ Optimized package ready for production"
+          echo "✅ Ultra-optimized package ready for production"
 
       - name: Deploy to Azure App Service (Production)
         id: deploy
@@ -340,18 +385,38 @@ jobs:
           rm -rf deploy-package
           mkdir -p deploy-package
 
-          # Copy server files
-          rsync -av --exclude='node_modules' server/ deploy-package/
-
-          # Copy client build
+          # Copy essential server files only
+          cp server/package.json deploy-package/
+          cp server/app.js deploy-package/ 2>/dev/null || echo "app.js not found"
+          cp server/azure-server.mjs deploy-package/ 2>/dev/null || echo "azure-server.mjs not found"
+          cp server/unified-hot-reload-server.js deploy-package/ 2>/dev/null || echo "unified-hot-reload-server.js not found"
+          
+          # Copy essential directories only if they exist
+          [ -d "server/routes" ] && cp -r server/routes deploy-package/ || echo "routes not found"
+          [ -d "server/middleware" ] && cp -r server/middleware deploy-package/ || echo "middleware not found"
+          
+          # Copy optimized client build
           mkdir -p deploy-package/client/dist
-          cp -r client/dist/* deploy-package/client/dist/
+          [ -f "client/dist/index.html" ] && cp client/dist/index.html deploy-package/client/dist/
+          [ -d "client/dist/assets" ] && cp -r client/dist/assets deploy-package/client/dist/
 
-          # Minimal package.json optimization for staging
+          # Minimal package.json for staging
           cd deploy-package
-          npm pkg set scripts.start="node app.js"
+          echo '{
+            "name": "emergency-assistance-server",
+            "version": "1.0.3",
+            "main": "app.js",
+            "scripts": {
+              "start": "node app.js"
+            },
+            "dependencies": {
+              "express": "^4.21.2",
+              "cors": "^2.8.5",
+              "dotenv": "^16.6.1"
+            }
+          }' > package.json
 
-          echo "✅ Staging package ready"
+          echo "✅ Optimized staging package ready"
 
       - name: Deploy to Azure App Service (Staging)
         uses: azure/webapps-deploy@v3
