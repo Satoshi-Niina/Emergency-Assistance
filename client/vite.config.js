@@ -32,14 +32,16 @@ export default defineConfig({
         rollupOptions: {
             output: {
                 entryFileNames: 'main.mjs',
-                chunkFileNames: 'chunk.mjs',
+                chunkFileNames: 'chunk.[hash].mjs',
                 assetFileNames: (assetInfo) => {
                     if (assetInfo.name?.endsWith('.css')) {
                         return 'style.css';
                     }
-                    return 'asset.[ext]';
+                    return 'assets/[name].[hash].[ext]';
                 },
-                inlineDynamicImports: true
+                inlineDynamicImports: true,
+                // 小さなアセットはインライン化
+                manualChunks: undefined
             }
         }
     }

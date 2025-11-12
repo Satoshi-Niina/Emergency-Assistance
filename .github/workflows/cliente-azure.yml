@@ -117,9 +117,29 @@ jobs:
           echo "   Contents:"
           ls -la dist/
 
-          if [ $file_count -gt 10 ]; then
-            echo "⚠️ WARNING: File count ($file_count) higher than expected"
-            echo "🔧 Consider rebuilding with latest vite.config.js"
+          # Azure Static Web Apps file limit check and optimization
+          if [ $file_count -gt 1000 ]; then
+            echo "❌ ERROR: File count ($file_count) exceeds Azure Static Web Apps limit (1000 files)"
+            echo "🔧 Optimizing build output..."
+
+            # Remove source maps if they exist
+            find dist -name "*.map" -delete || true
+
+            # Remove unnecessary files
+            find dist -name "*.txt" -not -name "robots.txt" -delete || true
+            find dist -name "*.md" -delete || true
+
+            # Recount files
+            file_count=$(find dist -type f | wc -l)
+            echo "📦 Optimized file count: $file_count"
+
+            if [ $file_count -gt 1000 ]; then
+              echo "❌ Still too many files after optimization. Manual intervention required."
+              exit 1
+            fi
+          elif [ $file_count -gt 100 ]; then
+            echo "⚠️ WARNING: File count ($file_count) is high but acceptable"
+            echo "🔧 Consider further build optimization for better performance"
           else
             echo "✅ File count ($file_count) is optimal for Azure Static Web Apps"
           fi
@@ -155,6 +175,31 @@ jobs:
             echo "⚠️ dist/index.html not found, skipping injection"
           fi
 
+      - name: Prepare Deployment Package
+        working-directory: ./client
+        run: |
+          echo "📦 Preparing optimized deployment package..."
+
+          # Create a clean deployment directory
+          mkdir -p ../deploy-client
+
+          # Copy only essential files
+          cp dist/index.html ../deploy-client/
+          cp dist/main.mjs ../deploy-client/
+          cp dist/style.css ../deploy-client/
+          cp dist/runtime-config.js ../deploy-client/
+
+          # Copy staticwebapp.config.json
+          cp staticwebapp.config.json ../deploy-client/
+
+          # Copy any favicon or other essential assets if they exist
+          [ -f "dist/favicon.ico" ] && cp dist/favicon.ico ../deploy-client/ || true
+          [ -f "dist/manifest.json" ] && cp dist/manifest.json ../deploy-client/ || true
+
+          echo "📊 Final deployment package:"
+          ls -la ../deploy-client/
+          echo "Files: $(find ../deploy-client -type f | wc -l)"
+
       - name: Deploy to Azure Static Web Apps
         id: deploy
         uses: Azure/static-web-apps-deploy@v1
@@ -162,9 +207,9 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
-          app_location: /client
-          output_location: dist
-          skip_app_build: true  # 既にビルド済みなのでスキップ
+          app_location: /deploy-client
+          output_location: ""
+          skip_app_build: true
 
       - name: Health Check
         env:
@@ -210,7 +255,7 @@ jobs:
           fi
 
       - name: Integration Test with Backend
-        if: env.ENVIRONMENT == 'production'
+        if: github.ref == 'refs/heads/main'
         run: |
           echo "🧪 Running integration tests with backend..."
 
