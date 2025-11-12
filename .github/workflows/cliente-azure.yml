@@ -40,27 +40,29 @@ jobs:
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.event.inputs.environment }}" == "production" ]]; then
             echo "ENVIRONMENT=production" >> $GITHUB_ENV
-            echo "BACKEND_URL=${{ secrets.VITE_BACKEND_SERVICE_URL || 'https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net' }}" >> $GITHUB_ENV
             echo "STATIC_WEB_APP_TOKEN=${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}" >> $GITHUB_ENV
+            echo "BACKEND_URL=https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net" >> $GITHUB_ENV
             echo "STATIC_WEB_APP_URL=https://witty-river-012f39e00.1.azurestaticapps.net" >> $GITHUB_ENV
           else
             echo "ENVIRONMENT=staging" >> $GITHUB_ENV
-            echo "BACKEND_URL=${{ secrets.VITE_BACKEND_SERVICE_URL_STAGING || 'https://emergency-assistance-staging.azurewebsites.net' }}" >> $GITHUB_ENV
-            echo "STATIC_WEB_APP_TOKEN=${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_STAGING }}" >> $GITHUB_ENV
-            echo "STATIC_WEB_APP_URL=https://staging-emergency-assistance.azurestaticapps.net" >> $GITHUB_ENV
+            echo "STATIC_WEB_APP_TOKEN=${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_STAGING || secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}" >> $GITHUB_ENV
+            echo "BACKEND_URL=https://emergency-assistance-staging.japanwest-01.azurewebsites.net" >> $GITHUB_ENV
+            echo "STATIC_WEB_APP_URL=https://staging.witty-river-012f39e00.1.azurestaticapps.net" >> $GITHUB_ENV
           fi
+
+          echo "✅ Environment: $ENVIRONMENT"
+          echo "🔗 Backend: $BACKEND_URL"
 
       - name: Validate Secrets
         run: |
-          echo "🔍 Validating deployment secrets..."
-          # 環境変数が正しく設定されているか確認（値は表示せず）
-          echo "Environment: $(echo $ENVIRONMENT)"
-          echo "Backend URL configured: $([ -n "$BACKEND_URL" ] && echo "Yes" || echo "No")"
-          echo "Token configured: $([ -n "$STATIC_WEB_APP_TOKEN" ] && echo "Yes" || echo "No")"
-
           if [ -z "$STATIC_WEB_APP_TOKEN" ]; then
-            echo "❌ Azure Static Web Apps API token is missing"
-            echo "📋 Required secret: AZURE_STATIC_WEB_APPS_API_TOKEN (for production) or AZURE_STATIC_WEB_APPS_API_TOKEN_STAGING"
+            echo "❌ ERROR: Azure Static Web Apps token not found"
+            echo "Required secrets for $ENVIRONMENT:"
+            if [ "$ENVIRONMENT" = "production" ]; then
+              echo "- AZURE_STATIC_WEB_APPS_API_TOKEN"
+            else
+              echo "- AZURE_STATIC_WEB_APPS_API_TOKEN_STAGING or AZURE_STATIC_WEB_APPS_API_TOKEN"
+            fi
             exit 1
           fi
           echo "✅ Secrets validated"
@@ -72,32 +74,24 @@ jobs:
           cache: 'npm'
           cache-dependency-path: client/package-lock.json
 
-      - name: Verify Pre-built Client
+      - name: Install Dependencies
         working-directory: ./client
         run: |
-          echo "� Verifying pre-built client files..."
+          echo "📦 Installing client dependencies..."
+          npm ci --prefer-offline --no-audit --no-fund
 
-          if [ ! -d "dist" ]; then
-            echo "❌ ERROR: client/dist directory not found"
-            echo "📋 Required: Run 'npm run build' locally before pushing"
-            exit 1
-          fi
+      - name: Build Client
+        working-directory: ./client
+        env:
+          NODE_ENV: production
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || '/api' }}
+          VITE_BACKEND_SERVICE_URL: ${{ env.BACKEND_URL }}
+          VITE_ENVIRONMENT: ${{ env.ENVIRONMENT }}
+        run: |
+          echo "🔨 Building client for $ENVIRONMENT environment..."
+          echo "   Backend URL: $BACKEND_URL"
 
-          required_files=("index.html" "main.mjs" "style.css" "runtime-config.js")
-          for file in "${required_files[@]}"; do
-            if [ ! -f "dist/$file" ]; then
-              echo "❌ ERROR: Required file missing: dist/$file"
-              echo "📋 Required: Run 'npm run build' locally before pushing"
-              exit 1
-            fi
-          done
-
-          file_count=$(find dist -type f | wc -l)
-          echo "✅ Pre-built client verified: $file_count files"
-
-          if [ $file_count -gt 10 ]; then
-            echo "⚠️ WARNING: File count ($file_count) may exceed Azure limits"
-          fi
+          npm run build
 
           # ビルド結果検証
           if [ ! -f "dist/index.html" ]; then
@@ -106,9 +100,18 @@ jobs:
             exit 1
           fi
 
-          # Pre-built filesの最終確認
-          echo "� Pre-built client statistics:"
+          required_files=("index.html" "main.mjs" "style.css" "runtime-config.js")
+          for file in "${required_files[@]}"; do
+            if [ ! -f "dist/$file" ]; then
+              echo "❌ ERROR: Required file missing after build: dist/$file"
+              exit 1
+            fi
+          done
+
           file_count=$(find dist -type f | wc -l)
+          echo "✅ Client build completed successfully: $file_count files"
+
+          echo "📊 Build Statistics:"
           echo "   Files: $file_count"
           echo "   Size: $(du -sh dist/ | cut -f1)"
           echo "   Contents:"
@@ -116,29 +119,35 @@ jobs:
 
           if [ $file_count -gt 10 ]; then
             echo "⚠️ WARNING: File count ($file_count) higher than expected"
-            echo "� Consider rebuilding with latest vite.config.js"
+            echo "🔧 Consider rebuilding with latest vite.config.js"
           else
             echo "✅ File count ($file_count) is optimal for Azure Static Web Apps"
           fi
 
       - name: Update Configuration Files
         run: |
-          cd client
-          echo "⚙️ Updating configuration files..."
+          echo "🔧 Updating runtime configuration..."
 
-          # Update staticwebapp.config.json with backend URL
-          if [ -f "staticwebapp.config.json" ]; then
-            sed -i "s|\${BACKEND_SERVICE_URL}|$BACKEND_URL|g" staticwebapp.config.json
-            echo "✅ Updated staticwebapp.config.json with backend URL: $BACKEND_URL"
+          # client/dist/runtime-config.js の更新
+          if [ -f "client/dist/runtime-config.js" ]; then
+            echo "🔄 Updating runtime-config.js..."
+            echo "window.runtimeConfig = { backendUrl: '$BACKEND_URL', environment: '$ENVIRONMENT' };" > client/dist/runtime-config.js
+            echo "✅ Runtime config updated"
+          else
+            echo "⚠️ runtime-config.js not found, creating..."
+            echo "window.runtimeConfig = { backendUrl: '$BACKEND_URL', environment: '$ENVIRONMENT' };" > client/dist/runtime-config.js
           fi
 
-          # Inject backend URL into index.html
-          if [ -f "dist/index.html" ]; then
-            sed -i "s|PLACEHOLDER_BACKEND_SERVICE_URL|$BACKEND_URL|g" dist/index.html
+      - name: Inject Backend URL
+        working-directory: ./client
+        run: |
+          echo "🔧 Injecting backend URL into runtime configuration..."
 
-            # 確認用：実際に埋め込まれたか確認
-            if grep -q "window.BACKEND_SERVICE_URL" dist/index.html; then
-              echo "✅ Backend URL injection completed"
+          if [ -f "dist/index.html" ]; then
+            # プレースホルダーがある場合は置換
+            if grep -q "{{BACKEND_URL}}" dist/index.html; then
+              sed -i "s|{{BACKEND_URL}}|$BACKEND_URL|g" dist/index.html
+              echo "✅ Backend URL injected: $BACKEND_URL"
             else
               echo "ℹ️ No placeholder found for backend URL injection"
             fi
@@ -150,7 +159,7 @@ jobs:
         id: deploy
         uses: Azure/static-web-apps-deploy@v1
         with:
-          azure_static_web_apps_api_token: ${{ env.STATIC_WEB_APP_TOKEN || secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
           app_location: /client
@@ -167,30 +176,38 @@ jobs:
           # ヘルスチェック関数
           health_check() {
             local url="$1"
-            response=$(curl -s --max-time 15 -o /dev/null -w "%{http_code}" "$url")
-            if [[ "$response" =~ ^2[0-9][0-9]$ ]]; then
-              echo "✅ $url - HTTP $response"
+            echo "Checking: $url"
+
+            response=$(curl -s -w "%{http_code}" "$url" -o /dev/null || echo "000")
+            if [[ "$response" =~ ^[23] ]]; then
+              echo "✅ Health check passed ($response)"
               return 0
             else
-              echo "⚠️ $url - HTTP $response"
+              echo "❌ Health check failed ($response)"
               return 1
             fi
           }
 
-          # Static Web App のヘルスチェック
-          for attempt in $(seq 1 ${{ env.MAX_RETRIES }}); do
-            echo "🔍 Attempt $attempt/${{ env.MAX_RETRIES }}..."
+          # ヘルスチェック実行
+          success=false
+          for ((i=1; i<=$MAX_RETRIES; i++)); do
+            echo "🔄 Attempt $i/$MAX_RETRIES..."
 
             if health_check "$STATIC_WEB_APP_URL"; then
-              echo "🎊 Client deployment health check passed!"
+              success=true
               break
             fi
 
-            if [ $attempt -lt ${{ env.MAX_RETRIES }} ]; then
-              echo "⏰ Waiting ${{ env.RETRY_INTERVAL }}s..."
-              sleep ${{ env.RETRY_INTERVAL }}
+            if [ $i -lt $MAX_RETRIES ]; then
+              echo "⏳ Waiting $RETRY_INTERVAL seconds before retry..."
+              sleep $RETRY_INTERVAL
             fi
           done
+
+          if [ "$success" = false ]; then
+            echo "❌ Health check failed after $MAX_RETRIES attempts"
+            exit 1
+          fi
 
       - name: Integration Test with Backend
         if: env.ENVIRONMENT == 'production'
@@ -199,7 +216,7 @@ jobs:
 
           # バックエンドとの接続テスト
           backend_health() {
-            curl -s --max-time 10 "$BACKEND_URL/health" || return 1
+            curl -s --max-time 10 "$BACKEND_URL/api/health" || return 1
           }
 
           if backend_health; then
@@ -220,12 +237,7 @@ jobs:
           echo "🔗 Backend API: $BACKEND_URL"
           echo "🎯 Status: ${{ job.status }}"
           echo ""
-
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ CLIENT DEPLOYMENT SUCCESSFUL!"
-            echo "🚀 Your client application is ready!"
-          else
-            echo "❌ CLIENT DEPLOYMENT FAILED!"
-            echo "🔧 Check logs for troubleshooting"
-          fi
-          echo "============================="
+          echo "📍 Next Steps:"
+          echo "1. Visit: $STATIC_WEB_APP_URL"
+          echo "2. Test key features"
+          echo "3. Monitor logs if issues occur"
