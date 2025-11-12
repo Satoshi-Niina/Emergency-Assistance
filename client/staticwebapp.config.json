@@ -1,6 +1,24 @@
 {
   "routes": [
     {
+      "route": "/main.js",
+      "headers": {
+        "Content-Type": "application/javascript; charset=utf-8"
+      }
+    },
+    {
+      "route": "/style.css",
+      "headers": {
+        "Content-Type": "text/css; charset=utf-8"
+      }
+    },
+    {
+      "route": "/runtime-config.js",
+      "headers": {
+        "Content-Type": "application/javascript; charset=utf-8"
+      }
+    },
+    {
       "route": "/login",
       "rewrite": "/index.html"
     },
@@ -46,12 +64,19 @@
     },
     {
       "route": "/api/*",
-      "allowedRoles": ["anonymous", "authenticated"]
+      "allowedRoles": [
+        "anonymous",
+        "authenticated"
+      ]
     }
   ],
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": [
+      "/main.js",
+      "/chunk.js",
+      "/style.css",
+      "/runtime-config.js",
       "/assets/*",
       "*.js",
       "*.css",
@@ -72,10 +97,10 @@
   },
   "mimeTypes": {
     ".json": "application/json",
-    ".js": "application/javascript",
-    ".mjs": "application/javascript",
-    ".css": "text/css",
-    ".html": "text/html",
+    ".js": "application/javascript; charset=utf-8",
+    ".mjs": "application/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".html": "text/html; charset=utf-8",
     ".png": "image/png",
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
@@ -97,6 +122,10 @@
       "rewrite": "/index.html",
       "statusCode": 200,
       "exclude": [
+        "/main.js",
+        "/chunk.js",
+        "/style.css",
+        "/runtime-config.js",
         "/assets/*",
         "*.js",
         "*.css",
