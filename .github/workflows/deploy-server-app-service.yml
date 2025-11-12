@@ -1,9 +1,13 @@
-name: deploy-server-app-service
+name: deploy-server-production
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+
+# 本番デプロイには手動承認が必要
+# GitHub > Settings > Environments で "production" 環境を作成し、
+# Required reviewers を設定することを推奨
 
 concurrency:
   group: 'azure-deploy-${{ github.ref }}'
