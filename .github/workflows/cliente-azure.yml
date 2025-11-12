@@ -117,17 +117,35 @@ jobs:
           echo "   Files: $(find dist -type f | wc -l)"
           echo "   Size: $(du -sh dist/ | cut -f1)"
 
-          # Azure Static Web Apps のファイル数制限対策
-          echo "🔧 Optimizing for Azure Static Web Apps file limits..."
+          # Azure Static Web Apps のファイル数制限対策（強化版）
+          echo "🔧 Aggressively optimizing for Azure Static Web Apps file limits..."
 
-          # 不要なファイルを削除
+          # 不要なファイル・ディレクトリを削除
           find dist -name "*.map" -delete 2>/dev/null || true
           find dist -name "*.txt" -delete 2>/dev/null || true
           find dist -name "README*" -delete 2>/dev/null || true
           find dist -name "LICENSE*" -delete 2>/dev/null || true
+          find dist -name ".DS_Store" -delete 2>/dev/null || true
+          find dist -name "Thumbs.db" -delete 2>/dev/null || true
 
-          # 小さなファイルを統合（1KB未満）
-          find dist -type f -size -1024c ! -name "index.html" ! -name "*.ico" -delete 2>/dev/null || true
+          # 開発用ファイルを削除
+          find dist -name "*.dev.*" -delete 2>/dev/null || true
+          find dist -name "*.development.*" -delete 2>/dev/null || true
+          find dist -name "*.test.*" -delete 2>/dev/null || true
+          find dist -name "*.spec.*" -delete 2>/dev/null || true
+
+          # ネストした空ディレクトリを削除
+          find dist -type d -empty -delete 2>/dev/null || true
+
+          # 小さなファイルを削除（1KB未満、重要ファイル以外）
+          find dist -type f -size -1024c ! -name "index.html" ! -name "*.ico" ! -name "favicon.*" ! -name "*.css" ! -name "*.js" -delete 2>/dev/null || true
+
+          # 重複するCSSファイルがあれば統合（同じサイズのファイル）
+          if [ $(find dist -name "*.css" | wc -l) -gt 1 ]; then
+            echo "🔧 Consolidating CSS files..."
+            cat dist/assets/*.css > dist/assets/style.css 2>/dev/null || true
+            find dist/assets -name "*.css" ! -name "style.css" -delete 2>/dev/null || true
+          fi
 
           echo "📊 Build Statistics AFTER optimization:"
           echo "   Files: $(find dist -type f | wc -l)"

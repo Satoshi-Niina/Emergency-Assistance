@@ -126,32 +126,42 @@ export default defineConfig(({ command, mode }) => {
     },
     build: {
       outDir: 'dist',
-      assetsDir: 'assets',
+      assetsDir: '', // アセットをルートディレクトリに配置
       sourcemap: false,
       minify: 'terser',
       cssCodeSplit: false, // CSS分割を無効化してファイル数削減
       rollupOptions: {
         input: path.resolve(__dirname, 'index.html'),
         output: {
-          // ファイル数を大幅に削減するために単一チャンクに統合
-          manualChunks: (id) => {
-            // すべてをvendorチャンクに統合してファイル数削減
-            if (id.includes('node_modules')) {
-              return 'vendor';
-            }
-            // アプリケーションコードも単一チャンクに
+          // 完全な単一ファイル化（最小限のファイル数）
+          manualChunks: () => {
+            // すべてのコードを単一のchunkに統合
             return 'app';
           },
-          // ファイル名を簡潔に
-          entryFileNames: 'assets/[name].js',
-          chunkFileNames: 'assets/[name].js',
-          assetFileNames: 'assets/[name].[ext]'
+          // ファイル名をシンプルに（ハッシュなし、最小限）
+          entryFileNames: 'main.js',
+          chunkFileNames: 'app.js',
+          assetFileNames: (assetInfo: any) => {
+            // CSSファイルは単一ファイルに
+            if (assetInfo.name?.endsWith('.css')) {
+              return 'style.css';
+            }
+            // 画像・フォントなど最小限のアセットのみ
+            const ext = assetInfo.name?.split('.').pop();
+            return `${ext === 'ico' ? 'favicon' : 'asset'}.${ext}`;
+          },
+          // インライン化を最大限活用
+          inlineDynamicImports: true
         }
       },
       copyPublicDir: true,
       emptyOutDir: true,
-      // チャンクサイズ警告の閾値を上げる（単一ファイル化のため）
-      chunkSizeWarningLimit: 2000
+      // チャンクサイズ警告の閾値を大幅に上げる
+      chunkSizeWarningLimit: 5000,
+      // より積極的な最適化
+      target: 'es2015',
+      // アセットのインライン化を制限
+      assetsInlineLimit: 0
     },
     publicDir: 'public'
   };
