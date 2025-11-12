@@ -1,7 +1,13 @@
 {
   "routes": [
     {
-      "route": "/main.js",
+      "route": "/main.mjs",
+      "headers": {
+        "Content-Type": "application/javascript; charset=utf-8"
+      }
+    },
+    {
+      "route": "/chunk.mjs",
       "headers": {
         "Content-Type": "application/javascript; charset=utf-8"
       }
@@ -73,12 +79,13 @@
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": [
-      "/main.js",
-      "/chunk.js",
+      "/main.mjs",
+      "/chunk.mjs",
       "/style.css",
       "/runtime-config.js",
       "/assets/*",
       "*.js",
+      "*.mjs",
       "*.css",
       "*.map",
       "*.png",
@@ -122,12 +129,13 @@
       "rewrite": "/index.html",
       "statusCode": 200,
       "exclude": [
-        "/main.js",
-        "/chunk.js",
+        "/main.mjs",
+        "/chunk.mjs",
         "/style.css",
         "/runtime-config.js",
         "/assets/*",
         "*.js",
+        "*.mjs",
         "*.css",
         "*.map",
         "*.png",

@@ -31,8 +31,8 @@ export default defineConfig({
         assetsInlineLimit: 8192,
         rollupOptions: {
             output: {
-                entryFileNames: 'main.js',
-                chunkFileNames: 'chunk.js',
+                entryFileNames: 'main.mjs',
+                chunkFileNames: 'chunk.mjs',
                 assetFileNames: (assetInfo) => {
                     if (assetInfo.name?.endsWith('.css')) {
                         return 'style.css';
