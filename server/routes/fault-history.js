@@ -1,12 +1,17 @@
-import { Router } from 'express';
-import { faultHistoryService } from '../services/fault-history-service.js';
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-const router = Router();
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const fault_history_service_js_1 = require("../services/fault-history-service.js");
+const multer_1 = __importDefault(require("multer"));
+const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
+const router = (0, express_1.Router)();
 // 画像アップロード設定
-const storage = multer.memoryStorage();
-const upload = multer({
+const storage = multer_1.default.memoryStorage();
+const upload = (0, multer_1.default)({
     storage,
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     fileFilter: (_req, file, cb) => {
@@ -41,7 +46,7 @@ router.post('/', upload.array('images', 10), async (req, res) => {
                 error: 'JSONデータの形式が正しくありません',
             });
         }
-        const result = await faultHistoryService.saveFaultHistory(parsedJsonData, {
+        const result = await fault_history_service_js_1.faultHistoryService.saveFaultHistory(parsedJsonData, {
             title,
             description,
             extractImages: extractImages === 'true',
@@ -80,7 +85,7 @@ router.get('/', async (req, res) => {
             office: office,
             keyword: keyword,
         };
-        const result = await faultHistoryService.getFaultHistoryList(options);
+        const result = await fault_history_service_js_1.faultHistoryService.getFaultHistoryList(options);
         console.log(`📋 故障履歴一覧取得: ${result.items.length}件 / 総数 ${result.total}件`);
         res.json({
             success: true,
@@ -113,7 +118,7 @@ router.get('/:id', async (req, res) => {
                 error: 'IDが必要です',
             });
         }
-        const item = await faultHistoryService.getFaultHistoryById(id);
+        const item = await fault_history_service_js_1.faultHistoryService.getFaultHistoryById(id);
         if (!item) {
             return res.status(404).json({
                 success: false,
@@ -149,17 +154,17 @@ router.get('/images/:filename', async (req, res) => {
             });
         }
         const imagesDir = process.env.FAULT_HISTORY_IMAGES_DIR ||
-            path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
-        const filePath = path.join(imagesDir, filename);
-        if (!fs.existsSync(filePath)) {
+            path_1.default.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
+        const filePath = path_1.default.join(imagesDir, filename);
+        if (!fs_1.default.existsSync(filePath)) {
             return res.status(404).json({
                 success: false,
                 error: '画像ファイルが見つかりません',
             });
         }
         // ファイルの統計情報を取得
-        const stats = fs.statSync(filePath);
-        const ext = path.extname(filename).toLowerCase();
+        const stats = fs_1.default.statSync(filePath);
+        const ext = path_1.default.extname(filename).toLowerCase();
         // MIMEタイプを設定
         let mimeType = 'image/jpeg';
         switch (ext) {
@@ -201,8 +206,8 @@ router.post('/import-from-exports', async (req, res) => {
         const { force = false } = req.body;
         console.log('📥 exportsディレクトリからの移行開始');
         const exportDir = process.env.LOCAL_EXPORT_DIR ||
-            path.join(process.cwd(), 'knowledge-base', 'exports');
-        if (!fs.existsSync(exportDir)) {
+            path_1.default.join(process.cwd(), 'knowledge-base', 'exports');
+        if (!fs_1.default.existsSync(exportDir)) {
             return res.json({
                 success: true,
                 message: 'exportsディレクトリが存在しません',
@@ -210,25 +215,25 @@ router.post('/import-from-exports', async (req, res) => {
                 skipped: 0,
             });
         }
-        const files = fs.readdirSync(exportDir).filter(file => file.endsWith('.json'));
+        const files = fs_1.default.readdirSync(exportDir).filter(file => file.endsWith('.json'));
         let imported = 0;
         let skipped = 0;
         const errors = [];
         for (const file of files) {
             try {
-                const filePath = path.join(exportDir, file);
-                const content = fs.readFileSync(filePath, 'utf8');
+                const filePath = path_1.default.join(exportDir, file);
+                const content = fs_1.default.readFileSync(filePath, 'utf8');
                 const jsonData = JSON.parse(content);
                 // 既存チェック（forceが有効でない場合）
                 const id = file.replace('.json', '');
                 if (!force) {
-                    const existing = await faultHistoryService.getFaultHistoryById(id);
+                    const existing = await fault_history_service_js_1.faultHistoryService.getFaultHistoryById(id);
                     if (existing) {
                         skipped++;
                         continue;
                     }
                 }
-                await faultHistoryService.saveFaultHistory(jsonData, {
+                await fault_history_service_js_1.faultHistoryService.saveFaultHistory(jsonData, {
                     title: jsonData.title || `Imported: ${file}`,
                     extractImages: true,
                 });
@@ -266,7 +271,7 @@ router.post('/import-from-exports', async (req, res) => {
  */
 router.get('/stats', async (req, res) => {
     try {
-        const result = await faultHistoryService.getFaultHistoryList({ limit: 10000 });
+        const result = await fault_history_service_js_1.faultHistoryService.getFaultHistoryList({ limit: 10000 });
         const stats = {
             total: result.total,
             byMachineType: {},
@@ -306,4 +311,4 @@ router.get('/stats', async (req, res) => {
         });
     }
 });
-export default router;
+exports.default = router;

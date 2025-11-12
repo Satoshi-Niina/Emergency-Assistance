@@ -1,437 +1,451 @@
-import express from 'express';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { Pool } from 'pg';
-
-const router = express.Router();
-
-// CORSミドルウェア（認証ルート用）
-router.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const allowedOrigins = [
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://localhost:5175',
-    'http://localhost:5176',
-    'http://localhost:5177',
-    'http://localhost:5178',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:5174',
-    'http://127.0.0.1:5175',
-    'http://127.0.0.1:5176',
-    'http://127.0.0.1:5177',
-    'http://127.0.0.1:5178',
-    'https://witty-river-012f39e00.1.azurestaticapps.net',
-    ...(process.env.CORS_ALLOW_ORIGINS?.split(',') || [])
-  ].filter(Boolean);
-
-  // Azure Static Web Apps のオリジンを強制許可（最優先）
-  const AZURE_STATIC_ORIGIN = 'https://witty-river-012f39e00.1.azurestaticapps.net';
-  let allowedOrigin = AZURE_STATIC_ORIGIN; // デフォルトはAzure Static Web Apps
-
-  // オリジンのチェック（より確実に）
-  if (origin) {
-    // Azure Static Web Apps のオリジンを許可
-    if (origin.includes('azurestaticapps.net')) {
-      allowedOrigin = origin;
-    }
-    // ALLOWED_ORIGINSに含まれている場合も許可
-    else if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
-      allowedOrigin = origin;
-    }
-  } else {
-    // オリジンなし（同一オリジン）の場合も許可
-    allowedOrigin = '*';
-  }
-
-  // CORS ヘッダーを常に設定
-  res.header('Access-Control-Allow-Origin', allowedOrigin);
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Cache-Control, Pragma, Expires, Cookie, Set-Cookie');
-  res.header('Access-Control-Expose-Headers', 'Set-Cookie');
-  res.header('Access-Control-Max-Age', '86400');
-
-  // プリフライトリクエスト（OPTIONS）の処理
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end();
-  }
-
-  next();
-});
-
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const bcryptjs_1 = __importDefault(require("bcryptjs"));
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const index_1 = require("../db/index");
+const schema_1 = require("../db/schema");
+const drizzle_orm_1 = require("drizzle-orm");
+// Type definitions are loaded automatically by TypeScript
 // JWT発行ユーティリティ
 const issueJwt = (userId, options = {}) => {
-  const payload = { uid: userId };
-  const jwtOptions = { expiresIn: '1d' };
-  if (options.exp) {
-    jwtOptions.expiresIn = Math.floor((options.exp - Date.now()) / 1000) + 's';
-  }
-  return jwt.sign(payload, process.env.JWT_SECRET, jwtOptions);
+    const payload = { uid: userId };
+    const jwtOptions = { expiresIn: '1d' };
+    if (options.exp) {
+        jwtOptions.expiresIn = Math.floor((options.exp - Date.now()) / 1000) + 's';
+    }
+    return jsonwebtoken_1.default.sign(payload, process.env.JWT_SECRET, jwtOptions);
 };
-
+const router = express_1.default.Router();
+// CORSミドルウェア（認証ルート用）
+router.use((req, res, next) => {
+    const origin = req.headers.origin;
+    // 注意: 本番環境では必ずSTATIC_WEB_APP_URL環境変数を設定してください
+    const staticWebAppUrl = process.env.STATIC_WEB_APP_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080');
+    const clientPort = process.env.CLIENT_PORT || '5173';
+    const allowedOrigins = [
+        `http://localhost:${clientPort}`,
+        `http://localhost:${parseInt(clientPort) + 1}`,
+        `http://localhost:${parseInt(clientPort) + 2}`,
+        `http://localhost:${parseInt(clientPort) + 3}`,
+        `http://localhost:${parseInt(clientPort) + 4}`,
+        `http://localhost:${parseInt(clientPort) + 5}`,
+        `http://127.0.0.1:${clientPort}`,
+        `http://127.0.0.1:${parseInt(clientPort) + 1}`,
+        `http://127.0.0.1:${parseInt(clientPort) + 2}`,
+        `http://127.0.0.1:${parseInt(clientPort) + 3}`,
+        `http://127.0.0.1:${parseInt(clientPort) + 4}`,
+        `http://127.0.0.1:${parseInt(clientPort) + 5}`,
+        staticWebAppUrl,
+        ...(process.env.CORS_ALLOW_ORIGINS?.split(',') || [])
+    ].filter(Boolean);
+    if (origin && (allowedOrigins.includes(origin) || allowedOrigins.includes('*'))) {
+        res.header('Access-Control-Allow-Origin', origin);
+    }
+    else if (!origin) {
+        // オリジンなし（同一オリジン）を許可
+        res.header('Access-Control-Allow-Origin', '*');
+    }
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Cache-Control, Pragma, Expires, Cookie');
+    res.header('Access-Control-Max-Age', '86400');
+    // プリフライトリクエスト（OPTIONS）の処理
+    if (req.method === 'OPTIONS') {
+        return res.status(204).end();
+    }
+    next();
+});
+// デバッグ用エンドポイント - 環境変数とセッション状態を確認
+router.get('/debug/env', (_req, res) => {
+    console.log('🔍 デバッグエンドポイント呼び出し');
+    const debugInfo = {
+        environment: {
+            NODE_ENV: process.env.NODE_ENV,
+            PORT: process.env.PORT,
+            DATABASE_URL: process.env.DATABASE_URL ? '[SET]' : '[NOT SET]',
+            SESSION_SECRET: process.env.SESSION_SECRET ? '[SET]' : '[NOT SET]',
+        },
+        session: {
+            sessionId: req.session?.id,
+            userId: req.session?.userId,
+            userRole: req.session?.userRole,
+            hasSession: !!req.session,
+            sessionData: req.session,
+        },
+        request: {
+            headers: {
+                cookie: req.headers.cookie ? '[SET]' : '[NOT SET]',
+                'user-agent': req.headers['user-agent'],
+                origin: req.headers.origin,
+            },
+            method: req.method,
+            url: req.url,
+        },
+    };
+    console.log('📊 デバッグ情報:', debugInfo);
+    res.json({
+        success: true,
+        debug: debugInfo,
+        timestamp: new Date().toISOString(),
+    });
+});
+// セッション状態確認用エンドポイント
+router.get('/debug/session', (_req, res) => {
+    console.log('🔍 セッション状態確認エンドポイント呼び出し');
+    res.json({
+        success: true,
+        session: {
+            id: req.session?.id,
+            userId: req.session?.userId,
+            userRole: req.session?.userRole,
+            hasSession: !!req.session,
+            sessionData: req.session,
+        },
+        timestamp: new Date().toISOString(),
+    });
+});
 // ログインエンドポイント
 router.post('/login', async (req, res) => {
-  try {
-    const { username, password } = req.body || {};
-
-    // 入力検証
-    if (!username || !password) {
-      return res.status(400).json({
-        success: false,
-        error: 'bad_request',
-        message: 'ユーザー名とパスワードが必要です'
-      });
-    }
-
-    // バイパスフラグ確認（最初に判定）
-    const bypassDb = process.env.BYPASS_DB_FOR_LOGIN === 'true';
-
-    console.log('[auth/login] Login attempt:', {
-      username,
-      bypassDb,
-      timestamp: new Date().toISOString()
-    });
-
-    // バイパスモード時は即リターン（DBに触れない）
-    if (bypassDb) {
-      console.log('[auth/login] Bypass mode: Creating demo session');
-
-      // セッションにユーザー情報を設定
-      req.session.userId = 'demo';
-      req.session.user = {
-        id: 'demo',
-        name: username,
-        role: 'user'
-      };
-
-      // JWTトークンも生成
-      const token = jwt.sign(
-        { id: 'demo', username, role: 'user' },
-        process.env.JWT_SECRET,
-        { expiresIn: '1d' }
-      );
-
-      return res.json({
-        success: true,
-        mode: 'session',
-        user: req.session.user,
-        token,
-        accessToken: token,
-        expiresIn: '1d'
-      });
-    }
-
-    // DB接続（遅延読み込み）
-    let pool;
     try {
-      // 開発環境ではSSLを無効にする
-      const isDevelopment = process.env.NODE_ENV === 'development';
-      const sslMode = process.env.PG_SSL || 'prefer';
-      let sslConfig;
-
-      if (isDevelopment) {
-        sslConfig = false;
-      } else if (sslMode === 'disable') {
-        sslConfig = false;
-      } else if (sslMode === 'require') {
-        sslConfig = { rejectUnauthorized: false };
-      } else { // prefer (default)
-        sslConfig = { rejectUnauthorized: false };
-      }
-
-      pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        ssl: sslConfig,
-        max: 5,
-        idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 5000,
-      });
-
-      // 接続テスト
-      const client = await pool.connect();
-
-      // prefer モードで SSL エラーが出た場合は disable に再接続
-      if (sslMode === 'prefer') {
-        try {
-          await client.query('SELECT 1');
-        } catch (sslError) {
-          if (sslError.message.includes('does not support SSL')) {
-            console.log('[auth/login] SSL not supported, reconnecting with SSL disabled');
-            await client.release();
-            await pool.end();
-
-            pool = new Pool({
-              connectionString: process.env.DATABASE_URL,
-              ssl: false,
-              max: 5,
-              idleTimeoutMillis: 30000,
-              connectionTimeoutMillis: 5000,
+        const { username, password } = req.body || {};
+        // 入力検証
+        if (!username || !password) {
+            return res.status(400).json({
+                success: false,
+                error: 'bad_request',
+                message: 'ユーザー名とパスワードが必要です'
             });
-
-            const newClient = await pool.connect();
-            await newClient.query('SELECT 1');
-            await newClient.release();
-          } else {
-            throw sslError;
-          }
         }
-      } else {
-        await client.release();
-      }
-
-      // データベースからユーザーを検索
-      console.log('[auth/login] ユーザー検索開始:', { username });
-      const result = await pool.query(
-        'SELECT id, username, password, role, display_name, department FROM users WHERE username = $1 LIMIT 1',
-        [username]
-      );
-      console.log('[auth/login] ユーザー検索結果:', {
-        found: result.rows.length > 0,
-        userCount: result.rows.length
-      });
-
-      if (result.rows.length === 0) {
-        console.log('[auth/login] ユーザーが見つかりません');
-        await pool.end();
-        return res.status(401).json({
-          success: false,
-          error: 'invalid_credentials',
-          message: 'ユーザー名またはパスワードが正しくありません'
+        // バイパスフラグ確認
+        const bypassDb = process.env.BYPASS_DB_FOR_LOGIN === 'true';
+        console.log('[auth/login] Login attempt:', {
+            username,
+            bypassDb,
+            timestamp: new Date().toISOString()
         });
-      }
-
-      const foundUser = result.rows[0];
-      console.log('[auth/login] ユーザー情報取得:', {
-        id: foundUser.id,
-        username: foundUser.username,
-        role: foundUser.role
-      });
-
-      // パスワード比較（bcryptjs）
-      console.log('[auth/login] パスワード比較開始');
-      const isPasswordValid = await bcrypt.compare(password, foundUser.password);
-      console.log('[auth/login] パスワード比較結果:', { isValid: isPasswordValid });
-
-      if (!isPasswordValid) {
-        console.log('[auth/login] パスワードが一致しません');
-        await pool.end();
-        return res.status(401).json({
-          success: false,
-          error: 'invalid_credentials',
-          message: 'ユーザー名またはパスワードが正しくありません'
-        });
-      }
-
-      // JWTトークン生成
-      const token = issueJwt(foundUser.id);
-
-      // セッション再生
-      req.session.regenerate(err => {
-        if (err) {
-          console.error('[auth/login] Session regenerate error:', err);
-          return res.status(503).json({
-            success: false,
-            error: 'session_error',
-            message: 'セッション作成に失敗しました'
-          });
+        // バイパスモード時は仮ログイン
+        if (bypassDb) {
+            console.log('[auth/login] Bypass mode: Creating demo session');
+            // セッションにユーザー情報を設定
+            req.session.user = {
+                id: 'demo',
+                name: username,
+                role: 'user'
+            };
+            // JWTトークンも生成（オプション）
+            const token = jsonwebtoken_1.default.sign({ id: 'demo', username, role: 'user' }, process.env.JWT_SECRET || 'fallback-secret', { expiresIn: '1d' });
+            return res.json({
+                success: true,
+                mode: 'session',
+                user: req.session.user,
+                token,
+                accessToken: token,
+                expiresIn: '1d'
+            });
         }
-
-        req.session.userId = foundUser.id;
-        req.session.user = {
-          id: foundUser.id,
-          username: foundUser.username,
-          displayName: foundUser.display_name,
-          display_name: foundUser.display_name,
-          role: foundUser.role || 'user',
-          department: foundUser.department
-        };
-
-        req.session.save(() => {
-          console.log('[auth/login] Login success for user:', foundUser.username);
-          res.json({
-            success: true,
-            token,
-            accessToken: token,
-            expiresIn: '1d',
-            user: req.session.user
-          });
-        });
-      });
-
-      await pool.end();
-
-    } catch (dbError) {
-      console.error('[auth/login] Database error:', dbError);
-      if (pool) {
+        // 本来のDB認証
         try {
-          await pool.end();
-        } catch (endError) {
-          console.error('[auth/login] Pool end error:', endError);
+            // データベースからユーザーを検索
+            const foundUsers = await index_1.db
+                .select()
+                .from(schema_1.users)
+                .where((0, drizzle_orm_1.eq)(schema_1.users.username, username))
+                .limit(1);
+            if (foundUsers.length === 0) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'invalid_credentials',
+                    message: 'ユーザー名またはパスワードが正しくありません'
+                });
+            }
+            const foundUser = foundUsers[0];
+            // パスワード比較（bcryptjs）
+            const isPasswordValid = await bcryptjs_1.default.compare(password, foundUser.password);
+            if (!isPasswordValid) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'invalid_credentials',
+                    message: 'ユーザー名またはパスワードが正しくありません'
+                });
+            }
+            // JWTトークン生成
+            const token = issueJwt(foundUser.id);
+            // セッション再生
+            req.session.regenerate(err => {
+                if (err) {
+                    console.error('[auth/login] Session regenerate error:', err);
+                    return res.status(503).json({
+                        success: false,
+                        error: 'session_error',
+                        message: 'セッション作成に失敗しました'
+                    });
+                }
+                req.session.userId = foundUser.id;
+                req.session.user = {
+                    id: foundUser.id,
+                    name: foundUser.username,
+                    role: foundUser.role || 'user'
+                };
+                req.session.save(() => {
+                    console.log('[auth/login] Login success for user:', foundUser.username);
+                    res.json({
+                        success: true,
+                        token,
+                        accessToken: token,
+                        expiresIn: '1d',
+                        user: req.session.user
+                    });
+                });
+            });
         }
-      }
-
-      return res.status(503).json({
-        success: false,
-        error: 'auth_backend_unavailable',
-        message: '認証サービスが一時的に利用できません'
-      });
+        catch (dbError) {
+            console.error('[auth/login] Database error:', dbError);
+            return res.status(503).json({
+                success: false,
+                error: 'auth_backend_unavailable',
+                message: '認証サービスが一時的に利用できません'
+            });
+        }
     }
-
-  } catch (error) {
-    console.error('[auth/login] Unexpected error:', error);
-    return res.status(503).json({
-      success: false,
-      error: 'auth_internal_error',
-      message: '認証処理中にエラーが発生しました'
-    });
-  }
+    catch (error) {
+        console.error('[auth/login] Unexpected error:', error);
+        return res.status(503).json({
+            success: false,
+            error: 'auth_internal_error',
+            message: '認証処理中にエラーが発生しました'
+        });
+    }
 });
-
 // ログアウトエンドポイント
-router.post('/logout', (req, res) => {
-  req.session.destroy(() => {
-    res.clearCookie('sid', { path: '/' });
-    res.json({ success: true });
-  });
+router.post('/logout', (_req, res) => {
+    req.session.destroy(() => {
+        res.clearCookie('sid', { path: '/' });
+        res.json({ success: true });
+    });
 });
-
 // 現在のユーザー情報取得
 router.get('/me', (req, res) => {
-  try {
-    console.log('[auth/me] リクエスト詳細:', {
-      hasSession: !!req.session,
-      sessionId: req.session?.id,
-      sessionUser: req.session?.user,
-      sessionUserId: req.session?.userId,
-      cookies: req.headers.cookie
-    });
-
-    // セッションベースの認証をチェック
-    if (req.session?.user) {
-      console.log('[auth/me] Session-based auth:', req.session.user);
-      return res.json({
-        success: true,
-        user: req.session.user,
-        authenticated: true
-      });
-    }
-
-    // Bearer token認証をチェック
-    const auth = req.get('authorization');
-    if (auth?.startsWith('Bearer ')) {
-      try {
-        const token = auth.slice(7);
-        const payload = jwt.verify(token, process.env.JWT_SECRET);
-        console.log('[auth/me] Token-based auth:', payload);
-        return res.json({
-          success: true,
-          user: { id: payload.sub || payload.id, ...payload },
-          authenticated: true
-        });
-      } catch (tokenError) {
-        console.log('[auth/me] Invalid token:', tokenError.message);
+    try {
+        // セッションベースの認証をチェック
+        if (req.session?.user) {
+            console.log('[auth/me] Session-based auth:', req.session.user);
+            return res.json({
+                success: true,
+                user: req.session.user,
+                authenticated: true
+            });
+        }
+        // Bearer token認証をチェック
+        const auth = req.get('authorization');
+        if (auth?.startsWith('Bearer ')) {
+            try {
+                const token = auth.slice(7);
+                const payload = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+                console.log('[auth/me] Token-based auth:', payload);
+                return res.json({
+                    success: true,
+                    user: { id: payload.sub || payload.id, ...payload },
+                    authenticated: true
+                });
+            }
+            catch (tokenError) {
+                console.log('[auth/me] Invalid token:', tokenError.message);
+                return res.status(401).json({
+                    success: false,
+                    error: 'invalid_token',
+                    message: '無効なトークンです'
+                });
+            }
+        }
+        // 未認証
+        console.log('[auth/me] No authentication found');
         return res.status(401).json({
-          success: false,
-          error: 'invalid_token',
-          message: '無効なトークンです'
+            success: false,
+            error: 'authentication_required',
+            message: '認証が必要です'
         });
-      }
     }
-
-    // 未認証
-    console.log('[auth/me] No authentication found');
-    return res.status(401).json({
-      success: false,
-      error: 'authentication_required',
-      message: '認証が必要です'
-    });
-
-  } catch (error) {
-    console.error('[auth/me] Unexpected error:', error);
-    return res.status(401).json({
-      success: false,
-      error: 'authentication_required',
-      message: '認証が必要です'
-    });
-  }
-});
-
-// Database check endpoint
-router.get('/db-check', async (req, res) => {
-  try {
-    console.log('[db-check] データベース接続チェック開始');
-
-    // データベース接続テスト
-    const { Pool } = require('pg');
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const sslMode = process.env.PG_SSL || 'prefer';
-    let sslConfig;
-
-    if (isDevelopment) {
-      sslConfig = false;
-    } else if (sslMode === 'disable') {
-      sslConfig = false;
-    } else if (sslMode === 'require') {
-      sslConfig = { rejectUnauthorized: false };
-    } else { // prefer (default)
-      sslConfig = { rejectUnauthorized: false };
+    catch (error) {
+        console.error('[auth/me] Unexpected error:', error);
+        return res.status(401).json({
+            success: false,
+            error: 'authentication_required',
+            message: '認証が必要です'
+        });
     }
-
-    const pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: sslConfig,
-      max: 5,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000,
-    });
-
-    const client = await pool.connect();
-    const result = await client.query('SELECT NOW() as current_time, COUNT(*) as user_count FROM users');
-    await client.release();
-    await pool.end();
-
-    console.log('[db-check] データベース接続成功:', result.rows[0]);
-
-    res.json({
-      status: 'OK',
-      message: 'データベース接続が正常です',
-      db_time: result.rows[0].current_time,
-      user_count: result.rows[0].user_count,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('[db-check] データベース接続エラー:', error);
-    res.status(500).json({
-      status: 'ERROR',
-      message: `データベース接続エラー: ${error.message}`,
-      timestamp: new Date().toISOString()
-    });
-  }
 });
-
-// Handshake endpoint
-router.get('/handshake', (req, res) => {
-  try {
-    res.json({
-      ok: true,
-      mode: 'session',
-      env: process.env.NODE_ENV || 'production',
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
+// サーバ設定ヒント取得（段階的移行対応）
+router.get('/handshake', (_req, res) => {
+    console.log('🔍 /api/auth/handshake 呼び出し');
+    // 段階的移行モード判定
+    const isSafeMode = process.env.SAFE_MODE === 'true';
+    const bypassJwt = process.env.BYPASS_JWT === 'true';
+    // 詳細なリクエスト情報をログ出力
+    console.log('📊 Handshake request details:', {
+        method: req.method,
+        path: req.path,
+        headers: {
+            host: req.headers.host,
+            'x-forwarded-for': req.headers['x-forwarded-for'],
+            'x-forwarded-proto': req.headers['x-forwarded-proto'],
+            'user-agent': req.headers['user-agent'],
+            'content-type': req.headers['content-type'],
+        },
+        ip: req.ip,
+        ips: req.ips,
+        timestamp: new Date().toISOString(),
+        safeMode: isSafeMode,
+        bypassJwt: bypassJwt,
     });
-  } catch (error) {
-    console.error(`[${req.requestId}] Handshake error:`, error);
-    res.status(200).json({
-      ok: true,
-      mode: 'session',
-      env: 'production',
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
+    try {
+        // 段階的移行モード判定
+        let mode;
+        if (isSafeMode) {
+            mode = 'safe';
+        }
+        else if (bypassJwt) {
+            mode = 'jwt-bypass';
+        }
+        else {
+            mode = 'jwt';
+        }
+        res.json({
+            ok: true,
+            mode: mode,
+            firstParty: !!process.env.COOKIE_DOMAIN,
+            supportsToken: true,
+            timestamp: new Date().toISOString(),
+            environment: process.env.NODE_ENV || 'development',
+            server: {
+                port: process.env.PORT,
+                trustProxy: req.app.get('trust proxy'),
+                nodeVersion: process.version,
+            },
+        });
+    }
+    catch (error) {
+        console.error('❌ /api/auth/handshake エラー:', error);
+        console.error('❌ Stack trace:', error.stack);
+        res.status(500).json({
+            ok: false,
+            error: 'handshake_failed',
+            message: '握手エンドポイントでエラーが発生しました',
+            timestamp: new Date().toISOString(),
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+        });
+    }
 });
-
-// 認証関連のエンドポイントのみを保持
-
-export default router;
+// DB readiness チェックエンドポイント
+router.get('/readiness', async (_req, res) => {
+    console.log('🔍 /api/auth/readiness 呼び出し');
+    try {
+        // DB_READINESSが有効でない場合はスキップ
+        if (process.env.DB_READINESS !== 'true') {
+            console.log('[auth/readiness] DB_READINESS not enabled, skipping DB check');
+            return res.json({
+                ok: true,
+                db: 'skipped',
+                message: 'DB readiness check is disabled',
+                timestamp: new Date().toISOString(),
+            });
+        }
+        // セーフモード時はスキップ
+        const isSafeMode = process.env.SAFE_MODE === 'true';
+        if (isSafeMode) {
+            console.log('[auth/readiness] Safe mode: Skipping DB check');
+            return res.json({
+                ok: true,
+                db: 'skipped',
+                mode: 'safe',
+                message: 'Safe mode: DB check skipped',
+                timestamp: new Date().toISOString(),
+            });
+        }
+        // データベース接続テスト
+        console.log('[auth/readiness] Testing database connection...');
+        const result = await index_1.db.execute('SELECT 1 as test');
+        console.log('[auth/readiness] Database connection successful');
+        return res.json({
+            ok: true,
+            db: 'ready',
+            message: 'Database connection is ready',
+            timestamp: new Date().toISOString(),
+        });
+    }
+    catch (error) {
+        console.error('[auth/readiness] Database connection failed:', error);
+        return res.status(503).json({
+            ok: false,
+            db: 'error',
+            error: 'database_connection_failed',
+            message: 'Database connection failed',
+            details: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString(),
+        });
+    }
+});
+// Cookieプローブ（短命テストCookie発行）
+router.post('/cookie-probe', (_req, res) => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isFirstParty = !!process.env.COOKIE_DOMAIN;
+    res.cookie('auth-probe', 'test', {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isFirstParty ? 'lax' : 'none',
+        maxAge: 5000, // 5秒
+        ...(isProduction && !isFirstParty && { partitioned: true }),
+    });
+    res.status(204).send();
+});
+// Cookieプローブ確認
+router.get('/cookie-probe-check', (_req, res) => {
+    const cookieOk = !!req.cookies['auth-probe'];
+    // プローブCookieを削除
+    if (cookieOk) {
+        res.clearCookie('auth-probe');
+    }
+    res.json({ cookieOk });
+});
+// トークンリフレッシュ
+router.post('/refresh', async (_req, res) => {
+    try {
+        // セッションが有効な場合
+        if (req.session?.userId) {
+            const token = issueJwt(req.session.userId);
+            return res.json({ token });
+        }
+        // Bearerトークンが有効な場合
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.substring(7);
+            try {
+                const payload = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+                // 期限が15分未満の場合は新しいトークンを発行
+                const now = Math.floor(Date.now() / 1000);
+                if (payload.exp - now < 900) {
+                    // 15分 = 900秒
+                    const newToken = issueJwt(payload.uid);
+                    return res.json({ token: newToken });
+                }
+                // まだ有効な場合は現在のトークンを返す
+                return res.json({ token });
+            }
+            catch (jwtError) {
+                // JWT無効
+            }
+        }
+        // どちらも無効
+        return res.status(401).json({ success: false, error: '認証が必要です' });
+    }
+    catch (error) {
+        console.error('Refresh error:', error);
+        return res
+            .status(500)
+            .json({ success: false, error: 'リフレッシュエラー' });
+    }
+});
+exports.default = router;
