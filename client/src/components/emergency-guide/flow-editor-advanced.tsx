@@ -801,7 +801,7 @@ const FlowditorAdvanced: React.FC<FlowditorAdvancedProps> = ({
                                           input.accept = 'image/*';
                                           input.onchange = e => {
                                             const files = (
-                                              e.target as HTMLInputlement
+                                              e.target as HTMLInputElement
                                             ).files;
                                             if (files) {
                                               handleImageUpload(step.id, files);

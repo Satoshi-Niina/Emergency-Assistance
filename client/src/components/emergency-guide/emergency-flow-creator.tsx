@@ -105,7 +105,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
   onSave,
 }) => {
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputlement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const hasInitialized = useRef(false);
 
   // 状態管理
@@ -263,7 +263,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
   }, [fetchFlowList]);
 
   // ファイル選抁
-  const handleFileSelect = (event: React.Changevent<HTMLInputlement>) => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setSelectedFile(file);
@@ -1258,7 +1258,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
               variant='outline'
               size='sm'
               onClick={() =>
-                document.getlementById(`image-upload-${slide.id}`)?.click()
+                document.getElementById(`image-upload-${slide.id}`)?.click()
               }
               className='text-base-2x h-12 px-4'
             >

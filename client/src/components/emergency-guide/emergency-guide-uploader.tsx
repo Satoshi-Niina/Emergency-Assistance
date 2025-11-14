@@ -29,7 +29,7 @@ const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
   onUploadSuccess,
 }) => {
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputlement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -205,7 +205,7 @@ const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
   };
 
   // ファイル選択ハンドラー
-  const handleFileChange = (event: React.Changevent<HTMLInputlement>) => {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
       const file = event.target.files[0];
       // 拡張子チェック

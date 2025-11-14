@@ -180,8 +180,8 @@ const Stepditor: React.FC<StepditorProps> = ({
   const [uploadingImages, setUploadingImages] = useState<{
     [key: string]: boolean;
   }>({});
-  const fileInputRefs = useRef<{ [key: string]: HTMLInputlement | null }>({});
-  const [imagerrors, setImagerrors] = useState<{ [key: string]: boolean }>(
+  const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  const [imageErrors, setImageErrors] = useState<{ [key: string]: boolean }>(
     {}
   );
   const [expandedSteps, setExpandedSteps] = useState<{
@@ -228,7 +228,7 @@ const Stepditor: React.FC<StepditorProps> = ({
     onStepUpdate(stepId, { [field]: value });
   };
 
-  const toggleStepxpansion = (stepId: string) => {
+  const toggleStepExpansion = (stepId: string) => {
     setExpandedSteps(prev => ({
       ...prev,
       [stepId]: !prev[stepId],
@@ -432,7 +432,7 @@ const Stepditor: React.FC<StepditorProps> = ({
 
   const handleFileSelect = (
     stepId: string,
-    event: React.Changevent<HTMLInputlement>
+    event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -510,7 +510,7 @@ const Stepditor: React.FC<StepditorProps> = ({
           <Button
             variant='ghost'
             size='sm'
-            onClick={() => toggleStepxpansion(step.id)}
+            onClick={() => toggleStepExpansion(step.id)}
           >
             <ChevronDown className='h-4 w-4' />
           </Button>
@@ -531,7 +531,7 @@ const Stepditor: React.FC<StepditorProps> = ({
             <Button
               variant='ghost'
               size='sm'
-              onClick={() => toggleStepxpansion(step.id)}
+              onClick={() => toggleStepExpansion(step.id)}
             >
               <ChevronUp className='h-4 w-4' />
             </Button>
@@ -653,7 +653,7 @@ const Stepditor: React.FC<StepditorProps> = ({
                       />
                     );
                   })()}
-                  {imagerrors[image.url] && (
+                  {imageErrors[image.url] && (
                     <div className='absolute inset-0 bg-red-500 bg-opacity-50 flex items-center justify-center rounded-lg'>
                       <div className='text-center text-white p-2'>
                         <X className='h-8 w-8 mx-auto' />
@@ -937,7 +937,7 @@ const Stepditor: React.FC<StepditorProps> = ({
                   ? 'bg-blue-500 text-white'
                   : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-100'
               }`}
-              onClick={() => toggleStepxpansion(step.id)}
+              onClick={() => toggleStepExpansion(step.id)}
             >
               {index + 1}. {step.title || `ステップ${index + 1}`}
             </div>
