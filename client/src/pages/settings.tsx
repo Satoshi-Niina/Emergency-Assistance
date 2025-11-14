@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/auth-context';
-import { useToast } from '../hooks/use-toast.ts';
+import { useToast } from '../hooks/use-toast';
 import { API_BASE_URL } from '../lib/api/config';
 import { Button } from '../components/ui/button';
 import {
@@ -54,7 +54,7 @@ export default function SettingsPage() {
   const [darkMode, setDarkMode] = useState(false);
   const [autoSave, setAutoSave] = useState(true);
   const [useOnlyKnowledgeBase, setUseOnlyKnowledgeBase] = useState(true);
-  
+
   // システム健全性チェック
   // System health state removed - integrated into system diagnostic page
 

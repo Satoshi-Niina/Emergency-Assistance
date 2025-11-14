@@ -8,7 +8,7 @@ import {
   CreateUserRequest,
   ExportHistoryItem,
 } from '../../types/history';
-import { apiRequest } from '../api-unified';
+import { apiRequest } from '../api';
 import {
   fetchFaultHistoryList,
   fetchFaultHistoryDetail,
@@ -17,7 +17,7 @@ import {
   type FaultHistoryItem,
 } from './fault-history-api';
 
-// 履歴データから機種・機械番号一覧取得
+// 履歴チE�Eタから機種・機械番号一覧取征E
 export const fetchMachineData = async (): Promise<{
   machineTypes: Array<{ id: string; machineTypeName: string }>;
   machines: Array<{
@@ -29,8 +29,8 @@ export const fetchMachineData = async (): Promise<{
   try {
     return await apiRequest('/history/machine-data');
   } catch (error) {
-    console.error('機種データ取得エラー:', error);
-    // エラーの場合は空のデータを返す
+    console.error('機種チE�Eタ取得エラー:', error);
+    // エラーの場合�E空のチE�Eタを返す
     return {
       machineTypes: [],
       machines: [],
@@ -38,12 +38,12 @@ export const fetchMachineData = async (): Promise<{
   }
 };
 
-// 履歴一覧取得（既存履歴 + 故障履歴DB統合）
+// 履歴一覧取得（既存履歴 + 敁E��履歴DB統合！E
 export const fetchHistoryList = async (
   filters: HistorySearchFilters = {}
 ): Promise<HistoryListResponse> => {
   try {
-    // 並行して既存履歴と故障履歴DBから取得
+    // 並行して既存履歴と敁E��履歴DBから取征E
     const [legacyResponse, faultHistoryResponse] = await Promise.allSettled([
       fetchLegacyHistoryList(filters),
       fetchFaultHistoryListInternal(filters)
@@ -51,21 +51,21 @@ export const fetchHistoryList = async (
 
     let allItems: SupportHistoryItem[] = [];
     
-    // 既存履歴の結果を処理
+    // 既存履歴の結果を�E琁E
     if (legacyResponse.status === 'fulfilled' && legacyResponse.value.items) {
       allItems = [...allItems, ...legacyResponse.value.items];
     }
 
-    // 故障履歴DBの結果を処理（SupportHistoryItem形式に変換）
+    // 敁E��履歴DBの結果を�E琁E��EupportHistoryItem形式に変換�E�E
     if (faultHistoryResponse.status === 'fulfilled' && faultHistoryResponse.value.data) {
       const convertedItems = faultHistoryResponse.value.data.map(convertFaultHistoryToSupportHistory);
       allItems = [...allItems, ...convertedItems];
     }
 
-    // 作成日時でソート
+    // 作�E日時でソーチE
     allItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-    // ページング適用
+    // ペ�Eジング適用
     const limit = filters.limit || 20;
     const offset = filters.offset || 0;
     const paginatedItems = allItems.slice(offset, offset + limit);
@@ -85,7 +85,7 @@ export const fetchHistoryList = async (
   }
 };
 
-// 既存履歴取得（従来の方法）
+// 既存履歴取得（従来の方法！E
 const fetchLegacyHistoryList = async (
   filters: HistorySearchFilters = {}
 ): Promise<HistoryListResponse> => {
@@ -111,7 +111,7 @@ const fetchLegacyHistoryList = async (
   return response.json();
 };
 
-// 故障履歴DB取得（内部用）
+// 敁E��履歴DB取得（�E部用�E�E
 const fetchFaultHistoryListInternal = async (filters: HistorySearchFilters) => {
   return await fetchFaultHistoryList({
     machineType: filters.machineType,
@@ -154,7 +154,7 @@ const convertFaultHistoryToSupportHistory = (faultItem: FaultHistoryItem): Suppo
   };
 };
 
-// 履歴詳細取得（既存履歴 + 故障履歴DB統合）
+// 履歴詳細取得（既存履歴 + 敁E��履歴DB統合！E
 export const fetchHistoryDetail = async (
   id: string
 ): Promise<SupportHistoryItem> => {
@@ -165,11 +165,11 @@ export const fetchHistoryDetail = async (
       return convertFaultHistoryToSupportHistory(faultHistoryDetail);
     }
   } catch (error) {
-    // 故障履歴DBにない場合は既存履歴から検索
-    console.warn('故障履歴DBで見つからず、既存履歴を検索:', error);
+    // 敁E��履歴DBになぁE��合�E既存履歴から検索
+    console.warn('敁E��履歴DBで見つからず、既存履歴を検索:', error);
   }
 
-  // 既存履歴から取得
+  // 既存履歴から取征E
   const response = await apiRequest(`/history/${id}`);
 
   if (!response.ok) {
@@ -179,7 +179,7 @@ export const fetchHistoryDetail = async (
   return response.json();
 };
 
-// 履歴作成（故障履歴DBに優先保存）
+// 履歴作�E�E�故障履歴DBに優先保存！E
 export const createHistory = async (data: {
   machineType: string;
   machineNumber: string;
@@ -187,20 +187,20 @@ export const createHistory = async (data: {
   image?: File;
 }): Promise<SupportHistoryItem> => {
   try {
-    // 故障履歴DBに保存を試行
+    // 敁E��履歴DBに保存を試衁E
     const faultHistoryResult = await saveFaultHistory({
       jsonData: data.jsonData,
       title: data.jsonData.title || `${data.machineType} - ${data.machineNumber}`,
       extractImages: true,
     });
 
-    // 故障履歴DBから詳細を取得してSupportHistoryItem形式で返す
+    // 敁E��履歴DBから詳細を取得してSupportHistoryItem形式で返す
     const savedItem = await fetchFaultHistoryDetail(faultHistoryResult.id);
     return convertFaultHistoryToSupportHistory(savedItem);
   } catch (error) {
-    console.warn('故障履歴DBへの保存に失敗、従来方式で保存:', error);
+    console.warn('敁E��履歴DBへの保存に失敗、従来方式で保孁E', error);
     
-    // 従来の方式で既存履歴に保存
+    // 従来の方式で既存履歴に保孁E
     const formData = new FormData();
     formData.append('machineType', data.machineType);
     formData.append('machineNumber', data.machineNumber);
@@ -224,39 +224,39 @@ export const deleteHistory = async (id: string): Promise<void> => {
       method: 'DELETE',
     });
 
-    // apiRequestは成功時にデータを返し、エラー時には例外をthrowする
-    // レスポンスデータをチェック
+    // apiRequestは成功時にチE�Eタを返し、エラー時には例外をthrowする
+    // レスポンスチE�EタをチェチE��
     if (result && !result.success) {
       throw new Error(result.error || result.message || '履歴の削除に失敗しました');
     }
   } catch (error) {
-    // apiRequestが既にエラーをthrowしている場合、そのまま再スロー
+    // apiRequestが既にエラーをthrowしてぁE��場合、そのまま再スロー
     console.error('履歴削除APIエラー:', error);
     throw error;
   }
 };
 
-// 基礎データ取得
+// 基礎データ取征E
 export const fetchBaseData = async (): Promise<BaseDataResponse> => {
   return await apiRequest('/base-data');
 };
 
-// 処理済みファイル一覧取得
+// 処琁E��みファイル一覧取征E
 export const fetchProcessedFiles = async (): Promise<any> => {
   return await apiRequest('/files/processed');
 };
 
-// フロー一覧取得
+// フロー一覧取征E
 export const fetchFlows = async (): Promise<FlowListResponse> => {
   return await apiRequest('/flows');
 };
 
-// ユーザー一覧取得
+// ユーザー一覧取征E
 export const fetchUsers = async (): Promise<User[]> => {
   return await apiRequest('/users');
 };
 
-// ユーザー作成
+// ユーザー作�E
 export const createUser = async (
   userData: CreateUserRequest
 ): Promise<User> => {
@@ -266,9 +266,9 @@ export const createUser = async (
   });
 };
 
-// 履歴エクスポート機能
+// 履歴エクスポ�Eト機�E
 
-// 個別履歴エクスポート
+// 個別履歴エクスポ�EチE
 export const exportHistoryItem = async (
   id: string,
   format: 'json' | 'csv' = 'json'
@@ -282,7 +282,7 @@ export const exportHistoryItem = async (
   return response.blob();
 };
 
-// 選択履歴一括エクスポート
+// 選択履歴一括エクスポ�EチE
 export const exportSelectedHistory = async (
   ids: string[],
   format: 'json' | 'csv' = 'json'
@@ -293,7 +293,7 @@ export const exportSelectedHistory = async (
   });
 };
 
-// 全履歴エクスポート
+// 全履歴エクスポ�EチE
 export const exportAllHistory = async (
   filters: HistorySearchFilters = {},
   format: 'json' | 'csv' = 'json'
@@ -314,12 +314,12 @@ export const exportAllHistory = async (
   return response.blob();
 };
 
-// エクスポート履歴取得
+// エクスポ�Eト履歴取征E
 export const fetchExportHistory = async (): Promise<ExportHistoryItem[]> => {
   return await apiRequest('/history/export-history');
 };
 
-// 高度なテキスト検索
+// 高度なチE��スト検索
 export const advancedSearch = async (
   searchText: string,
   limit: number = 50
@@ -330,7 +330,7 @@ export const advancedSearch = async (
   });
 };
 
-// レポート生成
+// レポ�Eト生戁E
 export const generateReport = async (
   searchFilters: any,
   reportTitle?: string,
@@ -342,7 +342,7 @@ export const generateReport = async (
   });
 };
 
-// JSONデータをGPTで要約
+// JSONチE�EタをGPTで要紁E
 export const summarizeWithGPT = async (jsonData: any): Promise<string> => {
   try {
     const response = await apiRequest<{ success: boolean; summary: string; error?: string }>(
@@ -354,12 +354,12 @@ export const summarizeWithGPT = async (jsonData: any): Promise<string> => {
     );
 
     if (!response.success || !response.summary) {
-      throw new Error(response.error || '要約の生成に失敗しました');
+      throw new Error(response.error || '要紁E�E生�Eに失敗しました');
     }
 
     return response.summary;
   } catch (error) {
-    console.error('GPT要約エラー:', error);
+    console.error('GPT要紁E��ラー:', error);
     throw error;
   }
 };

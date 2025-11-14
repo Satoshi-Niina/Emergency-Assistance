@@ -1,6 +1,6 @@
-import { apiRequest } from '../api-unified';
+import { apiRequest } from '../api';
 
-// 故障履歴の型定義
+// 敁E��履歴の型定義
 export interface FaultHistoryItem {
   id: string;
   title: string;
@@ -68,7 +68,7 @@ export interface FaultHistoryStats {
 }
 
 /**
- * 故障履歴を保存
+ * 敁E��履歴を保孁E
  */
 export const saveFaultHistory = async (
   data: FaultHistoryCreateData
@@ -93,7 +93,7 @@ export const saveFaultHistory = async (
   });
 
   if (!response.success) {
-    throw new Error(response.error || '故障履歴の保存に失敗しました');
+    throw new Error(response.error || '敁E��履歴の保存に失敗しました');
   }
 
   return {
@@ -104,7 +104,7 @@ export const saveFaultHistory = async (
 };
 
 /**
- * 故障履歴一覧を取得
+ * 敁E��履歴一覧を取征E
  */
 export const fetchFaultHistoryList = async (
   filters: FaultHistorySearchFilters = {}
@@ -122,27 +122,27 @@ export const fetchFaultHistoryList = async (
   const response = await apiRequest(`/fault-history?${params.toString()}`);
 
   if (!response.success) {
-    throw new Error(response.error || '故障履歴の取得に失敗しました');
+    throw new Error(response.error || '敁E��履歴の取得に失敗しました');
   }
 
   return response;
 };
 
 /**
- * 故障履歴詳細を取得
+ * 敁E��履歴詳細を取征E
  */
 export const fetchFaultHistoryDetail = async (id: string): Promise<FaultHistoryItem> => {
   const response = await apiRequest(`/fault-history/${id}`);
 
   if (!response.success) {
-    throw new Error(response.error || '故障履歴の取得に失敗しました');
+    throw new Error(response.error || '敁E��履歴の取得に失敗しました');
   }
 
   return response.data;
 };
 
 /**
- * 故障履歴統計を取得
+ * 敁E��履歴統計を取征E
  */
 export const fetchFaultHistoryStats = async (): Promise<FaultHistoryStats> => {
   const response = await apiRequest('/fault-history/stats');
@@ -155,7 +155,7 @@ export const fetchFaultHistoryStats = async (): Promise<FaultHistoryStats> => {
 };
 
 /**
- * 既存のexportsディレクトリからデータベースに移行
+ * 既存�EexportsチE��レクトリからチE�Eタベ�Eスに移衁E
  */
 export const importFromExports = async (force = false): Promise<{
   imported: number;
@@ -181,7 +181,7 @@ export const importFromExports = async (force = false): Promise<{
 };
 
 /**
- * 故障履歴画像のURLを生成
+ * 敁E��履歴画像�EURLを生戁E
  */
 export const getFaultHistoryImageUrl = (filename: string): string => {
   const baseUrl = import.meta.env.DEV 
@@ -192,7 +192,7 @@ export const getFaultHistoryImageUrl = (filename: string): string => {
 };
 
 /**
- * チャットエクスポートデータから故障履歴を自動保存
+ * チャチE��エクスポ�Eトデータから敁E��履歴を�E動保孁E
  */
 export const saveFromChatExport = async (
   exportData: any,
@@ -201,16 +201,16 @@ export const saveFromChatExport = async (
     description?: string;
   } = {}
 ): Promise<{ id: string; imagePaths?: string[]; imageCount: number }> => {
-  // エクスポートデータから基本情報を抽出
+  // エクスポ�Eトデータから基本惁E��を抽出
   const title = options.title || 
     exportData.title || 
     exportData.metadata?.title ||
-    '故障対応履歴';
+    '敁E��対応履歴';
   
   const description = options.description || 
     exportData.description ||
     exportData.metadata?.description ||
-    `チャットエクスポートから自動保存: ${new Date().toLocaleString()}`;
+    `チャチE��エクスポ�Eトから�E動保孁E ${new Date().toLocaleString()}`;
 
   return await saveFaultHistory({
     jsonData: exportData,
@@ -221,7 +221,7 @@ export const saveFromChatExport = async (
 };
 
 /**
- * 故障履歴を削除（必要に応じて実装）
+ * 敁E��履歴を削除�E�忁E��に応じて実裁E��E
  */
 export const deleteFaultHistory = async (id: string): Promise<void> => {
   const response = await apiRequest(`/fault-history/${id}`, {
@@ -229,6 +229,6 @@ export const deleteFaultHistory = async (id: string): Promise<void> => {
   });
 
   if (!response.success) {
-    throw new Error(response.error || '故障履歴の削除に失敗しました');
+    throw new Error(response.error || '敁E��履歴の削除に失敗しました');
   }
 };

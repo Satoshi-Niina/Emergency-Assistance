@@ -28,7 +28,7 @@ import { Toaster } from './components/ui/toaster';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { RouteDebugger } from './components/shared/RouteDebugger';
 import { DebugError } from './components/shared/DebugError';
-import { health } from './lib/api-unified';
+import { api } from './lib/api';
 
 // Lazy load pages
 import { lazy } from 'react';
@@ -56,22 +56,22 @@ function ApiConnectionTest() {
       // ローカル開発時はAPI接続テストをスキップ
       const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       const isDevelopment = import.meta.env.DEV;
-      
+
       // 本番環境でもAPI接続テストをスキップ（UI表示を優先）
       console.log('🔧 API接続テストをスキップ（UI表示を優先）');
       setApiStatus('connected');
       return;
-      
+
       if (isLocalhost && isDevelopment) {
         console.log('🔧 ローカル開発環境: API接続テストをスキップ');
         setApiStatus('connected');
         return;
       }
-      
+
       try {
         console.log('🔍 API接続テスト開始...');
-        const isHealthy = await health.check();
-        if (isHealthy) {
+        const response = await api.get('/health');
+        if (response) {
           setApiStatus('connected');
           console.log('✅ API接続成功');
         } else {

@@ -48,14 +48,36 @@ console.log('🔧 API設定詳細:', {
 
 // APIエンドポイントの構築
 export const buildApiUrl = (endpoint: string): string => {
-  // エンドポイントが/apiで始まっていない場合は追加
-  const normalizedEndpoint = endpoint.startsWith('/api') 
-    ? endpoint 
-    : `/api${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
-  
-  const fullUrl = `${API_BASE_URL}${normalizedEndpoint}`;
-  console.log(`🔗 API URL構築: ${endpoint} -> ${fullUrl}`);
-  return fullUrl;
+  // エンドポイントの正規化
+  let normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+  // API_BASE_URLの正規化（末尾の/を除去）
+  const normalizedBaseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+
+  // 重複した /api パスの処理
+  if (normalizedBaseUrl === '/api' && normalizedEndpoint.startsWith('/api/')) {
+    // BASE_URLが '/api' でエンドポイントが '/api/...' の場合、重複を回避
+    const fullUrl = normalizedEndpoint;
+    console.log(`🔗 API URL構築 (重複回避): ${endpoint} -> ${fullUrl}`);
+    return fullUrl;
+  } else if (normalizedBaseUrl === '/api') {
+    // BASE_URLが '/api' でエンドポイントが '/api' で始まらない場合
+    const fullUrl = `/api${normalizedEndpoint}`;
+    console.log(`🔗 API URL構築 (追加): ${endpoint} -> ${fullUrl}`);
+    return fullUrl;
+  } else if (normalizedEndpoint.startsWith('/api/') && !normalizedBaseUrl.endsWith('/api')) {
+    // エンドポイントが既に '/api/' で始まっている場合
+    const fullUrl = `${normalizedBaseUrl}${normalizedEndpoint}`;
+    console.log(`🔗 API URL構築 (絶対URL): ${endpoint} -> ${fullUrl}`);
+    return fullUrl;
+  } else {
+    // 通常の場合：BASE_URL + /api + endpoint
+    const fullUrl = normalizedEndpoint.startsWith('/api/')
+      ? `${normalizedBaseUrl}${normalizedEndpoint}`
+      : `${normalizedBaseUrl}/api${normalizedEndpoint}`;
+    console.log(`🔗 API URL構築 (標準): ${endpoint} -> ${fullUrl}`);
+    return fullUrl;
+  }
 };
 
 // デバッグ用：環境変数の状態を詳細にログ出力

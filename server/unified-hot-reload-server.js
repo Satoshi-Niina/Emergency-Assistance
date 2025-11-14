@@ -149,8 +149,10 @@ app.use((req, res, next) => {
 
 // Vite開発サーバーへのプロキシ設定
 let viteServer = null;
+let viteServerReady = false;
 
 function startViteServer() {
+  viteServerReady = false;
   if (viteServer) {
     console.log('🔄 Restarting Vite server...');
     viteServer.kill();
@@ -163,7 +165,7 @@ function startViteServer() {
   // Windows環境でのnpmコマンドの解決
   const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
-  viteServer = spawn(npmCommand, ['run', 'dev'], {
+  viteServer = spawn(npmCommand, ['run', 'vite-only'], {
     cwd: clientDir,
     stdio: 'pipe',
     shell: process.platform === 'win32',
@@ -178,6 +180,7 @@ function startViteServer() {
     const output = data.toString('utf8');
     console.log('Vite:', output.trim());
     if (output.includes('Local:') || output.includes('ready')) {
+      viteServerReady = true;
       console.log('✅ Vite server started');
     }
   });
@@ -193,6 +196,7 @@ function startViteServer() {
   viteServer.on('exit', (code) => {
     console.log(`🛑 Vite server exited with code ${code}`);
     viteServer = null;
+    viteServerReady = false;
   });
 }
 
@@ -209,7 +213,7 @@ if (isDevelopment) {
     }
 
     // Viteサーバーが起動していない場合は待機
-    if (!viteServer) {
+    if (!viteServer || !viteServerReady) {
       return res.status(503).send('Vite server is starting, please wait...');
     }
 

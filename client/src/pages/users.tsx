@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api, userApi } from '../lib/api-unified';
+import { api, userApi } from '../lib/api';
 import { useAuth } from '../context/auth-context';
 import { useToast } from '../hooks/use-toast';
 import * as XLSX from 'xlsx';
@@ -303,7 +303,7 @@ export default function UsersPage() {
       await fetchUsers();
     } catch (error) {
       console.error('❌ ユーザー更新エラー:', error);
-      
+
       // 認証エラーの場合は特別な処理
       if (error instanceof Error && error.message === 'AUTHENTICATION_ERROR') {
         toast({
@@ -315,7 +315,7 @@ export default function UsersPage() {
         navigate('/login');
         return;
       }
-      
+
       toast({
         title: 'エラー',
         description:
@@ -840,11 +840,10 @@ export default function UsersPage() {
                         <TableCell>{user.display_name}</TableCell>
                         <TableCell>
                           <span
-                            className={`px-2 py-1 rounded-full text-xs ${
-                              user.role === 'admin'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-blue-100 text-blue-800'
-                            }`}
+                            className={`px-2 py-1 rounded-full text-xs ${user.role === 'admin'
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-blue-100 text-blue-800'
+                              }`}
                           >
                             {user.role === 'admin' ? '管理者' : '一般ユーザー'}
                           </span>

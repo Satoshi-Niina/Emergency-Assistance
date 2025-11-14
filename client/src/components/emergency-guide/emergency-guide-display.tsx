@@ -14,7 +14,7 @@ import {
   Send,
   X,
 } from 'lucide-react';
-import { convertImageUrl } from '../../lib/image-utils.ts';
+import { convertImageUrl } from '../../lib/image-utils';
 
 interface Step {
   id: string;
@@ -65,8 +65,7 @@ interface FlowExecutionStep {
   timestamp: Date;
 }
 
-// 画像URL変換の改善
-
+// 画像URL変換の改喁E
 // 画像エラーハンドリングの改善
 // 統一されたユーティリティを使用
 import { handleImageError } from '../../lib/image-utils';
@@ -101,19 +100,19 @@ export default function EmergencyGuideDisplay({
     const fetchGuideData = async () => {
       try {
         setLoading(true);
-        console.log('🔄 応急処置ガイドデータ取得開始:', guideId);
-        
+        console.log('🔄 応急処置ガイドデータ取得開始', guideId);
+
         // キャッシュ無効化のためにタイムスタンプを追加
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2);
         const cacheBuster = `?ts=${timestamp}&r=${randomId}`;
-        
+
         // 統一API設定を使用 - emergency-flow APIを使用
-        const { buildApiUrl } = await import('../../lib/api-unified');
+        const { buildApiUrl } = await import('../../lib/api');
         const apiUrl = buildApiUrl(`/emergency-flow/${guideId}${cacheBuster}`);
-        
+
         console.log('🌐 ガイド詳細API URL:', apiUrl);
-        
+
         const response = await fetch(apiUrl, {
           method: 'GET',
           headers: {
@@ -124,7 +123,7 @@ export default function EmergencyGuideDisplay({
           },
         });
 
-        console.log('📡 レスポンス状態:', response.status, response.statusText);
+        console.log('📡 レスポンス状態', response.status, response.statusText);
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -134,12 +133,12 @@ export default function EmergencyGuideDisplay({
 
         const responseData = await response.json();
         console.log('📊 取得したデータ:', responseData);
-        
+
         const data =
           responseData.success && responseData.data
             ? responseData.data
             : responseData;
-            
+
         console.log('📋 処理対象データ:', data);
         setGuideData(data);
 
@@ -248,11 +247,11 @@ export default function EmergencyGuideDisplay({
     setIsCompleted(true);
   };
 
-  // フロー実行結果をチャットに送信
+  // フロー実行結果を履歴として保存
   const sendToChat = () => {
     if (!guideData || executionHistory.length === 0) return;
 
-    // 実行履歴からチャット用のデータを作成
+    // 実行履歴から保存用のデータを作成
     const chatData = {
       title: guideData.title,
       description: guideData.description,
@@ -261,27 +260,27 @@ export default function EmergencyGuideDisplay({
       ),
       totalSteps: executionHistory.length,
       completedAt: new Date(),
-      isPartial: !isCompleted, // 表示したフローをチャットに送信かどうかのフラグ
+      isPartial: !isCompleted, // 部分的な履歴保存かどうかのフラグ
     };
 
-    // カスタムイベントでチャットコンテキストに送信
+    // カスタムイベントで履歴保存データを送信
     window.dispatchEvent(
       new CustomEvent('emergency-guide-completed', {
         detail: chatData,
       })
     );
 
-    // onSendToChat関数が提供されている場合は呼び出す
+    // onSendToChat関数が提供されている場合は呼び出し
     if (onSendToChat) {
       onSendToChat();
     }
 
-    // 表示したフローをチャットに送信の場合はガイド画面を閉じない
+    // 完了していない場合はガイド画面を閉じない
     if (isCompleted) {
       onExit();
     } else {
-      // 表示したフローをチャットに送信の場合は成功メッセージを表示
-      console.log('表示したフローをチャットに送信完了:', chatData);
+      // 部分的な履歴保存の場合は成功メッセージを表示
+      console.log('履歴保存完了', chatData);
       setShowPartialSuccess(true);
       setTimeout(() => {
         setShowPartialSuccess(false);
@@ -323,8 +322,7 @@ export default function EmergencyGuideDisplay({
         <CardContent>
           <p className='text-center py-8'>ステップが見つかりません</p>
           <Button onClick={onExit} className='w-full'>
-            戻る
-          </Button>
+            戻めE          </Button>
         </CardContent>
       </Card>
     );
@@ -378,10 +376,10 @@ export default function EmergencyGuideDisplay({
             currentStep.conditions.length > 0 && (
               <div className='space-y-3'>
                 <h4 className='font-medium text-gray-900'>
-                  {isPreview ? '条件分岐:' : '選択してください：'}
+                  {isPreview ? '条件分岐' : '選択してください'}
                 </h4>
                 {isPreview ? (
-                  // プレビューモードでは条件分岐の情報のみ表示
+                  // プレビューモードでは条件分岐の選択肢のみ表示
                   <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
                     {currentStep.conditions.map((condition, index) => (
                       <div
@@ -401,7 +399,7 @@ export default function EmergencyGuideDisplay({
                               s => s.id === condition.nextId
                             );
                             return targetStep
-                              ? `${targetStep.title || `ステップ ${targetIndex + 1}`}`
+                              ? `${targetStep.title || `ステップ${targetIndex + 1}`}`
                               : '未設定';
                           })()}
                         </div>
@@ -450,7 +448,7 @@ export default function EmergencyGuideDisplay({
                         handleImageError(e, image.url);
                       }}
                       onLoad={() => {
-                        console.log('✅ 画像読み込み成功 (emergency-guide-display):', {
+                        console.log('✁E画像読み込み成功 (emergency-guide-display):', {
                           imageUrl: image.url,
                           builtUrl: buildImageUrl(image.url),
                           fileName: image.fileName,
@@ -472,7 +470,7 @@ export default function EmergencyGuideDisplay({
                 className='w-full h-auto rounded-lg shadow-md'
                 crossOrigin="anonymous"
                 onError={e => {
-                  console.error('❌ 画像読み込みエラー (legacy imageUrl):', {
+                  console.error('❁E画像読み込みエラー (legacy imageUrl):', {
                     imageUrl: currentStep.imageUrl,
                     builtUrl: buildImageUrl(currentStep.imageUrl),
                     stepTitle: currentStep.title,
@@ -480,7 +478,7 @@ export default function EmergencyGuideDisplay({
                   handleImageError(e, currentStep.imageUrl);
                 }}
                 onLoad={() => {
-                  console.log('✅ 画像読み込み成功 (legacy imageUrl):', {
+                  console.log('✁E画像読み込み成功 (legacy imageUrl):', {
                     imageUrl: currentStep.imageUrl,
                     builtUrl: buildImageUrl(currentStep.imageUrl),
                     stepTitle: currentStep.title,
@@ -509,7 +507,7 @@ export default function EmergencyGuideDisplay({
             </Button>
 
             <div className='flex gap-2'>
-              {/* ステップ2以降で送信ボタンを表示（プレビューモードでは非表示） */}
+              {/* ステップ2以降でチャット履歴送信ボタンを表示、プレビューモードでは非表示 */}
               {currentStepIndex >= 1 && !isCompleted && !isPreview && (
                 <Button
                   onClick={sendToChat}
@@ -517,7 +515,7 @@ export default function EmergencyGuideDisplay({
                   className='bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300'
                 >
                   <Send className='h-4 w-4 mr-2' />
-                  表示したフローをチャットに送信
+                  チャット履歴送信
                 </Button>
               )}
 
@@ -543,7 +541,7 @@ export default function EmergencyGuideDisplay({
             </div>
           </div>
 
-          {/* 完了後のチャット送信ボタン（プレビューモードでは非表示） */}
+          {/* 完了後のチャット履歴送信ボタン、プレビューモードでは非表示 */}
           {isCompleted && !isPreview && (
             <div className='mt-6 p-4 bg-green-50 border border-green-200 rounded-lg'>
               <div className='flex items-center justify-between'>
@@ -558,11 +556,11 @@ export default function EmergencyGuideDisplay({
                   className='bg-green-600 hover:bg-green-700 text-white'
                 >
                   <Send className='h-4 w-4 mr-2' />
-                  チャットに送信
+                  チャット履歴送信
                 </Button>
               </div>
               <p className='text-green-700 text-sm mt-2'>
-                実行したステップと画像をチャット履歴に記録します
+                実行したステップと画像をチャット履歴に記録しました。
               </p>
             </div>
           )}
@@ -577,22 +575,22 @@ export default function EmergencyGuideDisplay({
                 </span>
               </div>
               <p className='text-blue-700 text-sm mt-2'>
-                フローのプレビューが完了しました。実際の使用時にはチャット送信機能が利用できます。
+                フローのプレビューが完了しました。実際の使用時にはチャット履歴送信機能が利用できます。
               </p>
             </div>
           )}
 
-          {/* 表示したフローをチャットに送信成功メッセージ（プレビューモードでは非表示） */}
+          {/* チャット履歴送信成功メッセージ、プレビューモードでは非表示 */}
           {showPartialSuccess && !isPreview && (
             <div className='mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg animate-pulse'>
               <div className='flex items-center gap-2'>
                 <CheckCircle className='h-5 w-5 text-blue-600' />
                 <span className='text-blue-800 font-medium'>
-                  表示したフローをチャットに送信しました
+                  チャット履歴に送信しました
                 </span>
               </div>
               <p className='text-blue-700 text-sm mt-2'>
-                現在までの実行履歴がチャット履歴に記録されました。ガイドを続行できます。
+                現在までの実行履歴をチャットに送信しました。ガイドを続行できます。
               </p>
             </div>
           )}

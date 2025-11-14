@@ -1,6 +1,6 @@
-import { api } from './api-unified';
+import { api } from './api';
 
-// データベースとローカルフォルダを統合的に扱うAPI関数群
+// チE�Eタベ�Eスとローカルフォルダを統合的に扱ぁEPI関数群
 
 export interface DatabaseOverview {
   success: boolean;
@@ -112,12 +112,12 @@ export interface BackupResult {
   message: string;
 }
 
-// データベース総括情報取得
+// チE�Eタベ�Eス総括惁E��取征E
 export const getDatabaseOverview = async (): Promise<DatabaseOverview> => {
   return await api.get<DatabaseOverview>('/unified-data/db-overview');
 };
 
-// ローカルフォルダ総括情報取得
+// ローカルフォルダ総括惁E��取征E
 export const getFolderOverview = async (): Promise<FolderOverview> => {
   return await api.get<FolderOverview>('/unified-data/folder-overview');
 };
@@ -137,24 +137,24 @@ export const searchUnifiedData = async (
   });
 };
 
-// データベーススキーマ情報取得
+// チE�Eタベ�Eススキーマ情報取征E
 export const getDatabaseSchema = async (): Promise<DatabaseSchema> => {
   return await api.get<DatabaseSchema>('/unified-data/db-schema');
 };
 
-// データベースバックアップ実行
+// チE�Eタベ�EスバックアチE�E実衁E
 export const createDatabaseBackup = async (): Promise<BackupResult> => {
   return await api.post<BackupResult>('/unified-data/backup');
 };
 
-// システム健全性チェック
+// シスチE��健全性チェチE��
 export const getSystemHealthCheck = async (): Promise<HealthCheck> => {
   return await api.get<HealthCheck>('/unified-data/health-check');
 };
 
-// 使いやすい複合関数
+// 使ぁE��すい褁E��関数
 
-// 全体の状況確認（DB + フォルダ + ヘルスチェック）
+// 全体�E状況確認！EB + フォルダ + ヘルスチェチE���E�E
 export const getSystemOverview = async () => {
   try {
     const [dbOverview, folderOverview, healthCheck] = await Promise.all([
@@ -176,12 +176,12 @@ export const getSystemOverview = async () => {
       },
     };
   } catch (error) {
-    console.error('システム総括情報取得エラー:', error);
+    console.error('シスチE��総括惁E��取得エラー:', error);
     throw error;
   }
 };
 
-// データ保存の状況確認
+// チE�Eタ保存�E状況確誁E
 export const checkDataIntegrity = async () => {
   try {
     const [dbSchema, healthCheck] = await Promise.all([
@@ -189,10 +189,10 @@ export const checkDataIntegrity = async () => {
       getSystemHealthCheck(),
     ]);
 
-    // データ整合性チェック
+    // チE�Eタ整合性チェチE��
     const integrityIssues = [];
     
-    // データベーステーブルの存在確認
+    // チE�Eタベ�EスチE�Eブルの存在確誁E
     const requiredTables = [
       'users', 'support_history', 'base_documents', 
       'history_items', 'machines', 'machine_types'
@@ -201,11 +201,11 @@ export const checkDataIntegrity = async () => {
     for (const tableName of requiredTables) {
       const tableExists = dbSchema.tables.some(table => table.name === tableName);
       if (!tableExists) {
-        integrityIssues.push(`必須テーブル ${tableName} が存在しません`);
+        integrityIssues.push(`忁E��テーブル ${tableName} が存在しません`);
       }
     }
 
-    // ヘルスチェックでエラーがあるか確認
+    // ヘルスチェチE��でエラーがあるか確誁E
     const healthErrors = healthCheck.checks.filter(check => check.status === 'ERROR');
     integrityIssues.push(...healthErrors.map(error => error.message));
 
@@ -218,14 +218,14 @@ export const checkDataIntegrity = async () => {
         isHealthy: integrityIssues.length === 0,
         issues: integrityIssues,
         recommendations: integrityIssues.length > 0 ? [
-          'データベースの接続設定を確認してください',
-          '必要なディレクトリが存在するか確認してください',
-          'システムの健全性チェックの詳細を確認してください'
+          'チE�Eタベ�Eスの接続設定を確認してください',
+          '忁E��なチE��レクトリが存在するか確認してください',
+          'シスチE��の健全性チェチE��の詳細を確認してください'
         ] : []
       }
     };
   } catch (error) {
-    console.error('データ整合性チェックエラー:', error);
+    console.error('チE�Eタ整合性チェチE��エラー:', error);
     throw error;
   }
 };

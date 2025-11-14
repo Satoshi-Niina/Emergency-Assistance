@@ -22,7 +22,7 @@ import {
   advancedSearch,
   generateReport,
 } from '../lib/api/history-api';
-import { storage } from '../lib/api-unified';
+import { storage } from '../lib/api';
 import ChatExportReport from '../components/report/chat-export-report';
 
 // 画像ユーティリティ関数
@@ -31,7 +31,7 @@ const API_BASE = import.meta.env.DEV
   : import.meta.env.VITE_API_BASE_URL || window.location.origin;
 
 async function fetchDetailFile(name: string) {
-  // IDベースのエンドポイントを試行
+  // IDベースのエンドポイントを試す
   const endpoints = [
     `${API_BASE}/api/history/${name}`,
     `${API_BASE}/api/history/item/${name}`,
@@ -51,33 +51,23 @@ async function fetchDetailFile(name: string) {
     }
   }
 
-  return null;
+  throw new Error(`詳細データの取得に失敗しました: ${name}`);
 }
 
 export default function HistoryPage() {
   const { user } = useAuth();
-  const [historyItems, setHistoryItems] = useState<SupportHistoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [machineDataLoading, setMachineDataLoading] = useState(false);
   const [searchFilterLoading, setSearchFilterLoading] = useState(false);
+  const [historyItems, setHistoryItems] = useState<SupportHistoryItem[]>([]);
+  const [filteredItems, setFilteredItems] = useState<SupportHistoryItem[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const [selectedItems, setSelectedItems] = useState<string[]>([]);
-  const [machineData, setMachineData] = useState<{
-    machineTypes: Array<{ id: string; machineTypeName: string }>;
-    machines: Array<{
-      id: string;
-      machineNumber: string;
-      machineTypeName: string;
-    }>;
-  }>({ machineTypes: [], machines: [] });
-  const [searchFilterData, setSearchFilterData] = useState<{
-    machineTypes: string[];
-    machineNumbers: string[];
-  }>({ machineTypes: [], machineNumbers: [] });
-
-  // 検索フィルター
-  const [filters, setFilters] = useState<HistorySearchFilters>({
+  const [totalPages, setTotalPages] = useState(1);
+  const [machineData, setMachineData] = useState({
+    machineTypes: [] as Array<{ id: string; machineTypeName: string }>,
+    machines: [] as Array<{ id: string; machineNumber: string; machineTypeName: string }>,
+  });
+  const [filters, setFilters] = useState({
     machineType: '',
     machineNumber: '',
     searchText: '',
@@ -111,7 +101,7 @@ export default function HistoryPage() {
 
       // 機種・機械番号データを専用APIから取得
       console.log('🔍 機種・機械番号データ取得開始');
-      const { buildApiUrl } = await import('../lib/api-unified');
+      const { buildApiUrl } = await import('../lib/api');
       const response = await fetch(buildApiUrl('/history/machine-data'));
       console.log('🔍 APIレスポンス:', response.status, response.statusText);
       const data = await response.json();
@@ -144,56 +134,49 @@ export default function HistoryPage() {
             machines.push({
               id: machine.machineNumber,
               machineNumber: machine.machineNumber,
-              machineTypeName: machine.machineTypeName || 'Unknown',
+              machineTypeName: machine.machineTypeName,
             });
           }
         });
 
-        const result = { machineTypes, machines };
-        console.log('🔍 機種・機械番号データ処理完了:', {
-          machineTypes: machineTypes.length,
-          machines: machines.length,
-          machineTypesList: machineTypes.map(mt => mt.machineTypeName),
-          machinesList: machines.map(m => `${m.machineNumber} (${m.machineTypeName})`)
+        // ソート
+        machineTypes.sort((a, b) => a.machineTypeName.localeCompare(b.machineTypeName));
+        machines.sort((a, b) => a.machineNumber.localeCompare(b.machineNumber));
+
+        setMachineData({
+          machineTypes,
+          machines,
         });
-        console.log('🔍 setMachineData呼び出し前:', result);
-        setMachineData(result);
+
         console.log('🔍 setMachineData呼び出し完了');
       } else {
-        console.log(
-          '⚠️ 機種・機械番号データが正しく取得できませんでした:',
-          data
-        );
-        console.log('⚠️ data.success:', data.success);
-        console.log('⚠️ data.machineTypes:', data.machineTypes);
-        console.log('⚠️ data.machines:', data.machines);
-        setMachineData({ machineTypes: [], machines: [] });
+        console.warn('機種データの取得に失敗しました:', data);
+        setMachineData({
+          machineTypes: [],
+          machines: [],
+        });
       }
     } catch (error) {
-      console.error('機種・機械番号データの取得に失敗しました:', error);
-      setMachineData({ machineTypes: [], machines: [] });
+      console.error('機種データ取得エラー:', error);
+      setMachineData({
+        machineTypes: [],
+        machines: [],
+      });
     } finally {
       setMachineDataLoading(false);
     }
   };
 
-  // 履歴検索フィルター用データ（履歴データから動的に生成）
   const fetchSearchFilterData = async () => {
     try {
       setSearchFilterLoading(true);
       console.log('🔍 履歴検索フィルターデータ生成開始');
 
-      // 履歴データから動的にフィルターデータを生成
-      const allItems = [...historyItems];
-      const machineTypes = [...new Set(allItems.map(item => item.machineType).filter(Boolean))];
-      const machineNumbers = [...new Set(allItems.map(item => item.machineNumber).filter(Boolean))];
+      // すべての履歴アイテムから機種と機械番号を抽出
+      const machineTypes = [...new Set(historyItems.map(item => item.machineType).filter(Boolean))];
+      const machineNumbers = [...new Set(historyItems.map(item => item.machineNumber).filter(Boolean))];
 
-      setSearchFilterData({
-        machineTypes,
-        machineNumbers,
-      });
-      
-      console.log('🔍 履歴検索フィルターデータ生成完了:', {
+      console.log('🔍 検索フィルター生成結果:', {
         machineTypes: machineTypes.length,
         machineNumbers: machineNumbers.length,
       });
@@ -210,13 +193,13 @@ export default function HistoryPage() {
 
       // 機械故障履歴ファイル一覧を取得
       console.log('🔍 機械故障履歴ファイル一覧取得開始');
-      const { buildApiUrl } = await import('../lib/api-unified');
+      const { buildApiUrl } = await import('../lib/api');
       const requestUrl = buildApiUrl('/history');
       console.log('🔍 APIリクエストURL:', requestUrl);
-      
+
       const response = await fetch(requestUrl);
       console.log('🔍 レスポンスステータス:', response.status, response.statusText);
-      
+
       const data = await response.json();
 
       console.log('🔍 取得したデータ:', data);
@@ -246,62 +229,99 @@ export default function HistoryPage() {
           extractedSymptoms: [],
           possibleModels: [],
           machineInfo: `ファイル: ${file.filePath}`,
-          jsonData: {
-            id: file.id,
-            name: file.name,
-            title: file.title || file.name,
-            filePath: file.filePath,
-            size: file.size,
-            createdAt: file.createdAt,
-            category: file.category || 'history'
+          description: file.description || '',
+          userId: 'system',
+          sessionId: file.id,
+          conversationData: [],
+          tags: [],
+          metadata: {
+            source: 'history-file',
+            originalFile: file.name
           }
         }));
 
         setHistoryItems(historyItems);
-        setTotalItems(data.total || historyItems.length);
-        console.log('🔍 履歴アイテム設定完了:', historyItems.length);
+        setFilteredItems(historyItems);
+        setCurrentPage(page);
+        setTotalPages(Math.ceil(historyItems.length / 20));
+
+        console.log('✅ 履歴データ設定完了:', {
+          totalItems: historyItems.length,
+          currentPage: page,
+          totalPages: Math.ceil(historyItems.length / 20)
+        });
       } else {
-        console.log('🔍 データが空またはエラー');
+        console.warn('履歴データが見つかりません:', data);
         setHistoryItems([]);
-        setTotalItems(0);
+        setFilteredItems([]);
+        setTotalPages(1);
       }
     } catch (error) {
-      console.error('🔍 履歴データ取得エラー:', error);
+      console.error('❌ 履歴データ取得エラー:', error);
       setHistoryItems([]);
-      setTotalItems(0);
+      setFilteredItems([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
   };
 
-  // 初期ロード
+  // フィルタリング処理
   useEffect(() => {
-    fetchHistoryData(1);
-    fetchSearchFilterData(); // 履歴検索用フィルターデータを取得
-  }, []); // 初期ロード時のみ実行
+    if (!historyItems.length) return;
 
-  // フィルター変更時の処理
-  useEffect(() => {
-    // フィルターが変更された時のみ再取得（初期ロード時は除外）
-    if (historyItems.length > 0) {
-      fetchHistoryData(1);
+    let filtered = [...historyItems];
+
+    // 機種フィルター
+    if (filters.machineType) {
+      filtered = filtered.filter(item =>
+        item.machineType === filters.machineType
+      );
     }
-  }, [filters]); // filtersの変更を監視
 
-  // フィルター変更時の処理
-  const handleFilterChange = (key: keyof HistorySearchFilters, value: string) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value,
-    }));
+    // 機械番号フィルター
+    if (filters.machineNumber) {
+      filtered = filtered.filter(item =>
+        item.machineNumber === filters.machineNumber
+      );
+    }
+
+    // テキスト検索
+    if (filters.searchText) {
+      const searchTerms = filters.searchText.toLowerCase().split(' ').filter(term => term.trim());
+      filtered = filtered.filter(item => {
+        const searchableText = [
+          item.title,
+          typeof item.machineInfo === 'string' ? item.machineInfo : '',
+          ...item.extractedComponents,
+          ...item.extractedSymptoms,
+        ].join(' ').toLowerCase();
+
+        return searchTerms.every(term => searchableText.includes(term));
+      });
+    }
+
+    // 日付フィルター
+    if (filters.searchDate) {
+      filtered = filtered.filter(item => {
+        const itemDate = new Date(item.createdAt);
+        const searchDate = new Date(filters.searchDate);
+        return itemDate.toDateString() === searchDate.toDateString();
+      });
+    }
+
+    setFilteredItems(filtered);
+    setCurrentPage(1);
+    setTotalPages(Math.ceil(filtered.length / 20));
+  }, [filters, historyItems]); // filtersの変更を監視
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
   };
 
   const handleSearch = () => {
-    fetchHistoryData(1);
-  };
-
-  const handlePageChange = (page: number) => {
-    fetchHistoryData(page);
+    // フィルターはuseEffectで自動的に適用される
+    console.log('🔍 検索実行:', filters);
   };
 
   const handleDeleteHistory = async (id: string, title?: string) => {
@@ -309,9 +329,9 @@ export default function HistoryPage() {
     if (window.confirm(`「${displayTitle}」を削除しますか？\n\nこの操作は取り消せません。関連する画像ファイルも同時に削除されます。`)) {
       try {
         console.log('🗑️ 履歴削除開始:', id);
-        
+
         // 統一APIを使用して削除リクエスト
-        const { buildApiUrl } = await import('../lib/api-unified');
+        const { buildApiUrl } = await import('../lib/api');
         const response = await fetch(buildApiUrl(`/history/${id}`), {
           method: 'DELETE',
           headers: {
@@ -319,15 +339,15 @@ export default function HistoryPage() {
           },
           credentials: 'include',
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
           console.log('✅ 履歴削除成功:', result);
-          
+
           // 成功メッセージを表示
           alert(`削除が完了しました。\n・JSONファイル: ${result.deletedFile}\n・関連画像: ${result.deletedImages}件`);
-          
+
           // 一覧を再読み込み
           await fetchHistoryData(currentPage);
         } else {
@@ -401,9 +421,6 @@ export default function HistoryPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-gray-500 mt-1">
-                ※ JSONファイルから機械番号を取得しています ({machineData.machines.length}件)
-              </p>
             </div>
 
             <div>
@@ -411,7 +428,8 @@ export default function HistoryPage() {
                 キーワード検索
               </label>
               <Input
-                placeholder="キーワードを入力"
+                type="text"
+                placeholder="故障内容、部品名など"
                 value={filters.searchText}
                 onChange={(e) => handleFilterChange('searchText', e.target.value)}
               />
@@ -422,16 +440,13 @@ export default function HistoryPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                日付検索
+                作成日
               </label>
               <Input
                 type="date"
                 value={filters.searchDate}
                 onChange={(e) => handleFilterChange('searchDate', e.target.value)}
               />
-              <p className="text-xs text-gray-500 mt-1">
-                ※ 指定した日付の履歴を検索します
-              </p>
             </div>
           </div>
 
@@ -460,71 +475,76 @@ export default function HistoryPage() {
       <Card>
         <CardHeader>
           <CardTitle>
-            機械故障履歴一覧 ({historyItems.length}件)
+            機械故障履歴一覧 ({filteredItems.length}件)
           </CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="flex justify-center items-center p-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <p className="ml-3 text-gray-600">履歴データを読み込み中...</p>
-            </div>
-          ) : historyItems.length === 0 ? (
-            <div className="text-center p-8">
-              <div className="bg-gray-50 rounded-lg p-6">
-                <div className="text-6xl mb-4">📄</div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  履歴データがありません
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  機械故障履歴ファイルが見つかりません。
-                </p>
-                <Button onClick={() => fetchHistoryData(1)}>
-                  再読み込み
-                </Button>
-              </div>
+              <span className="ml-2">読み込み中...</span>
             </div>
           ) : (
             <div className="space-y-4">
-              {historyItems.map((item) => (
-                <div key={item.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg text-gray-900">
-                        {item.title}
-                      </h3>
-                      <p className="text-gray-600 mt-1">{item.machineInfo}</p>
-                      <div className="flex gap-2 mt-2">
-                        <Badge variant="outline">{item.machineType}</Badge>
-                        <Badge variant="outline">{item.machineNumber}</Badge>
-                        <Badge variant="outline">
-                          {new Date(item.createdAt).toLocaleDateString('ja-JP')}
-                        </Badge>
+              {filteredItems.length === 0 ? (
+                <div className="text-center p-8 text-gray-500">
+                  <p>該当する履歴が見つかりません。</p>
+                  <p className="text-sm mt-2">検索条件を変更してお試しください。</p>
+                </div>
+              ) : (
+                filteredItems
+                  .slice((currentPage - 1) * 20, currentPage * 20)
+                  .map((item) => (
+                    <div
+                      key={item.id}
+                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-semibold text-lg text-gray-900">
+                          {item.title}
+                        </h3>
+                        <div className="flex gap-2">
+                          <Badge variant="outline">
+                            {item.machineType}
+                          </Badge>
+                          <Badge variant="outline">
+                            {item.machineNumber}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <p className="text-gray-600 text-sm mb-2">
+                        {typeof item.machineInfo === 'string' ? item.machineInfo : '詳細情報なし'}
+                      </p>
+
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-500">
+                          作成日: {new Date(item.createdAt).toLocaleString('ja-JP')}
+                        </span>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              // 履歴詳細表示の処理
+                              console.log('履歴詳細表示:', item.id);
+                            }}
+                          >
+                            詳細
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteHistory(item.id, item.title)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            削除
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          // 履歴詳細表示の処理
-                          console.log('履歴詳細表示:', item.id);
-                        }}
-                      >
-                        詳細
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteHistory(item.id, item.title)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        削除
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  ))
+              )}
             </div>
           )}
         </CardContent>
@@ -537,18 +557,40 @@ export default function HistoryPage() {
         </CardHeader>
         <CardContent>
           <div className="flex gap-2">
-            <Button variant="outline" disabled={selectedItems.length === 0}>
-              選択履歴をJSONエクスポート ({selectedItems.length})
+            <Button variant="outline" disabled={filteredItems.length === 0}>
+              選択した履歴をエクスポート
             </Button>
-            <Button variant="outline" disabled={selectedItems.length === 0}>
-              選択履歴をCSVエクスポート ({selectedItems.length})
-            </Button>
-            <Button variant="outline" disabled={selectedItems.length === 0}>
-              選択の一覧を印刷 ({selectedItems.length})
+            <Button variant="outline" disabled={filteredItems.length === 0}>
+              すべての履歴をエクスポート
             </Button>
           </div>
         </CardContent>
       </Card>
+
+      {/* ページネーション */}
+      {totalPages > 1 && (
+        <div className="mt-6 flex justify-center">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(currentPage - 1)}
+            >
+              前へ
+            </Button>
+            <span className="px-3 py-2 text-sm">
+              {currentPage} / {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(currentPage + 1)}
+            >
+              次へ
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

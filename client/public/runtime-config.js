@@ -12,8 +12,8 @@
   if (isLocalhost) {
     // ローカル開発環境: ホットリロード統合サーバー使用
     config = {
-      "API_BASE_URL": "http://localhost:8080/api",
-      "CORS_ALLOW_ORIGINS": "http://localhost:5173,http://localhost:8080",
+      "API_BASE_URL": "http://localhost:8000/api",
+      "CORS_ALLOW_ORIGINS": "http://localhost:5173,http://localhost:8000",
       "ENVIRONMENT": "development"
     };
   } else if (isAzureStaticWebApp) {

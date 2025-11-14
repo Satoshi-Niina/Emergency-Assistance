@@ -6,7 +6,8 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "start": "npm --prefix server run start",
+    "dev": "node server/unified-hot-reload-server.js",
+    "start": "npm run dev",
     "build": "npm --prefix client run build",
     "prebuild": "echo 🔨 Building client for production deployment...",
     "postbuild": "echo ✅ Client build completed. Ready for deployment!",

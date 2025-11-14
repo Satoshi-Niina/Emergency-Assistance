@@ -11,7 +11,7 @@ import EmergencyGuideDisplay from '../components/emergency-guide/emergency-guide
 
 import { Helmet } from 'react-helmet';
 import { Button } from '../components/ui/button';
-import { useToast } from '../hooks/use-toast.ts';
+import { useToast } from '../hooks/use-toast';
 
 const EmergencyGuidePage: React.FC = () => {
   // BLOBファイル一覧表示用
@@ -60,7 +60,7 @@ const EmergencyGuidePage: React.FC = () => {
   // 検索機能の状態
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // タブ切り替えイベントのリスナー
+  // タブ切り替えイベントリスナー
   useEffect(() => {
     const handleSwitchToFlowTab = (event: Event) => {
       const customEvent = event as CustomEvent;
@@ -99,11 +99,11 @@ const EmergencyGuidePage: React.FC = () => {
     };
   }, []);
 
-  // フローデータ更新イベントのリスナー
+  // フローデータ更新イベントリスナー
   useEffect(() => {
     const refreshFlowList = async () => {
       try {
-        const { buildApiUrl } = await import('../lib/api-unified');
+        const { buildApiUrl } = await import('../lib/api');
         const response = await fetch(
           buildApiUrl(`/troubleshooting/list?ts=${Date.now()}`),
           {
@@ -166,7 +166,7 @@ const EmergencyGuidePage: React.FC = () => {
       window.addEventListener(eventType, handleFlowDataUpdated);
     });
 
-    // 定期的な更新チェックを無効化（イベントベースで十分）
+    // 定期的更新チェックを無効化（イベントベースで十分）
     // const intervalId = setInterval(() => {
     //   fetchFlowList(true);
     // }, 30000); // 30秒ごと
@@ -209,9 +209,9 @@ const EmergencyGuidePage: React.FC = () => {
       const cacheParams = `?_t=${timestamp}&_r=${randomId}&no_cache=true&source=troubleshooting`;
 
       // 統一API設定を使用
-      const { buildApiUrl } = await import('../lib/api-unified');
+      const { buildApiUrl } = await import('../lib/api');
       const apiUrl = buildApiUrl(`/emergency-flow/list${cacheParams}`);
-      
+
       const response = await fetch(apiUrl, {
         credentials: 'include',
         headers: {
@@ -271,6 +271,7 @@ const EmergencyGuidePage: React.FC = () => {
         <EmergencyGuideDisplay
           guideId={displayingGuideId}
           onExit={handleExitDisplay}
+          onSendToChat={() => { }}
         />
       </div>
     );
@@ -305,9 +306,7 @@ const EmergencyGuidePage: React.FC = () => {
             <TabsTrigger value='upload'>アップロード</TabsTrigger>
             <TabsTrigger value='edit'>編集・管理</TabsTrigger>
           </TabsList>
-        </div>
-
-        <TabsContent
+        </div>            <TabsContent
           value='upload'
           className='flex-1 flex flex-col min-h-0 px-4 pb-8'
         >

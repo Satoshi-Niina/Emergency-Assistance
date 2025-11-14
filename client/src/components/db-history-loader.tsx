@@ -1,30 +1,30 @@
-// ファイルベース履歴ローダー
+// ファイルベ�Eス履歴ローダー
 import { SupportHistoryItem } from '../types/history';
 
 export const loadHistoryFromDB = async (): Promise<SupportHistoryItem[]> => {
   try {
-    const { buildApiUrl } = await import('../lib/api-unified');
+    const { buildApiUrl } = await import('../lib/api');
     
-    // ファイルベースの統括API使用
+    // ファイルベ�Eスの統括API使用
     const response = await fetch(buildApiUrl('/history?limit=100&source=files&includeImages=true'));
     
     if (!response.ok) {
-      throw new Error(`履歴取得失敗: ${response.status}`);
+      throw new Error(`履歴取得失敁E ${response.status}`);
     }
     
     const data = await response.json();
     
     if (!data.success || !data.data) {
-      console.warn('⚠️ 応答にデータが含まれていません');
+      console.warn('⚠�E�E応答にチE�Eタが含まれてぁE��せん');
       return [];
     }
     
-    console.log(`🔍 ファイルベース履歴取得成功: ${data.data.length}件, バージョン: ${data.version}`);
+    console.log(`🔍 ファイルベ�Eス履歴取得�E劁E ${data.data.length}件, バ�Eジョン: ${data.version}`);
     
-    // SupportHistoryItem型に変換（ファイルベース）
+    // SupportHistoryItem型に変換�E�ファイルベ�Eス�E�E
     const historyItems: SupportHistoryItem[] = data.data.map((item: any) => {
-      // 機種と機械番号を抽出（複数の形式に対応）
-      // サーバー側で既に抽出されている場合はそれを使用、なければデフォルト値
+      // 機種と機械番号を抽出�E�褁E��の形式に対応！E
+      // サーバ�E側で既に抽出されてぁE��場合�Eそれを使用、なければチE��ォルト値
       const machineType = 
         item.machineType && item.machineType !== 'Unknown' 
           ? item.machineType
@@ -45,13 +45,13 @@ export const loadHistoryFromDB = async (): Promise<SupportHistoryItem[]> => {
         chatId: item.id,
         machineType: machineType,
         machineNumber: machineNumber,
-        incidentTitle: item.title || 'タイトルなし',
+        incidentTitle: item.title || 'タイトルなぁE,
         problemDescription: item.description || '',
         createdAt: item.createdAt || new Date().toISOString(),
         fileName: item.fileName || `${item.id}.json`,
         hasImage: item.hasImages || (item.imageCount > 0),
         jsonData: {
-          // 画像情報を含むjsonDataを構築
+          // 画像情報を含むjsonDataを構篁E
           images: item.images || [],
           imageCount: item.imageCount || 0,
           savedImages: item.images ? item.images.map((img: any) => ({
@@ -60,7 +60,7 @@ export const loadHistoryFromDB = async (): Promise<SupportHistoryItem[]> => {
             url: img.url || `/api/images/chat-exports/${img.fileName}`,
             path: img.fileName
           })) : [],
-          // 完全なJSONデータも保持
+          // 完�EなJSONチE�Eタも保持
           ...(item.jsonData || {}),
           chatData: item.jsonData?.chatData || item.jsonData || {},
         },
@@ -71,7 +71,7 @@ export const loadHistoryFromDB = async (): Promise<SupportHistoryItem[]> => {
     return historyItems;
     
   } catch (error) {
-    console.error('❌ 履歴取得エラー:', error);
+    console.error('❁E履歴取得エラー:', error);
     return [];
   }
 };

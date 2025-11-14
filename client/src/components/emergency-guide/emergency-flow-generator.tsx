@@ -10,7 +10,7 @@ import {
   CardDescription,
 } from '../../components/ui/card';
 import { FileUp, Cpu, Send, Loader2, FileText } from 'lucide-react';
-import { useToast } from '../../hooks/use-toast.ts';
+import { useToast } from '../../hooks/use-toast';
 import { Label } from '../../components/ui/label';
 
 interface FlowGeneratorProps {
@@ -60,19 +60,19 @@ export default function EmergencyFlowGenerator({
         // Generate from file
         const formData = new FormData();
         formData.append('file', file);
-        const { buildApiUrl } = await import('../../lib/api-unified');
+        const { buildApiUrl } = await import('../../lib/api');
         const apiUrl = buildApiUrl('/flow-generator/file');
-        
+
         const response = await fetch(apiUrl, {
           method: 'POST',
           body: formData,
           credentials: 'include',
         });
-        
+
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
+
         flowData = await response.json();
         toast({
           title: '成功',
@@ -80,9 +80,9 @@ export default function EmergencyFlowGenerator({
         });
       } else {
         // Generate from keywords
-        const { buildApiUrl } = await import('../../lib/api-unified');
+        const { buildApiUrl } = await import('../../lib/api');
         const apiUrl = buildApiUrl('/emergency-flow/generate');
-        
+
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
@@ -91,18 +91,18 @@ export default function EmergencyFlowGenerator({
           body: JSON.stringify({ keyword: keywords }),
           credentials: 'include',
         });
-        
+
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
+
         flowData = await response.json();
-        
+
         // emergency-flow/generateエンドポイントのレスポンス形式に合わせて処理
         if (flowData.success && flowData.flowData) {
           flowData = flowData.flowData;
         } else if (flowData.success && flowData.response) {
-          // テキスト形式のレスポンスの場合は、シンプルなフロー構造に変換
+          // テキスト形式のレスポンスの場合、シンプルなフロー構造に変換
           flowData = {
             id: `flow_${Date.now()}`,
             title: keywords,
@@ -130,7 +130,7 @@ export default function EmergencyFlowGenerator({
             updatedAt: new Date().toISOString(),
           };
         }
-        
+
         toast({
           title: '成功',
           description: 'キーワードからフローが生成されました。',
@@ -144,7 +144,7 @@ export default function EmergencyFlowGenerator({
       toast({
         title: '生成エラー',
         description:
-          error.message || 'フローの生成中に不明なエラーが発生しました。',
+          error.message || 'フローの生成中に予期しないエラーが発生しました。',
         variant: 'destructive',
       });
     } finally {
@@ -157,24 +157,20 @@ export default function EmergencyFlowGenerator({
       <CardHeader>
         <CardTitle className='flex items-center gap-2'>
           <Cpu className='w-6 h-6 text-blue-600' />
-          AIによるフロー自動生成
-        </CardTitle>
+          AIによるフロー自動生戁E        </CardTitle>
         <CardDescription>
-          ドキュメントファイルまたはキーワードから、応急処置フローの草案を自動で生成します。
-        </CardDescription>
+          ドキュメントファイルまた�Eキーワードから、応急処置フローの草案を自動で生�Eします、E        </CardDescription>
       </CardHeader>
       <CardContent className='space-y-6'>
-        {/* Keyword Input Section - 上段に移動 */}
+        {/* Keyword Input Section - 上段に移勁E*/}
         <div className='space-y-2'>
           <Label htmlFor='keywords' className='text-lg font-semibold'>
-            キーワードから生成
-          </Label>
+            キーワードから生戁E          </Label>
           <p className='text-sm text-gray-500'>
-            フローの核となるキーワードや症状をカンマ区切りで入力してください。
-          </p>
+            フローの核となるキーワードや痁E��をカンマ区刁E��で入力してください、E          </p>
           <textarea
             id='keywords'
-            placeholder='例: エンジン停止, 警告灯点灯, 異音'
+            placeholder='侁E エンジン停止, 警告�E点灯, 異音'
             value={keywords}
             onChange={e => setKeywords(e.target.value)}
             disabled={!!file}
@@ -192,13 +188,12 @@ export default function EmergencyFlowGenerator({
               {isLoading ? (
                 <>
                   <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                  生成中...
+                  生�E中...
                 </>
               ) : (
                 <>
                   <Send className='mr-2 h-4 w-4' />
-                  フローを生成
-                </>
+                  フローを生戁E                </>
               )}
             </Button>
           </div>
@@ -207,12 +202,12 @@ export default function EmergencyFlowGenerator({
         <div className='relative flex items-center justify-center'>
           <div className='flex-grow border-t border-gray-300'></div>
           <span className='flex-shrink mx-4 text-gray-500 font-semibold'>
-            または
+            また�E
           </span>
           <div className='flex-grow border-t border-gray-300'></div>
         </div>
 
-        {/* File Upload Section - 下段に移動 */}
+        {/* File Upload Section - 下段に移勁E*/}
         <div
           {...getRootProps()}
           className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}
@@ -244,7 +239,7 @@ export default function EmergencyFlowGenerator({
           </div>
         )}
 
-        {/* Generate Button - サイズを80%に変更、中央配置 */}
+        {/* Generate Button - サイズめE0%に変更、中央配置 */}
         <div className='flex justify-center'>
           <Button
             onClick={handleGenerate}
@@ -256,13 +251,12 @@ export default function EmergencyFlowGenerator({
             {isLoading ? (
               <>
                 <Loader2 className='mr-2 h-3 w-3 animate-spin' />
-                生成中...
+                生�E中...
               </>
             ) : (
               <>
                 <Send className='mr-2 h-3 w-3' />
-                フローを生成
-              </>
+                フローを生戁E              </>
             )}
           </Button>
         </div>

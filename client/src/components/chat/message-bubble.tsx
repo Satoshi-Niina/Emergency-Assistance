@@ -4,8 +4,8 @@ import { useChat } from '../../context/chat-context';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { Copy, Volume2 } from 'lucide-react';
-import { useToast } from '../../hooks/use-toast.ts';
-import { speakText, stopSpeaking } from '../../lib/text-to-speech.ts';
+import { useToast } from '../../hooks/use-toast';
+import { speakText, stopSpeaking } from '../../lib/text-to-speech';
 
 interface MessageBubbleProps {
   message: {
@@ -29,7 +29,7 @@ export default function MessageBubble({
   isDraft = false,
 }: MessageBubbleProps) {
   const { user } = useAuth();
-  const { setSelectedText } = useChat();
+  // const { setSelectedText } = useChat(); // 現在未使用のためコメントアウト
   const [localSelectedText, setLocalSelectedText] = useState('');
   const [showCopyButton, setShowCopyButton] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -95,7 +95,7 @@ export default function MessageBubble({
   // テキストをメッセージ入力欄にコピーする
   const copyToInput = () => {
     if (localSelectedText) {
-      setSelectedText(localSelectedText);
+      // setSelectedText(localSelectedText); // 現在未使用のためコメントアウト
       toast({
         title: 'テキストをコピーしました',
         description: '選択したテキストが入力欄にコピーされました。',
@@ -181,7 +181,7 @@ export default function MessageBubble({
           urlPrefix: m.url.substring(0, 50) + '...',
           urlLength: m.url.length,
           isBase64: m.url.startsWith('data:'),
-          title: m.title,
+          title: (m as any).title || 'No title',
           fileName: (m as any).fileName,
         })),
       });
@@ -294,7 +294,12 @@ export default function MessageBubble({
                             src={media.url}
                             alt='添付画像'
                             className='rounded-lg w-full max-w-xs cursor-pointer border border-blue-200 shadow-md'
-                            style={{ maxHeight: '300px', objectFit: 'contain' }}
+                            style={{
+                              maxHeight: '300px',
+                              objectFit: 'contain',
+                              marginLeft: isUserMessage ? 'auto' : '0',
+                              marginRight: isUserMessage ? '0' : 'auto'
+                            }}
                             onClick={() => handleImagePreview(media.url)}
                             onLoad={e => {
                               console.log('画像読み込み成功:', {
@@ -447,22 +452,39 @@ export default function MessageBubble({
 
   return (
     <div
-      className={`flex items-end mb-4 ${isUserMessage ? 'justify-start' : 'justify-end'} min-w-[250px] ${isDraft ? 'draft-message animate-pulse' : ''}`}
+      className={`flex items-end mb-4 w-full ${isDraft ? 'draft-message animate-pulse' : ''}`}
       onMouseUp={handleMouseUp}
+      style={{
+        // 完全に左端または右端に配置
+        justifyContent: isUserMessage ? 'flex-end' : 'flex-start'
+      }}
     >
+      {/* AIメッセージの場合、左側にアバターを配置 */}
+      {!isUserMessage && (
+        <div>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-500">
+            <span className='text-white text-sm'>🤖</span>
+          </div>
+        </div>
+      )}
+
       <div
-        className={`mx-2 flex flex-col ${isUserMessage ? 'items-start' : 'items-end'} max-w-[70%] min-w-[230px]`}
+        className={`mx-2 flex flex-col min-w-[200px]`}
+        style={{
+          // 完全に左端または右端に配置
+          alignItems: isUserMessage ? 'flex-end' : 'flex-start',
+          maxWidth: '60%' // 表示エリアの3/5 (60%) に制限
+        }}
       >
         <div className='flex items-center gap-2 mb-1'>
           {/* AIメッセージの場合に音声読み上げボタンを表示 */}
           {!isUserMessage && (
             <button
               onClick={handleTextToSpeech}
-              className={`w-8 h-8 flex items-center justify-center rounded-full shadow-sm 
-                ${
-                  isSpeaking
-                    ? 'bg-indigo-600 text-white animate-pulse'
-                    : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+              className={`w-8 h-8 flex items-center justify-center rounded-full shadow-sm
+                ${isSpeaking
+                  ? 'bg-indigo-600 text-white animate-pulse'
+                  : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
                 }`}
               title={isSpeaking ? '音声読み上げを停止' : '音声読み上げ'}
             >
@@ -471,11 +493,10 @@ export default function MessageBubble({
           )}
         </div>
         <div
-          className={`px-4 py-3 mb-1 shadow-sm w-full ${
-            isUserMessage
-              ? `chat-bubble-user bg-blue-500 text-white rounded-[18px_18px_18px_4px] border border-blue-500`
-              : 'chat-bubble-ai bg-white rounded-[18px_18px_4px_18px] border border-gray-200'
-          }`}
+          className={`px-4 py-3 mb-1 shadow-sm w-full ${isUserMessage
+            ? `chat-bubble-user bg-blue-500 text-white rounded-[18px_18px_4px_18px] border border-blue-500`
+            : 'chat-bubble-ai bg-white rounded-[18px_18px_18px_4px] border border-gray-200'
+            }`}
         >
           <div className='relative'>
             {/* シンプルなコンテンツ表示 */}
@@ -495,7 +516,12 @@ export default function MessageBubble({
                     src={content}
                     alt='画像'
                     className='rounded-lg max-w-xs cursor-pointer'
-                    style={{ maxHeight: '300px', objectFit: 'contain' }}
+                    style={{
+                      maxHeight: '300px',
+                      objectFit: 'contain',
+                      marginLeft: isUserMessage ? 'auto' : '0',
+                      marginRight: isUserMessage ? '0' : 'auto'
+                    }}
                     onClick={() => handleImagePreview(content)}
                   />
                 );
@@ -530,17 +556,15 @@ export default function MessageBubble({
           {formattedTime}
         </span>
       </div>
-      <div>
-        <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center ${
-            isUserMessage ? 'bg-blue-500' : 'bg-gray-500'
-          }`}
-        >
-          <span className='text-white text-sm'>
-            {isUserMessage ? '👤' : '🤖'}
-          </span>
+
+      {/* ユーザーメッセージの場合、右側にアバターを配置 */}
+      {isUserMessage && (
+        <div>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-500">
+            <span className='text-white text-sm'>👤</span>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

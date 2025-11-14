@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = mountDiag;
-function mountDiag(app) {
+export default function mountDiag(app) {
     app.get('/api/_diag/routes', (_req, res) => {
         const paths = app?._router?.stack?.flatMap((r) => r?.route?.path ? [r.route.path] : []) || [];
         res.json({ count: paths.length, paths });

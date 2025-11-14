@@ -7,8 +7,11 @@
     "npm": ">=8.0.0"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "echo ⚠️  Use 'npm run dev' from root directory instead. This starts the unified server.",
+    "vite-only": "vite",
+    "prebuild": "npm run clean",
     "build": "vite build",
+    "postbuild": "echo Build completed with timestamp: $(date)",
     "preview": "vite preview",
     "clean": "rm -rf dist || rmdir /s /q dist"
   },

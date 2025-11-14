@@ -1,0 +1,27 @@
+{
+  "chatId": "9236b2ea-1810-46ca-8014-cc883c57825d",
+  "userId": "test-user",
+  "exportType": "manual_send",
+  "exportTimestamp": "2025-11-13T04:42:53.158Z",
+  "title": "画像による故障報告",
+  "chatData": {
+    "chatId": "9236b2ea-1810-46ca-8014-cc883c57825d",
+    "timestamp": "2025-11-13T04:42:53.154Z",
+    "machineInfo": {
+      "selectedMachineType": "3",
+      "selectedMachineNumber": "",
+      "machineTypeName": "TC-250",
+      "machineNumber": ""
+    },
+    "messages": [
+      {
+        "id": "1763008940920",
+        "content": "何か問題がありましたか？支援するために現在の状況を教えてください！",
+        "isAiResponse": true,
+        "timestamp": "2025-11-13T04:42:20.920Z",
+        "media": []
+      }
+    ]
+  },
+  "savedImages": []
+}
