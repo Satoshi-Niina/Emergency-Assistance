@@ -31,10 +31,13 @@ export const buildApiUrl = (path: string): string => {
     if (apiBaseUrl) {
         // 絶対URLが設定されている場合
         // API_BASE_URLに既に/apiが含まれている場合は追加しない
-        const baseUrl = apiBaseUrl.endsWith('/api')
-            ? apiBaseUrl
-            : `${apiBaseUrl}/api`;
-        return `${baseUrl}${cleanPath}`;
+        if (apiBaseUrl.includes('/api')) {
+            // 既に/apiが含まれている場合は、そのまま使用
+            return `${apiBaseUrl}${cleanPath}`;
+        } else {
+            // /apiが含まれていない場合は追加
+            return `${apiBaseUrl}/api${cleanPath}`;
+        }
     } else {
         // 開発環境: 相対パス（統合サーバーが処理）
         return `/api${cleanPath}`;

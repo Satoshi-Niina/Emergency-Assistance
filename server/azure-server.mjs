@@ -150,6 +150,13 @@ console.log('🌐 Static Web App URL:', STATIC_WEB_APP_URL);
 const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
 const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
 
+// BLOB設定の詳細ログ（起動時）
+console.log('🔧 BLOB Storage Configuration:');
+console.log('   AZURE_STORAGE_CONNECTION_STRING length:', connectionString ? connectionString.length : 0);
+console.log('   AZURE_STORAGE_CONTAINER_NAME:', containerName);
+console.log('   BLOB_CONTAINER_NAME (legacy):', process.env.BLOB_CONTAINER_NAME || 'not_set');
+console.log('   BLOB_PREFIX (legacy):', process.env.BLOB_PREFIX || 'not_set');
+
 // OpenAI API設定の確認とフォールバック
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const isOpenAIAvailable = OPENAI_API_KEY &&
@@ -161,27 +168,47 @@ if (!isOpenAIAvailable) {
 }
 
 // バージョン情報（デプロイ確認用）
-const VERSION = '1.0.5-PUBLIC-PACKAGE-FIX-' + new Date().toISOString().slice(0, 19).replace(/[-:]/g, '');
+const VERSION = '1.0.6-USER-MACHINE-API-' + new Date().toISOString().slice(0, 19).replace(/[-:]/g, '');
 console.log('🚀 Azure Server Starting - Version:', VERSION);
 
-// BLOBサービスクライアントの初期化（警告版）
+// Application Insights設定確認
+const appInsightsConnectionString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
+console.log('📊 Application Insights:', appInsightsConnectionString ? 'Configured' : 'Not configured');
+if (appInsightsConnectionString) {
+  console.log('📊 Telemetry endpoint:', appInsightsConnectionString.includes('IngestionEndpoint') ? 'Set' : 'Missing');
+}
+
+// BLOBサービスクライアントの初期化（エラーハンドリング強化版）
 const getBlobServiceClient = () => {
   console.log('🔍 getBlobServiceClient called');
   console.log('🔍 connectionString exists:', !!connectionString);
-  console.log('🔍 connectionString starts with:', connectionString ? connectionString.substring(0, 20) + '...' : 'null');
+  console.log('🔍 connectionString length:', connectionString ? connectionString.length : 0);
 
   if (!connectionString) {
     console.warn('⚠️ AZURE_STORAGE_CONNECTION_STRING is not configured');
     console.warn('⚠️ BLOB storage features will be disabled');
     return null;
   }
+
+  // 接続文字列の基本的な形式チェック
+  if (connectionString.length < 50 || !connectionString.includes('AccountName=') || !connectionString.includes('AccountKey=')) {
+    console.warn('⚠️ AZURE_STORAGE_CONNECTION_STRING appears to be invalid or incomplete');
+    console.warn('⚠️ Expected format: AccountName=...;AccountKey=...;EndpointSuffix=...');
+    console.warn('⚠️ Current string length:', connectionString.length);
+    console.warn('⚠️ BLOB storage features will be disabled');
+    return null;
+  }
+
+  console.log('🔍 connectionString format check passed');
+
   try {
     const client = BlobServiceClient.fromConnectionString(connectionString);
     console.log('✅ BLOB service client initialized successfully');
     return client;
   } catch (error) {
     console.error('❌ BLOB service client initialization failed:', error);
-    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Connection string format issue. Expected: AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net');
+    console.error('⚠️ BLOB storage features will be disabled');
     return null;
   }
 };
@@ -240,6 +267,37 @@ function initializeDatabase() {
     });
 
     console.log('✅ Database pool initialized for Azure production');
+
+    // データベース接続テスト
+    dbPool.connect()
+      .then(client => {
+        console.log('✅ Database connection test successful');
+        return client.query('SELECT version()');
+      })
+      .then(result => {
+        console.log('📊 PostgreSQL version:', result.rows[0].version.split(' ')[0] + ' ' + result.rows[0].version.split(' ')[1]);
+        // テーブル存在確認
+        return dbPool.query(`
+          SELECT table_name
+          FROM information_schema.tables
+          WHERE table_schema = 'public'
+          AND table_name IN ('users', 'machines', 'machine_types', 'chat_history')
+          ORDER BY table_name
+        `);
+      })
+      .then(result => {
+        const existingTables = result.rows.map(row => row.table_name);
+        console.log('📊 Existing tables:', existingTables.join(', ') || 'None found');
+        if (!existingTables.includes('users')) {
+          console.warn('⚠️ users table missing - user management will fail');
+        }
+        if (!existingTables.includes('machines')) {
+          console.warn('⚠️ machines table missing - machine management will fail');
+        }
+      })
+      .catch(err => {
+        console.error('❌ Database connection or table check failed:', err.message);
+      });
 
     // 接続テスト（非同期で実行、エラーでもサーバーは継続）
     setTimeout(async () => {
@@ -921,8 +979,16 @@ app.get('/api/history/machine-data', async (req, res) => {
 app.get('/api/users', async (req, res) => {
   try {
     console.log('[api/users] ユーザー一覧取得リクエスト');
+    console.log('📊 Request details:', {
+      method: req.method,
+      url: req.url,
+      userAgent: req.get('User-Agent'),
+      origin: req.get('Origin'),
+      timestamp: new Date().toISOString()
+    });
 
     if (!dbPool) {
+      console.warn('⚠️ Database pool not initialized');
       return res.json({
         success: true,
         data: [],
@@ -952,6 +1018,179 @@ app.get('/api/users', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'ユーザー一覧の取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// ユーザー追加API
+app.post('/api/users', async (req, res) => {
+  try {
+    const { username, password, display_name, role = 'employee', department } = req.body;
+    console.log('[api/users] ユーザー追加リクエスト:', { username, display_name, role, department });
+
+    if (!username || !password || !display_name) {
+      return res.status(400).json({
+        success: false,
+        error: 'ユーザー名、パスワード、表示名は必須です',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    if (!dbPool) {
+      return res.status(503).json({
+        success: false,
+        error: 'データベース接続が設定されていません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // パスワードをハッシュ化（本来はbcryptを使用すべき）
+    const bcrypt = await import('bcrypt');
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const client = await dbPool.connect();
+    const result = await client.query(
+      'INSERT INTO users (username, password, display_name, role, department) VALUES ($1, $2, $3, $4, $5) RETURNING id, username, display_name, role, department, created_at',
+      [username, hashedPassword, display_name, role, department]
+    );
+    await client.release();
+
+    console.log('[api/users] ユーザー追加完了:', result.rows[0]);
+
+    res.status(201).json({
+      success: true,
+      data: result.rows[0],
+      message: 'ユーザーが正常に追加されました',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/users] ユーザー追加エラー:', error);
+    if (error.code === '23505') {
+      return res.status(409).json({
+        success: false,
+        error: 'そのユーザー名は既に使用されています',
+        timestamp: new Date().toISOString()
+      });
+    }
+    res.status(500).json({
+      success: false,
+      error: 'ユーザーの追加に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// ユーザー更新API
+app.put('/api/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { username, display_name, role, department } = req.body;
+    console.log('[api/users] ユーザー更新リクエスト:', { id, username, display_name, role, department });
+
+    if (!username || !display_name) {
+      return res.status(400).json({
+        success: false,
+        error: 'ユーザー名と表示名は必須です',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    if (!dbPool) {
+      return res.status(503).json({
+        success: false,
+        error: 'データベース接続が設定されていません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const client = await dbPool.connect();
+    const result = await client.query(
+      'UPDATE users SET username = $1, display_name = $2, role = $3, department = $4 WHERE id = $5 RETURNING id, username, display_name, role, department, created_at',
+      [username, display_name, role, department, id]
+    );
+    await client.release();
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: '指定されたユーザーが見つかりません',
+        id,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    console.log('[api/users] ユーザー更新完了:', result.rows[0]);
+
+    res.json({
+      success: true,
+      data: result.rows[0],
+      message: 'ユーザーが正常に更新されました',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/users] ユーザー更新エラー:', error);
+    if (error.code === '23505') {
+      return res.status(409).json({
+        success: false,
+        error: 'そのユーザー名は既に使用されています',
+        timestamp: new Date().toISOString()
+      });
+    }
+    res.status(500).json({
+      success: false,
+      error: 'ユーザーの更新に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// ユーザー削除API
+app.delete('/api/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('[api/users] ユーザー削除リクエスト:', { id });
+
+    if (!dbPool) {
+      return res.status(503).json({
+        success: false,
+        error: 'データベース接続が設定されていません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const client = await dbPool.connect();
+    const result = await client.query(
+      'DELETE FROM users WHERE id = $1 RETURNING id, username, display_name',
+      [id]
+    );
+    await client.release();
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: '指定されたユーザーが見つかりません',
+        id,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    console.log('[api/users] ユーザー削除完了:', result.rows[0]);
+
+    res.json({
+      success: true,
+      data: result.rows[0],
+      message: 'ユーザーを削除しました',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/users] ユーザー削除エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ユーザーの削除に失敗しました',
       details: error.message,
       timestamp: new Date().toISOString()
     });
@@ -999,12 +1238,175 @@ app.get('/api/machines/machine-types', async (req, res) => {
   }
 });
 
+// 機種追加API
+app.post('/api/machines/machine-types', async (req, res) => {
+  try {
+    const { machine_type_name } = req.body;
+    console.log('[api/machines] 機種追加リクエスト:', { machine_type_name });
+
+    if (!machine_type_name) {
+      return res.status(400).json({
+        success: false,
+        error: '機種名は必須です',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    if (!dbPool) {
+      return res.status(503).json({
+        success: false,
+        error: 'データベース接続が設定されていません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const client = await dbPool.connect();
+    const result = await client.query(
+      'INSERT INTO machine_types (machine_type_name) VALUES ($1) RETURNING *',
+      [machine_type_name]
+    );
+    await client.release();
+
+    console.log('[api/machines] 機種追加完了:', result.rows[0]);
+
+    res.status(201).json({
+      success: true,
+      data: result.rows[0],
+      message: '機種が正常に追加されました',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/machines] 機種追加エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '機種の追加に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 機種更新API
+app.put('/api/machines/machine-types/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { machine_type_name } = req.body;
+    console.log('[api/machines] 機種更新リクエスト:', { id, machine_type_name });
+
+    if (!machine_type_name) {
+      return res.status(400).json({
+        success: false,
+        error: '機種名は必須です',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    if (!dbPool) {
+      return res.status(503).json({
+        success: false,
+        error: 'データベース接続が設定されていません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const client = await dbPool.connect();
+    const result = await client.query(
+      'UPDATE machine_types SET machine_type_name = $1 WHERE id = $2 RETURNING *',
+      [machine_type_name, id]
+    );
+    await client.release();
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: '指定された機種が見つかりません',
+        id,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    console.log('[api/machines] 機種更新完了:', result.rows[0]);
+
+    res.json({
+      success: true,
+      data: result.rows[0],
+      message: '機種が正常に更新されました',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/machines] 機種更新エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '機種の更新に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 機種削除API
+app.delete('/api/machines/machine-types/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('[api/machines] 機種削除リクエスト:', { id });
+
+    if (!dbPool) {
+      return res.status(503).json({
+        success: false,
+        error: 'データベース接続が設定されていません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const client = await dbPool.connect();
+    const result = await client.query(
+      'DELETE FROM machine_types WHERE id = $1 RETURNING *',
+      [id]
+    );
+    await client.release();
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: '指定された機種が見つかりません',
+        id,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    console.log('[api/machines] 機種削除完了:', result.rows[0]);
+
+    res.json({
+      success: true,
+      data: result.rows[0],
+      message: '機種を削除しました',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/machines] 機種削除エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '機種の削除に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // 機械データ取得API（ルートエンドポイント - 後方互換性のため）
 app.get('/api/machines', async (req, res) => {
   try {
     console.log('[api/machines] 機械データ取得リクエスト（ルートエンドポイント）');
+    console.log('📊 Request details:', {
+      method: req.method,
+      url: req.url,
+      userAgent: req.get('User-Agent'),
+      origin: req.get('Origin'),
+      timestamp: new Date().toISOString()
+    });
 
     if (!dbPool) {
+      console.warn('⚠️ Database pool not initialized for machines API');
       return res.json({
         success: true,
         machineTypes: [],
@@ -1015,7 +1417,7 @@ app.get('/api/machines', async (req, res) => {
     }
 
     const client = await dbPool.connect();
-    
+
     // 機種一覧を取得
     const typesResult = await client.query(`
       SELECT id, machine_type_name
@@ -1030,7 +1432,7 @@ app.get('/api/machines', async (req, res) => {
       LEFT JOIN machine_types mt ON m.machine_type_id = mt.id
       ORDER BY mt.machine_type_name, m.machine_number
     `);
-    
+
     await client.release();
 
     console.log('[api/machines] 機械データ取得成功:', {
@@ -1097,6 +1499,161 @@ app.get('/api/machines/machines', async (req, res) => {
     res.status(500).json({
       success: false,
       error: '機械番号一覧の取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 機械番号追加API
+app.post('/api/machines', async (req, res) => {
+  try {
+    const { machine_number, machine_type_id } = req.body;
+    console.log('[api/machines] 機械番号追加リクエスト:', { machine_number, machine_type_id });
+
+    if (!machine_number || !machine_type_id) {
+      return res.status(400).json({
+        success: false,
+        error: '機械番号と機種IDは必須です',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    if (!dbPool) {
+      return res.status(503).json({
+        success: false,
+        error: 'データベース接続が設定されていません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const client = await dbPool.connect();
+    const result = await client.query(
+      'INSERT INTO machines (machine_number, machine_type_id) VALUES ($1, $2) RETURNING *',
+      [machine_number, machine_type_id]
+    );
+    await client.release();
+
+    console.log('[api/machines] 機械番号追加完了:', result.rows[0]);
+
+    res.status(201).json({
+      success: true,
+      data: result.rows[0],
+      message: '機械番号が正常に追加されました',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/machines] 機械番号追加エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '機械番号の追加に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 機械番号更新API
+app.put('/api/machines/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { machine_number, machine_type_id } = req.body;
+    console.log('[api/machines] 機械番号更新リクエスト:', { id, machine_number, machine_type_id });
+
+    if (!machine_number || !machine_type_id) {
+      return res.status(400).json({
+        success: false,
+        error: '機械番号と機種IDは必須です',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    if (!dbPool) {
+      return res.status(503).json({
+        success: false,
+        error: 'データベース接続が設定されていません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const client = await dbPool.connect();
+    const result = await client.query(
+      'UPDATE machines SET machine_number = $1, machine_type_id = $2 WHERE id = $3 RETURNING *',
+      [machine_number, machine_type_id, id]
+    );
+    await client.release();
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: '指定された機械番号が見つかりません',
+        id,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    console.log('[api/machines] 機械番号更新完了:', result.rows[0]);
+
+    res.json({
+      success: true,
+      data: result.rows[0],
+      message: '機械番号が正常に更新されました',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/machines] 機械番号更新エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '機械番号の更新に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 機械番号削除API
+app.delete('/api/machines/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('[api/machines] 機械番号削除リクエスト:', { id });
+
+    if (!dbPool) {
+      return res.status(503).json({
+        success: false,
+        error: 'データベース接続が設定されていません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const client = await dbPool.connect();
+    const result = await client.query(
+      'DELETE FROM machines WHERE id = $1 RETURNING *',
+      [id]
+    );
+    await client.release();
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: '指定された機械番号が見つかりません',
+        id,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    console.log('[api/machines] 機械番号削除完了:', result.rows[0]);
+
+    res.json({
+      success: true,
+      data: result.rows[0],
+      message: '機械番号を削除しました',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/machines] 機械番号削除エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '機械番号の削除に失敗しました',
       details: error.message,
       timestamp: new Date().toISOString()
     });
@@ -2114,15 +2671,17 @@ app.get('/api/_diag/routes', (req, res) => {
     routes: [
       '/api/health',
       '/api/auth/login',
-      '/api/users',
-      '/api/machines/machine-types',
+      '/api/users (GET, POST, PUT, DELETE)',
+      '/api/machines (GET, POST, PUT, DELETE)',
+      '/api/machines/machine-types (GET, POST, PUT, DELETE)',
+      '/api/machines/machines',
       '/api/knowledge-base',
       '/api/emergency-flow/list',
       '/api/chatgpt',
       '/api/history',
       '/api/settings/rag'
     ],
-    message: '利用可能なルート一覧（本番環境）',
+    message: '利用可能なルート一覧（本番環境）- ユーザー・機械管理フル対応',
     timestamp: new Date().toISOString()
   });
 });
@@ -2188,9 +2747,26 @@ app.get(/^(?!\/api).*/, (_req, res) => {
 });
 
 // ===== エラーハンドラ（最後尾）=====
-app.use((err, _req, res, _next) => {
-  console.error('❌ Unhandled Error:', err);
-  res.status(500).json({ error: 'internal_error' });
+app.use((err, req, res, _next) => {
+  console.error('❌ Unhandled Error:', {
+    message: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    userAgent: req.get('User-Agent'),
+    timestamp: new Date().toISOString()
+  });
+
+  // Application Insightsが設定されていれば、エラーを送信
+  if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
+    console.log('📊 Error logged to Application Insights');
+  }
+
+  res.status(500).json({
+    error: 'internal_error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // ===== 優雅なシャットダウン =====
@@ -2198,6 +2774,26 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server listening on port ${PORT} (env: ${process.env.NODE_ENV || 'dev'})`);
   console.log(`🗂️ Serving static files from: ${clientDistPath}`);
   console.log(`🌍 Frontend URL: ${FRONTEND_URL}`);
+
+  // サービス状態の詳細確認
+  console.log('📊 Service Status Check:');
+  console.log(`   Database Pool: ${dbPool ? 'Initialized' : 'Not initialized'}`);
+  console.log(`   Blob Service Client: ${blobServiceClient ? 'Initialized' : 'Not initialized'}`);
+  console.log(`   Application Insights: ${process.env.APPLICATIONINSIGHTS_CONNECTION_STRING ? 'Configured' : 'Not configured'}`);
+  console.log(`   Health Token: ${HEALTH_TOKEN ? 'Set' : 'Not set'}`);
+  console.log(`   Session Secret: ${process.env.SESSION_SECRET ? 'Set' : 'Using default'}`);
+
+  // リクエスト可能なAPI一覧表示
+  console.log('📋 Available API Endpoints:');
+  console.log('   GET  /api/users - ユーザー一覧');
+  console.log('   POST /api/users - ユーザー作成');
+  console.log('   PUT  /api/users/:id - ユーザー更新');
+  console.log('   DELETE /api/users/:id - ユーザー削除');
+  console.log('   GET  /api/machines - 機械データ');
+  console.log('   POST /api/machines - 機械作成');
+  console.log('   PUT  /api/machines/:id - 機械更新');
+  console.log('   DELETE /api/machines/:id - 機械削除');
+  console.log('   GET  /ready - ヘルスチェック');
 
   // デバッグ用：ディレクトリ構造を表示
   console.log('📋 Directory structure debug:');

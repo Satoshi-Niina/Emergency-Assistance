@@ -432,8 +432,41 @@ if (isDevelopment) {
   });
 }
 
+// 開発環境かどうかをチェック（認証用）
+const isDevForAuth = process.env.NODE_ENV !== 'production';
+
+// シークレット情報をマスクするユーティリティ関数
+function maskSensitiveInfo(data) {
+  if (!data) return data;
+
+  const masked = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (typeof value === 'string') {
+      if (key.toLowerCase().includes('token') || key.toLowerCase().includes('auth') || key.toLowerCase().includes('bearer')) {
+        // JWTトークンの場合、最初の10文字と最後の4文字を表示
+        masked[key] = value.length > 20 ? `${value.substring(0, 10)}...${value.substring(value.length - 4)}` : '***';
+      } else if (key.toLowerCase().includes('cookie')) {
+        // クッキーの場合、マスクする
+        masked[key] = value ? '*** (masked)' : value;
+      } else {
+        masked[key] = value;
+      }
+    } else {
+      masked[key] = value;
+    }
+  }
+  return masked;
+}
+
 // JWT認証ミドルウェア
 function authenticateToken(req, res, next) {
+  // 開発環境では認証をスキップ
+  if (isDevForAuth) {
+    console.log('🔓 Development mode: スキップ認証 for', req.method, req.path);
+    req.user = { id: 'dev-user', username: 'developer' }; // 開発用ユーザー情報
+    return next();
+  }
+
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -571,14 +604,15 @@ apiRouter.get('/health', async (req, res) => {
 // 現在のユーザー情報取得エンドポイント
 apiRouter.get('/auth/me', async (req, res) => {
   try {
-    console.log('[auth/me] リクエスト詳細:', {
+    const requestDetails = {
       hasSession: !!req.session,
       sessionId: req.session?.id,
       sessionUser: req.session?.user,
       sessionUserId: req.session?.userId,
       cookies: req.headers.cookie,
       authHeader: req.headers.authorization
-    });
+    };
+    console.log('[auth/me] リクエスト詳細:', maskSensitiveInfo(requestDetails));
 
     // セッションベースの認証をチェック
     if (req.session?.user) {
@@ -876,10 +910,15 @@ apiRouter.get('/machines/machine-types', async (req, res) => {
 // 機種追加API
 apiRouter.post('/machines/machine-types', authenticateToken, async (req, res) => {
   try {
+    console.log('🔧 ===== 機種追加APIリクエスト開始 =====');
+    console.log('🔧 Request method:', req.method);
+    console.log('🔧 Request URL:', req.url);
+    console.log('🔧 Content-Type:', req.get('Content-Type'));
     console.log('🔧 機種追加リクエスト:', req.body);
-    const { name } = req.body;
+    const { name, machine_type_name } = req.body;
+    const typeName = machine_type_name || name; // フロントエンドとの互換性を保つ
 
-    if (!name || !name.trim()) {
+    if (!typeName || !typeName.trim()) {
       return res.status(400).json({
         success: false,
         error: '必須項目が不足しています',
@@ -893,7 +932,7 @@ apiRouter.post('/machines/machine-types', authenticateToken, async (req, res) =>
         const duplicateCheck = await dbPool.query(`
           SELECT id FROM machine_types
           WHERE machine_type_name = $1
-        `, [name.trim()]);
+        `, [typeName.trim()]);
 
         if (duplicateCheck.rows.length > 0) {
           return res.status(409).json({
@@ -907,7 +946,7 @@ apiRouter.post('/machines/machine-types', authenticateToken, async (req, res) =>
           INSERT INTO machine_types (machine_type_name)
           VALUES ($1)
           RETURNING id, machine_type_name
-        `, [name.trim()]);
+        `, [typeName.trim()]);
 
         console.log('✅ 機種追加成功:', result.rows[0]);
         return res.json({
@@ -942,11 +981,12 @@ apiRouter.post('/machines/machine-types', authenticateToken, async (req, res) =>
 apiRouter.put('/machines/machine-types/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name } = req.body;
+    const { name, machine_type_name } = req.body;
+    const typeName = machine_type_name || name; // フロントエンドとの互換性を保つ
 
-    console.log('🔧 機種更新リクエスト:', { id, name });
+    console.log('🔧 機種更新リクエスト:', { id, typeName });
 
-    if (!name || !name.trim()) {
+    if (!typeName || !typeName.trim()) {
       return res.status(400).json({
         success: false,
         error: '必須項目が不足しています',
@@ -960,7 +1000,7 @@ apiRouter.put('/machines/machine-types/:id', authenticateToken, async (req, res)
         const duplicateCheck = await dbPool.query(`
           SELECT id FROM machine_types
           WHERE machine_type_name = $1 AND id != $2
-        `, [name.trim(), id]);
+        `, [typeName.trim(), id]);
 
         if (duplicateCheck.rows.length > 0) {
           return res.status(409).json({
@@ -975,7 +1015,7 @@ apiRouter.put('/machines/machine-types/:id', authenticateToken, async (req, res)
           SET machine_type_name = $1
           WHERE id = $2
           RETURNING id, machine_type_name
-        `, [name.trim(), id]);
+        `, [typeName.trim(), id]);
 
         if (result.rows.length === 0) {
           return res.status(404).json({
@@ -1175,6 +1215,10 @@ apiRouter.get('/machines', async (req, res) => {
 // 機械番号追加API
 apiRouter.post('/machines', authenticateToken, async (req, res) => {
   try {
+    console.log('🔧 ===== 機械番号追加APIリクエスト開始 =====');
+    console.log('🔧 Request method:', req.method);
+    console.log('🔧 Request URL:', req.url);
+    console.log('🔧 Content-Type:', req.get('Content-Type'));
     console.log('🔧 機械番号追加リクエスト:', req.body);
     const { machine_number, machine_type_id } = req.body;
 
@@ -1455,6 +1499,10 @@ apiRouter.get('/users', async (req, res) => {
 // ユーザー作成API（認証を一時的に無効化）
 apiRouter.post('/users', async (req, res) => {
   try {
+    console.log('👤 ===== ユーザー作成APIリクエスト開始 =====');
+    console.log('👤 Request method:', req.method);
+    console.log('👤 Request URL:', req.url);
+    console.log('👤 Content-Type:', req.get('Content-Type'));
     // セキュリティのため、パスワードはログに出力しない
     const { password: _password, ...safeBody } = req.body;
     console.log('👤 ユーザー作成リクエスト:', safeBody);
@@ -1487,7 +1535,9 @@ apiRouter.post('/users', async (req, res) => {
           timestamp: new Date().toISOString()
         });
       } catch (dbError) {
-        console.error('Database error:', dbError.message);
+        console.error('❌ Database error:', dbError.message);
+        console.error('❌ Database error code:', dbError.code);
+        console.error('❌ Database error detail:', dbError.detail);
         if (dbError.code === '23505') { // 重複エラー
           return res.status(409).json({
             success: false,
@@ -1499,6 +1549,7 @@ apiRouter.post('/users', async (req, res) => {
       }
     }
 
+    console.error('❌ データベース接続がありません');
     res.status(503).json({
       success: false,
       error: 'データベース接続がありません',
@@ -1506,6 +1557,7 @@ apiRouter.post('/users', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ ユーザー作成エラー:', error);
+    console.error('❌ ユーザー作成エラースタック:', error.stack);
     res.status(500).json({
       success: false,
       error: 'ユーザーの作成に失敗しました',
