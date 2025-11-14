@@ -1,13 +1,19 @@
 #!/usr/bin/env node
 
 /**
- * Azure App Service Entry Point (CommonJS -> ESModules)
- * Direct dynamic import of ES Module azure-server.js
- * Maintains ESModules architecture while ensuring Azure compatibility
+ * Azure App Service Entry Point (ES Module)
+ * Direct dynamic import of ES Module azure-server.mjs
+ * Maintains ESModules architecture
  */
 
-const path = require('path');
-const fs = require('fs');
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// ESM __dirname equivalent
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Azure App Service environment setup
 console.log('🚀 Azure App Service Entry Point Starting...');
@@ -42,16 +48,15 @@ async function startServer() {
             process.exit(1);
         }
 
-        console.log('✅ azure-server.js found, loading ES Module directly...');
+        console.log('✅ azure-server.mjs found, loading ES Module directly...');
 
-        // Direct dynamic import of ES Module - maintains ESModules architecture
-        // This approach keeps the azure-server.js as ES Module while providing CommonJS compatibility
+        // Direct dynamic import of ES Module
         const serverModule = await import('./azure-server.mjs');
 
-        console.log('✅ ES Module azure-server.js loaded successfully');
+        console.log('✅ ES Module azure-server.mjs loaded successfully');
         console.log('🎉 Server should be starting now...');
 
-        // Keep the process alive - azure-server.js handles its own lifecycle
+        // Keep the process alive - azure-server.mjs handles its own lifecycle
         console.log('🔄 Keeping wrapper process alive for Azure App Service...');
 
     } catch (error) {
