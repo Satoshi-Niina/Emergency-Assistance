@@ -1058,22 +1058,91 @@ apiRouter.put('/machines/machine-types/:id', authenticateToken, async (req, res)
 apiRouter.delete('/machines/machine-types/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('🗑️ 機種削除リクエスト:', { id });
+    const { cascade } = req.query; // カスケード削除のオプション
+    console.log('🗑️ 機種削除リクエスト:', { id, cascade: cascade === 'true' });
 
     if (dbPool) {
       try {
         // 関連する機械番号があるかチェック
+        console.log('🔍 関連機械番号チェック中...');
         const relatedMachines = await dbPool.query(`
-          SELECT COUNT(*) as count FROM machines WHERE machine_type_id = $1
+          SELECT id, machine_number FROM machines WHERE machine_type_id = $1 ORDER BY machine_number
         `, [id]);
 
-        if (relatedMachines.rows[0].count > 0) {
-          return res.status(400).json({
-            success: false,
-            error: '関連する機械番号が存在します',
-            message: 'この機種に関連する機械番号があるため削除できません。まず機械番号を削除してください。'
-          });
+        const relatedCount = relatedMachines.rows.length;
+        console.log('🔍 関連機械番号数:', relatedCount);
+
+        if (relatedCount > 0) {
+          const machineNumbers = relatedMachines.rows.map(row => row.machine_number);
+
+          if (cascade === 'true') {
+            // カスケード削除：関連する機械番号も削除
+            console.log('🗑️ カスケード削除実行中:', machineNumbers);
+
+            // トランザクション開始
+            await dbPool.query('BEGIN');
+
+            try {
+              // 関連する機械番号を削除
+              const deletedMachines = await dbPool.query(`
+                DELETE FROM machines WHERE machine_type_id = $1
+                RETURNING id, machine_number
+              `, [id]);
+
+              console.log('✅ 関連機械番号削除完了:', deletedMachines.rows.length, '件');
+
+              // 機種を削除
+              const result = await dbPool.query(`
+                DELETE FROM machine_types
+                WHERE id = $1
+                RETURNING id, machine_type_name
+              `, [id]);
+
+              if (result.rows.length === 0) {
+                await dbPool.query('ROLLBACK');
+                return res.status(404).json({
+                  success: false,
+                  error: '機種が見つかりません',
+                  message: '指定されたIDの機種が存在しません'
+                });
+              }
+
+              // トランザクションコミット
+              await dbPool.query('COMMIT');
+
+              console.log('✅ 機種削除成功（カスケード）:', result.rows[0]);
+              return res.json({
+                success: true,
+                data: result.rows[0],
+                message: `機種「${result.rows[0].machine_type_name}」と関連する${deletedMachines.rows.length}個の機械番号を削除しました`,
+                deletedMachines: deletedMachines.rows,
+                timestamp: new Date().toISOString()
+              });
+
+            } catch (error) {
+              await dbPool.query('ROLLBACK');
+              throw error;
+            }
+
+          } else {
+            // カスケード削除が指定されていない場合は、関連情報と共にエラーを返す
+            console.log('❌ 関連機械番号が存在するため削除不可:', machineNumbers);
+
+            return res.status(400).json({
+              success: false,
+              error: '関連する機械番号が存在します',
+              message: `この機種には${relatedCount}個の機械番号が登録されています。関連する機械番号を先に削除するか、一括削除を選択してください。`,
+              relatedMachines: machineNumbers,
+              details: {
+                count: relatedCount,
+                machines: machineNumbers.slice(0, 5), // 最初の5個のみ表示
+                hasMore: relatedCount > 5
+              }
+            });
+          }
         }
+
+        console.log('✅ 関連機械番号なし、削除実行中...');
 
         const result = await dbPool.query(`
           DELETE FROM machine_types

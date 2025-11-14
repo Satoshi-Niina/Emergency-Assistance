@@ -164,35 +164,70 @@ export default function MachineManagementPage() {
   };
 
   const handleTypeDelete = async (typeId: string) => {
-    if (!confirm('この機種を削除してもよろしいですか？')) {
-      return;
+    // 関連する機械番号があるかチェック
+    const relatedMachines = machines.filter(machine => machine.machine_type_id === typeId);
+
+    let cascade = false;
+
+    if (relatedMachines.length > 0) {
+      const machineNumbers = relatedMachines.slice(0, 3).map(m => m.machine_number).join(', ');
+      const moreText = relatedMachines.length > 3 ? `他${relatedMachines.length - 3}個` : '';
+
+      // 3つの選択肢を提供
+      const choice = window.confirm(
+        `この機種には${relatedMachines.length}個の機械番号（${machineNumbers}${moreText}）が登録されています。\n\n` +
+        `OKを選択: 機種と関連する機械番号をすべて削除\n` +
+        `キャンセル: 削除を中止`
+      );
+
+      if (!choice) {
+        return; // キャンセルが選択された場合
+      }
+
+      cascade = true; // 一括削除を選択
+    } else {
+      if (!confirm('この機種を削除してもよろしいですか？')) {
+        return;
+      }
     }
 
     try {
       const { buildApiUrl } = await import('../lib/api');
-      const response = await fetch(buildApiUrl(`/machines/machine-types/${typeId}`), {
+      const url = cascade
+        ? buildApiUrl(`/machines/machine-types/${typeId}?cascade=true`)
+        : buildApiUrl(`/machines/machine-types/${typeId}`);
+
+      const response = await fetch(url, {
         method: 'DELETE',
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || '機種の削除に失敗しました');
+
+        // 関連する機械番号が存在する場合の詳細メッセージ
+        if (errorData.details && errorData.details.machines) {
+          const machineList = errorData.details.machines.join(', ');
+          const moreText = errorData.details.hasMore ? '他' : '';
+          throw new Error(`${errorData.message}\n関連機械番号: ${machineList}${moreText}`);
+        }
+
+        throw new Error(errorData.message || errorData.error || '機種の削除に失敗しました');
       }
 
       const result = await response.json();
       if (result.success) {
         toast({
           title: '削除完了',
-          description: '機種を削除しました',
+          description: result.message || '機種を削除しました',
         });
         fetchData();
       } else {
-        throw new Error(result.error || '機種の削除に失敗しました');
+        throw new Error(result.message || result.error || '機種の削除に失敗しました');
       }
     } catch (error) {
       console.error('機種削除エラー:', error);
       toast({
-        title: 'エラー',
+        title: '削除できません',
         description: error instanceof Error ? error.message : '機種の削除に失敗しました',
         variant: 'destructive',
       });

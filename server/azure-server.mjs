@@ -2778,7 +2778,8 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   // サービス状態の詳細確認
   console.log('📊 Service Status Check:');
   console.log(`   Database Pool: ${dbPool ? 'Initialized' : 'Not initialized'}`);
-  console.log(`   Blob Service Client: ${blobServiceClient ? 'Initialized' : 'Not initialized'}`);
+  const blobClient = getBlobServiceClient();
+  console.log(`   Blob Service Client: ${blobClient ? 'Initialized' : 'Not initialized'}`);
   console.log(`   Application Insights: ${process.env.APPLICATIONINSIGHTS_CONNECTION_STRING ? 'Configured' : 'Not configured'}`);
   console.log(`   Health Token: ${HEALTH_TOKEN ? 'Set' : 'Not set'}`);
   console.log(`   Session Secret: ${process.env.SESSION_SECRET ? 'Set' : 'Using default'}`);
