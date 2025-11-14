@@ -189,12 +189,17 @@ jobs:
           echo "🔧 Injecting backend URL into runtime configuration..."
 
           if [ -f "dist/index.html" ]; then
-            # プレースホルダーがある場合は置換
-            if grep -q "{{BACKEND_URL}}" dist/index.html; then
-              sed -i "s|{{BACKEND_URL}}|$BACKEND_URL|g" dist/index.html
+            # window.BACKEND_SERVICE_URLを置換
+            if grep -q "window.BACKEND_SERVICE_URL" dist/index.html; then
+              # 既存のwindow.BACKEND_SERVICE_URLの値を置換
+              sed -i "s|window.BACKEND_SERVICE_URL = '[^']*'|window.BACKEND_SERVICE_URL = '$BACKEND_URL'|g" dist/index.html
               echo "✅ Backend URL injected: $BACKEND_URL"
+            # プレースホルダーがある場合は置換
+            elif grep -q "{{BACKEND_URL}}" dist/index.html; then
+              sed -i "s|{{BACKEND_URL}}|$BACKEND_URL|g" dist/index.html
+              echo "✅ Backend URL injected via placeholder: $BACKEND_URL"
             else
-              echo "ℹ️ No placeholder found for backend URL injection"
+              echo "ℹ️ No window.BACKEND_SERVICE_URL or placeholder found for backend URL injection"
             fi
           else
             echo "⚠️ dist/index.html not found, skipping injection"

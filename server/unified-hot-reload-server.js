@@ -213,22 +213,71 @@ app.use(cors({
     if (!origin) {
       return callback(null, true);
     }
+
+    // Azure Static Web Apps ドメインの場合（ワイルドカード対応）
+    if (origin.includes('azurestaticapps.net')) {
+      console.log('🌐 Azure Static Web Apps origin allowed:', origin);
+      return callback(null, true);
+    }
+
+    // localhost の場合（開発環境）
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      console.log('🏠 Localhost origin allowed:', origin);
+      return callback(null, true);
+    }
+
     // 許可リストに含まれているかチェック
     if (allowOrigins.includes(origin) || allowOrigins.includes('*')) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+      console.log('✅ Origin allowed:', origin);
+      return callback(null, true);
     }
+
+    console.warn('❌ CORS blocked origin:', origin);
+    console.warn('   Allowed origins:', allowOrigins);
+    return callback(new Error('Not allowed by CORS'), false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control', 'Pragma', 'Expires'],
-  exposedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control', 'Pragma', 'Expires', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Type', 'Authorization', 'Set-Cookie'],
   maxAge: 86400 // 24時間
 }));
 
-// プリフライト（OPTIONS）リクエストをグローバルに許可
-app.options('*', cors());
+// プリフライト（OPTIONS）リクエストの明示的な処理
+app.options('*', (req, res) => {
+  const origin = req.headers.origin;
+  console.log('🔍 OPTIONS request from origin:', origin);
+
+  // オリジンの許可チェック
+  let originAllowed = false;
+
+  if (!origin) {
+    originAllowed = true; // オリジンなしは許可
+  } else if (origin.includes('azurestaticapps.net')) {
+    originAllowed = true; // Azure Static Web Apps
+    console.log('🌐 Azure Static Web Apps origin allowed:', origin);
+  } else if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+    originAllowed = true; // ローカル開発環境
+    console.log('🏠 Localhost origin allowed:', origin);
+  } else if (allowOrigins.includes(origin) || allowOrigins.includes('*')) {
+    originAllowed = true; // 許可リストに含まれている
+    console.log('✅ Origin allowed:', origin);
+  }
+
+  if (originAllowed) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Cache-Control, Pragma, Expires, Accept, Origin');
+    res.header('Access-Control-Max-Age', '86400'); // 24時間キャッシュ
+    console.log('✅ OPTIONS request approved for origin:', origin);
+  } else {
+    console.warn('❌ OPTIONS request denied for origin:', origin);
+    console.warn('   Allowed origins:', allowOrigins);
+  }
+
+  res.status(204).end();
+});
 
 // ミドルウェア
 app.use(express.json({ limit: '50mb' }));
