@@ -382,11 +382,11 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       console.log('🌐 API呼び出し', apiUrl);
 
       const response = await fetch(apiUrl, {
-        method: 'GT',
+        method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           Pragma: 'no-cache',
-          xpires: 'Thu, 01 Jan 1970 00:00:00 GMT',
+          Expires: 'Thu, 01 Jan 1970 00:00:00 GMT',
           'X-Force-Fresh': 'true',
         },
       });
@@ -1289,7 +1289,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
                             console.error('画像読み込みエラー:', image.url);
                             e.currentTarget.style.display = 'none';
                             // エラー表示を追加
-                            const errorDiv = document.createlement('div');
+                            const errorDiv = document.createElement('div');
                             errorDiv.className =
                               'w-full h-32 bg-red-100 border border-red-300 text-red-700 flex items-center justify-center text-base-2x rounded';
                             errorDiv.textContent = '画像読み込み失敗;

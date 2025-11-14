@@ -260,7 +260,7 @@ const FlowList: React.FC<FlowListProps> = ({
                                 src={imageUrl}
                                 alt={`${step.title} - 画像`}
                                 className='w-8 h-8 object-cover rounded border'
-                                onrror={(e) => {
+                                onError={(e) => {
                                   console.error('画像読み込みエラー��古い��式！', {
                                     imageUrl,
                                     originalImageUrl: step.imageUrl,
@@ -482,7 +482,7 @@ const mergencyGuidedit: React.FC = () => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌API エラー:', errorText);
-        throw new rror(
+        throw new Error(
           `フロー詳細の取得に失敗しました: ${response.status} - ${errorText}`
         );
       }
@@ -538,7 +538,7 @@ const mergencyGuidedit: React.FC = () => {
       console.error('❌フロー詳細取得エラー:', error);
       toast({
         title: 'エラー',
-        description: `フロー詳細の取得に失敗しました: ${error instanceof rror ? error.message : ''}`,
+        description: `フロー詳細の取得に失敗しました: ${error instanceof Error ? error.message : ''}`,
         variant: 'destructive',
       });
       // エラー時�一覧デ�タを使用
@@ -571,7 +571,7 @@ const mergencyGuidedit: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new rror(`フロー詳細の取得に失敗しました: ${response.status}`);
+        throw new Error(`フロー詳細の取得に失敗しました: ${response.status}`);
       }
 
       const flowDetail = await response.json();
@@ -590,7 +590,7 @@ const mergencyGuidedit: React.FC = () => {
       console.error('❌プレビュー用フロー詳細取得エラー:', error);
       toast({
         title: 'エラー',
-        description: `フロー詳細の取得に失敗しました: ${error instanceof rror ? error.message : ''}`,
+        description: `フロー詳細の取得に失敗しました: ${error instanceof Error ? error.message : ''}`,
         variant: 'destructive',
       });
       // エラー時�一覧デ�タを使用
@@ -629,7 +629,7 @@ const mergencyGuidedit: React.FC = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new rror(errorData.error || '保存に失敗しました');
+        throw new Error(errorData.error || '保存に失敗しました');
       }
 
       const result = await response.json();
@@ -648,7 +648,7 @@ const mergencyGuidedit: React.FC = () => {
       console.error('❌フローの保存に失敗しました:', error);
       toast({
         title: 'エラー',
-        description: `フローの保存に失敗しました: ${error instanceof rror ? error.message : ''}`,
+        description: `フローの保存に失敗しました: ${error instanceof Error ? error.message : ''}`,
         variant: 'destructive',
       });
     }
@@ -672,7 +672,7 @@ const mergencyGuidedit: React.FC = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new rror(errorData.error || '削除に失敗しました');
+        throw new Error(errorData.error || '削除に失敗しました');
       }
 
       const result = await response.json();
@@ -691,7 +691,7 @@ const mergencyGuidedit: React.FC = () => {
       console.error('❌フローの削除に失敗しました:', error);
       toast({
         title: 'エラー',
-        description: `フローの削除に失敗しました: ${error instanceof rror ? error.message : ''}`,
+        description: `フローの削除に失敗しました: ${error instanceof Error ? error.message : ''}`,
         variant: 'destructive',
       });
     }

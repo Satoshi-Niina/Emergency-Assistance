@@ -184,7 +184,7 @@ const Stepditor: React.FC<StepditorProps> = ({
   const [imagerrors, setImagerrors] = useState<{ [key: string]: boolean }>(
     {}
   );
-  const [expandedSteps, setxpandedSteps] = useState<{
+  const [expandedSteps, setExpandedSteps] = useState<{
     [key: string]: boolean;
   }>({});
   const [showStepControls, setShowStepControls] = useState<{
@@ -193,25 +193,25 @@ const Stepditor: React.FC<StepditorProps> = ({
 
   // すべてのステップを展開状態にする
   useEffect(() => {
-    const allxpanded = steps.reduce(
+    const allExpanded = steps.reduce(
       (acc, step) => {
         acc[step.id] = true;
         return acc;
       },
       {} as { [key: string]: boolean }
     );
-    setxpandedSteps(allxpanded);
+    setExpandedSteps(allExpanded);
   }, [steps]);
 
   // カスタムスクロールバーのスタイルを適用
   useEffect(() => {
-    const stylelement = document.createlement('style');
-    stylelement.textContent = scrollbarStyles;
-    stylelement.id = 'step-editor-scrollbar-styles';
-    document.head.appendChild(stylelement);
+    const styleElement = document.createElement('style');
+    styleElement.textContent = scrollbarStyles;
+    styleElement.id = 'step-editor-scrollbar-styles';
+    document.head.appendChild(styleElement);
 
     return () => {
-      const existingStyle = document.getlementById(
+      const existingStyle = document.getElementById(
         'step-editor-scrollbar-styles'
       );
       if (existingStyle) {
@@ -229,7 +229,7 @@ const Stepditor: React.FC<StepditorProps> = ({
   };
 
   const toggleStepxpansion = (stepId: string) => {
-    setxpandedSteps(prev => ({
+    setExpandedSteps(prev => ({
       ...prev,
       [stepId]: !prev[stepId],
     }));
@@ -238,8 +238,8 @@ const Stepditor: React.FC<StepditorProps> = ({
   // 画像URL変換の簡略化
 
   // 画像の読み込みエラーを処理する関数
-  const handleImagerror = (
-    e: React.Syntheticvent<HTMLImagelement, vent>,
+  const handleImageError = (
+    e: React.SyntheticEvent<HTMLImageElement, Event>,
     imageUrl: string
   ) => {
     console.error('画像読み込みエラー:', imageUrl);
@@ -247,7 +247,7 @@ const Stepditor: React.FC<StepditorProps> = ({
     target.style.display = 'none';
 
     // エラー表示用の要素を追加
-    const errorDiv = document.createlement('div');
+    const errorDiv = document.createElement('div');
     errorDiv.className =
       'bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded text-sm';
     errorDiv.textContent = '画像の読み込みに失敗しました';
@@ -901,14 +901,14 @@ const Stepditor: React.FC<StepditorProps> = ({
             variant='outline'
             size='sm'
             onClick={() => {
-              const allxpanded = steps.reduce(
+              const allExpanded = steps.reduce(
                 (acc, step) => {
                   acc[step.id] = true;
                   return acc;
                 },
                 {} as { [key: string]: boolean }
               );
-              setxpandedSteps(allxpanded);
+              setExpandedSteps(allExpanded);
             }}
             className='h-7 px-2 text-xs'
           >
@@ -917,7 +917,7 @@ const Stepditor: React.FC<StepditorProps> = ({
           <Button
             variant='outline'
             size='sm'
-            onClick={() => setxpandedSteps({})}
+            onClick={() => setExpandedSteps({})}
             className='h-7 px-2 text-xs'
           >
             すべて折りたたみ

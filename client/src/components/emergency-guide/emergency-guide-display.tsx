@@ -469,7 +469,7 @@ export default function mergencyGuideDisplay({
                 alt={currentStep.title}
                 className='w-full h-auto rounded-lg shadow-md'
                 crossOrigin="anonymous"
-                onrror={e => {
+                onError={e => {
                   console.error('❌画像読み込みエラー (legacy imageUrl):', {
                     imageUrl: currentStep.imageUrl,
                     builtUrl: buildImageUrl(currentStep.imageUrl),
