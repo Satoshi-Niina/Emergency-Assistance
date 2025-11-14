@@ -434,12 +434,12 @@ const mergencyGuidedit: React.FC = () => {
 
     const refreshList = () => fetchFlowList(true);
 
-    window.addventListener('forceRefreshFlowList', handleForceRefresh);
-    window.addventListener('fileSystemUpdated', refreshList);
+    window.addEventListener('forceRefreshFlowList', handleForceRefresh);
+    window.addEventListener('fileSystemUpdated', refreshList);
 
     return () => {
-      window.removeventListener('forceRefreshFlowList', handleForceRefresh);
-      window.removeventListener('fileSystemUpdated', refreshList);
+      window.removeEventListener('forceRefreshFlowList', handleForceRefresh);
+      window.removeEventListener('fileSystemUpdated', refreshList);
     };
   }, [fetchFlowList]);
 

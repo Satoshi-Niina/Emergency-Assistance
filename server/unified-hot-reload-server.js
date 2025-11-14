@@ -5132,7 +5132,7 @@ apiRouter.get('/history/machine-data', async (req, res) => {
 
     // PostgreSQLのmachinesテーブルから機械番号一覧を取得（機種名も含む）
     const machinesResult = await dbPool.query(`
-      SELECT 
+      SELECT
         m.id,
         m.machine_number AS "machineNumber",
         m.machine_type_id AS "machineTypeId",

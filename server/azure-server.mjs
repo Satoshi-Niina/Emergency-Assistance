@@ -999,6 +999,62 @@ app.get('/api/machines/machine-types', async (req, res) => {
   }
 });
 
+// 機械データ取得API（ルートエンドポイント - 後方互換性のため）
+app.get('/api/machines', async (req, res) => {
+  try {
+    console.log('[api/machines] 機械データ取得リクエスト（ルートエンドポイント）');
+
+    if (!dbPool) {
+      return res.json({
+        success: true,
+        machineTypes: [],
+        machines: [],
+        message: 'データベース接続が設定されていません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const client = await dbPool.connect();
+    
+    // 機種一覧を取得
+    const typesResult = await client.query(`
+      SELECT id, machine_type_name
+      FROM machine_types
+      ORDER BY machine_type_name
+    `);
+
+    // 機械番号一覧を取得
+    const machinesResult = await client.query(`
+      SELECT m.id, m.machine_number, m.machine_type_id, mt.machine_type_name
+      FROM machines m
+      LEFT JOIN machine_types mt ON m.machine_type_id = mt.id
+      ORDER BY mt.machine_type_name, m.machine_number
+    `);
+    
+    await client.release();
+
+    console.log('[api/machines] 機械データ取得成功:', {
+      machineTypes: typesResult.rows.length,
+      machines: machinesResult.rows.length
+    });
+
+    res.json({
+      success: true,
+      machineTypes: typesResult.rows,
+      machines: machinesResult.rows,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/machines] 機械データ取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '機械データの取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // 機械番号一覧API（機種ID指定）
 app.get('/api/machines/machines', async (req, res) => {
   try {

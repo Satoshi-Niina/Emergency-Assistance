@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Button } from '../../components/ui/button';
 import {
   Card,
@@ -240,7 +240,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
   );
 
   // 初期化時にフロー一覧を取得（一度だけ！
-  useffect(() => {
+  useEffect(() => {
     if (!hasInitialized.current) {
       hasInitialized.current = true;
       fetchFlowList();
@@ -255,10 +255,10 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       fetchFlowList(true);
     };
 
-    window.addventListener('forceRefreshFlowList', handleForceRefresh);
+    window.addEventListener('forceRefreshFlowList', handleForceRefresh);
 
     return () => {
-      window.removeventListener('forceRefreshFlowList', handleForceRefresh);
+      window.removeEventListener('forceRefreshFlowList', handleForceRefresh);
     };
   }, [fetchFlowList]);
 

@@ -66,13 +66,13 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
     };
 
     // カスタムイベントリスナーを追加
-    window.addventListener('flowGenerated', handleFlowGenerated);
-    window.addventListener('flowDeleted', handleFlowDeleted);
+    window.addEventListener('flowGenerated', handleFlowGenerated);
+    window.addEventListener('flowDeleted', handleFlowDeleted);
 
     // クリーンアップ
     return () => {
-      window.removeventListener('flowGenerated', handleFlowGenerated);
-      window.removeventListener('flowDeleted', handleFlowDeleted);
+      window.removeEventListener('flowGenerated', handleFlowGenerated);
+      window.removeEventListener('flowDeleted', handleFlowDeleted);
     };
   }, [user]);
 
