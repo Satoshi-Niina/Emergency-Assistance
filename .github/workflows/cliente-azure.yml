@@ -111,13 +111,27 @@ jobs:
             exit 1
           fi
 
-          required_files=("index.html" "main.mjs" "style.css" "runtime-config.js")
+          # ハッシュ付きファイル名に対応
+          required_files=("index.html" "runtime-config.js")
           for file in "${required_files[@]}"; do
             if [ ! -f "dist/$file" ]; then
               echo "❌ ERROR: Required file missing after build: dist/$file"
               exit 1
             fi
           done
+
+          # ハッシュ付きファイルの存在確認
+          if ! ls dist/main.*.mjs 1> /dev/null 2>&1; then
+            echo "❌ ERROR: Required file missing after build: dist/main.*.mjs"
+            ls -la dist/ | grep -E "\.(mjs|js)$" || echo "No .mjs or .js files found"
+            exit 1
+          fi
+
+          if ! ls dist/style.*.css 1> /dev/null 2>&1; then
+            echo "❌ ERROR: Required file missing after build: dist/style.*.css"
+            ls -la dist/ | grep -E "\.css$" || echo "No .css files found"
+            exit 1
+          fi
 
           file_count=$(find dist -type f | wc -l)
           echo "✅ Client build completed successfully: $file_count files"

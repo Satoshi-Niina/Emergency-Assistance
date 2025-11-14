@@ -10,7 +10,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 const CLIENT_DIST_PATH = path.join(__dirname, '../client/dist');
-const REQUIRED_FILES = ['index.html', 'main.mjs', 'style.css', 'runtime-config.js'];
+const REQUIRED_FILES = ['index.html', 'runtime-config.js'];
 
 console.log('🔍 Pre-push build verification...');
 
@@ -28,6 +28,22 @@ const missingFiles = REQUIRED_FILES.filter(file =>
 
 if (missingFiles.length > 0) {
     console.error(`❌ ERROR: Missing required build files: ${missingFiles.join(', ')}`);
+    console.error('📋 Run: npm run build (or cd client && npm run build)');
+    process.exit(1);
+}
+
+// 2.5. ハッシュ付きファイルの存在確認
+const mainMjsFiles = fs.readdirSync(CLIENT_DIST_PATH).filter(f => f.startsWith('main.') && f.endsWith('.mjs'));
+const styleCssFiles = fs.readdirSync(CLIENT_DIST_PATH).filter(f => f.startsWith('style.') && f.endsWith('.css'));
+
+if (mainMjsFiles.length === 0) {
+    console.error('❌ ERROR: Missing required build file: main.*.mjs');
+    console.error('📋 Run: npm run build (or cd client && npm run build)');
+    process.exit(1);
+}
+
+if (styleCssFiles.length === 0) {
+    console.error('❌ ERROR: Missing required build file: style.*.css');
     console.error('📋 Run: npm run build (or cd client && npm run build)');
     process.exit(1);
 }
