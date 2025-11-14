@@ -52,23 +52,23 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
     console.log('🔄 FlowListManager マウント完了');
     console.log('👤 認証状態:', { user: !!user, userId: user?.id });
     fetchFlowList();
-    
+
     // フロー生成完了イベントをリッスン
     const handleFlowGenerated = () => {
       console.log('🔄 フロー生成完了イベントを受信、一覧を更新します');
       fetchFlowList();
     };
-    
+
     // フロー削除完了イベントをリッスン
     const handleFlowDeleted = () => {
       console.log('🔄 フロー削除完了イベントを受信、一覧を更新します');
       fetchFlowList();
     };
-    
+
     // カスタムイベントリスナーを追加
     window.addventListener('flowGenerated', handleFlowGenerated);
     window.addventListener('flowDeleted', handleFlowDeleted);
-    
+
     // クリーンアップ
     return () => {
       window.removeventListener('flowGenerated', handleFlowGenerated);
@@ -105,7 +105,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       console.log('🔗 完全なURL:', fullUrl);
 
       const response = await fetch(fullUrl, {
-        method: 'GT',
+        method: 'GET',
         credentials: 'include', // セッション維持のため必須
         headers: {
           'Content-Type': 'application/json',
@@ -119,7 +119,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ APIエラーレスポンス:', errorText);
-        throw new rror(
+        throw new Error(
           `APIエラー: ${response.status} ${response.statusText} - ${errorText}`
         );
       }
@@ -127,7 +127,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       const data = await response.json();
       console.log('📊 取得したデータ:', data);
 
-      // APIレスポンスの構造に合わせてデータを取得  
+      // APIレスポンスの構造に合わせてデータを取得
       let flows = [];
       if (data.success && data.data) {
         console.log('✅ dataプププロパティからデータを取得');
@@ -156,7 +156,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
         flows = data;
       } else {
         console.error('❌ 予期しないフローデータ形式:', data);
-        throw new rror('フローデータの形式が不正です');
+        throw new Error('フローデータの形式が不正です');
       }
 
       console.log('📋 処理前のflows配列:', flows);
@@ -183,7 +183,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       toast({
         title: 'エラー',
         description:
-          error instanceof rror
+          error instanceof Error
             ? error.message
             : 'ファイル一覧の取得に失敗しました',
         variant: 'destructive',
@@ -209,10 +209,10 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
 
   const handleDeleteConfirm = async () => {
     if (!flowToDelete) return;
-    
+
     try {
       console.log('🗑️ フロー削除開始:', flowToDelete);
-      
+
       // 削除APIを呼び出し
       const response = await fetch(`/api/emergency-flow/${flowToDelete}`, {
         method: 'DLT',
@@ -234,10 +234,10 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
           const errorData = await response.json();
           console.log('❌ 削除エラーデータ:', errorData);
           errorMessage = errorData.error || errorData.details || errorMessage;
-        } catch (parserror) {
-          console.warn('⚠️ エラーレスポンスの解析に失敗:', parserror);
+        } catch (parseError) {
+          console.warn('⚠️ エラーレスポンスの解析に失敗:', parseError);
         }
-        throw new rror(errorMessage);
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
@@ -269,7 +269,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
     } catch (error) {
       console.error('❌ 削除エラー:', error);
       const errorMessage =
-        error instanceof rror ? error.message : 'フローの削除に失敗しました';
+        error instanceof Error ? error.message : 'フローの削除に失敗しました';
       toast({
         title: '削除エラー',
         description: errorMessage,
