@@ -104,9 +104,7 @@ const corsOptions = {
   optionsSuccessStatus: 204
 };
 
-app.use(cors(corsOptions));
-
-// OPTIONSリクエスト（プリフライト）の明示的な処理
+// OPTIONSリクエスト（プリフライト）の明示的な処理（corsミドルウェアより前に配置）
 app.options('*', (req, res) => {
   const origin = req.headers.origin;
   console.log('🔍 OPTIONS request from origin:', origin);
@@ -120,6 +118,7 @@ app.options('*', (req, res) => {
     originAllowed = true; // 許可リストに含まれている
   } else if (origin.includes('azurestaticapps.net')) {
     originAllowed = true; // Azure Static Web Apps
+    console.log('🌐 Azure Static Web Apps origin detected:', origin);
   } else if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
     originAllowed = true; // ローカル開発環境
   }
@@ -127,16 +126,19 @@ app.options('*', (req, res) => {
   if (originAllowed) {
     res.header('Access-Control-Allow-Origin', origin || '*');
     res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires');
     res.header('Access-Control-Max-Age', '86400'); // 24時間キャッシュ
     console.log('✅ OPTIONS request approved for origin:', origin);
+    return res.status(204).end();
   } else {
     console.warn('❌ OPTIONS request denied for origin:', origin);
+    console.warn('   Allowed origins:', allowedOrigins);
+    return res.status(403).end();
   }
-
-  res.status(204).end();
 });
+
+app.use(cors(corsOptions));
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));
