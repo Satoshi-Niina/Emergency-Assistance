@@ -45,7 +45,11 @@ jobs:
             echo "STATIC_WEB_APP_URL=https://witty-river-012f39e00.1.azurestaticapps.net" >> $GITHUB_ENV
           else
             echo "ENVIRONMENT=staging" >> $GITHUB_ENV
-            echo "STATIC_WEB_APP_TOKEN=${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_STAGING || secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}" >> $GITHUB_ENV
+            if [ -n "${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_STAGING }}" ]; then
+              echo "STATIC_WEB_APP_TOKEN=${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_STAGING }}" >> $GITHUB_ENV
+            else
+              echo "STATIC_WEB_APP_TOKEN=${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}" >> $GITHUB_ENV
+            fi
             echo "BACKEND_URL=https://emergency-assistance-staging.japanwest-01.azurewebsites.net" >> $GITHUB_ENV
             echo "STATIC_WEB_APP_URL=https://staging.witty-river-012f39e00.1.azurestaticapps.net" >> $GITHUB_ENV
           fi
@@ -84,12 +88,19 @@ jobs:
         working-directory: ./client
         env:
           NODE_ENV: production
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || '/api' }}
           VITE_BACKEND_SERVICE_URL: ${{ env.BACKEND_URL }}
           VITE_ENVIRONMENT: ${{ env.ENVIRONMENT }}
         run: |
           echo "🔨 Building client for $ENVIRONMENT environment..."
           echo "   Backend URL: $BACKEND_URL"
+
+          # Set VITE_API_BASE_URL with fallback
+          if [ -n "${{ secrets.VITE_API_BASE_URL }}" ]; then
+            export VITE_API_BASE_URL="${{ secrets.VITE_API_BASE_URL }}"
+          else
+            export VITE_API_BASE_URL="/api"
+          fi
+          echo "   API Base URL: $VITE_API_BASE_URL"
 
           npm run build
 
@@ -175,7 +186,7 @@ jobs:
             echo "⚠️ dist/index.html not found, skipping injection"
           fi
 
-      - name: Prepare Deployment Package
+      - name: Prepare Optimized Deployment Package
         working-directory: ./client
         run: |
           echo "📦 Preparing optimized deployment package..."
@@ -183,22 +194,54 @@ jobs:
           # Create a clean deployment directory
           mkdir -p ../deploy-client
 
-          # Copy only essential files
+          # Copy essential HTML and config files
           cp dist/index.html ../deploy-client/
-          cp dist/main.mjs ../deploy-client/
-          cp dist/style.css ../deploy-client/
-          cp dist/runtime-config.js ../deploy-client/
-
-          # Copy staticwebapp.config.json
           cp staticwebapp.config.json ../deploy-client/
 
-          # Copy any favicon or other essential assets if they exist
+          # Copy JavaScript files (main bundle and chunks)
+          find dist -type f \( -name "*.js" -o -name "*.mjs" \) | while read file; do
+            cp "$file" ../deploy-client/
+          done
+
+          # Copy CSS files
+          find dist -type f -name "*.css" | while read file; do
+            cp "$file" ../deploy-client/
+          done
+
+          # Copy essential assets (images, fonts, etc.)
+          if [ -d "dist/assets" ]; then
+            mkdir -p ../deploy-client/assets
+            # Copy only essential asset files (exclude source maps and large files)
+            find dist/assets -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.svg" -o -name "*.gif" -o -name "*.webp" -o -name "*.woff" -o -name "*.woff2" -o -name "*.ttf" -o -name "*.eot" \) \
+              -exec cp {} ../deploy-client/assets/ \;
+          fi
+
+          # Copy runtime config
+          [ -f "dist/runtime-config.js" ] && cp dist/runtime-config.js ../deploy-client/ || true
+
+          # Copy manifest and favicon if they exist
           [ -f "dist/favicon.ico" ] && cp dist/favicon.ico ../deploy-client/ || true
           [ -f "dist/manifest.json" ] && cp dist/manifest.json ../deploy-client/ || true
+          [ -f "dist/robots.txt" ] && cp dist/robots.txt ../deploy-client/ || true
 
-          echo "📊 Final deployment package:"
+          # Remove source maps if they were copied
+          find ../deploy-client -name "*.map" -delete
+
+          # Remove any unnecessary files
+          find ../deploy-client -type f \( -name "*.txt" -o -name "*.md" -o -name "*.log" \) ! -name "robots.txt" -delete
+
+          echo "📊 Final optimized deployment package:"
           ls -la ../deploy-client/
-          echo "Files: $(find ../deploy-client -type f | wc -l)"
+          file_count=$(find ../deploy-client -type f | wc -l)
+          size=$(du -sh ../deploy-client/ | cut -f1)
+          echo "   Files: $file_count"
+          echo "   Size: $size"
+
+          if [ $file_count -gt 1000 ]; then
+            echo "⚠️ WARNING: File count ($file_count) is high for Azure Static Web Apps"
+          else
+            echo "✅ File count ($file_count) is optimal"
+          fi
 
       - name: Deploy to Azure Static Web Apps
         id: deploy
@@ -208,7 +251,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
           app_location: /deploy-client
-          output_location: ""
+          output_location: ''
           skip_app_build: true
 
       - name: Health Check

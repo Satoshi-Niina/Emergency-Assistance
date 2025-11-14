@@ -79,12 +79,19 @@ jobs:
         working-directory: ./client
         env:
           NODE_ENV: production
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || '/api' }}
           VITE_BACKEND_SERVICE_URL: ${{ env.APP_URL }}
           VITE_ENVIRONMENT: 'production'
         run: |
           echo "🔨 Building client for production environment..."
           echo "   Backend URL: ${{ env.APP_URL }}"
+
+          # Set VITE_API_BASE_URL with fallback
+          if [ -n "${{ secrets.VITE_API_BASE_URL }}" ]; then
+            export VITE_API_BASE_URL="${{ secrets.VITE_API_BASE_URL }}"
+          else
+            export VITE_API_BASE_URL="/api"
+          fi
+          echo "   API Base URL: $VITE_API_BASE_URL"
 
           npm run build
 
@@ -110,18 +117,58 @@ jobs:
             echo "ℹ️ No tests configured or tests failed (continuing deployment)"
           fi
 
-      - name: Create Simple Deployment Package
+      - name: Create Optimized Deployment Package
         shell: bash
         run: |
-          echo "📦 Creating simple deployment package for production..."
+          echo "📦 Creating optimized deployment package for production..."
 
           # クリーンな作業ディレクトリ
           rm -rf deploy-package
           mkdir -p deploy-package
 
-          echo "📁 Copying entire server directory..."
-          # サーバー全体をコピー
-          cp -r server/* deploy-package/
+          echo "📁 Copying essential server files only..."
+
+          # 必須サーバーファイルをコピー
+          cp server/package.json deploy-package/
+          cp server/package-lock.json deploy-package/ 2>/dev/null || echo "⚠️ package-lock.json not found"
+          cp server/web.config deploy-package/ 2>/dev/null || echo "⚠️ web.config not found"
+
+          # メインサーバーファイル
+          [ -f "server/app.js" ] && cp server/app.js deploy-package/
+          [ -f "server/azure-server.mjs" ] && cp server/azure-server.mjs deploy-package/
+          [ -f "server/index.js" ] && cp server/index.js deploy-package/
+          [ -f "server/server.js" ] && cp server/server.js deploy-package/
+
+          # 必須ディレクトリをコピー（node_modules、ログ、一時ファイルを除外）
+          echo "📁 Copying server directories (excluding dev files)..."
+          for dir in routes middleware lib services utils config db types; do
+            if [ -d "server/$dir" ]; then
+              mkdir -p "deploy-package/$dir"
+              # 開発用ファイルを除外してコピー
+              find "server/$dir" -type f \( -name "*.js" -o -name "*.ts" -o -name "*.json" -o -name "*.sql" \) \
+                ! -name "*.test.*" ! -name "*.spec.*" ! -name "*.dev.*" ! -name "*.backup" | while read file; do
+                rel_path="${file#server/}"
+                target_path="deploy-package/$rel_path"
+                mkdir -p "$(dirname "$target_path")"
+                cp "$file" "$target_path"
+              done
+              echo "   ✅ Copied $dir/"
+            fi
+          done
+
+          # compatディレクトリ
+          [ -d "server/compat" ] && cp -r server/compat deploy-package/ 2>/dev/null || true
+
+          # migrationsディレクトリ（必要に応じて）
+          [ -d "server/migrations" ] && cp -r server/migrations deploy-package/ 2>/dev/null || true
+
+          # sharedライブラリ（必要に応じて）
+          if [ -d "shared" ]; then
+            mkdir -p deploy-package/shared
+            cp shared/package.json deploy-package/shared/ 2>/dev/null || true
+            [ -d "shared/src" ] && cp -r shared/src deploy-package/shared/ 2>/dev/null || true
+            [ -d "shared/dist" ] && cp -r shared/dist deploy-package/shared/ 2>/dev/null || true
+          fi
 
           echo "📁 Copying client build..."
           # クライアントビルドをコピー
@@ -135,12 +182,21 @@ jobs:
             echo "<h1>Server is running</h1>" > deploy-package/public/index.html
           fi
 
+          # 不要なファイルを削除
+          echo "🧹 Cleaning up unnecessary files..."
+          find deploy-package -type f \( -name "*.log" -o -name "*.tmp" -o -name "*.bak" -o -name "*.backup" -o -name "*.test.*" -o -name "*.spec.*" \) -delete
+          find deploy-package -type d -name "node_modules" -exec rm -rf {} + 2>/dev/null || true
+          find deploy-package -type d -name ".git" -exec rm -rf {} + 2>/dev/null || true
+          find deploy-package -type d -name "__tests__" -exec rm -rf {} + 2>/dev/null || true
+          find deploy-package -type d -name "test" -exec rm -rf {} + 2>/dev/null || true
+
           cd deploy-package
 
-          echo "📊 Package Statistics:"
+          echo "📊 Optimized Package Statistics:"
           echo "   Files: $(find . -type f | wc -l)"
           echo "   Size: $(du -sh . | cut -f1)"
-          echo "✅ Simple deployment package ready"
+          echo "   Directories: $(find . -type d | wc -l)"
+          echo "✅ Optimized deployment package ready"
 
       - name: Deploy to Azure App Service (Production)
         id: deploy
@@ -196,8 +252,8 @@ jobs:
 
           # エンドポイントのヘルスチェック
           success=false
-          for attempt in $(seq 1 ${{ env.MAX_RETRIES }}); do
-            echo "🔍 Attempt $attempt/${{ env.MAX_RETRIES }}..."
+          for attempt in $(seq 1 $MAX_RETRIES); do
+            echo "🔍 Attempt $attempt/$MAX_RETRIES..."
 
             if health_check "${{ env.APP_URL }}/health" "Health Endpoint" || health_check "${{ env.APP_URL }}/" "Main Application"; then
               success=true
@@ -205,9 +261,9 @@ jobs:
               break
             fi
 
-            if [ $attempt -lt ${{ env.MAX_RETRIES }} ]; then
-              echo "⏰ Waiting ${{ env.RETRY_INTERVAL }}s..."
-              sleep ${{ env.RETRY_INTERVAL }}
+            if [ $attempt -lt $MAX_RETRIES ]; then
+              echo "⏰ Waiting ${RETRY_INTERVAL}s..."
+              sleep $RETRY_INTERVAL
             fi
           done
 
@@ -325,43 +381,74 @@ jobs:
           fi
           echo "✅ Client build completed"
 
-      - name: Create Staging Package
+      - name: Create Optimized Staging Package
         run: |
-          echo "📦 Creating staging deployment package..."
+          echo "📦 Creating optimized staging deployment package..."
           rm -rf deploy-package
           mkdir -p deploy-package
 
-          # Copy essential server files only
-          cp server/package.json deploy-package/
-          cp server/app.js deploy-package/ 2>/dev/null || echo "app.js not found"
-          cp server/azure-server.mjs deploy-package/ 2>/dev/null || echo "azure-server.mjs not found"
-          cp server/unified-hot-reload-server.js deploy-package/ 2>/dev/null || echo "unified-hot-reload-server.js not found"
+          echo "📁 Copying essential server files only..."
 
-          # Copy essential directories only if they exist
-          [ -d "server/routes" ] && cp -r server/routes deploy-package/ || echo "routes not found"
-          [ -d "server/middleware" ] && cp -r server/middleware deploy-package/ || echo "middleware not found"
+          # 必須サーバーファイルをコピー
+          cp server/package.json deploy-package/
+          cp server/package-lock.json deploy-package/ 2>/dev/null || echo "⚠️ package-lock.json not found"
+          cp server/web.config deploy-package/ 2>/dev/null || echo "⚠️ web.config not found"
+
+          # メインサーバーファイル
+          [ -f "server/app.js" ] && cp server/app.js deploy-package/
+          [ -f "server/azure-server.mjs" ] && cp server/azure-server.mjs deploy-package/
+          [ -f "server/index.js" ] && cp server/index.js deploy-package/
+          [ -f "server/server.js" ] && cp server/server.js deploy-package/
+
+          # 必須ディレクトリをコピー（開発用ファイルを除外）
+          echo "📁 Copying server directories (excluding dev files)..."
+          for dir in routes middleware lib services utils config db types; do
+            if [ -d "server/$dir" ]; then
+              mkdir -p "deploy-package/$dir"
+              find "server/$dir" -type f \( -name "*.js" -o -name "*.ts" -o -name "*.json" -o -name "*.sql" \) \
+                ! -name "*.test.*" ! -name "*.spec.*" ! -name "*.dev.*" ! -name "*.backup" | while read file; do
+                rel_path="${file#server/}"
+                target_path="deploy-package/$rel_path"
+                mkdir -p "$(dirname "$target_path")"
+                cp "$file" "$target_path"
+              done
+              echo "   ✅ Copied $dir/"
+            fi
+          done
+
+          # compatディレクトリ
+          [ -d "server/compat" ] && cp -r server/compat deploy-package/ 2>/dev/null || true
+
+          # sharedライブラリ
+          if [ -d "shared" ]; then
+            mkdir -p deploy-package/shared
+            cp shared/package.json deploy-package/shared/ 2>/dev/null || true
+            [ -d "shared/src" ] && cp -r shared/src deploy-package/shared/ 2>/dev/null || true
+            [ -d "shared/dist" ] && cp -r shared/dist deploy-package/shared/ 2>/dev/null || true
+          fi
 
           # Copy optimized client build
-          mkdir -p deploy-package/client/dist
-          [ -f "client/dist/index.html" ] && cp client/dist/index.html deploy-package/client/dist/
-          [ -d "client/dist/assets" ] && cp -r client/dist/assets deploy-package/client/dist/
+          echo "📁 Copying client build..."
+          if [ -d "client/dist" ]; then
+            mkdir -p deploy-package/public
+            cp -r client/dist/* deploy-package/public/
+            echo "✅ Client build copied"
+          else
+            mkdir -p deploy-package/public
+            echo "<h1>Server is running</h1>" > deploy-package/public/index.html
+          fi
 
-          # Minimal package.json for staging
+          # 不要なファイルを削除
+          echo "🧹 Cleaning up unnecessary files..."
+          find deploy-package -type f \( -name "*.log" -o -name "*.tmp" -o -name "*.bak" -o -name "*.backup" -o -name "*.test.*" -o -name "*.spec.*" \) -delete
+          find deploy-package -type d -name "node_modules" -exec rm -rf {} + 2>/dev/null || true
+          find deploy-package -type d -name ".git" -exec rm -rf {} + 2>/dev/null || true
+
           cd deploy-package
-          echo '{
-            "name": "emergency-assistance-server",
-            "version": "1.0.3",
-            "main": "app.js",
-            "scripts": {
-              "start": "node app.js"
-            },
-            "dependencies": {
-              "express": "^4.21.2",
-              "cors": "^2.8.5",
-              "dotenv": "^16.6.1"
-            }
-          }' > package.json
 
+          echo "📊 Optimized Staging Package Statistics:"
+          echo "   Files: $(find . -type f | wc -l)"
+          echo "   Size: $(du -sh . | cut -f1)"
           echo "✅ Optimized staging package ready"
 
       - name: Deploy to Azure App Service (Staging)
@@ -380,8 +467,8 @@ jobs:
         run: |
           echo "🏥 Running staging health check..."
 
-          for attempt in $(seq 1 ${{ env.MAX_RETRIES }}); do
-            echo "🔍 Attempt $attempt/${{ env.MAX_RETRIES }}..."
+          for attempt in $(seq 1 $MAX_RETRIES); do
+            echo "🔍 Attempt $attempt/$MAX_RETRIES..."
 
             if curl -s --max-time 10 "${{ env.APP_URL }}/health" | grep -q "OK\|healthy\|success" || \
                curl -s --max-time 10 -o /dev/null -w "%{http_code}" "${{ env.APP_URL }}/" | grep -q "^2[0-9][0-9]$"; then
@@ -389,9 +476,9 @@ jobs:
               break
             fi
 
-            if [ $attempt -lt ${{ env.MAX_RETRIES }} ]; then
-              echo "⏰ Waiting ${{ env.RETRY_INTERVAL }}s..."
-              sleep ${{ env.RETRY_INTERVAL }}
+            if [ $attempt -lt $MAX_RETRIES ]; then
+              echo "⏰ Waiting ${RETRY_INTERVAL}s..."
+              sleep $RETRY_INTERVAL
             fi
           done
 
