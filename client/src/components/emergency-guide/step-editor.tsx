@@ -623,7 +623,7 @@ const Stepditor: React.FC<StepditorProps> = ({
                             ? undefined
                             : 'anonymous'
                         }
-                        onrror={e => {
+                        onError={e => {
                           console.error('❌ Stepditor画像読み込みエラー:', {
                             originalUrl: image.url,
                             convertedUrl: convertedUrl,

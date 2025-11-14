@@ -118,7 +118,7 @@ export default function mergencyGuideDisplay({
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
             Pragma: 'no-cache',
-            xpires: 'Thu, 01 Jan 1970 00:00:00 GMT',
+            Expires: 'Thu, 01 Jan 1970 00:00:00 GMT',
             'X-Requested-With': 'XMLHttpRequest',
           },
         });
@@ -437,7 +437,7 @@ export default function mergencyGuideDisplay({
                       alt={`${currentStep.title} - ${image.fileName || '画像'}`}
                       className='w-full h-auto rounded-lg shadow-md'
                       crossOrigin="anonymous"
-                      onrror={e => {
+                      onError={e => {
                         console.error('❌ 画像読み込みエラー (emergency-guide-display):', {
                           imageUrl: image.url,
                           builtUrl: buildImageUrl(image.url),

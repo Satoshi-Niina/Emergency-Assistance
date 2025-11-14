@@ -231,7 +231,7 @@ const FlowList: React.FC<FlowListProps> = ({
                                   src={imageUrl}
                                   alt={`${step.title} - 画像`}
                                   className='w-8 h-8 object-cover rounded border'
-                                  onrror={(e) => {
+                                  onError={(e) => {
                                     console.error('画像読み込みエラー:', {
                                       imageUrl,
                                       originalImage: image,
@@ -357,7 +357,7 @@ const mergencyGuidedit: React.FC = () => {
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
             Pragma: 'no-cache',
-            xpires: 'Thu, 01 Jan 1970 00:00:00 GMT',
+            Expires: 'Thu, 01 Jan 1970 00:00:00 GMT',
             'X-Requested-With': 'XMLHttpRequest',
           },
         });

@@ -71,7 +71,7 @@ const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
               message: `以下のキーワードから建設機械の応急処置フローを生成してください：${keywordsInput}`,
               type: 'flow-generation'
             }),
@@ -123,7 +123,7 @@ const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
                 headers: {
                   'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                   message: `簡易版：キーワード「${keywordsInput}」の応急処置手順を教えてください`,
                   type: 'troubleshooting'
                 }),

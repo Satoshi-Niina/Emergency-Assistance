@@ -173,7 +173,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
             Pragma: 'no-cache',
-            xpires: 'Thu, 01 Jan 1970 00:00:00 GMT',
+            Expires: 'Thu, 01 Jan 1970 00:00:00 GMT',
             'X-Force-Refresh': forceRefresh.toString(),
             'X-Timestamp': timestamp.toString(),
           },
@@ -1285,7 +1285,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
                           src={convertImageUrl(image.url)}
                           alt={image.fileName}
                           className='w-full h-32 object-cover rounded border'
-                          onrror={e => {
+                          onError={e => {
                             console.error('画像読み込みエラー:', image.url);
                             e.currentTarget.style.display = 'none';
                             // エラー表示を追加

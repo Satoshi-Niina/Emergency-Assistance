@@ -303,7 +303,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
                             imageUrl: imageUrl?.substring(0, 100) + '...',
                           });
                         }}
-                        onrror={e => {
+                        onError={e => {
                           const originalUrl = typeof img === 'object' && img !== null
                             ? (img as { url: string; fileName: string }).url
                             : String(img);

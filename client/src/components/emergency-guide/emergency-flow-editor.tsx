@@ -204,7 +204,7 @@ const mergencyFlowditor: React.FC<mergencyFlowditorProps> = ({
               console.log(`❌ 無効な画像URLをスキップ:`, img);
               return null;
             }
-            
+
             const convertedUrl = (img.url?.startsWith('http://') || img.url?.startsWith('https://') || img.url?.startsWith('data:'))
               ? img.url
               : convertImageUrl(img.url);
@@ -272,7 +272,7 @@ const mergencyFlowditor: React.FC<mergencyFlowditorProps> = ({
           console.log(`📝 ステップ[${step.id}]に画像情報なし`);
           processedImages = [];
         }
-        
+
         // 画像が存在しない場合、空の配列を確実に設定
         if (!processedImages || processedImages.length === 0) {
           processedImages = [];
@@ -452,18 +452,18 @@ const mergencyFlowditor: React.FC<mergencyFlowditorProps> = ({
       const updatedSteps = [...currentSteps];
       updatedSteps[stepIndex] = { ...updatedSteps[stepIndex], ...updatedStep };
 
-      console.log('✏️ ステップ更新:', { 
-        stepId, 
-        updatedStep, 
+      console.log('✏️ ステップ更新:', {
+        stepId,
+        updatedStep,
         stepIndex,
         isImageUpdate: 'images' in updatedStep,
         imageCount: updatedStep.images?.length || 0,
         previousImageCount: currentSteps[stepIndex].images?.length || 0,
       });
-      
+
       // 即座にUIに反映
       setSteps(updatedSteps);
-      
+
       // 画像更新の場合は追加ログ
       if ('images' in updatedStep) {
         console.log('🖼️ 画像更新完了 - UIに即座に反映:', {
@@ -630,13 +630,13 @@ const mergencyFlowditor: React.FC<mergencyFlowditorProps> = ({
             urlValid: img.url && img.url.trim() !== '',
             fileNameValid: img.fileName && img.fileName.trim() !== '',
           });
-          
+
           // URLが存在する場合は有効な画像として扱う
           if (img.url && img.url.trim() !== '') {
             return {
               url: img.url,
-              fileName: img.fileName && img.fileName.trim() !== '' 
-                ? img.fileName 
+              fileName: img.fileName && img.fileName.trim() !== ''
+                ? img.fileName
                 : img.url.split('/').pop() || '', // URLからファイル名を抽出
             };
           }
@@ -727,7 +727,7 @@ const mergencyFlowditor: React.FC<mergencyFlowditorProps> = ({
 
         // 自動保存時はonSaveを呼ばず、内部状態のみ更新
         console.log('mergencyFlowditor 自動保存完了');
-        
+
         // 変更フラグをリセット
         setHasChanges(false);
         setOriginalSteps(result.data?.steps || saveData.steps);

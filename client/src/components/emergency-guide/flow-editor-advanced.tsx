@@ -93,7 +93,7 @@ const FlowditorAdvanced: React.FC<FlowditorAdvancedProps> = ({
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           Pragma: 'no-cache',
-          xpires: 'Thu, 01 Jan 1970 00:00:00 GMT',
+          Expires: 'Thu, 01 Jan 1970 00:00:00 GMT',
           'X-Requested-With': 'XMLHttpRequest',
         },
       });
@@ -760,7 +760,7 @@ const FlowditorAdvanced: React.FC<FlowditorAdvancedProps> = ({
                                               alt={image.fileName || '画像'}
                                               className='w-20 h-20 object-cover rounded border'
                                               crossOrigin="anonymous"
-                                              onrror={e => {
+                                              onError={e => {
                                                 console.error('❌ 画像読み込みエラー (flow-editor-advanced):', {
                                                   originalUrl: image.url,
                                                   convertedUrl: imageUrl,
