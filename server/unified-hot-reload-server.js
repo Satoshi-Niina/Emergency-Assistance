@@ -5119,9 +5119,9 @@ apiRouter.get('/history/machine-data', async (req, res) => {
       });
     }
 
-    // PostgreSQLのmachineTypesテーブルから機種一覧を取得
+    // PostgreSQLのmachine_typesテーブルから機種一覧を取得
     const machineTypesResult = await dbPool.query(
-      'SELECT id, "machineTypeName" FROM "machineTypes" ORDER BY "machineTypeName"'
+      'SELECT id, machine_type_name AS "machineTypeName" FROM machine_types ORDER BY machine_type_name'
     );
     const machineTypesData = machineTypesResult.rows.map(row => ({
       id: row.id,
@@ -5134,12 +5134,12 @@ apiRouter.get('/history/machine-data', async (req, res) => {
     const machinesResult = await dbPool.query(`
       SELECT 
         m.id,
-        m."machineNumber",
-        m."machineTypeId",
-        mt."machineTypeName"
+        m.machine_number AS "machineNumber",
+        m.machine_type_id AS "machineTypeId",
+        mt.machine_type_name AS "machineTypeName"
       FROM machines m
-      LEFT JOIN "machineTypes" mt ON m."machineTypeId" = mt.id
-      ORDER BY m."machineNumber"
+      LEFT JOIN machine_types mt ON m.machine_type_id = mt.id
+      ORDER BY m.machine_number
     `);
     const machinesData = machinesResult.rows.map(row => ({
       id: row.id,
