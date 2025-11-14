@@ -728,7 +728,7 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
-  // AI支援モード�E自動開始用のref�E�一度だけ実行するためE��E
+  // AI支援モードの自動開始用のref - 一度だけ実行するため
   const aiSupportInitializedRef = useRef(false);
   const machineInfoMessageSentRef = useRef(false);
   const initialPromptSentRef = useRef(false);
@@ -897,7 +897,7 @@ export default function ChatPage() {
 
           const escalationMessage = {
             id: Date.now().toString(),
-            content: `🚨 **救援要請�E検訁E*\n\nAI支援開始かめE{elapsedMinutes}刁E��経過しました、En\n**技術支援センター:**\n📞 0123-456-789\n\n**また�E**\n現場の専門家に連絡することをお勧めします、En\n安�Eを最優先に行動してください。`,
+            content: `🚨 **救援要請の検討**\n\nAI支援開始から${elapsedMinutes}分が経過しました。\n**技術支援センター:**\n📞 0123-456-789\n\n**または**\n現場の専門家に連絡することをお勧めします。\n安全を最優先に行動してください。`,
             isAiResponse: true,
             timestamp: new Date(),
             type: 'escalation_notice',
@@ -1996,7 +1996,7 @@ export default function ChatPage() {
 
       // 時間制限�E警告を追加�E�E5刁E��過時！E
       if (elapsedMinutes >= 15 && elapsedMinutes < 20) {
-        aiResponse += `\n\n⏰ 診断開始かめE{elapsedMinutes}刁E��過してぁE��す。あと5刁E��技術支援センターへの救援要請をお勧めします。`;
+        aiResponse += `\n\n⏰ 診断開始から${elapsedMinutes}分が経過しています。あと5分で技術支援センターへの救援要請をお勧めします。`;
       }
 
       return aiResponse;
@@ -2729,7 +2729,7 @@ export default function ChatPage() {
                 className='text-gray-500 hover:text-gray-700'
               >
                 <X className='w-4 h-4 mr-2' />
-                閉じめE
+                閉じる
               </Button>
             </div>
 

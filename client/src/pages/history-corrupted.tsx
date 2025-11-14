@@ -2371,7 +2371,7 @@ const HistoryPage: React.FC = () => {
           <button class="btn btn-save" id="save-btn" style="display: none;">保孁E/button>
           <button class="btn btn-print" onclick="window.print()">印刷</button>
           <button class="btn btn-cancel" id="cancel-btn" style="display: none;">キャンセル</button>
-          <button class="btn btn-close" onclick="window.close()">閉じめE/button>
+          <button class="btn btn-close" onclick="window.close()">閉じる</button>
         </div>
 
         <div class="container">
@@ -3393,7 +3393,7 @@ const HistoryPage: React.FC = () => {
         </table>
 
         <div class="no-print" style="margin-top: 20px; text-align: center;">
-          <button onclick="window.close()">閉じめE/button>
+          <button onclick="window.close()">閉じる</button>
         </div>
       </body>
       </html>
@@ -3917,7 +3917,7 @@ const HistoryPage: React.FC = () => {
 
         <div class="no-print" style="margin-top: 30px; text-align: center;">
           <button onclick="window.print()">印刷</button>
-          <button onclick="window.close()">閉じめE/button>
+          <button onclick="window.close()">閉じる</button>
         </div>
       </body>
       </html>

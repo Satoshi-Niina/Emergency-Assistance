@@ -149,7 +149,7 @@ const FlowditorAdvanced: React.FC<FlowditorAdvancedProps> = ({
       });
 
       // 画像情報の詳細ログ
-      data.steps.forach((step: any, index: number) => {
+      data.steps.forEach((step: any, index: number) => {
         if (step.images && step.images.length > 0) {
           console.log(`📸 読み込み済みステップ[${index}]の画像情報:`, {
             stepId: step.id,
@@ -419,7 +419,7 @@ const FlowditorAdvanced: React.FC<FlowditorAdvancedProps> = ({
     // 削除確認
     const confirmDelete = window.confirm(
       `画像"${imageToRemove.fileName}" を削除しますか？\n` +
-        `サーバーからファイルが完全に削除され、この操作は元に戻せません。`
+      `サーバーからファイルが完全に削除され、この操作は元に戻せません。`
     );
 
     if (!confirmDelete) {
@@ -665,9 +665,8 @@ const FlowditorAdvanced: React.FC<FlowditorAdvancedProps> = ({
                     <ContextMenu>
                       <ContextMenuTrigger>
                         <Card
-                          className={`cursor-move transition-all border-4 border-blue-500 ${
-                            draggedStepId === step.id ? 'opacity-50' : ''
-                          }`}
+                          className={`cursor-move transition-all border-4 border-blue-500 ${draggedStepId === step.id ? 'opacity-50' : ''
+                            }`}
                           draggable
                           onDragStart={e => handleDragStart(e, step.id)}
                           onDragOver={handleDragOver}

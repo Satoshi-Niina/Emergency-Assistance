@@ -156,13 +156,13 @@ export default function MachineManagementPage() {
         // APIレスポンス形式に対応 - machineTypesキーにデータが入っている場合
         const typesData = typesResult.machineTypes || typesResult.data || [];
         console.log('機種タイプデータ:', typesData);
-        
+
         // データ形式を統一 - machine_type_nameフィールドに統一
         const formattedTypes = typesData.map((type: any) => ({
           id: type.id,
           machine_type_name: type.name || type.machine_type_name || type.category
         }));
-        
+
         setMachineTypes(formattedTypes);
       }
 
@@ -186,337 +186,338 @@ export default function MachineManagementPage() {
       if (machinesResult.success) {
         // APIレスポンス形式に対応！EachinesキーにチE�Eタが�EってぁE���E�E        const machinesData = machinesResult.machines || machinesResult.data || [];
         console.log('機械チE�Eタ:', machinesData);
-        
+
         // チE�Eタ形式を統一�E�Eachine_type_nameフィールドを追加�E�E        const formattedMachines = machinesData.map((machine: any) => ({
-          id: machine.id,
+        id: machine.id,
           machine_number: machine.machine_number,
-          machine_type_id: machine.machine_type_id,
-          machine_type_name: machine.type || machine.machine_type_name
-        }));
-        
-        setMachines(formattedMachines);
-      }
-    } catch (error) {
-      console.error('チE�Eタ取得エラー:', error);
-      setError(error instanceof Error ? error : new Error('Unknown error'));
-      toast({
-        title: 'エラー',
-        description: 'チE�Eタの取得に失敗しました',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
+            machine_type_id: machine.machine_type_id,
+              machine_type_name: machine.type || machine.machine_type_name
+      }));
+
+      setMachines(formattedMachines);
     }
-  };
-
-  // 機種追加・編雁E  const handleTypeSubmit = async () => {
-    if (!newTypeName.trim()) return;
-
-    try {
-      // 統一API設定を使用
-      const { buildApiUrl } = await import('../lib/api');
-      
-      const url = editingType
-        ? buildApiUrl(`/machines/machine-types/${editingType.id}`)
-        : buildApiUrl('/machines/machine-types');
-
-      const method = editingType ? 'PUT' : 'POST';
-
-      // 認証ト�Eクンを取征E      const token = localStorage.getItem('authToken');
-      const headers = { 
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` })
-      };
-
-      const response = await fetch(url, {
-        method,
-        headers,
-        body: JSON.stringify({ 
-          machine_type_name: newTypeName.trim()
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('機種保存�E劁E', result);
-        toast({
-          title: editingType ? '機種を更新しました' : '機種を追加しました',
-          description: `${newTypeName} が正常に処琁E��れました`,
-        });
-        setNewTypeName('');
-        setEditingType(null);
-        setIsTypeDialogOpen(false);
-        console.log('チE�Eタ再取得を開姁E..');
-        await fetchData();
-        console.log('チE�Eタ再取得完亁E);
-      } else {
-        const errorText = await response.text();
-        console.error('機種保存失敁E', response.status, errorText);
-        throw new Error('機種の保存に失敗しました');
-      }
     } catch (error) {
-      console.error('機種保存エラー:', error);
-      toast({
-        title: 'エラー',
-        description: '機種の保存に失敗しました',
-        variant: 'destructive',
-      });
-    }
+    console.error('チE�Eタ取得エラー:', error);
+    setError(error instanceof Error ? error : new Error('Unknown error'));
+    toast({
+      title: 'エラー',
+      description: 'チE�Eタの取得に失敗しました',
+      variant: 'destructive',
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+// 機種追加・編雁E  const handleTypeSubmit = async () => {
+if (!newTypeName.trim()) return;
+
+try {
+  // 統一API設定を使用
+  const { buildApiUrl } = await import('../lib/api');
+
+  const url = editingType
+    ? buildApiUrl(`/machines/machine-types/${editingType.id}`)
+    : buildApiUrl('/machines/machine-types');
+
+  const method = editingType ? 'PUT' : 'POST';
+
+  // 認証ト�Eクンを取征E      const token = localStorage.getItem('authToken');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
   };
 
-  // 機械番号追加・編雁E  const handleMachineSubmit = async () => {
-    if (!newMachineNumber.trim() || !selectedMachineType) return;
+  const response = await fetch(url, {
+    method,
+    headers,
+    body: JSON.stringify({
+      machine_type_name: newTypeName.trim()
+    }),
+  });
 
-    try {
-      // 統一API設定を使用
-      const { buildApiUrl } = await import('../lib/api');
-      
-      const url = editingMachine
-        ? buildApiUrl(`/machines/${editingMachine.id}`)
-        : buildApiUrl('/machines');
-
-      const method = editingMachine ? 'PUT' : 'POST';
-
-      // 認証ト�Eクンを取征E      const token = localStorage.getItem('authToken');
-      const headers = { 
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` })
-      };
-
-      const response = await fetch(url, {
-        method,
-        headers,
-        body: JSON.stringify({
-          machine_number: newMachineNumber.trim(),
-          machine_type_id: selectedMachineType,
-        }),
-      });
-
-      if (response.ok) {
-        toast({
-          title: editingMachine
-            ? '機械番号を更新しました'
-            : '機械番号を追加しました',
-          description: `${newMachineNumber} が正常に処琁E��れました`,
-        });
-        setNewMachineNumber('');
-        setSelectedMachineType('');
-        setEditingMachine(null);
-        setIsMachineDialogOpen(false);
-        fetchData();
-      } else {
-        throw new Error('機械番号の保存に失敗しました');
-      }
-    } catch (error) {
-      console.error('機械番号保存エラー:', error);
-      toast({
-        title: 'エラー',
-        description: '機械番号の保存に失敗しました',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  // 機種削除
-  const handleTypeDelete = async (typeId: string, typeName: string) => {
-    if (
-      !confirm(
-        `機種、E{typeName}」を削除してもよろしぁE��すか�E�\n関連する機械番号も削除されます。`
-      )
-    )
-      return;
-
-    try {
-      // 認証ト�Eクンを取征E      const token = localStorage.getItem('authToken');
-      const headers = { 
-        ...(token && { 'Authorization': `Bearer ${token}` })
-      };
-
-      // 統一API設定を使用
-      const { buildApiUrl } = await import('../lib/api');
-      
-      const response = await fetch(
-        buildApiUrl(`/machines/machine-types/${typeId}`),
-        {
-          method: 'DELETE',
-          headers,
-        }
-      );
-
-      if (response.ok) {
-        toast({
-          title: '機種を削除しました',
-          description: `${typeName} と関連する機械番号が削除されました`,
-        });
-        fetchData();
-      } else {
-        throw new Error('機種の削除に失敗しました');
-      }
-    } catch (error) {
-      console.error('機種削除エラー:', error);
-      toast({
-        title: 'エラー',
-        description: '機種の削除に失敗しました',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  // 機械番号削除
-  const handleMachineDelete = async (
-    machineId: string,
-    machineNumber: string
-  ) => {
-    if (!confirm(`機械番号、E{machineNumber}」を削除してもよろしぁE��すか�E�`))
-      return;
-
-    try {
-      // 認証ト�Eクンを取征E      const token = localStorage.getItem('authToken');
-      const headers = { 
-        ...(token && { 'Authorization': `Bearer ${token}` })
-      };
-
-      // 統一API設定を使用
-      const { buildApiUrl } = await import('../lib/api');
-      
-      const response = await fetch(
-        buildApiUrl(`/machines/${machineId}`),
-        {
-          method: 'DELETE',
-          headers,
-        }
-      );
-
-      if (response.ok) {
-        toast({
-          title: '機械番号を削除しました',
-          description: `${machineNumber} が削除されました`,
-        });
-        fetchData();
-      } else {
-        throw new Error('機械番号の削除に失敗しました');
-      }
-    } catch (error) {
-      console.error('機械番号削除エラー:', error);
-      toast({
-        title: 'エラー',
-        description: '機械番号の削除に失敗しました',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  // 編雁E��姁E  const handleEditType = (type: MachineType) => {
-    setEditingType(type);
-    setNewTypeName(type.machine_type_name);
-    setIsTypeDialogOpen(true);
-  };
-
-  const handleEditMachine = (machine: Machine) => {
-    setEditingMachine(machine);
-    setNewMachineNumber(machine.machine_number);
-    setSelectedMachineType(machine.machine_type_id);
-    setIsMachineDialogOpen(true);
-  };
-
-  // ダイアログリセチE��
-  const resetTypeDialog = () => {
-    setEditingType(null);
+  if (response.ok) {
+    const result = await response.json();
+    console.log('機種保存�E劁E', result);
+    toast({
+      title: editingType ? '機種を更新しました' : '機種を追加しました',
+      description: `${newTypeName} が正常に処琁E��れました`,
+    });
     setNewTypeName('');
+    setEditingType(null);
     setIsTypeDialogOpen(false);
+    console.log('チE�Eタ再取得を開姁E..');
+    await fetchData();
+    console.log('チE�Eタ再取得完亁E);
+      } else {
+    const errorText = await response.text();
+    console.error('機種保存失敁E', response.status, errorText);
+    throw new Error('機種の保存に失敗しました');
+  }
+} catch (error) {
+  console.error('機種保存エラー:', error);
+  toast({
+    title: 'エラー',
+    description: '機種の保存に失敗しました',
+    variant: 'destructive',
+  });
+}
   };
 
-  const resetMachineDialog = () => {
-    setEditingMachine(null);
+// 機械番号追加・編雁E  const handleMachineSubmit = async () => {
+if (!newMachineNumber.trim() || !selectedMachineType) return;
+
+try {
+  // 統一API設定を使用
+  const { buildApiUrl } = await import('../lib/api');
+
+  const url = editingMachine
+    ? buildApiUrl(`/machines/${editingMachine.id}`)
+    : buildApiUrl('/machines');
+
+  const method = editingMachine ? 'PUT' : 'POST';
+
+  // 認証ト�Eクンを取征E      const token = localStorage.getItem('authToken');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
+  };
+
+  const response = await fetch(url, {
+    method,
+    headers,
+    body: JSON.stringify({
+      machine_number: newMachineNumber.trim(),
+      machine_type_id: selectedMachineType,
+    }),
+  });
+
+  if (response.ok) {
+    toast({
+      title: editingMachine
+        ? '機械番号を更新しました'
+        : '機械番号を追加しました',
+      description: `${newMachineNumber} が正常に処琁E��れました`,
+    });
     setNewMachineNumber('');
     setSelectedMachineType('');
+    setEditingMachine(null);
     setIsMachineDialogOpen(false);
+    fetchData();
+  } else {
+    throw new Error('機械番号の保存に失敗しました');
+  }
+} catch (error) {
+  console.error('機械番号保存エラー:', error);
+  toast({
+    title: 'エラー',
+    description: '機械番号の保存に失敗しました',
+    variant: 'destructive',
+  });
+}
   };
 
-  if (authLoading || isLoading) {
-    return (
-      <div className='flex-1 overflow-y-auto p-4 md:p-6 max-w-7xl mx-auto w-full bg-gradient-to-br from-blue-50 to-indigo-50'>
-        <div className='flex justify-center items-center h-64'>
-          <div className='text-center'>
-            <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4'></div>
-            <p className='text-blue-600'>読み込み中...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+// 機種削除
+const handleTypeDelete = async (typeId: string, typeName: string) => {
+  if (
+    !confirm(
+      `機種、E{typeName}」を削除してもよろしぁE��すか�E�\n関連する機械番号も削除されます。`
+    )
+  )
+    return;
 
+  try {
+    // 認証ト�Eクンを取征E      const token = localStorage.getItem('authToken');
+    const headers = {
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    };
+
+    // 統一API設定を使用
+    const { buildApiUrl } = await import('../lib/api');
+
+    const response = await fetch(
+      buildApiUrl(`/machines/machine-types/${typeId}`),
+      {
+        method: 'DELETE',
+        headers,
+      }
+    );
+
+    if (response.ok) {
+      toast({
+        title: '機種を削除しました',
+        description: `${typeName} と関連する機械番号が削除されました`,
+      });
+      fetchData();
+    } else {
+      throw new Error('機種の削除に失敗しました');
+    }
+  } catch (error) {
+    console.error('機種削除エラー:', error);
+    toast({
+      title: 'エラー',
+      description: '機種の削除に失敗しました',
+      variant: 'destructive',
+    });
+  }
+};
+
+// 機械番号削除
+const handleMachineDelete = async (
+  machineId: string,
+  machineNumber: string
+) => {
+  if (!confirm(`機械番号、E{machineNumber}」を削除してもよろしぁE��すか�E�`))
+    return;
+
+  try {
+    // 認証ト�Eクンを取征E      const token = localStorage.getItem('authToken');
+    const headers = {
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    };
+
+    // 統一API設定を使用
+    const { buildApiUrl } = await import('../lib/api');
+
+    const response = await fetch(
+      buildApiUrl(`/machines/${machineId}`),
+      {
+        method: 'DELETE',
+        headers,
+      }
+    );
+
+    if (response.ok) {
+      toast({
+        title: '機械番号を削除しました',
+        description: `${machineNumber} が削除されました`,
+      });
+      fetchData();
+    } else {
+      throw new Error('機械番号の削除に失敗しました');
+    }
+  } catch (error) {
+    console.error('機械番号削除エラー:', error);
+    toast({
+      title: 'エラー',
+      description: '機械番号の削除に失敗しました',
+      variant: 'destructive',
+    });
+  }
+};
+
+// 編雁E��姁E  const handleEditType = (type: MachineType) => {
+setEditingType(type);
+setNewTypeName(type.machine_type_name);
+setIsTypeDialogOpen(true);
+  };
+
+const handleEditMachine = (machine: Machine) => {
+  setEditingMachine(machine);
+  setNewMachineNumber(machine.machine_number);
+  setSelectedMachineType(machine.machine_type_id);
+  setIsMachineDialogOpen(true);
+};
+
+// ダイアログリセチE��
+const resetTypeDialog = () => {
+  setEditingType(null);
+  setNewTypeName('');
+  setIsTypeDialogOpen(false);
+};
+
+const resetMachineDialog = () => {
+  setEditingMachine(null);
+  setNewMachineNumber('');
+  setSelectedMachineType('');
+  setIsMachineDialogOpen(false);
+};
+
+if (authLoading || isLoading) {
   return (
     <div className='flex-1 overflow-y-auto p-4 md:p-6 max-w-7xl mx-auto w-full bg-gradient-to-br from-blue-50 to-indigo-50'>
-      {/* ヘッダー */}
-      <div className='mb-6'>
-        <div className='flex items-center justify-between'>
-          <div>
-            <h1 className='text-2xl font-bold flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent'>
-              <Wrench className='mr-2 h-6 w-6 text-indigo-500' />
-              機種・機械番号管琁E            </h1>
-            <p className='text-blue-400'>
-              機種と機械番号の一覧表示、追加、編雁E��削除ができまぁE            </p>
-          </div>
-          <Link to='/settings'>
-            <Button
-              variant='outline'
-              className='border-blue-300 text-blue-700 hover:bg-blue-50'
-            >
-              <ArrowLeft className='mr-2 h-4 w-4' />
-              設定に戻めE            </Button>
-          </Link>
+      <div className='flex justify-center items-center h-64'>
+        <div className='text-center'>
+          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4'></div>
+          <p className='text-blue-600'>読み込み中...</p>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* エラー表示 */}
-      {error && (
-        <Card className='mb-6 border-red-200 bg-red-50'>
-          <CardContent className='pt-6'>
-            <div className='text-red-600'>
-              <p className='font-medium'>エラーが発生しました</p>
-              <p className='text-sm'>{error.message}</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+return (
+  <div className='flex-1 overflow-y-auto p-4 md:p-6 max-w-7xl mx-auto w-full bg-gradient-to-br from-blue-50 to-indigo-50'>
+    {/* ヘッダー */}
+    <div className='mb-6'>
+      <div className='flex items-center justify-between'>
+        <div>
+          <h1 className='text-2xl font-bold flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent'>
+            <Wrench className='mr-2 h-6 w-6 text-indigo-500' />
+            機種・機械番号管琁E            </h1>
+          <p className='text-blue-400'>
+            機種と機械番号の一覧表示、追加、編雁E��削除ができまぁE            </p>
+        </div>
+        <Link to='/settings'>
+          <Button
+            variant='outline'
+            className='border-blue-300 text-blue-700 hover:bg-blue-50'
+          >
+            <ArrowLeft className='mr-2 h-4 w-4' />
+            設定に戻る
+          </Button>
+        </Link>
+      </div>
+    </div>
 
-      <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
-        {/* 機種管琁E*/}
-        <Card className='lg:col-span-1'>
-          <CardHeader className='pb-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white'>
-            <CardTitle className='text-lg flex items-center justify-between'>
-              <span className='flex items-center'>
-                <Settings className='mr-2 h-5 w-5' />
-                機種管琁E              </span>
-              <Dialog
-                open={isTypeDialogOpen}
-                onOpenChange={setIsTypeDialogOpen}
-              >
-                <DialogTrigger asChild>
-                  <Button
-                    size='sm'
-                    className='bg-white/20 hover:bg-white/30 text-white border-white/30'
-                    onClick={resetTypeDialog}
-                  >
-                    <Plus className='mr-1 h-3 w-3' />
-                    追加
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingType ? '機種を編雁E : '新規機種追加'}
-                    </DialogTitle>
-                    <DialogDescription>
-                      {editingType
-                        ? '機種名を編雁E��てください'
-                        : '新しい機種名を入力してください'}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className='space-y-4'>
-                    <div>
-                      <Label htmlFor='type-name'>機種吁E/Label>
+    {/* エラー表示 */}
+    {error && (
+      <Card className='mb-6 border-red-200 bg-red-50'>
+        <CardContent className='pt-6'>
+          <div className='text-red-600'>
+            <p className='font-medium'>エラーが発生しました</p>
+            <p className='text-sm'>{error.message}</p>
+          </div>
+        </CardContent>
+      </Card>
+    )}
+
+    <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+      {/* 機種管琁E*/}
+      <Card className='lg:col-span-1'>
+        <CardHeader className='pb-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white'>
+          <CardTitle className='text-lg flex items-center justify-between'>
+            <span className='flex items-center'>
+              <Settings className='mr-2 h-5 w-5' />
+              機種管琁E              </span>
+            <Dialog
+              open={isTypeDialogOpen}
+              onOpenChange={setIsTypeDialogOpen}
+            >
+              <DialogTrigger asChild>
+                <Button
+                  size='sm'
+                  className='bg-white/20 hover:bg-white/30 text-white border-white/30'
+                  onClick={resetTypeDialog}
+                >
+                  <Plus className='mr-1 h-3 w-3' />
+                  追加
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingType ? '機種を編雁E : '新規機種追加'}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {editingType
+                      ? '機種名を編雁E��てください'
+                      : '新しい機種名を入力してください'}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className='space-y-4'>
+                  <div>
+                    <Label htmlFor='type-name'>機種吁E/Label>
                       <Input
                         id='type-name'
                         value={newTypeName}
@@ -533,104 +534,104 @@ export default function MachineManagementPage() {
                       {editingType ? '更新' : '追加'}
                     </Button>
                   </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className='p-0'>
-            <div className='max-h-96 overflow-y-auto'>
-              {machineTypes.length === 0 ? (
-                <div className='p-4 text-center text-gray-500'>
-                  機種が登録されてぁE��せん
-                </div>
-              ) : (
-                <div className='divide-y'>
-                  {machineTypes.map(type => (
-                    <div key={type.id} className='p-4 hover:bg-gray-50'>
-                      <div className='flex items-center justify-between'>
-                        <div>
-                          <p className='font-medium text-gray-900'>
-                            {type.machine_type_name}
-                          </p>
-                          <p className='text-sm text-gray-500'>
-                            {
-                              machines.filter(
-                                m => m.machine_type_id === type.id
-                              ).length
-                            }
-                            台の機械
-                          </p>
-                        </div>
-                        <div className='flex gap-1'>
-                          <Button
-                            variant='ghost'
-                            size='sm'
-                            onClick={() => handleEditType(type)}
-                            className='h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50'
-                          >
-                            <Edit className='h-3 w-3' />
-                          </Button>
-                          <Button
-                            variant='ghost'
-                            size='sm'
-                            onClick={() =>
-                              handleTypeDelete(type.id, type.machine_type_name)
-                            }
-                            className='h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50'
-                          >
-                            <Trash2 className='h-3 w-3' />
-                          </Button>
-                        </div>
+              </DialogContent>
+            </Dialog>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className='p-0'>
+          <div className='max-h-96 overflow-y-auto'>
+            {machineTypes.length === 0 ? (
+              <div className='p-4 text-center text-gray-500'>
+                機種が登録されてぁE��せん
+              </div>
+            ) : (
+              <div className='divide-y'>
+                {machineTypes.map(type => (
+                  <div key={type.id} className='p-4 hover:bg-gray-50'>
+                    <div className='flex items-center justify-between'>
+                      <div>
+                        <p className='font-medium text-gray-900'>
+                          {type.machine_type_name}
+                        </p>
+                        <p className='text-sm text-gray-500'>
+                          {
+                            machines.filter(
+                              m => m.machine_type_id === type.id
+                            ).length
+                          }
+                          台の機械
+                        </p>
+                      </div>
+                      <div className='flex gap-1'>
+                        <Button
+                          variant='ghost'
+                          size='sm'
+                          onClick={() => handleEditType(type)}
+                          className='h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+                        >
+                          <Edit className='h-3 w-3' />
+                        </Button>
+                        <Button
+                          variant='ghost'
+                          size='sm'
+                          onClick={() =>
+                            handleTypeDelete(type.id, type.machine_type_name)
+                          }
+                          className='h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50'
+                        >
+                          <Trash2 className='h-3 w-3' />
+                        </Button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* 機械番号管琁E*/}
-        <Card className='lg:col-span-2'>
-          <CardHeader className='pb-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white'>
-            <CardTitle className='text-lg flex items-center justify-between'>
-              <span className='flex items-center'>
-                <Hash className='mr-2 h-5 w-5' />
-                機械番号管琁E              </span>
-              <Dialog
-                open={isMachineDialogOpen}
-                onOpenChange={setIsMachineDialogOpen}
-              >
-                <DialogTrigger asChild>
-                  <Button
-                    size='sm'
-                    className='bg-white/20 hover:bg-white/30 text-white border-white/30'
-                    onClick={resetMachineDialog}
-                  >
-                    <Plus className='mr-1 h-3 w-3' />
-                    追加
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingMachine ? '機械番号を編雁E : '新規機械番号追加'}
-                    </DialogTitle>
-                    <DialogDescription>
-                      {editingMachine
-                        ? '機械番号を編雁E��てください'
-                        : '新しい機械番号を�E力してください'}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className='space-y-4'>
-                    <div>
-                      <Label htmlFor='machine-type'>機種</Label>
-                      <Select
-                        value={selectedMachineType}
-                        onValueChange={setSelectedMachineType}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder='機種を選抁E />
+      {/* 機械番号管琁E*/}
+      <Card className='lg:col-span-2'>
+        <CardHeader className='pb-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white'>
+          <CardTitle className='text-lg flex items-center justify-between'>
+            <span className='flex items-center'>
+              <Hash className='mr-2 h-5 w-5' />
+              機械番号管琁E              </span>
+            <Dialog
+              open={isMachineDialogOpen}
+              onOpenChange={setIsMachineDialogOpen}
+            >
+              <DialogTrigger asChild>
+                <Button
+                  size='sm'
+                  className='bg-white/20 hover:bg-white/30 text-white border-white/30'
+                  onClick={resetMachineDialog}
+                >
+                  <Plus className='mr-1 h-3 w-3' />
+                  追加
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingMachine ? '機械番号を編雁E : '新規機械番号追加'}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {editingMachine
+                      ? '機械番号を編雁E��てください'
+                      : '新しい機械番号を�E力してください'}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className='space-y-4'>
+                  <div>
+                    <Label htmlFor='machine-type'>機種</Label>
+                    <Select
+                      value={selectedMachineType}
+                      onValueChange={setSelectedMachineType}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder='機種を選抁E />
                         </SelectTrigger>
                         <SelectContent>
                           {machineTypes.map(type => (
@@ -659,109 +660,109 @@ export default function MachineManagementPage() {
                       {editingMachine ? '更新' : '追加'}
                     </Button>
                   </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* 検索・フィルター */}
-            <div className='mb-4 space-y-4'>
-              <div className='flex gap-4'>
-                <div className='flex-1'>
-                  <div className='relative'>
-                    <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4' />
-                    <Input
-                      placeholder='機械番号また�E機種名で検索...'
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                      className='pl-10'
-                    />
-                  </div>
-                </div>
-                <div className='w-48'>
-                  <Select
-                    value={selectedTypeFilter}
-                    onValueChange={setSelectedTypeFilter}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder='機種でフィルター' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value='all'>すべての機種</SelectItem>
-                      {machineTypes.map(type => (
-                        <SelectItem key={type.id} value={type.id}>
-                          {type.machine_type_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              </DialogContent>
+            </Dialog>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* 検索・フィルター */}
+          <div className='mb-4 space-y-4'>
+            <div className='flex gap-4'>
+              <div className='flex-1'>
+                <div className='relative'>
+                  <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4' />
+                  <Input
+                    placeholder='機械番号また�E機種名で検索...'
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className='pl-10'
+                  />
                 </div>
               </div>
+              <div className='w-48'>
+                <Select
+                  value={selectedTypeFilter}
+                  onValueChange={setSelectedTypeFilter}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder='機種でフィルター' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='all'>すべての機種</SelectItem>
+                    {machineTypes.map(type => (
+                      <SelectItem key={type.id} value={type.id}>
+                        {type.machine_type_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+          </div>
 
-            {/* 機械番号一覧 */}
-            <div className='border rounded-lg'>
-              <Table>
-                <TableHeader>
+          {/* 機械番号一覧 */}
+          <div className='border rounded-lg'>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>機械番号</TableHead>
+                  <TableHead>機種</TableHead>
+                  <TableHead className='text-right'>操佁E/TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredMachines.length === 0 ? (
                   <TableRow>
-                    <TableHead>機械番号</TableHead>
-                    <TableHead>機種</TableHead>
-                    <TableHead className='text-right'>操佁E/TableHead>
+                    <TableCell
+                      colSpan={3}
+                      className='text-center py-8 text-gray-500'
+                    >
+                      {searchQuery || selectedTypeFilter !== 'all'
+                        ? '検索条件に一致する機械番号が見つかりません'
+                        : '機械番号が登録されてぁE��せん'}
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredMachines.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={3}
-                        className='text-center py-8 text-gray-500'
-                      >
-                        {searchQuery || selectedTypeFilter !== 'all'
-                          ? '検索条件に一致する機械番号が見つかりません'
-                          : '機械番号が登録されてぁE��せん'}
+                ) : (
+                  filteredMachines.map(machine => (
+                    <TableRow key={machine.id}>
+                      <TableCell className='font-medium'>
+                        {machine.machine_number}
+                      </TableCell>
+                      <TableCell>{machine.machine_type_name}</TableCell>
+                      <TableCell className='text-right'>
+                        <div className='flex justify-end gap-1'>
+                          <Button
+                            variant='ghost'
+                            size='sm'
+                            onClick={() => handleEditMachine(machine)}
+                            className='h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+                          >
+                            <Edit className='h-3 w-3' />
+                          </Button>
+                          <Button
+                            variant='ghost'
+                            size='sm'
+                            onClick={() =>
+                              handleMachineDelete(
+                                machine.id,
+                                machine.machine_number
+                              )
+                            }
+                            className='h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50'
+                          >
+                            <Trash2 className='h-3 w-3' />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    filteredMachines.map(machine => (
-                      <TableRow key={machine.id}>
-                        <TableCell className='font-medium'>
-                          {machine.machine_number}
-                        </TableCell>
-                        <TableCell>{machine.machine_type_name}</TableCell>
-                        <TableCell className='text-right'>
-                          <div className='flex justify-end gap-1'>
-                            <Button
-                              variant='ghost'
-                              size='sm'
-                              onClick={() => handleEditMachine(machine)}
-                              className='h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50'
-                            >
-                              <Edit className='h-3 w-3' />
-                            </Button>
-                            <Button
-                              variant='ghost'
-                              size='sm'
-                              onClick={() =>
-                                handleMachineDelete(
-                                  machine.id,
-                                  machine.machine_number
-                                )
-                              }
-                              className='h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50'
-                            >
-                              <Trash2 className='h-3 w-3' />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
-  );
+  </div>
+);
 }
