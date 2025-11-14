@@ -146,7 +146,7 @@ const FlowList: React.FC<FlowListProps> = ({
             <Button
               variant='outline'
               onClick={() =>
-                window.dispatchvent(new Customvent('switchToGenerator'))
+                window.dispatchEvent(new CustomEvent('switchToGenerator'))
               }
             >
               新規フロー生�へ
@@ -427,8 +427,8 @@ const mergencyGuidedit: React.FC = () => {
   useEffect(() => {
     fetchFlowList();
 
-    const handleForceRefresh = (event: vent) => {
-      console.log('🔄 強制更新イベントを受信:', (event as Customvent).detail);
+    const handleForceRefresh = (event: Event) => {
+      console.log('🔄 強制更新イベントを受信:', (event as CustomEvent).detail);
       fetchFlowList(true);
     };
 
@@ -601,8 +601,8 @@ const mergencyGuidedit: React.FC = () => {
 
   const handleDisplayFlow = (flow: FlowData) => {
     // カスタムイベントでガイド表示を通知
-    window.dispatchvent(
-      new Customvent('display-emergency-guide', {
+    window.dispatchEvent(
+      new CustomEvent('display-emergency-guide', {
         detail: { guideId: flow.id },
       })
     );

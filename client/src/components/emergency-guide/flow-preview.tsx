@@ -93,7 +93,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
         setFlowData(flowData);
       } catch (err) {
         console.error('Flow data fetch error:', err);
-        setrror('フローデータの取得に失敗しました');
+        setError('フローデータの取得に失敗しました');
       } finally {
         setLoading(false);
       }

@@ -84,7 +84,7 @@ export default function mergencyGuideDisplay({
   const [guideData, setGuideData] = useState<mergencyGuideData | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setrror] = useState<string>('');
+  const [error, setError] = useState<string>('');
   const [selectedCondition, setSelectedCondition] = useState<string | null>(
     null
   );
@@ -159,7 +159,7 @@ export default function mergencyGuideDisplay({
         }
       } catch (err) {
         console.error('Guide data fetch error:', err);
-        setrror('ガイドデータの取得に失敗しました');
+        setError('ガイドデータの取得に失敗しました');
       } finally {
         setLoading(false);
       }
