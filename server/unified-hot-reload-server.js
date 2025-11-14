@@ -5102,6 +5102,82 @@ apiRouter.get('/history/exports/search', async (req, res) => {
   }
 });
 
+// GET /api/history/machine-data - 機種・機械番号マスターデータを取得（PostgreSQLから）
+apiRouter.get('/history/machine-data', async (req, res) => {
+  try {
+    console.log('📋 機種・機械番号データ取得リクエスト（PostgreSQLから）');
+
+    // Content-Typeを明示的に設定
+    res.setHeader('Content-Type', 'application/json');
+
+    if (!dbPool) {
+      return res.status(503).json({
+        success: false,
+        error: 'データベース接続が利用できません',
+        machineTypes: [],
+        machines: []
+      });
+    }
+
+    // PostgreSQLのmachineTypesテーブルから機種一覧を取得
+    const machineTypesResult = await dbPool.query(
+      'SELECT id, "machineTypeName" FROM "machineTypes" ORDER BY "machineTypeName"'
+    );
+    const machineTypesData = machineTypesResult.rows.map(row => ({
+      id: row.id,
+      machineTypeName: row.machineTypeName
+    }));
+
+    console.log('📋 PostgreSQLから取得した機種データ:', machineTypesData.length, '件');
+
+    // PostgreSQLのmachinesテーブルから機械番号一覧を取得（機種名も含む）
+    const machinesResult = await dbPool.query(`
+      SELECT 
+        m.id,
+        m."machineNumber",
+        m."machineTypeId",
+        mt."machineTypeName"
+      FROM machines m
+      LEFT JOIN "machineTypes" mt ON m."machineTypeId" = mt.id
+      ORDER BY m."machineNumber"
+    `);
+    const machinesData = machinesResult.rows.map(row => ({
+      id: row.id,
+      machineNumber: row.machineNumber,
+      machineTypeId: row.machineTypeId,
+      machineTypeName: row.machineTypeName
+    }));
+
+    console.log('📋 PostgreSQLから取得した機械データ:', machinesData.length, '件');
+
+    const result = {
+      machineTypes: machineTypesData,
+      machines: machinesData,
+    };
+
+    console.log('📋 機種・機械番号データ取得結果:', {
+      machineTypes: machineTypesData.length,
+      machines: machinesData.length,
+      sampleMachineTypes: machineTypesData.slice(0, 3),
+      sampleMachines: machinesData.slice(0, 3),
+    });
+
+    res.json({
+      success: true,
+      ...result,
+    });
+  } catch (error) {
+    console.error('❌ 機種・機械番号データ取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '機種・機械番号データの取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      machineTypes: [],
+      machines: []
+    });
+  }
+});
+
 // GET /api/history/exports/filter-data - 機種・機械番号のリスト取得
 apiRouter.get('/history/exports/filter-data', async (req, res) => {
   try {

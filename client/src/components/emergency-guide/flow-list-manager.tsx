@@ -1,4 +1,4 @@
-import React, { useState, useffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -48,7 +48,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
   const [flowToDelete, setFlowToDelete] = useState<string | null>(null);
 
   // 実際のAPI呼び出し
-  useffect(() => {
+  useEffect(() => {
     console.log('🔄 FlowListManager マウント完了');
     console.log('👤 認証状態:', { user: !!user, userId: user?.id });
     fetchFlowList();
