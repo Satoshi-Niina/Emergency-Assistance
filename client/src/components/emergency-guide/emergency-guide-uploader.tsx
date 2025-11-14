@@ -182,14 +182,14 @@ const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
         // キーワード入力をクリア
         setKeywordsInput('');
       } else {
-        throw new rror('フローデータの形式が無効です');
+        throw new Error('フローデータの形式が無効です');
       }
     } catch (error) {
       console.error('フロー生成エラー:', error);
       toast({
         title: '生成エラー',
         description:
-          error instanceof rror ? error.message : 'フローの生成に失敗しました',
+          error instanceof Error ? error.message : 'フローの生成に失敗しました',
         variant: 'destructive',
       });
     } finally {
@@ -267,7 +267,7 @@ const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
       clearInterval(progressInterval);
 
       if (!response.ok) {
-        throw new rror('ファイルのアップロードに失敗しました');
+        throw new Error('ファイルのアップロードに失敗しました');
       }
 
       const data = await response.json();
@@ -292,14 +292,14 @@ const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
           setUploadProgress(0);
         }, 3000);
       } else {
-        throw new rror(data.error || 'ファイル処理中にエラーが発生しました');
+        throw new Error(data.error || 'ファイル処理中にエラーが発生しました');
       }
     } catch (error) {
       console.error('Upload error:', error);
       toast({
         title: 'エラー',
         description:
-          error instanceof rror
+          error instanceof Error
             ? error.message
             : 'ファイルのアップロードに失敗しました',
         variant: 'destructive',

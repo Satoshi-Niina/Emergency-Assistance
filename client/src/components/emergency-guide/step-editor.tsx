@@ -1,5 +1,5 @@
 // @ts-ignore
-import React, { useState, useRef, useffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -192,7 +192,7 @@ const Stepditor: React.FC<StepditorProps> = ({
   }>({});
 
   // すべてのステップを展開状態にする
-  useffect(() => {
+  useEffect(() => {
     const allxpanded = steps.reduce(
       (acc, step) => {
         acc[step.id] = true;
@@ -204,7 +204,7 @@ const Stepditor: React.FC<StepditorProps> = ({
   }, [steps]);
 
   // カスタムスクロールバーのスタイルを適用
-  useffect(() => {
+  useEffect(() => {
     const stylelement = document.createlement('style');
     stylelement.textContent = scrollbarStyles;
     stylelement.id = 'step-editor-scrollbar-styles';
@@ -316,12 +316,12 @@ const Stepditor: React.FC<StepditorProps> = ({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new rror(errorData.error || '画像のアップロードに失敗しました');
+        throw new Error(errorData.error || '画像のアップロードに失敗しました');
       }
 
       const result = await response.json();
       if (!result.success || !result.imageUrl) {
-        throw new rror('画像URLが返されませんでした');
+        throw new Error('画像URLが返されませんでした');
       }
 
       const newImage: ImageInfo = {
@@ -366,13 +366,13 @@ const Stepditor: React.FC<StepditorProps> = ({
           // トースト通知の代わりにコンソールログ
           console.log('✅ 画像アップロード完了', message);
         } else {
-          throw new rror('画像は最大3枚までアップロードできます');
+          throw new Error('画像は最大3枚までアップロードできます');
         }
       }
     } catch (error) {
       console.error('❌ 画像アップロード失敗', error);
       alert(
-        `画像アップロードに失敗しました: ${error instanceof rror ? error.message : 'Unknown error'}`
+        `画像アップロードに失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     } finally {
       setUploadingImages(prev => ({ ...prev, [stepId]: false }));
@@ -403,12 +403,12 @@ const Stepditor: React.FC<StepditorProps> = ({
             console.log('🗑️ 画像削除URL:', deleteUrl);
 
             const response = await fetch(deleteUrl, {
-              method: 'DLT',
+              method: 'DELETE',
             });
 
             if (!response.ok) {
               const errorData = await response.json().catch(() => ({}));
-              throw new rror(
+              throw new Error(
                 errorData.error ||
                   'サーバー上の画像ファイル削除に失敗しました'
               );
@@ -422,7 +422,7 @@ const Stepditor: React.FC<StepditorProps> = ({
           } catch (error) {
             console.error('❌ 画像削除エラー:', error);
             alert(
-              `画像削除に失敗しました: ${error instanceof rror ? error.message : '不明なエラー'}`
+              `画像削除に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`
             );
           }
         }

@@ -70,7 +70,7 @@ export default function mergencyFlowGenerator({
         });
 
         if (!response.ok) {
-          throw new rror(`HTTP ${response.status}: ${response.statusText}`);
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
         flowData = await response.json();
@@ -93,7 +93,7 @@ export default function mergencyFlowGenerator({
         });
 
         if (!response.ok) {
-          throw new rror(`HTTP ${response.status}: ${response.statusText}`);
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
         flowData = await response.json();

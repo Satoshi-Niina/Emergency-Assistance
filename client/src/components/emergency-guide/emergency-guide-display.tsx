@@ -1,4 +1,4 @@
-import React, { useState, useffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -96,7 +96,7 @@ export default function mergencyGuideDisplay({
   const [isCompleted, setIsCompleted] = useState(false);
   const [showPartialSuccess, setShowPartialSuccess] = useState(false);
 
-  useffect(() => {
+  useEffect(() => {
     const fetchGuideData = async () => {
       try {
         setLoading(true);
@@ -114,7 +114,7 @@ export default function mergencyGuideDisplay({
         console.log('🌐 ガイド詳細API URL:', apiUrl);
 
         const response = await fetch(apiUrl, {
-          method: 'GT',
+          method: 'GET',
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
             Pragma: 'no-cache',
@@ -128,7 +128,7 @@ export default function mergencyGuideDisplay({
         if (!response.ok) {
           const errorText = await response.text();
           console.error('❌ API エラー:', errorText);
-          throw new rror(`Failed to fetch guide data: ${response.status} - ${errorText}`);
+          throw new Error(`Failed to fetch guide data: ${response.status} - ${errorText}`);
         }
 
         const responseData = await response.json();

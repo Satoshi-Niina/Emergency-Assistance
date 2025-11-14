@@ -1,4 +1,4 @@
-import React, { useState, useffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -7,7 +7,7 @@ import {
 } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { useToast } from '../../hooks/use-toast';
-import { FileText, dit, Trash2, Save, X, ye } from 'lucide-react';
+import { FileText, Edit, Trash2, Save, X, Eye } from 'lucide-react';
 import {
   Tabs,
   TabsContent,
@@ -294,7 +294,7 @@ const FlowList: React.FC<FlowListProps> = ({
                       title='編集'
                       className='h-7 px-2 text-xs'
                     >
-                      <dit className='h-3 w-3' />
+                      <Edit className='h-3 w-3' />
                     </Button>
                     <Button
                       variant='outline'
@@ -303,7 +303,7 @@ const FlowList: React.FC<FlowListProps> = ({
                       title='プレビュー'
                       className='h-7 px-2 text-xs'
                     >
-                      <ye className='h-3 w-3' />
+                      <Eye className='h-3 w-3' />
                     </Button>
                     <Button
                       variant='destructive'
@@ -353,7 +353,7 @@ const mergencyGuidedit: React.FC = () => {
         console.log('🌐 フロー一覧API URL:', apiUrl);
 
         const response = await fetch(apiUrl, {
-          method: 'GT',
+          method: 'GET',
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
             Pragma: 'no-cache',
@@ -367,7 +367,7 @@ const mergencyGuidedit: React.FC = () => {
         if (!response.ok) {
           const errorText = await response.text();
           console.error('❌API エラー:', errorText);
-          throw new rror(
+          throw new Error(
             `HTTP ${response.status}: フロー一覧の取得に失敗しました - ${errorText}`
           );
         }
@@ -411,7 +411,7 @@ const mergencyGuidedit: React.FC = () => {
         toast({
           title: 'エラー',
           description:
-            error instanceof rror
+            error instanceof Error
               ? error.message
               : 'フロー一覧の取得に失敗しました',
           variant: 'destructive',
@@ -424,7 +424,7 @@ const mergencyGuidedit: React.FC = () => {
     [toast]
   );
 
-  useffect(() => {
+  useEffect(() => {
     fetchFlowList();
 
     const handleForceRefresh = (event: vent) => {
@@ -665,7 +665,7 @@ const mergencyGuidedit: React.FC = () => {
       const response = await fetch(
         buildApiUrl(`/emergency-flow/${flowId}`),
         {
-          method: 'DLT',
+          method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
         }
       );

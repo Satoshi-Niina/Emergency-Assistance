@@ -1,4 +1,4 @@
-import React, { useState, useffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -71,7 +71,7 @@ const FlowditorAdvanced: React.FC<FlowditorAdvancedProps> = ({
   const [draggedStepId, setDraggedStepId] = useState<string | null>(null);
 
   // フローデータの読み込み
-  useffect(() => {
+  useEffect(() => {
     if (flowId) {
       loadFlowData();
     }
@@ -89,7 +89,7 @@ const FlowditorAdvanced: React.FC<FlowditorAdvancedProps> = ({
       console.log('🌐 フロー詳細API URL:', detailUrl);
 
       const response = await fetch(detailUrl, {
-        method: 'GT',
+        method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           Pragma: 'no-cache',
@@ -105,7 +105,7 @@ const FlowditorAdvanced: React.FC<FlowditorAdvancedProps> = ({
           statusText: response.statusText,
           body: errorText
         });
-        throw new rror(`フロー詳細の取得に失敗しました: ${response.status} - ${errorText}`);
+        throw new Error(`フロー詳細の取得に失敗しました: ${response.status} - ${errorText}`);
       }
 
       const result = await response.json();
@@ -116,7 +116,7 @@ const FlowditorAdvanced: React.FC<FlowditorAdvancedProps> = ({
 
       // データの完全性チェック
       if (!data || !data.id) {
-        throw new rror('不完全なフローデータが返されました');
+        throw new Error('不完全なフローデータが返されました');
       }
 
       console.log('🔍 受信したデータの構造:', {
@@ -359,7 +359,7 @@ const FlowditorAdvanced: React.FC<FlowditorAdvancedProps> = ({
         });
 
         if (!response.ok) {
-          throw new rror(`アップロード失敗 ${response.status}`);
+          throw new Error(`アップロード失敗 ${response.status}`);
         }
 
         const result = await response.json();
@@ -435,7 +435,7 @@ const FlowditorAdvanced: React.FC<FlowditorAdvancedProps> = ({
         console.log('🗑️ flow-editor-advanced 画像削除URL:', deleteUrl);
 
         const response = await fetch(deleteUrl, {
-          method: 'DLT',
+          method: 'DELETE',
         });
 
         if (!response.ok) {
@@ -461,7 +461,7 @@ const FlowditorAdvanced: React.FC<FlowditorAdvancedProps> = ({
       console.log('✅ 画像削除完了', imageToRemove.fileName);
     } catch (error) {
       console.error('❌ 画像削除エラー:', error);
-      alert(`画像削除に失敗しました: ${error instanceof rror ? error.message : 'Unknown error'}`);
+      alert(`画像削除に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -556,13 +556,13 @@ const FlowditorAdvanced: React.FC<FlowditorAdvancedProps> = ({
           description: 'フローが保存されました',
         });
       } else {
-        throw new rror(result.error || '保存に失敗しました');
+        throw new Error(result.error || '保存に失敗しました');
       }
     } catch (error) {
       console.error('❌ 保存エラー:', error);
       toast({
         title: 'エラー',
-        description: `保存に失敗しました: ${error instanceof rror ? error.message : 'Unknown error'}`,
+        description: `保存に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive',
       });
     } finally {

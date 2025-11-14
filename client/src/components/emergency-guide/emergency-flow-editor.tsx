@@ -1,4 +1,4 @@
-import React, { useState, useffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -70,18 +70,18 @@ const mergencyFlowditor: React.FC<mergencyFlowditorProps> = ({
 
   // 1. stepsの最新値を保持するためのRefを追加
   const stepsRef = useRef(steps);
-  useffect(() => {
+  useEffect(() => {
     stepsRef.current = steps;
   }, [steps]);
 
   // 2. flowDataの最新値を保持するためのRefを追加
   const flowDataRef = useRef(flowData);
-  useffect(() => {
+  useEffect(() => {
     flowDataRef.current = flowData;
   }, [flowData]);
 
   // 初期化: flowDataが変更されるたびにコンポーネントの状態を再初期化する
-  useffect(() => {
+  useEffect(() => {
     console.log('🔄 mergencyFlowditor useffect 実行:', {
       flowDataId: flowData?.id || 'null',
       flowDataTitle: flowData?.title || 'null',
@@ -350,7 +350,7 @@ const mergencyFlowditor: React.FC<mergencyFlowditorProps> = ({
   }, [flowData, selectedFilePath, isInitialized]);
 
   // 変更検出
-  useffect(() => {
+  useEffect(() => {
     // 初期化が完了していない場合は変更検出をスキップ
     if (!isInitialized) {
       console.log('🔄 初期化が完了していないため、変更検出をスキップ');
@@ -585,7 +585,7 @@ const mergencyFlowditor: React.FC<mergencyFlowditorProps> = ({
   );
 
   // This useffect will trigger the autosave whenever 'steps' changes and there are pending changes.
-  useffect(() => {
+  useEffect(() => {
     if (hasChanges && isInitialized) {
       console.log(
         '🔄 `steps`の変更を検知しました。自動保存をスケジュールします。'

@@ -22,8 +22,8 @@ import {
   Upload,
   Save,
   X,
-  dit,
-  dit3,
+  Edit,
+  Edit3,
   File,
   FileText,
   Plus,
@@ -32,7 +32,7 @@ import {
   Trash2,
   RefreshCw,
   AlertTriangle,
-  ye,
+  Eye,
 } from 'lucide-react';
 import { Progress } from '../../components/ui/progress';
 import {
@@ -161,7 +161,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
         // キャデ��ュバスターパラメータを追加
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2, 15);
-        
+
         // buildApiUrlを使用して正しいURLを構築
         const { buildApiUrl } = await import('../../lib/api');
         const url = `${buildApiUrl('/emergency-flow/list')}?ts=${timestamp}&_r=${randomId}${forceRefresh ? '&force=true' : ''}`;
@@ -169,7 +169,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
         console.log('🌐 フロー一覧API呼び出し', url);
 
         const response = await fetch(url, {
-          method: 'GT',
+          method: 'GET',
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
             Pragma: 'no-cache',
@@ -188,7 +188,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
         if (!response.ok) {
           const errorText = await response.text();
           console.error('❌フロー一覧API エラー:', errorText);
-          throw new rror(
+          throw new Error(
             'フロー一覧の取得に失敗しました: ' +
               response.status +
               ' - ' +
@@ -249,7 +249,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
   }, []); // 初回のみ実行
 
   // 強制更新イベントリスナ�
-  useffect(() => {
+  useEffect(() => {
     const handleForceRefresh = (event: any) => {
       console.log('🔄 強制フロー一覧更新イベント受信');
       fetchFlowList(true);
@@ -308,7 +308,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       setUploadProgress(100);
 
       if (!response.ok) {
-        throw new rror('アデ�ロードに失敗しました');
+        throw new Error('アデ�ロードに失敗しました');
       }
 
       const result = await response.json();
@@ -351,7 +351,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       // 🎯 フロー一覧からファイル情報��を取得
       const targetFlow = flowList.find(flow => flow.id === flowId);
       if (!targetFlow) {
-        throw new rror('フローが見つかりません: ' + flowId);
+        throw new Error('フローが見つかりません: ' + flowId);
       }
 
       console.log('📋 対象フロー情報��:', targetFlow);
@@ -374,7 +374,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       // 🎯 統一されたAPIエンド�イントで直接取得
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
-      
+
       // buildApiUrlを使用して正しいURLを構築
       const { buildApiUrl } = await import('../../lib/api');
       const apiUrl = `${buildApiUrl(`/emergency-flow/${flowId}`)}?ts=${timestamp}&_r=${randomId}`;
@@ -400,7 +400,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌API エラー:', errorText);
-        throw new rror(
+        throw new Error(
           'フローデ�タの取得に失敗しました (' +
             response.status +
             '): ' +
@@ -570,7 +570,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       console.error('❌フロー編集��ータ読み込みエラー:', error);
       toast({
         title: 'エラー',
-        description: `フローデ�タの読み込みに失敗しました: ${error instanceof rror ? error.message : ''}`,
+        description: `フローデ�タの読み込みに失敗しました: ${error instanceof Error ? error.message : ''}`,
         variant: 'destructive',
       });
     }
@@ -585,7 +585,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       // 削除対象のフロー情報��を取得
       const targetFlow = flowList.find(flow => flow.id === flowId);
       if (!targetFlow) {
-        throw new rror('削除対象のフローが見つかりません');
+        throw new Error('削除対象のフローが見つかりません');
       }
 
       console.log('🎯 削除対象:', {
@@ -600,7 +600,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       console.log('🌐 削除API呼び出し', url);
 
       const response = await fetch(url, {
-        method: 'DLT',
+        method: 'DELETE',
         headers: {
           'Cache-Control': 'no-cache',
           'Content-Type': 'application/json',
@@ -619,10 +619,10 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
           const errorData = await response.json();
           console.log('❌削除エラーデ�タ:', errorData);
           errorMessage = errorData.error || errorData.details || errorMessage;
-        } catch (parserror) {
+        } catch (parseError) {
           console.warn('⚠��エラーレスポンスの解析に失敗', parserror);
         }
-        throw new rror(errorMessage);
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
@@ -670,7 +670,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
     } catch (error) {
       console.error('❌削除エラー:', error);
       const errorMessage =
-        error instanceof rror ? error.message : 'フローの削除に失敗しました';
+        error instanceof Error ? error.message : 'フローの削除に失敗しました';
       toast({
         title: '削除エラー',
         description: errorMessage,
@@ -713,13 +713,13 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
               urlValid: img.url && img.url.trim() !== '',
               fileNameValid: img.fileName && img.fileName.trim() !== '',
             });
-            
+
             // 画像URLが有効でない��合�スキデ�
             if (!img.url || img.url.trim() === '') {
               console.log('❌無効な画像URLをスキデ�:', img);
               return null;
             }
-            
+
             // ファイル名が無い��合�URLから抽出
             let fileName = img.fileName;
             if (!fileName || fileName.trim() === '') {
@@ -733,7 +733,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
               }
               console.log('📁 URLからファイル名を抽出:', { url: img.url, fileName });
             }
-            
+
             return {
               url: img.url,
               fileName: fileName,
@@ -816,7 +816,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌API エラー:', errorText);
-        throw new rror(
+        throw new Error(
           `保存に失敗しました: ${response.status} ${response.statusText} - ${errorText}`
         );
       }
@@ -853,7 +853,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       toast({
         title: '保存エラー',
         description:
-          error instanceof rror ? error.message : 'フローの保存に失敗しました',
+          error instanceof Error ? error.message : 'フローの保存に失敗しました',
         variant: 'destructive',
       });
     }
@@ -955,7 +955,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
     const triggerKeywords = Array.isArray(initialData?.triggerKeywords)
       ? initialData.triggerKeywords
       : [];
-    
+
     // currentFlowDataが存在する場合�それを使用、そぁ��なければslidesを使用
     const dataToSave = currentFlowData || {
       id: validId,
@@ -965,7 +965,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       steps: slides,
       updatedAt: new Date().toISOString(),
     };
-    
+
     console.log('💾 フロー保存データ:', {
       id: dataToSave.id,
       title: dataToSave.title,
@@ -981,7 +981,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
         })) || []
       })) || []
     });
-    
+
     onSave(dataToSave);
   };
 
@@ -999,7 +999,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       const triggerKeywords = Array.isArray(initialData?.triggerKeywords)
         ? initialData.triggerKeywords
         : [];
-      
+
       // currentFlowDataが存在する場合�それを使用、そぁ��なければslidesを使用
       const dataToSave = currentFlowData || {
         id: validId,
@@ -1013,7 +1013,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       // 統一された保存�理��使用して自動保孁
       const { saveFlowData } = await import('../../lib/flow-save-manager');
       const result = await saveFlowData(dataToSave);
-      
+
       if (result.success) {
         console.log('画像追加後�自動保存完了);
       } else {
@@ -1093,7 +1093,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       );
 
       if (!response.ok) {
-        throw new rror('画像�アデ�ロードに失敗しました');
+        throw new Error('画像�アデ�ロードに失敗しました');
       }
 
       const result = await response.json();
@@ -1183,13 +1183,13 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
         const response = await fetch(
           buildApiUrl(`/emergency-flow/image/${imageToRemove.fileName}`),
           {
-            method: 'DLT',
+            method: 'DELETE',
           }
         );
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new rror(
+          throw new Error(
             errorData.error || 'サーバ�上�画像ファイル削除に失敗しました、
           );
         }
@@ -1219,7 +1219,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
         console.error('画像削除エラー:', error);
         toast({
           title: 'エラー',
-          description: `画像�削除に失敗しました: ${error instanceof rror ? error.message : '未知のエラー'}`,
+          description: `画像�削除に失敗しました: ${error instanceof Error ? error.message : '未知のエラー'}`,
           variant: 'destructive',
         });
       }

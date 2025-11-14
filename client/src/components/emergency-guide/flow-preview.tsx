@@ -1,4 +1,4 @@
-import React, { useState, useffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -41,9 +41,9 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
   const [flowData, setFlowData] = useState<FlowData | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setrror] = useState<string>('');
+  const [error, setError] = useState<string>('');
 
-  useffect(() => {
+  useEffect(() => {
     const fetchFlowData = async () => {
       try {
         setLoading(true);
@@ -54,7 +54,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
         console.log('🌐 フロープレビューAPI URL:', apiUrl);
 
         const response = await fetch(apiUrl, {
-          method: 'GT',
+          method: 'GET',
           credentials: 'include', // セッション維持のため
           headers: {
             'Content-Type': 'application/json',
@@ -70,7 +70,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
             statusText: response.statusText,
             body: errorText
           });
-          throw new rror(`Failed to fetch flow data: ${response.status} - ${errorText}`);
+          throw new Error(`Failed to fetch flow data: ${response.status} - ${errorText}`);
         }
 
         const responseData = await response.json();
