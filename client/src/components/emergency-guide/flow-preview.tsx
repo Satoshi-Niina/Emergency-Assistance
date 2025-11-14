@@ -18,7 +18,7 @@ interface Step {
   images?: Array<{
     url: string;
     fileName: string;
-  }>; // 画像オブジェクト�E配�E
+  }>; // 画像オブジェクトの配列
   conditions?: Array<{
     label: string;
     nextId: string;
@@ -47,15 +47,15 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
     const fetchFlowData = async () => {
       try {
         setLoading(true);
-        
-        // 統一APIクライアントを使用 - /detail/:id エンド�Eイントを使用
+
+        // 統一APIクライアントを使用 - /detail/:id エンドポイントを使用
         const { buildApiUrl } = await import('../../lib/api');
         const apiUrl = buildApiUrl(`/emergency-flow/detail/${flowId}`);
         console.log('🌐 フロープレビューAPI URL:', apiUrl);
-        
+
         const response = await fetch(apiUrl, {
           method: 'GET',
-          credentials: 'include', // セチE��ョン維持�Eため忁E��E
+          credentials: 'include', // セッション維持のため
           headers: {
             'Content-Type': 'application/json',
             Accept: 'application/json',
@@ -65,7 +65,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('❁EAPI エラーレスポンス:', {
+          console.error('❌ API エラーレスポンス:', {
             status: response.status,
             statusText: response.statusText,
             body: errorText
@@ -76,24 +76,24 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
         const responseData = await response.json();
         console.log('📊 フロープレビューAPIレスポンス:', responseData);
 
-        // サーバ�Eからのレスポンス構造に合わせてチE�Eタを取征E
-        // /detail/:id エンド�Eイント�E success: true, data: {...} 形式で返す
+        // サーバーからのレスポンス構造に合わせてデータを取得
+        // /detail/:id エンドポイントは success: true, data: {...} 形式で返す
         const data = responseData.success && responseData.data ? responseData.data : responseData;
-        console.log('📋 フロープレビュー処琁E��象チE�Eタ:', data);
+        console.log('📋 フロープレビュー処理対象データ:', data);
 
-        // チE�Eタ構造をFlowDataインターフェースに合わせる
+        // データ構造をFlowDataインターフェースに合わせる
         const flowData: FlowData = {
           id: data.id.toString(),
           title: data.title || data.name,
           description: data.description || '',
           steps: data.steps || []
         };
-        
-        console.log('📋 変換済みフローチE�Eタ:', flowData);
+
+        console.log('📋 変換済みフローデータ:', flowData);
         setFlowData(flowData);
       } catch (err) {
         console.error('Flow data fetch error:', err);
-        setError('フローチE�Eタの取得に失敗しました');
+        setError('フローデータの取得に失敗しました');
       } finally {
         setLoading(false);
       }
@@ -105,12 +105,12 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
   }, [flowId]);
 
   const getCurrentStep = (): Step | null => {
-    if (!flowData || !flowData.steps[currentStepIndex]) return null;
+    if (!flowData || !flowData.steps || !flowData.steps[currentStepIndex]) return null;
     return flowData.steps[currentStepIndex];
   };
 
   const handleNext = () => {
-    if (flowData && currentStepIndex < flowData.steps.length - 1) {
+    if (flowData && flowData.steps && currentStepIndex < flowData.steps.length - 1) {
       setCurrentStepIndex(currentStepIndex + 1);
     }
   };
@@ -138,8 +138,23 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
           <CardTitle className='text-red-600'>エラー</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className='mb-4'>{error || 'フローチE�Eタが見つかりません'}</p>
-          <Button onClick={onClose}>閉じめE/Button>
+          <p className='mb-4'>{error || 'フローデータが見つかりません'}</p>
+          <Button onClick={onClose}>閉じる</Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // flowData.stepsが存在し、有効な配列であることを確認
+  if (!flowData.steps || !Array.isArray(flowData.steps) || flowData.steps.length === 0) {
+    return (
+      <Card className='w-full max-w-4xl mx-auto'>
+        <CardHeader>
+          <CardTitle className='text-red-600'>エラー</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className='mb-4'>フローデータにステップが含まれていません</p>
+          <Button onClick={onClose}>閉じる</Button>
         </CardContent>
       </Card>
     );
@@ -153,9 +168,9 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
     return (
       <Card className='w-full max-w-4xl mx-auto'>
         <CardContent>
-          <p className='text-center py-8'>スチE��プが見つかりません</p>
+          <p className='text-center py-8'>ステップが見つかりません</p>
           <Button onClick={onClose} className='w-full'>
-            閉じめE
+            閉じる
           </Button>
         </CardContent>
       </Card>
@@ -174,7 +189,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
               className='flex-shrink-0'
             >
               <ArrowLeft className='h-4 w-4' />
-              戻めE
+              戻る
             </Button>
             <CardTitle className='text-xl break-words leading-tight'>
               {flowData.title} (プレビュー)
@@ -182,7 +197,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
           </div>
           <div className='flex items-center gap-2'>
             <div className='text-sm text-gray-500 flex-shrink-0 ml-4'>
-              スチE��チE{currentStepIndex + 1} / {flowData.steps.length}
+              ステップ {currentStepIndex + 1} / {flowData.steps.length}
             </div>
             <Button
               variant='outline'
@@ -190,7 +205,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
               onClick={onClose}
               className='h-8 px-3 border-gray-300 hover:bg-gray-100'
             >
-              閉じめE
+              閉じる
             </Button>
           </div>
         </div>
@@ -198,7 +213,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
 
       <CardContent>
         <div className='space-y-6'>
-          {/* スチE��プタイトル */}
+          {/* ステップタイトル */}
           <div className='bg-blue-50 p-4 rounded-lg border border-blue-200'>
             <h3 className='font-semibold text-blue-900 mb-2 text-lg'>
               {currentStep.title}
@@ -213,12 +228,12 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
             </div>
           </div>
 
-          {/* 条件刁E��（�Eレビューモード！E*/}
+          {/* 条件分岐（プレビューモード） */}
           {currentStep.type === 'decision' &&
             currentStep.conditions &&
             currentStep.conditions.length > 0 && (
               <div className='space-y-3'>
-                <h4 className='font-medium text-gray-900'>条件刁E��E</h4>
+                <h4 className='font-medium text-gray-900'>条件分岐</h4>
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
                   {currentStep.conditions.map((condition, index) => (
                     <div
@@ -229,7 +244,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
                         {condition.label}
                       </div>
                       <div className='text-xs text-gray-500 mt-1'>
-                        次スチE��チE{' '}
+                        次ステップ{' '}
                         {(() => {
                           const targetStep = flowData.steps.find(
                             s => s.id === condition.nextId
@@ -238,8 +253,8 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
                             s => s.id === condition.nextId
                           );
                           return targetStep
-                            ? `${targetStep.title || `スチE��チE${targetIndex + 1}`}`
-                            : '未設宁E;
+                            ? `${targetStep.title || `ステップ${targetIndex + 1}`}`
+                            : '未設定';
                         })()}
                       </div>
                     </div>
@@ -251,10 +266,10 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
           {/* 画像表示エリア */}
           {currentStep.images && currentStep.images.length > 0 && (
             <div className='space-y-3'>
-              <h4 className='font-medium text-gray-900'>画僁E</h4>
+              <h4 className='font-medium text-gray-900'>画像</h4>
               <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
                 {currentStep.images.map((img, index) => {
-                  // 画像情報がオブジェクト�E場合�Eプロパティを参照、文字�Eの場合�Eそ�Eまま
+                  // 画像情報がオブジェクトの場合、プロパティを参照、文字列の場合はそのまま
                   // buildImageUrlを使用して統一されたURL変換を適用
                   const imageUrl =
                     typeof img === 'object' && img !== null
@@ -266,7 +281,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
                     typeof img === 'object' && img !== null
                       ? (img as { url: string; fileName: string }).fileName
                       : String(img);
-                  console.log('🖼�E�E[FlowPreview] 画像表示チE��チE��:', {
+                  console.log('🖼️ [FlowPreview] 画像表示処理:', {
                     index,
                     fileName: altText,
                     convertedUrl: imageUrl,
@@ -283,7 +298,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
                         className='w-full h-48 object-cover rounded-lg border'
                         crossOrigin="anonymous"
                         onLoad={() => {
-                          console.log('✁E画像読み込み成功:', {
+                          console.log('✅ 画像読み込み成功:', {
                             fileName: altText,
                             imageUrl: imageUrl?.substring(0, 100) + '...',
                           });
@@ -292,7 +307,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
                           const originalUrl = typeof img === 'object' && img !== null
                             ? (img as { url: string; fileName: string }).url
                             : String(img);
-                          console.error('❁E画像読み込みエラー (flow-preview):', {
+                          console.error('❌ 画像読み込みエラー (flow-preview):', {
                             fileName: altText,
                             convertedUrl: imageUrl?.substring(0, 100) + '...',
                             originalImg: img,

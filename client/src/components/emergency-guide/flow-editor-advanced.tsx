@@ -10,13 +10,12 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { ScrollArea } from '../../components/ui/scroll-area';
-import { useToast } from '../../hooks/use-toast.ts';
+import { useToast } from '../../hooks/use-toast';
 import {
   Plus,
   Trash2,
   X,
   Save,
-
   Upload,
   GripVertical,
 } from 'lucide-react';
@@ -71,7 +70,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [draggedStepId, setDraggedStepId] = useState<string | null>(null);
 
-  // フローチE�Eタの読み込み
+  // フローデータの読み込み
   useEffect(() => {
     if (flowId) {
       loadFlowData();
@@ -81,9 +80,9 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
   const loadFlowData = async () => {
     try {
       setIsLoading(true);
-      console.log('🔄 フローチE�Eタ読み込み開姁E', flowId);
+      console.log('🔄 フローデータ読み込み開始', flowId);
 
-      // 統一APIクライアントを使用 - /detail/:id エンド�Eイントを使用
+      // 統一APIクライアントを使用 - /detail/:id エンドポイントを使用
       const { buildApiUrl } = await import('../../lib/api');
       const detailUrl = buildApiUrl(`/emergency-flow/detail/${flowId}`);
 
@@ -101,7 +100,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❁Eemergency-flow API エラーレスポンス:', {
+        console.error('❌ emergency-flow API エラーレスポンス:', {
           status: response.status,
           statusText: response.statusText,
           body: errorText
@@ -112,15 +111,15 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
       const result = await response.json();
       console.log('📊 emergency-flow APIレスポンス:', result);
 
-      // /detail/:id エンド�Eイント�E success: true, data: {...} 形式で返す
+      // /detail/:id エンドポイントは success: true, data: {...} 形式で返す
       const data = result.success && result.data ? result.data : result;
 
-      // チE�Eタの完�E性チェチE��
+      // データの完全性チェック
       if (!data || !data.id) {
-        throw new Error('不完�EなフローチE�Eタが返されました');
+        throw new Error('不完全なフローデータが返されました');
       }
 
-      console.log('🔍 受信したチE�Eタの構造:', {
+      console.log('🔍 受信したデータの構造:', {
         hasId: !!data.id,
         hasTitle: !!data.title,
         hasDescription: !!data.description,
@@ -130,7 +129,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
         dataKeys: Object.keys(data)
       });
 
-      // チE�Eタ構造の正規化
+      // データ構造の正規化
       if (data.steps && Array.isArray(data.steps)) {
         data.steps = data.steps.map(step => ({
           ...step,
@@ -138,11 +137,11 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
           conditions: step.conditions || [],
         }));
       } else {
-        console.warn('⚠�E�Estepsが�E列ではありません、空配�Eで初期化しまぁE);
+        console.warn('⚠️ stepsが配列ではありません、空配列で初期化します');
         data.steps = [];
       }
 
-      console.log('✁EフローチE�Eタ読み込み完亁E', {
+      console.log('✅ フローデータ読み込み完了', {
         id: data.id,
         title: data.title,
         stepsCount: data.steps.length,
@@ -152,7 +151,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
       // 画像情報の詳細ログ
       data.steps.forEach((step: any, index: number) => {
         if (step.images && step.images.length > 0) {
-          console.log(`📸 読み込み済みスチE��プ[${index}]の画像情報:`, {
+          console.log(`📸 読み込み済みステップ[${index}]の画像情報:`, {
             stepId: step.id,
             stepTitle: step.title,
             imagesCount: step.images.length,
@@ -166,10 +165,10 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
 
       setFlowData(data);
     } catch (error) {
-      console.error('❁EフローチE�Eタ読み込みエラー:', error);
+      console.error('❌ フローデータ読み込みエラー:', error);
       toast({
         title: 'エラー',
-        description: 'フローチE�Eタの読み込みに失敗しました',
+        description: 'フローデータの読み込みに失敗しました',
         variant: 'destructive',
       });
     } finally {
@@ -177,12 +176,12 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     }
   };
 
-  // スチE��プ�E追加
+  // ステップの追加
   const addStep = (type: 'step' | 'decision', index?: number) => {
     const newStep: Step = {
       id: uuidv4(),
       type,
-      title: `新しい${type === 'step' ? 'スチE��チE : '条件刁E��E}`,
+      title: `新しい${type === 'step' ? 'ステップ' : '条件分岐'}`,
       description: '',
       message: '',
       images: [],
@@ -200,7 +199,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     });
   };
 
-  // スチE��プ�E削除
+  // ステップの削除
   const deleteStep = (stepId: string) => {
     setFlowData(prev => ({
       ...prev,
@@ -208,9 +207,9 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     }));
   };
 
-  // スチE��プ�E更新
+  // ステップの更新
   const updateStep = (stepId: string, updates: Partial<Step>) => {
-    console.log('🔄 updateStep 呼び出ぁE', {
+    console.log('🔄 updateStep 呼び出し', {
       stepId,
       updates,
       isImageUpdate: 'images' in updates,
@@ -228,7 +227,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
         steps: prev.steps.map(step => {
           if (step.id === stepId) {
             const updatedStep = { ...step, ...updates };
-            console.log('🔄 スチE��プ更新詳細:', {
+            console.log('🔄 ステップ更新詳細:', {
               stepId,
               beforeUpdate: {
                 id: step.id,
@@ -259,7 +258,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
 
       const updatedStep = updated.steps.find(s => s.id === stepId);
 
-      console.log('🔄 updateStep 完亁E', {
+      console.log('🔄 updateStep 完了', {
         stepId,
         updatedStep: updatedStep ? {
           id: updatedStep.id,
@@ -285,8 +284,8 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
       return updated;
     });
 
-    // 状態更新後�E確認（同期的に実行！E
-    console.log('🔍 updateStep 状態更新後�E確誁E', {
+    // 状態更新後の確認（同期的に実行）
+    console.log('🔍 updateStep 状態更新後の確認', {
       stepId,
       updatedFlowData: {
         id: flowData.id,
@@ -305,7 +304,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     });
   };
 
-  // ドラチE��&ドロチE�E機�E
+  // ドラッグ&ドロップ機能
   const handleDragStart = (e: React.DragEvent, stepId: string) => {
     setDraggedStepId(stepId);
     e.dataTransfer.effectAllowed = 'move';
@@ -335,13 +334,13 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     setDraggedStepId(null);
   };
 
-  // 画像�EアチE�EローチE
+  // 画像のアップロード処理
   const handleImageUpload = async (stepId: string, files: FileList) => {
     const currentStep = flowData.steps.find(s => s.id === stepId);
     const currentImages = currentStep?.images || [];
 
     if (currentImages.length + files.length > 3) {
-      alert('画像�E最大3枚までアチE�EロードできまぁE);
+      alert('画像は最大3枚までアップロードできます');
       return;
     }
 
@@ -360,7 +359,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
         });
 
         if (!response.ok) {
-          throw new Error(`アチE�Eロード失敁E ${response.status}`);
+          throw new Error(`アップロード失敗 ${response.status}`);
         }
 
         const result = await response.json();
@@ -371,14 +370,14 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
           });
         }
       } catch (error) {
-        console.error('画像アチE�Eロードエラー:', error);
-        alert(`画僁E${file.name} のアチE�Eロードに失敗しました`);
+        console.error('画像アップロードエラー:', error);
+        alert(`画像${file.name} のアップロードに失敗しました`);
       }
     }
 
     if (uploadedImages.length === 0) return;
 
-    // フローチE�Eタを更新
+    // フローデータを更新
     const updatedFlowData = {
       ...flowData,
       steps: flowData.steps.map(step => {
@@ -394,13 +393,13 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
 
     setFlowData(updatedFlowData);
 
-    // 自動保存（ファイル一覧に戻らなぁE��E
+    // 自動保存（ファイル一覧に戻らない場合）
     setTimeout(async () => {
       try {
         const result = await saveFlowData(updatedFlowData);
         if (result.success) {
-          // 画像追加時�EonSaveを呼ばず、�E部状態�Eみ更新
-          console.log('画像追加後�E自動保存完亁E);
+          // 画像追加時はonSaveを呼ばず、内部状態のみ更新
+          console.log('画像追加後の自動保存完了');
         }
       } catch (error) {
         console.error('自動保存エラー:', error);
@@ -408,7 +407,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     }, 100);
   };
 
-  // 画像�E削除
+  // 画像の削除
   const removeImage = async (stepId: string, imageIndex: number) => {
     const step = flowData.steps.find(s => s.id === stepId);
     if (!step || !step.images || imageIndex >= step.images.length) {
@@ -417,10 +416,10 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
 
     const imageToRemove = step.images[imageIndex];
 
-    // 削除確誁E
+    // 削除確認
     const confirmDelete = window.confirm(
-      `画僁E"${imageToRemove.fileName}" を削除しますか�E�\n` +
-        `サーバ�Eからファイルが完�Eに削除され、この操作�E允E��戻せません。`
+      `画像"${imageToRemove.fileName}" を削除しますか？\n` +
+        `サーバーからファイルが完全に削除され、この操作は元に戻せません。`
     );
 
     if (!confirmDelete) {
@@ -428,25 +427,25 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     }
 
     try {
-      // サーバ�Eから画像を削除�E�EPIエンド�Eイントが存在する場合！E
+      // サーバーから画像を削除するAPIエンドポイントが存在する場合
       if (imageToRemove.fileName && !imageToRemove.fileName.startsWith('blob:')) {
         const { buildApiUrl } = await import('../../lib/api');
         const deleteUrl = buildApiUrl(`/emergency-flow/image/${imageToRemove.fileName}`);
 
-        console.log('🗑�E�Eflow-editor-advanced 画像削除URL:', deleteUrl);
+        console.log('🗑️ flow-editor-advanced 画像削除URL:', deleteUrl);
 
         const response = await fetch(deleteUrl, {
           method: 'DELETE',
         });
 
         if (!response.ok) {
-          console.warn('サーバ�Eからの画像削除に失敗しましたが、フロントエンドから�E削除しまぁE);
+          console.warn('サーバーからの画像削除に失敗しましたが、フロントエンドからは削除します');
         } else {
-          console.log('✁Eサーバ�Eからの画像削除完亁E', imageToRemove.fileName);
+          console.log('✅ サーバーからの画像削除完了', imageToRemove.fileName);
         }
       }
 
-      // フロントエンド�E状態を更新
+      // フロントエンドの状態を更新
       setFlowData(prev => ({
         ...prev,
         steps: prev.steps.map(step => {
@@ -459,9 +458,9 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
         }),
       }));
 
-      console.log('✁E画像削除完亁E', imageToRemove.fileName);
+      console.log('✅ 画像削除完了', imageToRemove.fileName);
     } catch (error) {
-      console.error('❁E画像削除エラー:', error);
+      console.error('❌ 画像削除エラー:', error);
       alert(`画像削除に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
@@ -523,20 +522,20 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     }));
   };
 
-  // 保存�E琁E
+  // 保存処理
   const handleSave = async () => {
     console.log('🚀 handleSave 関数が呼び出されました');
     try {
       setIsLoading(true);
-      console.log('⏳ isLoading めEtrue に設宁E);
+      console.log('⏳ isLoading をtrue に設定');
 
-      console.log('💾 保存開姁E', {
+      console.log('💾 保存開始', {
         id: flowData.id,
         title: flowData.title,
         stepsCount: flowData.steps.length
       });
 
-      // 統一された保存�E琁E��使用
+      // 統一された保存処理を使用
       const flowDataForSave = {
         ...flowData,
         triggerKeywords: flowData.triggerKeywords || [flowData.title]
@@ -547,9 +546,9 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
       });
 
       if (result.success) {
-        console.log('✁E保存�E劁E', result.data?.title);
+        console.log('✅ 保存完了', result.data?.title);
 
-        // 成功時�Eコールバック呼び出ぁE
+        // 成功時はコールバック呼び出し
         onSave(result.data || flowData);
 
         toast({
@@ -560,7 +559,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
         throw new Error(result.error || '保存に失敗しました');
       }
     } catch (error) {
-      console.error('❁E保存エラー:', error);
+      console.error('❌ 保存エラー:', error);
       toast({
         title: 'エラー',
         description: `保存に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -584,24 +583,24 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
       <Card className='flex-shrink-0'>
         <CardHeader>
           <CardTitle className='flex items-center justify-between'>
-            <span>{flowId ? 'フロー編雁E : '新規フロー作�E'}</span>
+            <span>{flowId ? 'フロー編集' : '新規フロー作成'}</span>
             <div className='flex gap-2'>
               <Button variant='outline' onClick={onCancel}>
                 <X className='h-4 w-4 mr-1' />
                 キャンセル
               </Button>
               <Button onClick={() => {
-                console.log('🔥 保存�EタンがクリチE��されました�E�E);
+                console.log('🔥 保存ボタンがクリックされました');
                 handleSave();
               }} disabled={isLoading}>
                 <Save className='h-4 w-4 mr-1' />
-                保孁E
+                保存
               </Button>
             </div>
           </CardTitle>
         </CardHeader>
         <CardContent className='space-y-6'>
-          {/* フロー基本惁E�� */}
+          {/* フロー基本情報 */}
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             <div>
               <Label htmlFor='title'>タイトル</Label>
@@ -615,7 +614,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
               />
             </div>
             <div>
-              <Label htmlFor='description'>説昁E/Label>
+              <Label htmlFor='description'>説明</Label>
               <Input
                 id='description'
                 value={flowData.description}
@@ -625,18 +624,18 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                     description: e.target.value,
                   }))
                 }
-                placeholder='フローの説昁E
+                placeholder='フローの説明'
               />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* スチE��プ一覧 */}
+      {/* ステップ一覧 */}
       <Card className='flex-1 flex flex-col min-h-0'>
         <CardHeader>
           <CardTitle className='flex items-center justify-between'>
-            <span>スチE��プ一覧</span>
+            <span>ステップ一覧</span>
             <div className='flex gap-2'>
               <Button
                 variant='outline'
@@ -644,7 +643,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                 onClick={() => addStep('step')}
               >
                 <Plus className='h-4 w-4 mr-1' />
-                スチE��プ追加
+                ステップ追加
               </Button>
               <Button
                 variant='outline'
@@ -652,7 +651,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                 onClick={() => addStep('decision')}
               >
                 <Plus className='h-4 w-4 mr-1' />
-                条件刁E��追加
+                条件分岐追加
               </Button>
             </div>
           </CardTitle>
@@ -678,7 +677,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                             <div className='flex items-start gap-3'>
                               <GripVertical className='h-5 w-5 text-gray-400 mt-1 flex-shrink-0' />
                               <div className='flex-1 space-y-4'>
-                                {/* スチE��プ�EチE��ー */}
+                                {/* ステップのヘッダー */}
                                 <div className='flex items-center justify-between'>
                                   <div className='flex items-center gap-2'>
                                     <span className='text-sm font-medium text-gray-500'>
@@ -686,8 +685,8 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                                     </span>
                                     <span className='text-xs px-2 py-1 rounded bg-blue-100 text-blue-800'>
                                       {step.type === 'step'
-                                        ? 'スチE��チE
-                                        : '条件刁E��E}
+                                        ? 'ステップ'
+                                        : '条件分岐'}
                                     </span>
                                   </div>
                                   <Button
@@ -700,7 +699,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                                   </Button>
                                 </div>
 
-                                {/* スチE��プ�E容 */}
+                                {/* ステップの内容 */}
                                 <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                                   <div>
                                     <Label>タイトル</Label>
@@ -711,11 +710,11 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                                           title: e.target.value,
                                         })
                                       }
-                                      placeholder='スチE��プ�Eタイトル'
+                                      placeholder='ステップのタイトル'
                                     />
                                   </div>
                                   <div>
-                                    <Label>説昁E/Label>
+                                    <Label>説明</Label>
                                     <Input
                                       value={step.description}
                                       onChange={e =>
@@ -723,13 +722,13 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                                           description: e.target.value,
                                         })
                                       }
-                                      placeholder='スチE��プ�E説昁E
+                                      placeholder='ステップの説明'
                                     />
                                   </div>
                                 </div>
 
                                 <div>
-                                  <Label>メチE��ージ</Label>
+                                  <Label>メッセージ</Label>
                                   <Textarea
                                     value={step.message}
                                     onChange={e =>
@@ -737,14 +736,14 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                                         message: e.target.value,
                                       })
                                     }
-                                    placeholder='スチE��プ�E詳細メチE��ージ'
+                                    placeholder='ステップの詳細メッセージ'
                                     rows={3}
                                   />
                                 </div>
 
-                                {/* 画像アチE�EローチE*/}
+                                {/* 画像アップロード処理 */}
                                 <div>
-                                  <Label>画僁E/Label>
+                                  <Label>画像</Label>
                                   <div className='flex flex-wrap gap-2 mt-2'>
                                     {(() => {
                                       const images = step.images || [];
@@ -758,11 +757,11 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                                           <div key={`${step.id}-${imageIndex}`} className='relative'>
                                             <img
                                               src={imageUrl}
-                                              alt={image.fileName || '画僁E}
+                                              alt={image.fileName || '画像'}
                                               className='w-20 h-20 object-cover rounded border'
                                               crossOrigin="anonymous"
                                               onError={e => {
-                                                console.error('❁E画像読み込みエラー (flow-editor-advanced):', {
+                                                console.error('❌ 画像読み込みエラー (flow-editor-advanced):', {
                                                   originalUrl: image.url,
                                                   convertedUrl: imageUrl,
                                                   fileName: image.fileName,
@@ -772,7 +771,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                                                 handleImageError(e, image.url);
                                               }}
                                               onLoad={() => {
-                                                console.log('✁E画像読み込み成功 (flow-editor-advanced):', {
+                                                console.log('✅ 画像読み込み成功 (flow-editor-advanced):', {
                                                   fileName: image.fileName,
                                                   convertedUrl: imageUrl
                                                 });
@@ -819,10 +818,10 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                                   </div>
                                 </div>
 
-                                {/* 条件刁E��E*/}
+                                {/* 条件分岐 */}
                                 {step.type === 'decision' && (
                                   <div>
-                                    <Label>条件刁E��E/Label>
+                                    <Label>条件分岐</Label>
                                     <div className='space-y-2'>
                                       {(step.conditions || []).map(
                                         (condition, conditionIndex) => (
@@ -853,7 +852,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                                                   e.target.value
                                                 )
                                               }
-                                              placeholder='次のスチE��プID'
+                                              placeholder='次のステップID'
                                               className='flex-1'
                                             />
                                             <Button
@@ -892,12 +891,12 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                         <ContextMenuItem
                           onClick={() => addStep('step', index + 1)}
                         >
-                          スチE��プを下に挿入
+                          ステップを下に挿入
                         </ContextMenuItem>
                         <ContextMenuItem
                           onClick={() => addStep('decision', index + 1)}
                         >
-                          条件刁E��を下に挿入
+                          条件分岐を下に挿入
                         </ContextMenuItem>
                         <ContextMenuItem
                           onClick={() => deleteStep(step.id)}
@@ -908,7 +907,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                       </ContextMenuContent>
                     </ContextMenu>
 
-                    {/* スチE��プ間の追加ボタン */}
+                    {/* ステップ間の追加ボタン */}
                     <div className='flex items-center justify-center gap-4 my-2'>
                       <Button
                         variant='outline'
@@ -917,7 +916,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                         onClick={() => addStep('step', index + 1)}
                       >
                         <Plus className='h-4 w-4 mr-1' />
-                        スチE��プ追加
+                        ステップ追加
                       </Button>
                       <Button
                         variant='outline'
@@ -926,7 +925,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                         onClick={() => addStep('decision', index + 1)}
                       >
                         <Plus className='h-4 w-4 mr-1' />
-                        条件刁E��追加
+                        条件分岐追加
                       </Button>
                     </div>
                   </React.Fragment>
@@ -936,7 +935,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
         </CardContent>
       </Card>
 
-      {/* 保存�Eキャンセルボタン */}
+      {/* 保存とキャンセルボタン */}
       <div className='mt-6 flex justify-end gap-4 pt-4 border-t'>
         <Button
           variant='outline'
@@ -947,13 +946,13 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
         </Button>
         <Button
           onClick={() => {
-            console.log('🔥 保存�EタンがクリチE��されました�E�E);
+            console.log('🔥 保存ボタンがクリックされました');
             handleSave();
           }}
           className='h-12 px-6'
         >
           <Save className='w-4 h-4 mr-2' />
-          保孁E
+          保存
         </Button>
       </div>
     </div>
