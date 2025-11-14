@@ -8,7 +8,7 @@ import {
 import { Button } from '../../components/ui/button';
 
 import { useToast } from '../../hooks/use-toast.ts';
-import { dit, ye, Trash2, RefreshCw, Loader2 } from 'lucide-react';
+import { Edit, Eye, Trash2, RefreshCw, Loader2 } from 'lucide-react';
 import { buildApiUrl } from '../../lib/api/config.ts';
 import { useAuth } from '../../context/auth-context.tsx';
 import {
@@ -32,12 +32,12 @@ interface FlowData {
 }
 
 interface FlowListManagerProps {
-  ondit: (flowId: string) => void;
+  onEdit: (flowId: string) => void;
   onPreview: (flowId: string) => void;
 }
 
 const FlowListManager: React.FC<FlowListManagerProps> = ({
-  ondit,
+  onEdit,
   onPreview,
 }) => {
   const { toast } = useToast();
@@ -215,7 +215,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
 
       // 削除APIを呼び出し
       const response = await fetch(`/api/emergency-flow/${flowToDelete}`, {
-        method: 'DLT',
+        method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -370,16 +370,16 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
                               title='プレビュー'
                               className='h-7 px-2 text-xs'
                             >
-                              <ye className='h-3 w-3' />
+                              <Eye className='h-3 w-3' />
                             </Button>
                             <Button
                               variant='outline'
                               size='sm'
-                              onClick={() => ondit(flow.id)}
+                              onClick={() => onEdit(flow.id)}
                               title='編集'
                               className='h-7 px-2 text-xs'
                             >
-                              <dit className='h-3 w-3' />
+                              <Edit className='h-3 w-3' />
                             </Button>
                             <Button
                               variant='destructive'
