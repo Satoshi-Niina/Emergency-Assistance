@@ -1,5 +1,6 @@
 /**
- * 統一されたフローチE�Eタ保存�E琁E * 画像データが確実に保存されるようにする
+ * 統一されたフローデータ保存処理
+ * 画像データが確実に保存されるようにする
  */
 
 import { buildApiUrl } from './api';
@@ -32,13 +33,13 @@ export interface SaveOptions {
 }
 
 /**
- * フローチE�Eタの画像情報を検証・クリーニング
+ * フローデータの画像情報を検証・クリーニング
  */
 export function validateAndCleanFlowData(flowData: FlowData, options: SaveOptions = {}): FlowData {
   const { validateImages = true, logDetails = true } = options;
-  
+
   if (logDetails) {
-    console.log('🔍 フローチE�Eタ検証開姁E', {
+    console.log('🔍 フローデータ検証開始', {
       id: flowData.id,
       title: flowData.title,
       stepsCount: flowData.steps?.length || 0,
@@ -48,7 +49,7 @@ export function validateAndCleanFlowData(flowData: FlowData, options: SaveOption
 
   const cleanedSteps = flowData.steps.map(step => {
     if (logDetails) {
-      console.log('🔍 スチE��プ画像�E琁E��姁E', {
+      console.log('🔍 ステップ画像処理開始', {
         stepId: step.id,
         stepTitle: step.title,
         originalImages: step.images,
@@ -59,26 +60,27 @@ export function validateAndCleanFlowData(flowData: FlowData, options: SaveOption
 
     // 画像データの検証とクリーニング
     let cleanedImages: Array<{ url: string; fileName: string }> = [];
-    
+
     if (step.images && Array.isArray(step.images)) {
       cleanedImages = step.images
         .map(img => {
           if (logDetails) {
-            console.log('🖼�E�E画像�E琁E', {
+            console.log('🖼️ 画像処理', {
               originalImg: img,
               url: img.url,
               fileName: img.fileName,
               urlValid: img.url && img.url.trim() !== '',
-              fileNameValid: img.fileName && img.fileName.trim() !== '',
+              fileNameValid: img.fileName && img.fileName.trim() !== ''
             });
           }
-          
-          // URLが存在する場合�E有効な画像として扱ぁE          if (img.url && img.url.trim() !== '') {
+
+          // URLが存在する場合は有効な画像として扱う
+          if (img.url && img.url.trim() !== '') {
             return {
               url: img.url,
-              fileName: img.fileName && img.fileName.trim() !== '' 
-                ? img.fileName 
-                : img.url.split('/').pop() || '', // URLからファイル名を抽出
+              fileName: img.fileName && img.fileName.trim() !== ''
+                ? img.fileName
+                : img.url.split('/').pop() || '' // URLからファイル名を抽出
             };
           }
           return null;
@@ -88,14 +90,14 @@ export function validateAndCleanFlowData(flowData: FlowData, options: SaveOption
 
     if (logDetails) {
       if (cleanedImages.length > 0) {
-        console.log('✁E有効な画像情報:', {
+        console.log('✅ 有効な画像情報:', {
           stepId: step.id,
           stepTitle: step.title,
           imagesCount: cleanedImages.length,
           images: cleanedImages,
         });
       } else {
-        console.log('❁E有効な画像なぁE', {
+        console.log('❌ 有効な画像なし', {
           stepId: step.id,
           stepTitle: step.title,
           originalImages: step.images,
@@ -104,9 +106,9 @@ export function validateAndCleanFlowData(flowData: FlowData, options: SaveOption
       }
     }
 
-    // スチE��プデータをクリーニング
+    // ステップデータをクリーニング
     const { imageUrl, imageFileName, ...restOfStep } = step as any;
-    
+
     return {
       ...restOfStep,
       images: cleanedImages,
@@ -120,7 +122,7 @@ export function validateAndCleanFlowData(flowData: FlowData, options: SaveOption
   };
 
   if (logDetails) {
-    console.log('✁EフローチE�Eタ検証完亁E', {
+    console.log('✅ フローデータ検証完了', {
       id: cleanedFlowData.id,
       title: cleanedFlowData.title,
       stepsCount: cleanedFlowData.steps.length,
@@ -141,22 +143,24 @@ export function validateAndCleanFlowData(flowData: FlowData, options: SaveOption
 }
 
 /**
- * 統一されたフローチE�Eタ保存�E琁E */
+ * 統一されたフローデータ保存処理
+ */
 export async function saveFlowData(
-  flowData: FlowData, 
+  flowData: FlowData,
   options: SaveOptions = {}
 ): Promise<{ success: boolean; data?: any; error?: string }> {
   try {
-    console.log('💾 統一フロー保存�E琁E��姁E', {
+    console.log('💾 統一フロー保存処理開始', {
       id: flowData.id,
       title: flowData.title,
       stepsCount: flowData.steps?.length || 0,
     });
 
-    // フローチE�Eタの検証とクリーニング
+    // フローデータの検証とクリーニング
     const cleanedFlowData = validateAndCleanFlowData(flowData, options);
 
-    // APIエンド�Eイント�E構篁E    const url = cleanedFlowData.id
+    // APIエンドポイントの構築
+    const url = cleanedFlowData.id
       ? buildApiUrl(`/emergency-flow/${cleanedFlowData.id}`)
       : buildApiUrl('/emergency-flow');
     const method = cleanedFlowData.id ? 'PUT' : 'POST';
@@ -178,7 +182,7 @@ export async function saveFlowData(
       }))
     });
 
-    // APIリクエスト�E送信
+    // APIリクエストの送信
     const response = await fetch(url, {
       method,
       headers: {
@@ -193,8 +197,8 @@ export async function saveFlowData(
     }
 
     const result = await response.json();
-    
-    console.log('✁E統一フロー保存�E劁E', {
+
+    console.log('✅ 統一フロー保存完了', {
       id: result.data?.id || cleanedFlowData.id,
       title: result.data?.title || cleanedFlowData.title,
       stepsCount: result.data?.steps?.length || cleanedFlowData.steps.length,
@@ -207,7 +211,7 @@ export async function saveFlowData(
     };
 
   } catch (error) {
-    console.error('❁E統一フロー保存エラー:', error);
+    console.error('❌ 統一フロー保存エラー:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : '保存に失敗しました',
@@ -216,7 +220,8 @@ export async function saveFlowData(
 }
 
 /**
- * フローチE�Eタの画像情報を取征E */
+ * フローデータの画像情報を取得
+ */
 export function getFlowImageInfo(flowData: FlowData): {
   totalSteps: number;
   stepsWithImages: number;
@@ -231,7 +236,7 @@ export function getFlowImageInfo(flowData: FlowData): {
   const totalSteps = flowData.steps?.length || 0;
   const stepsWithImages = flowData.steps?.filter(step => step.images && step.images.length > 0).length || 0;
   const totalImages = flowData.steps?.reduce((sum, step) => sum + (step.images?.length || 0), 0) || 0;
-  
+
   const imageDetails = flowData.steps?.map(step => ({
     stepId: step.id,
     stepTitle: step.title,
