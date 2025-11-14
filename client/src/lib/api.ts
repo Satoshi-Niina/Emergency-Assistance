@@ -7,6 +7,11 @@ const isDevelopment = import.meta.env.DEV;
 
 // APIベースURL決定（シンプル版）
 const getApiBaseUrl = (): string => {
+    // window.runtimeConfigが設定されている場合は最優先（index.htmlで設定される）
+    if (typeof window !== 'undefined' && (window as any).runtimeConfig?.API_BASE_URL) {
+        return (window as any).runtimeConfig.API_BASE_URL;
+    }
+
     // 環境変数が設定されていて、本番環境の場合のみ使用
     if (isProduction && import.meta.env.VITE_API_BASE_URL) {
         return import.meta.env.VITE_API_BASE_URL;
@@ -25,7 +30,11 @@ export const buildApiUrl = (path: string): string => {
 
     if (API_BASE_URL) {
         // 本番環境: 絶対URL
-        return `${API_BASE_URL}/api${cleanPath}`;
+        // API_BASE_URLに既に/apiが含まれている場合は追加しない
+        const baseUrl = API_BASE_URL.endsWith('/api')
+            ? API_BASE_URL
+            : `${API_BASE_URL}/api`;
+        return `${baseUrl}${cleanPath}`;
     } else {
         // 開発環境: 相対パス（統合サーバーが処理）
         return `/api${cleanPath}`;

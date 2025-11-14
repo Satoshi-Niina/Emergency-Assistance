@@ -6647,7 +6647,7 @@ app.use((err, req, res, next) => {
 });
 
 // サーバー起動
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   const env = process.env.NODE_ENV || 'development';
   console.log(`🚀 Emergency Assistance Unified Server running on port ${PORT}`);
   console.log(`📊 Environment: ${env}`);
@@ -6668,6 +6668,30 @@ app.listen(PORT, '0.0.0.0', () => {
 
   // 自動スケジュールを開始
   setupAutoSchedules();
+});
+
+// ポート使用中のエラーハンドリング（開発環境のみ）
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    if (isDevelopment) {
+      console.error(`\n❌ ERROR: Port ${PORT} is already in use.`);
+      console.error(`💡 Solutions:`);
+      console.error(`   1. Stop the process using port ${PORT}:`);
+      console.error(`      Windows: netstat -ano | findstr :${PORT}`);
+      console.error(`      Then: taskkill /PID <PID> /F`);
+      console.error(`   2. Use a different port:`);
+      console.error(`      PORT=8081 node server/unified-hot-reload-server.js`);
+      console.error(`   3. Or set PORT environment variable:`);
+      console.error(`      $env:PORT=8081; node server/unified-hot-reload-server.js\n`);
+    } else {
+      // 本番環境ではエラーをそのまま投げる
+      throw err;
+    }
+    process.exit(1);
+  } else {
+    // その他のエラーはそのまま投げる
+    throw err;
+  }
 });
 
 // グレースフルシャットダウン
