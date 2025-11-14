@@ -8,6 +8,7 @@ on:
       - 'package.json'
       - '.github/workflows/server-azure.yml'
       - 'docs/**'
+      - 'scripts/**'
   workflow_dispatch:
     inputs:
       environment:
