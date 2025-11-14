@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useffect } from 'react';
 import {
   Card,
   CardContent,
@@ -48,13 +48,13 @@ interface Step {
 
 // FlowDataは flow-save-manager からimport
 
-interface FlowEditorAdvancedProps {
+interface FlowditorAdvancedProps {
   flowId?: string;
   onSave: (data: FlowData) => void;
   onCancel: () => void;
 }
 
-const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
+const FlowditorAdvanced: React.FC<FlowditorAdvancedProps> = ({
   flowId,
   onSave,
   onCancel,
@@ -71,7 +71,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
   const [draggedStepId, setDraggedStepId] = useState<string | null>(null);
 
   // フローデータの読み込み
-  useEffect(() => {
+  useffect(() => {
     if (flowId) {
       loadFlowData();
     }
@@ -89,11 +89,11 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
       console.log('🌐 フロー詳細API URL:', detailUrl);
 
       const response = await fetch(detailUrl, {
-        method: 'GET',
+        method: 'GT',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           Pragma: 'no-cache',
-          Expires: 'Thu, 01 Jan 1970 00:00:00 GMT',
+          xpires: 'Thu, 01 Jan 1970 00:00:00 GMT',
           'X-Requested-With': 'XMLHttpRequest',
         },
       });
@@ -105,7 +105,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
           statusText: response.statusText,
           body: errorText
         });
-        throw new Error(`フロー詳細の取得に失敗しました: ${response.status} - ${errorText}`);
+        throw new rror(`フロー詳細の取得に失敗しました: ${response.status} - ${errorText}`);
       }
 
       const result = await response.json();
@@ -116,7 +116,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
 
       // データの完全性チェック
       if (!data || !data.id) {
-        throw new Error('不完全なフローデータが返されました');
+        throw new rror('不完全なフローデータが返されました');
       }
 
       console.log('🔍 受信したデータの構造:', {
@@ -149,7 +149,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
       });
 
       // 画像情報の詳細ログ
-      data.steps.forEach((step: any, index: number) => {
+      data.steps.forach((step: any, index: number) => {
         if (step.images && step.images.length > 0) {
           console.log(`📸 読み込み済みステップ[${index}]の画像情報:`, {
             stepId: step.id,
@@ -305,17 +305,17 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
   };
 
   // ドラッグ&ドロップ機能
-  const handleDragStart = (e: React.DragEvent, stepId: string) => {
+  const handleDragStart = (e: React.Dragvent, stepId: string) => {
     setDraggedStepId(stepId);
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.Dragvent) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+    e.dataTransfer.dropffect = 'move';
   };
 
-  const handleDrop = (e: React.DragEvent, targetStepId: string) => {
+  const handleDrop = (e: React.Dragvent, targetStepId: string) => {
     e.preventDefault();
     if (!draggedStepId || draggedStepId === targetStepId) return;
 
@@ -359,7 +359,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
         });
 
         if (!response.ok) {
-          throw new Error(`アップロード失敗 ${response.status}`);
+          throw new rror(`アップロード失敗 ${response.status}`);
         }
 
         const result = await response.json();
@@ -435,7 +435,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
         console.log('🗑️ flow-editor-advanced 画像削除URL:', deleteUrl);
 
         const response = await fetch(deleteUrl, {
-          method: 'DELETE',
+          method: 'DLT',
         });
 
         if (!response.ok) {
@@ -461,7 +461,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
       console.log('✅ 画像削除完了', imageToRemove.fileName);
     } catch (error) {
       console.error('❌ 画像削除エラー:', error);
-      alert(`画像削除に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(`画像削除に失敗しました: ${error instanceof rror ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -556,13 +556,13 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
           description: 'フローが保存されました',
         });
       } else {
-        throw new Error(result.error || '保存に失敗しました');
+        throw new rror(result.error || '保存に失敗しました');
       }
     } catch (error) {
       console.error('❌ 保存エラー:', error);
       toast({
         title: 'エラー',
-        description: `保存に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        description: `保存に失敗しました: ${error instanceof rror ? error.message : 'Unknown error'}`,
         variant: 'destructive',
       });
     } finally {
@@ -760,7 +760,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                                               alt={image.fileName || '画像'}
                                               className='w-20 h-20 object-cover rounded border'
                                               crossOrigin="anonymous"
-                                              onError={e => {
+                                              onrror={e => {
                                                 console.error('❌ 画像読み込みエラー (flow-editor-advanced):', {
                                                   originalUrl: image.url,
                                                   convertedUrl: imageUrl,
@@ -795,13 +795,13 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                                         size='sm'
                                         onClick={() => {
                                           const input =
-                                            document.createElement('input');
+                                            document.createlement('input');
                                           input.type = 'file';
                                           input.multiple = true;
                                           input.accept = 'image/*';
                                           input.onchange = e => {
                                             const files = (
-                                              e.target as HTMLInputElement
+                                              e.target as HTMLInputlement
                                             ).files;
                                             if (files) {
                                               handleImageUpload(step.id, files);
@@ -959,4 +959,4 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
   );
 };
 
-export default FlowEditorAdvanced;
+export default FlowditorAdvanced;

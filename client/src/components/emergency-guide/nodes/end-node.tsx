@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 
-const EndNode = ({ data }: NodeProps) => {
+const ndNode = ({ data }: NodeProps) => {
   return (
     <div className='px-4 py-2 shadow-md rounded-full bg-red-500 text-white min-w-[100px] text-center'>
       <div className='font-bold'>{data.label || '終了'}</div>
@@ -17,4 +17,4 @@ const EndNode = ({ data }: NodeProps) => {
   );
 };
 
-export default memo(EndNode);
+export default memo(ndNode);

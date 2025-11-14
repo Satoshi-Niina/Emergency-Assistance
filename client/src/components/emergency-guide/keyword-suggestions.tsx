@@ -22,7 +22,7 @@ const KeywordSuggestions: React.FC<KeywordSuggestionsProps> = ({
   const [customKeyword, setCustomKeyword] = React.useState('');
 
   // カスタムキーワード検索の実行
-  const handleCustomSearch = (e: React.FormEvent) => {
+  const handleCustomSearch = (e: React.Formvent) => {
     e.preventDefault();
     if (customKeyword.trim()) {
       onKeywordClick(customKeyword);

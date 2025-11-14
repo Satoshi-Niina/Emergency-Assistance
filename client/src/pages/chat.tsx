@@ -2133,7 +2133,7 @@ export default function ChatPage() {
 
       toast({
         title: '成功',
-        description: 'チャチE��履歴をクリアしました',
+        description: 'チャット履歴をクリアしました',
       });
     } catch (error) {
       toast({

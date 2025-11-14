@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useffect, useRef, useCallback } from 'react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { Plus, Trash2, X } from 'lucide-react';
-import StepEditor from './step-editor';
+import Stepditor from './step-editor';
 import { v4 as uuidv4 } from 'uuid';
 import { convertImageUrl } from '../../lib/image-utils.ts';
 import { saveFlowData, validateAndCleanFlowData, getFlowImageInfo, FlowData } from '../../lib/flow-save-manager';
@@ -31,12 +31,12 @@ interface Step {
     label: string;
     nextId: string;
   }>;
-  // 古いプロパティは後方互換性のために残す（将来的には削除）
+  // 古いプププロパティは後方互換性のために残す（将来的には削除）
   imageUrl?: string;
   imageFileName?: string;
 }
 
-interface EmergencyFlowEditorProps {
+interface mergencyFlowditorProps {
   flowData: any;
   currentTab: string;
   onSave: (data: any) => void;
@@ -49,7 +49,7 @@ interface EmergencyFlowEditorProps {
 import { utf8ToBase64 } from '../../lib/image-utils';
 const utf8_to_b64 = utf8ToBase64;
 
-const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
+const mergencyFlowditor: React.FC<mergencyFlowditorProps> = ({
   flowData,
   currentTab,
   onSave,
@@ -70,19 +70,19 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
 
   // 1. stepsの最新値を保持するためのRefを追加
   const stepsRef = useRef(steps);
-  useEffect(() => {
+  useffect(() => {
     stepsRef.current = steps;
   }, [steps]);
 
   // 2. flowDataの最新値を保持するためのRefを追加
   const flowDataRef = useRef(flowData);
-  useEffect(() => {
+  useffect(() => {
     flowDataRef.current = flowData;
   }, [flowData]);
 
   // 初期化: flowDataが変更されるたびにコンポーネントの状態を再初期化する
-  useEffect(() => {
-    console.log('🔄 EmergencyFlowEditor useEffect 実行:', {
+  useffect(() => {
+    console.log('🔄 mergencyFlowditor useffect 実行:', {
       flowDataId: flowData?.id || 'null',
       flowDataTitle: flowData?.title || 'null',
       isInitialized,
@@ -208,7 +208,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
             const convertedUrl = (img.url?.startsWith('http://') || img.url?.startsWith('https://') || img.url?.startsWith('data:'))
               ? img.url
               : convertImageUrl(img.url);
-            console.log(`🖼️ EmergencyFlowEditor 画像URL変換:`, {
+            console.log(`🖼️ mergencyFlowditor 画像URL変換:`, {
               stepId: step.id,
               originalUrl: img.url,
               convertedUrl: convertedUrl,
@@ -231,7 +231,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
             }
           );
           const convertedUrl = convertImageUrl(step.imageUrl);
-          console.log(`🖼️ EmergencyFlowEditor 古い形式画像URL変換:`, {
+          console.log(`🖼️ mergencyFlowditor 古い形式画像URL変換:`, {
             stepId: step.id,
             originalUrl: step.imageUrl,
             convertedUrl: convertedUrl,
@@ -254,7 +254,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
           );
           const fileName = step.imageUrl.split('/').pop() || 'unknown.jpg';
           const convertedUrl = convertImageUrl(step.imageUrl);
-          console.log(`🖼️ EmergencyFlowEditor imageUrlのみ画像URL変換:`, {
+          console.log(`🖼️ mergencyFlowditor imageUrlのみ画像URL変換:`, {
             stepId: step.id,
             originalUrl: step.imageUrl,
             convertedUrl: convertedUrl,
@@ -283,7 +283,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
           processedCount: processedImages.length,
         });
 
-        // 古いプロパティを削除してクリーンなデータ構造にする
+        // 古いプププロパティを削除してクリーンなデータ構造にする
         const { imageUrl, imageFileName, options, ...restOfStep } = step;
         const processedStep = {
           ...restOfStep,
@@ -350,7 +350,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
   }, [flowData, selectedFilePath, isInitialized]);
 
   // 変更検出
-  useEffect(() => {
+  useffect(() => {
     // 初期化が完了していない場合は変更検出をスキップ
     if (!isInitialized) {
       console.log('🔄 初期化が完了していないため、変更検出をスキップ');
@@ -553,7 +553,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
     []
   );
 
-  const handleConditionEdit = useCallback(
+  const handleConditiondit = useCallback(
     (stepId: string, conditionIndex: number, updatedCondition: any) => {
       const currentSteps = stepsRef.current;
       const stepIndex = currentSteps.findIndex(step => step.id === stepId);
@@ -584,8 +584,8 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
     []
   );
 
-  // This useEffect will trigger the autosave whenever 'steps' changes and there are pending changes.
-  useEffect(() => {
+  // This useffect will trigger the autosave whenever 'steps' changes and there are pending changes.
+  useffect(() => {
     if (hasChanges && isInitialized) {
       console.log(
         '🔄 `steps`の変更を検知しました。自動保存をスケジュールします。'
@@ -613,7 +613,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
     console.log('🔄 自動保存を実行します...');
 
     const cleanedSteps = currentSteps.map(step => {
-      console.log('🔍 EmergencyFlowEditor ステップ画像処理開始:', {
+      console.log('🔍 mergencyFlowditor ステップ画像処理開始:', {
         stepId: step.id,
         stepTitle: step.title,
         originalImages: step.images,
@@ -623,7 +623,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
 
       const images = step.images
         ?.map(img => {
-          console.log('🖼️ EmergencyFlowEditor 画像処理:', {
+          console.log('🖼️ mergencyFlowditor 画像処理:', {
             originalImg: img,
             url: img.url,
             fileName: img.fileName,
@@ -645,14 +645,14 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
         .filter(img => img !== null) || []; // nullを除外
 
       if (images && images.length > 0) {
-        console.log('✅ EmergencyFlowEditor 有効な画像情報:', {
+        console.log('✅ mergencyFlowditor 有効な画像情報:', {
           stepId: step.id,
           stepTitle: step.title,
           imagesCount: images.length,
           images: images,
         });
       } else {
-        console.log('❌ EmergencyFlowEditor 有効な画像なし:', {
+        console.log('❌ mergencyFlowditor 有効な画像なし:', {
           stepId: step.id,
           stepTitle: step.title,
           originalImages: step.images,
@@ -660,7 +660,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
         });
       }
 
-      // 古いプロパティや不要なプロパティを確実に除去
+      // 古いプププロパティや不要なプププロパティを確実に除去
       const { imageUrl, imageFileName, options, ...restOfStep } = step;
 
       const processedStep = {
@@ -669,7 +669,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
         // optionsはdecisionタイプの時だけ保持するなどのロジックはここではない
       };
 
-      console.log('🔍 EmergencyFlowEditor 処理後のステップ:', {
+      console.log('🔍 mergencyFlowditor 処理後のステップ:', {
         stepId: processedStep.id,
         stepTitle: processedStep.title,
         finalImages: processedStep.images,
@@ -680,7 +680,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
       return processedStep;
     });
 
-    // 1. flowDataから古いslidesプロパティを確実に除去する
+    // 1. flowDataから古いslidesプププロパティを確実に除去する
     const { slides, ...restOfFlowData } = flowData;
 
     const saveData = {
@@ -719,24 +719,24 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
       });
 
       if (result.success) {
-        console.log('✅ EmergencyFlowEditor 自動保存成功:', {
+        console.log('✅ mergencyFlowditor 自動保存成功:', {
           flowId: result.data?.id || saveData.id,
           title: result.data?.title || saveData.title,
           stepsCount: result.data?.steps?.length || saveData.steps.length,
         });
 
         // 自動保存時はonSaveを呼ばず、内部状態のみ更新
-        console.log('EmergencyFlowEditor 自動保存完了');
+        console.log('mergencyFlowditor 自動保存完了');
         
         // 変更フラグをリセット
         setHasChanges(false);
         setOriginalSteps(result.data?.steps || saveData.steps);
       } else {
-        console.error('❌ EmergencyFlowEditor 自動保存失敗:', result.error);
+        console.error('❌ mergencyFlowditor 自動保存失敗:', result.error);
         alert(`自動保存に失敗しました: ${result.error}`);
       }
     } catch (error) {
-      console.error('❌ EmergencyFlowEditor 自動保存エラー:', error);
+      console.error('❌ mergencyFlowditor 自動保存エラー:', error);
     }
   }, [flowData, title, description, hasChanges]);
 
@@ -807,7 +807,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
   };
 
   // デバッグ情報を表示
-  console.log('🔄 EmergencyFlowEditor レンダリング:', {
+  console.log('🔄 mergencyFlowditor レンダリング:', {
     flowDataId: flowData?.id,
     flowDataTitle: flowData?.title,
     hasFlowData: !!flowData,
@@ -892,7 +892,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
             <div className='flex-1 flex flex-col min-h-0'>
               <div className='p-4 bg-blue-50 border border-blue-200 rounded mb-4'>
                 <p className='text-blue-800 font-medium'>
-                  StepEditor レンダリング情報:
+                  Stepditor レンダリング情報:
                 </p>
                 <p className='text-blue-700 text-sm'>
                   steps.length: {steps.length}
@@ -903,14 +903,14 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
                 </p>
               </div>
               <div className='flex-1 min-h-0'>
-                <StepEditor
+                <Stepditor
                   steps={steps}
                   onStepUpdate={handleStepUpdate}
                   onStepsReorder={handleStepsReorder}
                   onStepDelete={handleStepDelete}
                   onConditionAdd={handleConditionAdd}
                   onConditionDelete={handleConditionDelete}
-                  onConditionEdit={handleConditionEdit}
+                  onConditiondit={handleConditiondit}
                   flowId={flowData?.id}
                   onAddStepBetween={handleAddStepBetween}
                 />
@@ -1014,4 +1014,4 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
   );
 };
 
-export default EmergencyFlowEditor;
+export default mergencyFlowditor;

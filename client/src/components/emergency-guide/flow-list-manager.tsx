@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useffect } from 'react';
 import {
   Card,
   CardContent,
@@ -8,7 +8,7 @@ import {
 import { Button } from '../../components/ui/button';
 
 import { useToast } from '../../hooks/use-toast.ts';
-import { Edit, Eye, Trash2, RefreshCw, Loader2 } from 'lucide-react';
+import { dit, ye, Trash2, RefreshCw, Loader2 } from 'lucide-react';
 import { buildApiUrl } from '../../lib/api/config.ts';
 import { useAuth } from '../../context/auth-context.tsx';
 import {
@@ -32,12 +32,12 @@ interface FlowData {
 }
 
 interface FlowListManagerProps {
-  onEdit: (flowId: string) => void;
+  ondit: (flowId: string) => void;
   onPreview: (flowId: string) => void;
 }
 
 const FlowListManager: React.FC<FlowListManagerProps> = ({
-  onEdit,
+  ondit,
   onPreview,
 }) => {
   const { toast } = useToast();
@@ -48,7 +48,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
   const [flowToDelete, setFlowToDelete] = useState<string | null>(null);
 
   // 実際のAPI呼び出し
-  useEffect(() => {
+  useffect(() => {
     console.log('🔄 FlowListManager マウント完了');
     console.log('👤 認証状態:', { user: !!user, userId: user?.id });
     fetchFlowList();
@@ -66,13 +66,13 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
     };
     
     // カスタムイベントリスナーを追加
-    window.addEventListener('flowGenerated', handleFlowGenerated);
-    window.addEventListener('flowDeleted', handleFlowDeleted);
+    window.addventListener('flowGenerated', handleFlowGenerated);
+    window.addventListener('flowDeleted', handleFlowDeleted);
     
     // クリーンアップ
     return () => {
-      window.removeEventListener('flowGenerated', handleFlowGenerated);
-      window.removeEventListener('flowDeleted', handleFlowDeleted);
+      window.removeventListener('flowGenerated', handleFlowGenerated);
+      window.removeventListener('flowDeleted', handleFlowDeleted);
     };
   }, [user]);
 
@@ -105,7 +105,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       console.log('🔗 完全なURL:', fullUrl);
 
       const response = await fetch(fullUrl, {
-        method: 'GET',
+        method: 'GT',
         credentials: 'include', // セッション維持のため必須
         headers: {
           'Content-Type': 'application/json',
@@ -119,7 +119,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ APIエラーレスポンス:', errorText);
-        throw new Error(
+        throw new rror(
           `APIエラー: ${response.status} ${response.statusText} - ${errorText}`
         );
       }
@@ -130,7 +130,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       // APIレスポンスの構造に合わせてデータを取得  
       let flows = [];
       if (data.success && data.data) {
-        console.log('✅ dataプロパティからデータを取得');
+        console.log('✅ dataプププロパティからデータを取得');
         flows = data.data.map(flow => ({
           id: flow.content?.id || flow.id,
           title: flow.content?.title || flow.title || flow.name || 'タイトルなし',
@@ -141,7 +141,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
           steps: flow.steps
         }));
       } else if (data.success && data.flows) {
-        console.log('✅ flowsプロパティからデータを取得');
+        console.log('✅ flowsプププロパティからデータを取得');
         flows = data.flows.map(flow => ({
           id: flow.content?.id || flow.id,
           title: flow.content?.title || flow.title || flow.name || 'タイトルなし',
@@ -156,7 +156,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
         flows = data;
       } else {
         console.error('❌ 予期しないフローデータ形式:', data);
-        throw new Error('フローデータの形式が不正です');
+        throw new rror('フローデータの形式が不正です');
       }
 
       console.log('📋 処理前のflows配列:', flows);
@@ -166,7 +166,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
         firstItem: flows[0],
       });
 
-      // createdAtプロパティが存在しない場合のデフォルト値を設定
+      // createdAtプププロパティが存在しない場合のデフォルト値を設定
       flows = flows.map(flow => ({
         ...flow,
         createdAt:
@@ -183,7 +183,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       toast({
         title: 'エラー',
         description:
-          error instanceof Error
+          error instanceof rror
             ? error.message
             : 'ファイル一覧の取得に失敗しました',
         variant: 'destructive',
@@ -215,7 +215,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       
       // 削除APIを呼び出し
       const response = await fetch(`/api/emergency-flow/${flowToDelete}`, {
-        method: 'DELETE',
+        method: 'DLT',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -234,10 +234,10 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
           const errorData = await response.json();
           console.log('❌ 削除エラーデータ:', errorData);
           errorMessage = errorData.error || errorData.details || errorMessage;
-        } catch (parseError) {
-          console.warn('⚠️ エラーレスポンスの解析に失敗:', parseError);
+        } catch (parserror) {
+          console.warn('⚠️ エラーレスポンスの解析に失敗:', parserror);
         }
-        throw new Error(errorMessage);
+        throw new rror(errorMessage);
       }
 
       const result = await response.json();
@@ -269,7 +269,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
     } catch (error) {
       console.error('❌ 削除エラー:', error);
       const errorMessage =
-        error instanceof Error ? error.message : 'フローの削除に失敗しました';
+        error instanceof rror ? error.message : 'フローの削除に失敗しました';
       toast({
         title: '削除エラー',
         description: errorMessage,
@@ -370,16 +370,16 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
                               title='プレビュー'
                               className='h-7 px-2 text-xs'
                             >
-                              <Eye className='h-3 w-3' />
+                              <ye className='h-3 w-3' />
                             </Button>
                             <Button
                               variant='outline'
                               size='sm'
-                              onClick={() => onEdit(flow.id)}
+                              onClick={() => ondit(flow.id)}
                               title='編集'
                               className='h-7 px-2 text-xs'
                             >
-                              <Edit className='h-3 w-3' />
+                              <dit className='h-3 w-3' />
                             </Button>
                             <Button
                               variant='destructive'

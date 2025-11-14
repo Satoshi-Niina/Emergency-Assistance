@@ -7,17 +7,28 @@ const router = Router();
 // PostgreSQL接続確認API
 router.get('/db-check', async (_req, res) => {
   try {
-    const result = await query('SELECT NOW() as db_time');
+    const result = await query('SELECT NOW() as db_time, version() as version');
     res.json({
+      success: true,
       status: 'OK',
+      message: 'データベース接続が正常です',
+      data: {
+        current_time: result[0].db_time,
+        version: result[0].version,
+      },
       db_time: result[0].db_time,
+      version: result[0].version,
+      timestamp: new Date().toISOString(),
     });
   } catch (error) {
     console.error('DB接続確認エラー:', error);
     res.status(500).json({
+      success: false,
       status: 'ERROR',
+      error: 'データベース接続エラー',
       message:
         error instanceof Error ? error.message : 'データベース接続エラー',
+      timestamp: new Date().toISOString(),
     });
   }
 });
@@ -29,7 +40,7 @@ router.post('/gpt-check', async (req, res) => {
 
     // 実際のチャット機能と同じ方法でOpenAIクライアントの状態を確認
     const clientStatus = getOpenAIClientStatus();
-    
+
     console.log('[system-check] OpenAI Client Status:', clientStatus);
 
     const isDevelopment = process.env.NODE_ENV === 'development';
@@ -97,7 +108,7 @@ router.post('/gpt-check', async (req, res) => {
 
     try {
       console.log('[system-check] OpenAI API接続テスト開始');
-      
+
       // 実際のチャット機能と同じ方法でAPI接続テスト
       const testResponse = await processOpenAIRequest('Hello', false);
 
@@ -120,7 +131,7 @@ router.post('/gpt-check', async (req, res) => {
         code: gptError.code,
         status: gptError.status
       });
-      
+
       res.json({
         success: false,
         status: 'ERROR',

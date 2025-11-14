@@ -4,7 +4,7 @@ import multer from 'multer';
 import * as XLSX from 'xlsx';
 import { db } from '../db/index.js';
 import { users } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 
 const router = express.Router();
 
@@ -94,12 +94,19 @@ router.get('/', async (req: any, res: any) => {
       url: req.url,
     });
 
-    // 生のSQLクエリで直接データを取得（より確実）
-    const allUsers: any = await db.execute(`
-            SELECT id, username, display_name, role, department, description, created_at
-            FROM users
-            ORDER BY created_at DESC
-        `);
+    // Drizzle ORMを使用してユーザー一覧を取得
+    const allUsers: any = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        display_name: users.displayName,
+        role: users.role,
+        department: users.department,
+        description: users.description,
+        created_at: users.created_at,
+      })
+      .from(users)
+      .orderBy(desc(users.created_at));
 
     console.log('[DEBUG] 生SQLクエリ結果:', {
       count: allUsers.length,

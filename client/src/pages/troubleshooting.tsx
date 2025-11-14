@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 // import { apiRequest, queryClient } from '../lib/queryClient'; // ファイルが存在しません
-// import { storage } from '../lib/api'; // 簡略化�Eため一時的にコメントアウチE
+// import { storage } from '../lib/api'; // 簡略化のため一時的にコメントアウト
 import { saveFlowData, validateAndCleanFlowData, getFlowImageInfo, FlowData } from '../lib/flow-save-manager';
 import { Button } from '../components/ui/button';
 import {
@@ -103,11 +103,11 @@ export default function TroubleshootingPage() {
       console.log('🔍 フロー一覧取得結果:', data);
 
       if (data.success) {
-        // APIレスポンス形式に対応！ElowsキーにチE�Eタが�EってぁE���E�E
+        // APIレスポンス形式に対応：flowsキーにデータが入っている場合
         const flowsData = data.flows || data.data || [];
-        console.log('🔍 フローチE�Eタ:', flowsData);
+        console.log('🔍 フローデータ:', flowsData);
 
-        // チE�Eタ形式を統一�E�Eitleフィールドに統一�E�E
+        // データ形式を統一：titleフィールドに統一
         const formattedFlows = flowsData.map((flow: any) => ({
           id: flow.id.toString(),
           title: flow.name || flow.title,
@@ -129,7 +129,7 @@ export default function TroubleshootingPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (flowData: Partial<Flow>) => {
-      console.log('💾 saveMutation 保存�E琁E��姁E', {
+      console.log('💾 saveMutation 保存処理開始', {
         flowDataId: flowData.id,
         stepsCount: flowData.steps?.length || 0,
         stepsWithImages: flowData.steps?.filter(step => step.images && step.images.length > 0).length || 0,
@@ -144,14 +144,14 @@ export default function TroubleshootingPage() {
         })) || []
       });
 
-      // 統一された保存�E琁E��使用
+      // 統一された保存処理を使用
       const result = await saveFlowData(flowData as FlowData, {
         validateImages: true,
         logDetails: true
       });
 
       if (result.success) {
-        console.log('✁EsaveMutation 保存�E劁E', {
+        console.log('✅ saveMutation 保存成功', {
           flowId: result.data?.id || flowData.id,
           title: result.data?.title || flowData.title,
           stepsCount: result.data?.steps?.length || flowData.steps?.length || 0,
@@ -182,7 +182,7 @@ export default function TroubleshootingPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (flowId: string) => {
-      console.log('🗑�E�Eフロー削除開姁E', flowId);
+      console.log('🗑️ フロー削除開始', flowId);
 
       const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
       const response = await fetch(`${apiBase}/api/emergency-flow/${flowId}`, {
@@ -203,16 +203,16 @@ export default function TroubleshootingPage() {
         let errorMessage = `削除に失敗しました: ${response.status} - ${response.statusText}`;
         try {
           const errorData = await response.json();
-          console.log('❁E削除エラーチE�Eタ:', errorData);
+          console.log('❌ 削除エラーデータ:', errorData);
           errorMessage = errorData.error || errorData.details || errorMessage;
         } catch (parseError) {
-          console.warn('⚠�E�Eエラーレスポンスの解析に失敁E', parseError);
+          console.warn('⚠️ エラーレスポンスの解析に失敗', parseError);
         }
         throw new Error(errorMessage);
       }
 
       const result = await response.json();
-      console.log('✁E削除レスポンス:', result);
+      console.log('✅ 削除レスポンス:', result);
       return result;
     },
     onSuccess: () => {
@@ -230,7 +230,7 @@ export default function TroubleshootingPage() {
       setIsWarningOpen(false);
     },
     onError: error => {
-      console.error('❁E削除エラー:', error);
+      console.error('❌ 削除エラー:', error);
       toast({
         title: 'エラー',
         description: `ファイルの削除中にエラーが発生しました: ${error.message}`,
@@ -256,7 +256,7 @@ export default function TroubleshootingPage() {
   };
 
   const handleFlowGenerated = (generatedFlow: any) => {
-    // フロー生�E後�Eフロー一覧を表示
+    // フロー生成後、フロー一覧を表示
     setActiveTab('editor');
     setFlowState({ view: 'list' });
 
@@ -290,7 +290,7 @@ export default function TroubleshootingPage() {
       .catch(err =>
         toast({
           title: 'エラー',
-          description: `ファイルチE�Eタの取得に失敗しました: ${err.message}`,
+          description: `ファイルデータの取得に失敗しました: ${err.message}`,
           variant: 'destructive',
         })
       );
@@ -311,7 +311,7 @@ export default function TroubleshootingPage() {
   };
 
   const handleSaveFlow = (flowData: any) => {
-    console.log('💾 handleSaveFlow 呼び出ぁE', {
+    console.log('💾 handleSaveFlow 呼び出し', {
       flowId: flowData.id,
       title: flowData.title,
       stepsCount: flowData.steps?.length || 0,
@@ -337,7 +337,7 @@ export default function TroubleshootingPage() {
     setPreviewFlowId(null);
   };
 
-  // プレビューが開ぁE��ぁE��場吁E
+  // プレビューが開いている場合
   if (previewFlowId) {
     return (
       <div className='container mx-auto p-4 sm:p-6 bg-gray-50 min-h-screen'>
@@ -352,10 +352,10 @@ export default function TroubleshootingPage() {
         <div>
           <h1 className='text-2xl sm:text-3xl font-bold text-gray-800 flex items-center gap-3'>
             <Workflow className='w-8 h-8 text-blue-600' />
-            応急処置チE�Eタ管琁E
+            応急処置データ管理
           </h1>
           <p className='text-gray-500 mt-1'>
-            フローの新規作�E、およ�E既存フローの編雁E��行います、E
+            フローの新規作成、および既存フローの編集を行います
           </p>
         </div>
       </div>
@@ -367,14 +367,14 @@ export default function TroubleshootingPage() {
             className='flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md'
           >
             <BrainCircuit className='h-5 w-5' />
-            新規フロー生�E
+            新規フロー生成
           </TabsTrigger>
           <TabsTrigger
             value='editor'
             className='flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md'
           >
             <ListChecks className='h-5 w-5' />
-            フローの管琁E�E編雁E
+            フローの管理・編集
           </TabsTrigger>
         </TabsList>
 

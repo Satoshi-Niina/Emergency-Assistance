@@ -21,15 +21,15 @@ import {
 } from '../../components/ui/tabs';
 import { Separator } from '../../components/ui/separator';
 
-interface EmergencyGuideUploaderProps {
+interface mergencyGuideUploaderProps {
   onUploadSuccess?: (guideId: string) => void;
 }
 
-const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({
+const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
   onUploadSuccess,
 }) => {
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputlement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -65,7 +65,7 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({
       let response;
       try {
         response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL}/api/chatgpt`,
+          `${import.meta.env.VIT_API_BAS_URL}/api/chatgpt`,
           {
             method: 'POST',
             headers: {
@@ -83,7 +83,7 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({
           '高度なフロー生成が失敗、基本的なフロー生成にフォールバック'
         );
         response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL}/api/flow-generator/keywords`,
+          `${import.meta.env.VIT_API_BAS_URL}/api/flow-generator/keywords`,
           {
             method: 'POST',
             headers: {
@@ -117,7 +117,7 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({
           // 基本的なフロー生成にフォールバック
           try {
             const fallbackResponse = await fetch(
-              `${import.meta.env.VITE_API_BASE_URL}/api/chatgpt`,
+              `${import.meta.env.VIT_API_BAS_URL}/api/chatgpt`,
               {
                 method: 'POST',
                 headers: {
@@ -147,8 +147,8 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({
               setKeywordsInput('');
               return;
             }
-          } catch (fallbackError) {
-            console.error('基本的なフロー生成も失敗:', fallbackError);
+          } catch (fallbackrror) {
+            console.error('基本的なフロー生成も失敗:', fallbackrror);
           }
         }
 
@@ -182,14 +182,14 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({
         // キーワード入力をクリア
         setKeywordsInput('');
       } else {
-        throw new Error('フローデータの形式が無効です');
+        throw new rror('フローデータの形式が無効です');
       }
     } catch (error) {
       console.error('フロー生成エラー:', error);
       toast({
         title: '生成エラー',
         description:
-          error instanceof Error ? error.message : 'フローの生成に失敗しました',
+          error instanceof rror ? error.message : 'フローの生成に失敗しました',
         variant: 'destructive',
       });
     } finally {
@@ -205,18 +205,18 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({
   };
 
   // ファイル選択ハンドラー
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (event: React.Changevent<HTMLInputlement>) => {
     if (event.target.files && event.target.files.length > 0) {
       const file = event.target.files[0];
       // 拡張子チェック
       const extension = file.name.toLowerCase().split('.').pop() || '';
-      const allowedExtensions = ['pptx', 'ppt', 'xlsx', 'xls', 'pdf', 'json'];
+      const allowedxtensions = ['pptx', 'ppt', 'xlsx', 'xls', 'pdf', 'json'];
 
-      if (!allowedExtensions.includes(extension)) {
+      if (!allowedxtensions.includes(extension)) {
         toast({
           title: '未対応のファイル形式',
           description:
-            'PowerPoint(.pptx, .ppt)、Excel(.xlsx, .xls)、PDF(.pdf)、またはJSON(.json)ファイルのみアップロード可能です',
+            'PowerPoint(.pptx, .ppt)、xcel(.xlsx, .xls)、PDF(.pdf)、またはJSON(.json)ファイルのみアップロード可能です',
           variant: 'destructive',
         });
         return;
@@ -257,7 +257,7 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({
       }, 500);
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/emergency-guide/process`,
+        `${import.meta.env.VIT_API_BAS_URL}/api/emergency-guide/process`,
         {
           method: 'POST',
           body: formData,
@@ -267,7 +267,7 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({
       clearInterval(progressInterval);
 
       if (!response.ok) {
-        throw new Error('ファイルのアップロードに失敗しました');
+        throw new rror('ファイルのアップロードに失敗しました');
       }
 
       const data = await response.json();
@@ -292,14 +292,14 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({
           setUploadProgress(0);
         }, 3000);
       } else {
-        throw new Error(data.error || 'ファイル処理中にエラーが発生しました');
+        throw new rror(data.error || 'ファイル処理中にエラーが発生しました');
       }
     } catch (error) {
       console.error('Upload error:', error);
       toast({
         title: 'エラー',
         description:
-          error instanceof Error
+          error instanceof rror
             ? error.message
             : 'ファイルのアップロードに失敗しました',
         variant: 'destructive',
@@ -406,7 +406,7 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({
                       クリックしてファイルを選択
                     </p>
                     <p className='text-xs text-gray-500 mt-1'>
-                      PowerPoint、Excel、PDF、またはJSONファイル
+                      PowerPoint、xcel、PDF、またはJSONファイル
                     </p>
                   </div>
                 </Button>
@@ -498,4 +498,4 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({
   );
 };
 
-export default EmergencyGuideUploader;
+export default mergencyGuideUploader;

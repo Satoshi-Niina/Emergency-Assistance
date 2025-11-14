@@ -17,7 +17,7 @@ interface FlowGeneratorProps {
   onFlowGenerated: (flowData: any) => void;
 }
 
-export default function EmergencyFlowGenerator({
+export default function mergencyFlowGenerator({
   onFlowGenerated,
 }: FlowGeneratorProps) {
   const [file, setFile] = useState<File | null>(null);
@@ -70,7 +70,7 @@ export default function EmergencyFlowGenerator({
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          throw new rror(`HTTP ${response.status}: ${response.statusText}`);
         }
 
         flowData = await response.json();
@@ -93,7 +93,7 @@ export default function EmergencyFlowGenerator({
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          throw new rror(`HTTP ${response.status}: ${response.statusText}`);
         }
 
         flowData = await response.json();
@@ -157,20 +157,24 @@ export default function EmergencyFlowGenerator({
       <CardHeader>
         <CardTitle className='flex items-center gap-2'>
           <Cpu className='w-6 h-6 text-blue-600' />
-          AIによるフロー自動生戁E        </CardTitle>
+          AIによるフロー自動生成
+        </CardTitle>
         <CardDescription>
-          ドキュメントファイルまた�Eキーワードから、応急処置フローの草案を自動で生�Eします、E        </CardDescription>
+          ドキュメントファイルまたはキーワードから、応急処置フローの草案を自動で生成します。
+        </CardDescription>
       </CardHeader>
       <CardContent className='space-y-6'>
-        {/* Keyword Input Section - 上段に移勁E*/}
+        {/* Keyword Input Section - 上段に移動 */}
         <div className='space-y-2'>
           <Label htmlFor='keywords' className='text-lg font-semibold'>
-            キーワードから生戁E          </Label>
+            キーワードから生成
+          </Label>
           <p className='text-sm text-gray-500'>
-            フローの核となるキーワードや痁E��をカンマ区刁E��で入力してください、E          </p>
+            フローの核となるキーワードや症状をカンマ区切りで入力してください。
+          </p>
           <textarea
             id='keywords'
-            placeholder='侁E エンジン停止, 警告�E点灯, 異音'
+            placeholder='例: エンジン停止, 警告灯点灯, 異音'
             value={keywords}
             onChange={e => setKeywords(e.target.value)}
             disabled={!!file}
@@ -188,12 +192,13 @@ export default function EmergencyFlowGenerator({
               {isLoading ? (
                 <>
                   <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                  生�E中...
+                  生成中...
                 </>
               ) : (
                 <>
                   <Send className='mr-2 h-4 w-4' />
-                  フローを生戁E                </>
+                  フローを生成
+                </>
               )}
             </Button>
           </div>
@@ -202,12 +207,12 @@ export default function EmergencyFlowGenerator({
         <div className='relative flex items-center justify-center'>
           <div className='flex-grow border-t border-gray-300'></div>
           <span className='flex-shrink mx-4 text-gray-500 font-semibold'>
-            また�E
+            または
           </span>
           <div className='flex-grow border-t border-gray-300'></div>
         </div>
 
-        {/* File Upload Section - 下段に移勁E*/}
+        {/* File Upload Section - 下段に移動 */}
         <div
           {...getRootProps()}
           className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}
@@ -239,7 +244,7 @@ export default function EmergencyFlowGenerator({
           </div>
         )}
 
-        {/* Generate Button - サイズめE0%に変更、中央配置 */}
+        {/* Generate Button - サイズを80%に変更、中央配置 */}
         <div className='flex justify-center'>
           <Button
             onClick={handleGenerate}
@@ -251,12 +256,13 @@ export default function EmergencyFlowGenerator({
             {isLoading ? (
               <>
                 <Loader2 className='mr-2 h-3 w-3 animate-spin' />
-                生�E中...
+                生成中...
               </>
             ) : (
               <>
                 <Send className='mr-2 h-3 w-3' />
-                フローを生戁E              </>
+                フローを生成
+              </>
             )}
           </Button>
         </div>

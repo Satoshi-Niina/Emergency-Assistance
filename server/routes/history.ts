@@ -65,8 +65,8 @@ router.get('/', async (req, res) => {
       offset = 0,
     } = req.query;
 
-    // DBから故障履歴を取得
-    console.log('📊 DB から故障履歴を取得中...');
+    // DBから故障履歴を取得（実際にはファイルモード）
+    console.log('📊 故障履歴を取得中...');
     const dbResult = await faultHistoryService.getFaultHistoryList({
       machineType: machineType as string,
       machineNumber: machineNumber as string,
@@ -75,17 +75,22 @@ router.get('/', async (req, res) => {
       offset: parseInt(offset as string),
     });
 
-    console.log('📊 DB取得結果:', {
+    console.log('📊 取得結果:', {
       items: dbResult.items.length,
       total: dbResult.total,
+      firstItem: dbResult.items[0] ? {
+        id: dbResult.items[0].id,
+        title: dbResult.items[0].title,
+        machineType: dbResult.items[0].machineType,
+      } : null,
     });
 
     // DBのデータを履歴表示フォーマットに変換
     const convertedItems = dbResult.items.map((dbItem: any) => {
       let jsonData;
       try {
-        jsonData = typeof dbItem.jsonData === 'string' 
-          ? JSON.parse(dbItem.jsonData) 
+        jsonData = typeof dbItem.jsonData === 'string'
+          ? JSON.parse(dbItem.jsonData)
           : dbItem.jsonData;
       } catch (error) {
         console.warn('JSON解析エラー:', error);
@@ -117,6 +122,7 @@ router.get('/', async (req, res) => {
         conversationHistory: jsonData.conversationHistory || jsonData.conversation_history || [],
         metadata: jsonData.metadata || {},
         savedImages: jsonData.savedImages || [],
+        images: dbItem.images || jsonData.savedImages || [],
         fileSize: 0,
         lastModified: dbItem.updatedAt || dbItem.createdAt,
         createdAt: dbItem.createdAt,
@@ -132,8 +138,12 @@ router.get('/', async (req, res) => {
 
     console.log('📊 変換完了:', convertedItems.length, '件');
 
-    // レスポンス返却（既存のフォーマットを維持）
-    return res.json(convertedItems);
+    // レスポンス返却（successとdataを含む形式）
+    return res.json({
+      success: true,
+      data: convertedItems,
+      total: convertedItems.length,
+    });
 
   } catch (error) {
     console.error('❌ 履歴取得エラー:', error);
@@ -348,7 +358,7 @@ router.put('/update-item/:chatId', async (req, res) => {
 
     // knowledge-base/exports フォルダ内のJSONファイルを検索
     const exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
-    
+
     if (!fs.existsSync(exportsDir)) {
       return res.status(404).json({
         error: 'エクスポートディレクトリが見つかりません',
@@ -427,7 +437,7 @@ router.get('/file', async (req, res) => {
 
     // knowledge-base/exports フォルダ内のJSONファイルを検索
     const exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
-    
+
     if (!fs.existsSync(exportsDir)) {
       return res.status(404).json({
         error: 'エクスポートディレクトリが見つかりません',
@@ -1367,7 +1377,7 @@ router.put('/update-item/:id', async (_req, res) => {
     if (!updatedJsonData.updateHistory || !Array.isArray(updatedJsonData.updateHistory)) {
       updatedJsonData.updateHistory = [];
     }
-    
+
     // 新しい更新履歴を追加（既存の履歴は保持）
     updatedJsonData.updateHistory.push({
       timestamp: new Date().toISOString(),
@@ -1426,7 +1436,7 @@ router.get('/export-files', async (_req, res) => {
     console.log('📂 エクスポートファイル一覧取得リクエスト受信');
     const cwd = process.cwd();
     console.log('📁 現在の作業ディレクトリ:', cwd);
-    
+
     // 複数のパス候補を試す
     const possiblePaths = [
       // 環境変数が設定されている場合
@@ -1442,7 +1452,7 @@ router.get('/export-files', async (_req, res) => {
     ].filter(Boolean) as string[]; // undefined/nullを除外
 
     console.log('🔍 パス候補:', possiblePaths);
-    
+
     let exportsDir: string | null = null;
     for (const testPath of possiblePaths) {
       if (!testPath) continue;
@@ -1466,17 +1476,17 @@ router.get('/export-files', async (_req, res) => {
     }
 
     console.log('✅ エクスポートディレクトリ確認:', exportsDir);
-    
+
     // ファイル一覧を取得（日本語ファイル名対応）
     const files = fs.readdirSync(exportsDir);
     console.log('📋 ディレクトリ内の全ファイル:', files);
     console.log('📋 ファイル数:', files.length);
-    
+
     // 各ファイル名を確認（デバッグ用）
     files.forEach((file, index) => {
       console.log(`📄 ファイル[${index}]:`, file, '型:', typeof file, '長さ:', file.length);
     });
-    
+
     const jsonFiles = files.filter(file => {
       const isJson = file.endsWith('.json');
       if (!isJson) {
@@ -1485,7 +1495,7 @@ router.get('/export-files', async (_req, res) => {
       return isJson;
     });
     console.log('📋 JSONファイル数:', jsonFiles.length, 'ファイル:', jsonFiles);
-    
+
     // 各ファイルを確認
     const exportFiles = jsonFiles
       .filter(file => {
@@ -1499,35 +1509,35 @@ router.get('/export-files', async (_req, res) => {
       .map(file => {
         const filePath = path.join(exportsDir, file);
         console.log('🔍 ファイル処理中:', filePath);
-        
+
         try {
           // ファイルの存在確認
           if (!fs.existsSync(filePath)) {
             console.warn('❌ ファイルが見つかりません:', filePath);
             return null;
           }
-          
+
           const stats = fs.statSync(filePath);
           if (!stats.isFile()) {
             console.warn('❌ ファイルではありません:', filePath);
             return null;
           }
-          
+
           const content = fs.readFileSync(filePath, 'utf8');
           const data = JSON.parse(content);
-          
+
           // 機種と機械番号を抽出（複数の形式に対応）
-          const machineType = 
-            data.machineType || 
-            data.chatData?.machineInfo?.machineTypeName || 
-            data.machineInfo?.machineTypeName || 
+          const machineType =
+            data.machineType ||
+            data.chatData?.machineInfo?.machineTypeName ||
+            data.machineInfo?.machineTypeName ||
             '';
-          const machineNumber = 
-            data.machineNumber || 
-            data.chatData?.machineInfo?.machineNumber || 
-            data.machineInfo?.machineNumber || 
+          const machineNumber =
+            data.machineNumber ||
+            data.chatData?.machineInfo?.machineNumber ||
+            data.machineInfo?.machineNumber ||
             '';
-          
+
           const fileInfo = {
             fileName: file,
             filePath: filePath,
@@ -1576,9 +1586,9 @@ router.get('/export-files', async (_req, res) => {
 router.get('/exports/search', async (req, res) => {
   try {
     const { keyword } = req.query;
-    
+
     console.log('🔍 検索リクエスト受信:', { keyword, type: typeof keyword });
-    
+
     if (!keyword || typeof keyword !== 'string') {
       console.log('⚠️ キーワードが無効:', { keyword });
       return res.json({
@@ -1590,7 +1600,7 @@ router.get('/exports/search', async (req, res) => {
     }
 
     const EXPORTS_DIR = process.env.KNOWLEDGE_EXPORTS_DIR || path.join(process.cwd(), 'knowledge-base/exports');
-    
+
     // サーバーディレクトリから起動されている場合の代替パス
     let exportsDir = EXPORTS_DIR;
     if (!fs.existsSync(exportsDir)) {
@@ -1599,7 +1609,7 @@ router.get('/exports/search', async (req, res) => {
         exportsDir = alternativePath;
       }
     }
-    
+
     if (!fs.existsSync(exportsDir)) {
       return res.json({
         success: true,
@@ -1611,11 +1621,11 @@ router.get('/exports/search', async (req, res) => {
 
     const files = fs.readdirSync(exportsDir);
     const jsonFiles = files.filter(f => f.endsWith('.json'));
-    
+
     // 検索語を正規化（小文字化）
     const keywordLower = keyword.toLowerCase().trim();
     const searchTerms = keywordLower.split(/\s+/).filter(term => term.length > 0);
-    
+
     if (searchTerms.length === 0) {
       return res.json({
         success: true,
@@ -1624,9 +1634,9 @@ router.get('/exports/search', async (req, res) => {
         message: 'キーワードが無効です',
       });
     }
-    
+
     console.log('🔍 検索開始:', { keyword, keywordLower, searchTerms, totalFiles: jsonFiles.length });
-    
+
     const results = [];
 
     for (const fileName of jsonFiles) {
@@ -1634,14 +1644,14 @@ router.get('/exports/search', async (req, res) => {
         const filePath = path.join(exportsDir, fileName);
         const fileContent = fs.readFileSync(filePath, 'utf8');
         const jsonData = JSON.parse(fileContent);
-        
+
         // JSON全体を文字列化して検索対象にする（最も包括的な検索）
         // これにより、JSON内のすべてのフィールドが検索対象になる
         const fullText = JSON.stringify(jsonData).toLowerCase();
-        
+
         // すべての検索語が含まれているか確認
         const matches = searchTerms.every(term => fullText.includes(term));
-        
+
         // デバッグログ：最初のファイルとマッチしたファイルを記録
         if (matches || fileName === jsonFiles[0]) {
           console.log('🔍 ファイル検索結果:', {
@@ -1653,7 +1663,7 @@ router.get('/exports/search', async (req, res) => {
             textSample: fullText.substring(0, 200),
           });
         }
-        
+
         if (matches) {
           // SupportHistoryItem形式に変換
           const item = {
@@ -1688,13 +1698,13 @@ router.get('/exports/search', async (req, res) => {
       }
     }
 
-    console.log('🔍 検索完了:', { 
-      keyword, 
-      totalFiles: jsonFiles.length, 
+    console.log('🔍 検索完了:', {
+      keyword,
+      totalFiles: jsonFiles.length,
       resultsCount: results.length,
       results: results.map(r => ({ fileName: r.fileName, title: r.title }))
     });
-    
+
     res.json({
       success: true,
       data: results,
@@ -1719,7 +1729,7 @@ router.get('/exports/search', async (req, res) => {
 router.get('/exports/filter-data', async (req, res) => {
   try {
     const EXPORTS_DIR = process.env.KNOWLEDGE_EXPORTS_DIR || path.join(process.cwd(), 'knowledge-base/exports');
-    
+
     // サーバーディレクトリから起動されている場合の代替パス
     let exportsDir = EXPORTS_DIR;
     if (!fs.existsSync(exportsDir)) {
@@ -1728,7 +1738,7 @@ router.get('/exports/filter-data', async (req, res) => {
         exportsDir = alternativePath;
       }
     }
-    
+
     if (!fs.existsSync(exportsDir)) {
       return res.json({
         success: true,
@@ -1740,7 +1750,7 @@ router.get('/exports/filter-data', async (req, res) => {
 
     const files = fs.readdirSync(exportsDir);
     const jsonFiles = files.filter(f => f.endsWith('.json'));
-    
+
     const machineTypeSet = new Set<string>();
     const machineNumberSet = new Set<string>();
 
@@ -1749,13 +1759,13 @@ router.get('/exports/filter-data', async (req, res) => {
         const filePath = path.join(exportsDir, fileName);
         const fileContent = fs.readFileSync(filePath, 'utf8');
         const jsonData = JSON.parse(fileContent);
-        
+
         // 機種を抽出
         const machineType = jsonData.machineType || jsonData.chatData?.machineInfo?.machineTypeName || '';
         if (machineType && machineType.trim()) {
           machineTypeSet.add(machineType.trim());
         }
-        
+
         // 機械番号を抽出
         const machineNumber = jsonData.machineNumber || jsonData.chatData?.machineInfo?.machineNumber || '';
         if (machineNumber && machineNumber.trim()) {
@@ -1956,7 +1966,7 @@ router.post('/import-export', async (req, res) => {
 
     // JSONから画像URLを抽出
     const imageUrls: string[] = [];
-    
+
     // chatData.messagesから画像を抽出
     if (jsonData.chatData?.messages) {
       for (const message of jsonData.chatData.messages) {
@@ -2020,7 +2030,7 @@ router.post('/import-export', async (req, res) => {
             'chat-exports'
           );
           let testPath = path.join(chatExportsDir, imageFileName);
-          
+
           // 代替パスを確認
           if (!fs.existsSync(testPath)) {
             const altPath = path.join(
@@ -2039,7 +2049,7 @@ router.post('/import-export', async (req, res) => {
             }
           }
           actualImagePath = testPath;
-        } 
+        }
         // 直接ファイルパスの場合（knowledge-base/images/chat-exports/...）
         else if (imageUrl.includes('knowledge-base') && imageUrl.includes('chat-exports')) {
           // パス文字列から直接ファイルパスを構築
@@ -2072,7 +2082,7 @@ router.post('/import-export', async (req, res) => {
             path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports'),
             path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports'),
           ];
-          
+
           for (const dir of possibleDirs) {
             const testPath = path.join(dir, imageUrl);
             if (fs.existsSync(testPath)) {
@@ -2080,7 +2090,7 @@ router.post('/import-export', async (req, res) => {
               break;
             }
           }
-          
+
           if (!actualImagePath) {
             console.warn(`画像ファイルが見つかりません: ${imageUrl}`);
             continue;
@@ -2174,7 +2184,7 @@ router.post('/summarize', async (req, res) => {
         summaryParts.push(`会話内容: ${conversationTexts.join(' ')}`);
       }
     }
-    
+
     // 3-1. chatData.messagesからユーザーメッセージを抽出（最優先 - isAiResponseがfalseのもののみ）
     const chatData = jsonData?.chatData || jsonData;
     if (Array.isArray(chatData.messages)) {

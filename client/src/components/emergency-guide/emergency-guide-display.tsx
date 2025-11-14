@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useffect } from 'react';
 import {
   Card,
   CardContent,
@@ -33,7 +33,7 @@ interface Step {
   }>;
 }
 
-interface EmergencyGuideData {
+interface mergencyGuideData {
   id: string;
   title: string;
   description: string;
@@ -42,16 +42,16 @@ interface EmergencyGuideData {
   updatedAt?: string;
 }
 
-interface EmergencyGuideDisplayProps {
+interface mergencyGuideDisplayProps {
   guideId: string;
-  onExit: () => void;
+  onxit: () => void;
   isPreview?: boolean; // プレビューモードかどうかのフラグ
   onSendToChat: () => void;
   backButtonText?: string; // 戻るボタンのテキスト
 }
 
 // フロー実行履歴の型定義
-interface FlowExecutionStep {
+interface FlowxecutionStep {
   stepId: string;
   title: string;
   message: string;
@@ -65,7 +65,7 @@ interface FlowExecutionStep {
   timestamp: Date;
 }
 
-// 画像URL変換の改喁E
+// 画像URL変換の改善
 // 画像エラーハンドリングの改善
 // 統一されたユーティリティを使用
 import { handleImageError } from '../../lib/image-utils';
@@ -74,29 +74,29 @@ import { handleImageError } from '../../lib/image-utils';
 // 統一されたユーティリティを使用
 import { buildImageUrl } from '../../lib/image-utils';
 
-export default function EmergencyGuideDisplay({
+export default function mergencyGuideDisplay({
   guideId,
-  onExit,
+  onxit,
   isPreview = false,
   onSendToChat,
   backButtonText = '戻る',
-}: EmergencyGuideDisplayProps) {
-  const [guideData, setGuideData] = useState<EmergencyGuideData | null>(null);
+}: mergencyGuideDisplayProps) {
+  const [guideData, setGuideData] = useState<mergencyGuideData | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>('');
+  const [error, setrror] = useState<string>('');
   const [selectedCondition, setSelectedCondition] = useState<string | null>(
     null
   );
 
   // フロー実行履歴を追跡
-  const [executionHistory, setExecutionHistory] = useState<FlowExecutionStep[]>(
+  const [executionHistory, setxecutionHistory] = useState<FlowxecutionStep[]>(
     []
   );
   const [isCompleted, setIsCompleted] = useState(false);
   const [showPartialSuccess, setShowPartialSuccess] = useState(false);
 
-  useEffect(() => {
+  useffect(() => {
     const fetchGuideData = async () => {
       try {
         setLoading(true);
@@ -114,11 +114,11 @@ export default function EmergencyGuideDisplay({
         console.log('🌐 ガイド詳細API URL:', apiUrl);
 
         const response = await fetch(apiUrl, {
-          method: 'GET',
+          method: 'GT',
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
             Pragma: 'no-cache',
-            Expires: 'Thu, 01 Jan 1970 00:00:00 GMT',
+            xpires: 'Thu, 01 Jan 1970 00:00:00 GMT',
             'X-Requested-With': 'XMLHttpRequest',
           },
         });
@@ -128,7 +128,7 @@ export default function EmergencyGuideDisplay({
         if (!response.ok) {
           const errorText = await response.text();
           console.error('❌ API エラー:', errorText);
-          throw new Error(`Failed to fetch guide data: ${response.status} - ${errorText}`);
+          throw new rror(`Failed to fetch guide data: ${response.status} - ${errorText}`);
         }
 
         const responseData = await response.json();
@@ -145,7 +145,7 @@ export default function EmergencyGuideDisplay({
         // 初期ステップを履歴に追加
         if (data.steps && data.steps.length > 0) {
           const initialStep = data.steps[0];
-          setExecutionHistory([
+          setxecutionHistory([
             {
               stepId: initialStep.id,
               title: initialStep.title,
@@ -159,7 +159,7 @@ export default function EmergencyGuideDisplay({
         }
       } catch (err) {
         console.error('Guide data fetch error:', err);
-        setError('ガイドデータの取得に失敗しました');
+        setrror('ガイドデータの取得に失敗しました');
       } finally {
         setLoading(false);
       }
@@ -190,7 +190,7 @@ export default function EmergencyGuideDisplay({
 
         // 次のステップを履歴に追加
         const nextStep = guideData.steps[nextIndex];
-        const newHistoryStep: FlowExecutionStep = {
+        const newHistoryStep: FlowxecutionStep = {
           stepId: nextStep.id,
           title: nextStep.title,
           message: nextStep.message,
@@ -200,7 +200,7 @@ export default function EmergencyGuideDisplay({
           selectedCondition: selectedCondition,
           timestamp: new Date(),
         };
-        setExecutionHistory(prev => [...prev, newHistoryStep]);
+        setxecutionHistory(prev => [...prev, newHistoryStep]);
       }
     } else {
       // 次のステップに移動
@@ -211,7 +211,7 @@ export default function EmergencyGuideDisplay({
 
         // 次のステップを履歴に追加
         const nextStep = guideData.steps[nextIndex];
-        const newHistoryStep: FlowExecutionStep = {
+        const newHistoryStep: FlowxecutionStep = {
           stepId: nextStep.id,
           title: nextStep.title,
           message: nextStep.message,
@@ -220,7 +220,7 @@ export default function EmergencyGuideDisplay({
           images: nextStep.images,
           timestamp: new Date(),
         };
-        setExecutionHistory(prev => [...prev, newHistoryStep]);
+        setxecutionHistory(prev => [...prev, newHistoryStep]);
       }
     }
   };
@@ -231,7 +231,7 @@ export default function EmergencyGuideDisplay({
       setSelectedCondition(null);
 
       // 履歴から最後のステップを削除
-      setExecutionHistory(prev => prev.slice(0, -1));
+      setxecutionHistory(prev => prev.slice(0, -1));
     }
   };
 
@@ -264,8 +264,8 @@ export default function EmergencyGuideDisplay({
     };
 
     // カスタムイベントで履歴保存データを送信
-    window.dispatchEvent(
-      new CustomEvent('emergency-guide-completed', {
+    window.dispatchvent(
+      new Customvent('emergency-guide-completed', {
         detail: chatData,
       })
     );
@@ -277,7 +277,7 @@ export default function EmergencyGuideDisplay({
 
     // 完了していない場合はガイド画面を閉じない
     if (isCompleted) {
-      onExit();
+      onxit();
     } else {
       // 部分的な履歴保存の場合は成功メッセージを表示
       console.log('履歴保存完了', chatData);
@@ -306,7 +306,7 @@ export default function EmergencyGuideDisplay({
         </CardHeader>
         <CardContent>
           <p className='mb-4'>{error || 'ガイドデータが見つかりません'}</p>
-          <Button onClick={onExit}>戻る</Button>
+          <Button onClick={onxit}>戻る</Button>
         </CardContent>
       </Card>
     );
@@ -321,8 +321,8 @@ export default function EmergencyGuideDisplay({
       <Card className='w-full max-w-4xl mx-auto'>
         <CardContent>
           <p className='text-center py-8'>ステップが見つかりません</p>
-          <Button onClick={onExit} className='w-full'>
-            戻めE          </Button>
+          <Button onClick={onxit} className='w-full'>
+            戻め          </Button>
         </CardContent>
       </Card>
     );
@@ -336,7 +336,7 @@ export default function EmergencyGuideDisplay({
             <Button
               variant='ghost'
               size='sm'
-              onClick={onExit}
+              onClick={onxit}
               className='flex-shrink-0'
             >
               <ArrowLeft className='h-4 w-4' />
@@ -437,7 +437,7 @@ export default function EmergencyGuideDisplay({
                       alt={`${currentStep.title} - ${image.fileName || '画像'}`}
                       className='w-full h-auto rounded-lg shadow-md'
                       crossOrigin="anonymous"
-                      onError={e => {
+                      onrror={e => {
                         console.error('❌ 画像読み込みエラー (emergency-guide-display):', {
                           imageUrl: image.url,
                           builtUrl: buildImageUrl(image.url),
@@ -448,7 +448,7 @@ export default function EmergencyGuideDisplay({
                         handleImageError(e, image.url);
                       }}
                       onLoad={() => {
-                        console.log('✁E画像読み込み成功 (emergency-guide-display):', {
+                        console.log('✅画像読み込み成功 (emergency-guide-display):', {
                           imageUrl: image.url,
                           builtUrl: buildImageUrl(image.url),
                           fileName: image.fileName,
@@ -469,8 +469,8 @@ export default function EmergencyGuideDisplay({
                 alt={currentStep.title}
                 className='w-full h-auto rounded-lg shadow-md'
                 crossOrigin="anonymous"
-                onError={e => {
-                  console.error('❁E画像読み込みエラー (legacy imageUrl):', {
+                onrror={e => {
+                  console.error('❌画像読み込みエラー (legacy imageUrl):', {
                     imageUrl: currentStep.imageUrl,
                     builtUrl: buildImageUrl(currentStep.imageUrl),
                     stepTitle: currentStep.title,
@@ -478,7 +478,7 @@ export default function EmergencyGuideDisplay({
                   handleImageError(e, currentStep.imageUrl);
                 }}
                 onLoad={() => {
-                  console.log('✁E画像読み込み成功 (legacy imageUrl):', {
+                  console.log('✅画像読み込み成功 (legacy imageUrl):', {
                     imageUrl: currentStep.imageUrl,
                     builtUrl: buildImageUrl(currentStep.imageUrl),
                     stepTitle: currentStep.title,

@@ -30,6 +30,7 @@ router.get('/machine-types', async (_req, res) => {
     res.json({
       success: true,
       data: result,
+      machineTypes: result, // 後方互換性のため
       total: result.length,
       timestamp: new Date().toISOString(),
     });
@@ -157,8 +158,8 @@ router.post('/machine-types', async (_req, res) => {
   }
 });
 
-// 指定機種に紐づく機械番号一覧取得API
-router.get('/machines', async (_req, res) => {
+// 指定機種に紐づく機械番号一覧取得API（type_idが指定されていない場合は全機械番号を取得）
+router.get('/machines', async (req, res) => {
   try {
     console.log('🔍 機械番号一覧取得リクエスト:', req.query);
 
@@ -167,29 +168,39 @@ router.get('/machines', async (_req, res) => {
 
     const { type_id } = req.query;
 
-    if (!type_id) {
-      return res.status(400).json({
-        success: false,
-        error: '機種IDが指定されていません',
-        timestamp: new Date().toISOString(),
-      });
-    }
+    let result;
 
-    // Drizzle ORMを使用して機械番号一覧を取得
-    const result = await db
-      .select({
-        id: machines.id,
-        machine_number: machines.machineNumber,
-      })
-      .from(machines)
-      .where(eq(machines.machineTypeId, type_id as string))
-      .orderBy(machines.machineNumber);
+    if (type_id) {
+      // 特定の機種IDの機械番号のみ取得
+      result = await db
+        .select({
+          id: machines.id,
+          machine_number: machines.machineNumber,
+          machine_type_id: machines.machineTypeId,
+        })
+        .from(machines)
+        .where(eq(machines.machineTypeId, type_id as string))
+        .orderBy(machines.machineNumber);
+    } else {
+      // 全機械番号を取得（機種名も含む）
+      result = await db
+        .select({
+          id: machines.id,
+          machine_number: machines.machineNumber,
+          machine_type_id: machines.machineTypeId,
+          machine_type_name: machineTypes.machineTypeName,
+        })
+        .from(machines)
+        .leftJoin(machineTypes, eq(machines.machineTypeId, machineTypes.id))
+        .orderBy(machines.machineNumber);
+    }
 
     console.log(`✅ 機械番号一覧取得完了: ${result.length}件`);
 
     res.json({
       success: true,
       data: result,
+      machines: result, // 後方互換性のため
       total: result.length,
       timestamp: new Date().toISOString(),
     });

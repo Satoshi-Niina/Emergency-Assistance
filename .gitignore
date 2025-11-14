@@ -260,3 +260,102 @@ docker/data/
 .continue/
 .conda/
 .config/server/deploy.zip
+
+# ========================================
+# Development Files - Exclude from Deployment
+# ========================================
+# Development scripts (not needed in production)
+scripts/
+!scripts/.gitkeep
+
+# Documentation (not needed in production deployment)
+docs/
+# Allow important documentation files
+!README.md
+!CHANGELOG.md
+!LICENSE.md
+!*.md.example
+
+# Development database files
+*.db
+*.sqlite
+*.sqlite3
+!server/app.db  # Allow development database if needed
+
+# Temporary and archive files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+latest-logs.zip
+webapp_logs.zip
+deploy.zip
+server/deploy.zip
+
+# Development configuration files
+*.backup
+*.broken
+*.old
+vite.config.ts.backup
+server/index.js.broken
+temp_*.tsx
+temp2_*.tsx
+
+# Knowledge base - exclude backups and temp files
+knowledge-base/backups/
+knowledge-base/temp/
+knowledge-base/exports/
+knowledge-base/doc_*/
+
+# Development data files
+data/ai-assist-settings.json
+
+# SQL files (migrations should be handled separately)
+*.sql
+!create-users-table-postgres.sql  # Keep if needed for reference
+
+# PowerShell and shell scripts (development only)
+*.ps1
+*.sh
+*.bat
+*.cmd
+!scripts/.gitkeep
+
+# Development environment files
+env.development
+server/env.development
+server/startup.txt
+server/server_run.log
+server/startup-migration.js
+
+# Development server files
+server/unified-hot-reload-server.js
+server/index.dev.js
+server/index.dev.ts
+server/fallback-server.js
+server/azure-server-debug.js
+
+# Check and utility scripts (development only)
+server/check-*.js
+server/check-*.cjs
+server/fix-*.js
+server/fix-*.cjs
+server/create-*.js
+server/create-*.sql
+server/hash-passwords.js
+server/migrate-*.js
+server/trigger.js
+
+# Development storage files
+server/uploads/*
+!server/uploads/.gitkeep
+
+# Development logs and runtime files
+server/server_run.log
+server/startup.txt
+server/DEPLOYMENT_TRIGGER.md
+
+# OneDrive sync files (Windows)
+~$*
+*.tmp

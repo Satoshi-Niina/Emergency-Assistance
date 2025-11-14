@@ -119,6 +119,201 @@ export default function MachineManagementPage() {
     }
   };
 
+  const handleTypeSubmit = async () => {
+    try {
+      const { buildApiUrl } = await import('../lib/api');
+      const url = editingType
+        ? buildApiUrl(`/machines/machine-types/${editingType.id}`)
+        : buildApiUrl('/machines/machine-types');
+
+      const method = editingType ? 'PUT' : 'POST';
+      const body = { machine_type_name: newTypeName };
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '機種の保存に失敗しました');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        toast({
+          title: editingType ? '更新完了' : '追加完了',
+          description: result.message || '機種を保存しました',
+        });
+        setIsTypeDialogOpen(false);
+        setNewTypeName('');
+        setEditingType(null);
+        fetchData();
+      } else {
+        throw new Error(result.error || '機種の保存に失敗しました');
+      }
+    } catch (error) {
+      console.error('機種保存エラー:', error);
+      toast({
+        title: 'エラー',
+        description: error instanceof Error ? error.message : '機種の保存に失敗しました',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleTypeDelete = async (typeId: string) => {
+    if (!confirm('この機種を削除してもよろしいですか？')) {
+      return;
+    }
+
+    try {
+      const { buildApiUrl } = await import('../lib/api');
+      const response = await fetch(buildApiUrl(`/machines/machine-types/${typeId}`), {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '機種の削除に失敗しました');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        toast({
+          title: '削除完了',
+          description: '機種を削除しました',
+        });
+        fetchData();
+      } else {
+        throw new Error(result.error || '機種の削除に失敗しました');
+      }
+    } catch (error) {
+      console.error('機種削除エラー:', error);
+      toast({
+        title: 'エラー',
+        description: error instanceof Error ? error.message : '機種の削除に失敗しました',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleMachineSubmit = async () => {
+    try {
+      if (!selectedMachineType) {
+        toast({
+          title: 'エラー',
+          description: '機種を選択してください',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (!newMachineNumber.trim()) {
+        toast({
+          title: 'エラー',
+          description: '機械番号を入力してください',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { buildApiUrl } = await import('../lib/api');
+      const url = editingMachine
+        ? buildApiUrl(`/machines/${editingMachine.id}`)
+        : buildApiUrl('/machines');
+
+      const method = editingMachine ? 'PUT' : 'POST';
+      const body = {
+        machine_number: newMachineNumber.trim(),
+        machine_type_id: selectedMachineType,
+      };
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '機械番号の保存に失敗しました');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        toast({
+          title: editingMachine ? '更新完了' : '追加完了',
+          description: result.message || '機械番号を保存しました',
+        });
+        setIsMachineDialogOpen(false);
+        setNewMachineNumber('');
+        setSelectedMachineType('');
+        setEditingMachine(null);
+        fetchData();
+      } else {
+        throw new Error(result.error || '機械番号の保存に失敗しました');
+      }
+    } catch (error) {
+      console.error('機械番号保存エラー:', error);
+      toast({
+        title: 'エラー',
+        description: error instanceof Error ? error.message : '機械番号の保存に失敗しました',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleMachineDelete = async (machineId: string) => {
+    if (!confirm('この機械番号を削除してもよろしいですか？')) {
+      return;
+    }
+
+    try {
+      const { buildApiUrl } = await import('../lib/api');
+      const response = await fetch(buildApiUrl(`/machines/${machineId}`), {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '機械番号の削除に失敗しました');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        toast({
+          title: '削除完了',
+          description: '機械番号を削除しました',
+        });
+        fetchData();
+      } else {
+        throw new Error(result.error || '機械番号の削除に失敗しました');
+      }
+    } catch (error) {
+      console.error('機械番号削除エラー:', error);
+      toast({
+        title: 'エラー',
+        description: error instanceof Error ? error.message : '機械番号の削除に失敗しました',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const resetTypeDialog = () => {
+    setNewTypeName('');
+    setEditingType(null);
+    setIsTypeDialogOpen(false);
+  };
+
+  const resetMachineDialog = () => {
+    setNewMachineNumber('');
+    setSelectedMachineType('');
+    setEditingMachine(null);
+    setIsMachineDialogOpen(false);
+  };
+
   if (authLoading || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -152,9 +347,59 @@ export default function MachineManagementPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="border border-blue-200 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-            <CardTitle className="text-xl flex items-center">
-              <Settings className="mr-2 h-6 w-6" />
-              機種管理
+            <CardTitle className="text-xl flex items-center justify-between">
+              <div className="flex items-center">
+                <Settings className="mr-2 h-6 w-6" />
+                機種管理
+              </div>
+              <Dialog open={isTypeDialogOpen} onOpenChange={setIsTypeDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setEditingType(null);
+                      setNewTypeName('');
+                    }}
+                    className="bg-white text-blue-600 hover:bg-blue-50"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    追加
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{editingType ? '機種を編集' : '機種を追加'}</DialogTitle>
+                    <DialogDescription>
+                      {editingType ? '機種名を編集してください' : '新しい機種名を入力してください'}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div>
+                      <Label htmlFor="type-name">機種名</Label>
+                      <Input
+                        id="type-name"
+                        value={newTypeName}
+                        onChange={(e) => setNewTypeName(e.target.value)}
+                        placeholder="機種名を入力"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleTypeSubmit();
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={resetTypeDialog}>
+                      キャンセル
+                    </Button>
+                    <Button onClick={handleTypeSubmit}>
+                      {editingType ? '更新' : '追加'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
@@ -173,6 +418,28 @@ export default function MachineManagementPage() {
                     className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100"
                   >
                     <span className="font-medium text-blue-800">{type.machine_type_name}</span>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditingType(type);
+                          setNewTypeName(type.machine_type_name);
+                          setIsTypeDialogOpen(true);
+                        }}
+                        className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleTypeDelete(type.id)}
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))
               )}
@@ -182,9 +449,79 @@ export default function MachineManagementPage() {
 
         <Card className="border border-blue-200 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white">
-            <CardTitle className="text-xl flex items-center">
-              <Hash className="mr-2 h-6 w-6" />
-              機械管理
+            <CardTitle className="text-xl flex items-center justify-between">
+              <div className="flex items-center">
+                <Hash className="mr-2 h-6 w-6" />
+                機械管理
+              </div>
+              <Dialog open={isMachineDialogOpen} onOpenChange={setIsMachineDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setEditingMachine(null);
+                      setNewMachineNumber('');
+                      setSelectedMachineType('');
+                    }}
+                    className="bg-white text-indigo-600 hover:bg-indigo-50"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    追加
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{editingMachine ? '機械番号を編集' : '機械番号を追加'}</DialogTitle>
+                    <DialogDescription>
+                      {editingMachine ? '機械番号を編集してください' : '新しい機械番号を入力してください'}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div>
+                      <Label htmlFor="machine-type">機種</Label>
+                      <Select
+                        value={selectedMachineType}
+                        onValueChange={setSelectedMachineType}
+                        disabled={!!editingMachine}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="機種を選択" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {machineTypes.map((type) => (
+                            <SelectItem key={type.id} value={type.id}>
+                              {type.machine_type_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="machine-number">機械番号</Label>
+                      <Input
+                        id="machine-number"
+                        value={newMachineNumber}
+                        onChange={(e) => setNewMachineNumber(e.target.value)}
+                        placeholder="機械番号を入力"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleMachineSubmit();
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={resetMachineDialog}>
+                      キャンセル
+                    </Button>
+                    <Button onClick={handleMachineSubmit}>
+                      {editingMachine ? '更新' : '追加'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
@@ -218,12 +555,13 @@ export default function MachineManagementPage() {
                   <TableRow>
                     <TableHead>機械番号</TableHead>
                     <TableHead>機種</TableHead>
+                    <TableHead className="w-24">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredMachines.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={2} className="text-center py-8 text-blue-600">
+                      <TableCell colSpan={3} className="text-center py-8 text-blue-600">
                         データベースに接続して機械データを取得してください
                       </TableCell>
                     </TableRow>
@@ -232,6 +570,31 @@ export default function MachineManagementPage() {
                       <TableRow key={machine.id}>
                         <TableCell className="font-medium">{machine.machine_number}</TableCell>
                         <TableCell>{machine.machine_type_name}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingMachine(machine);
+                                setNewMachineNumber(machine.machine_number);
+                                setSelectedMachineType(machine.machine_type_id);
+                                setIsMachineDialogOpen(true);
+                              }}
+                              className="h-8 w-8 p-0 text-indigo-600 hover:text-indigo-800"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleMachineDelete(machine.id)}
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))
                   )}

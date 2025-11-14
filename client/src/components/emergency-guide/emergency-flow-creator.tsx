@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useffect } from 'react';
 import { Button } from '../../components/ui/button';
 import {
   Card,
@@ -22,8 +22,8 @@ import {
   Upload,
   Save,
   X,
-  Edit,
-  Edit3,
+  dit,
+  dit3,
   File,
   FileText,
   Plus,
@@ -32,7 +32,7 @@ import {
   Trash2,
   RefreshCw,
   AlertTriangle,
-  Eye,
+  ye,
 } from 'lucide-react';
 import { Progress } from '../../components/ui/progress';
 import {
@@ -45,7 +45,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../../components/ui/alert-dialog';
-import EmergencyFlowEditor from './emergency-flow-editor';
+import mergencyFlowditor from './emergency-flow-editor';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -95,20 +95,20 @@ interface Slide {
   imageUrl?: string;
 }
 
-interface EmergencyFlowCreatorProps {
+interface mergencyFlowCreatorProps {
   initialData?: any;
   onSave: (data: any) => void;
 }
 
-const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
+const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
   initialData,
   onSave,
 }) => {
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputlement>(null);
   const hasInitialized = useRef(false);
 
-  // 状態管琁E
+  // 状態管理
   const [activeTab, setActiveTab] = useState<'new' | 'upload' | 'edit'>('new');
   const [flowList, setFlowList] = useState<FlowFile[]>([]);
   const [isLoadingFlowList, setIsLoadingFlowList] = useState(false);
@@ -117,7 +117,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState('');
-  const [selectedFlowForEdit, setSelectedFlowForEdit] = useState<string | null>(
+  const [selectedFlowFordit, setSelectedFlowFordit] = useState<string | null>(
     null
   );
   const [currentFlowData, setCurrentFlowData] = useState<FlowData | null>(null);
@@ -142,53 +142,53 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         setIsFetching(true);
         setIsLoadingFlowList(true);
         console.log(
-          '🔄 応急処置チE�Eタ一覧の取得を開始しまぁE(forceRefresh: ' +
+          '🔄 応急処置デ�タ一覧の取得を開始しまぁ(forceRefresh: ' +
             forceRefresh +
             ')'
         );
 
-        // 🧹 キャチE��ュクリア�E�古ぁE��ータの完�E削除�E�E
+        // 🧹 キャデ��ュクリア��古い��ータの完�削除��
         if (forceRefresh && 'caches' in window) {
           try {
             const cacheNames = await caches.keys();
             await Promise.all(cacheNames.map(name => caches.delete(name)));
-            console.log('🧹 全キャチE��ュ�E�古ぁE��ータ含む�E�クリア完亁E);
-          } catch (cacheError) {
-            console.warn('⚠�E�EキャチE��ュクリアエラー:', cacheError);
+            console.log('🧹 全キャデ��ュ��古い��ータ含む��クリア完了);
+          } catch (cacherror) {
+            console.warn('⚠��キャデ��ュクリアエラー:', cacherror);
           }
         }
 
-        // キャチE��ュバスターパラメータを追加
+        // キャデ��ュバスターパラメータを追加
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2, 15);
         
-        // buildApiUrlを使用して正しいURLを構篁E
+        // buildApiUrlを使用して正しいURLを構築
         const { buildApiUrl } = await import('../../lib/api');
         const url = `${buildApiUrl('/emergency-flow/list')}?ts=${timestamp}&_r=${randomId}${forceRefresh ? '&force=true' : ''}`;
 
-        console.log('🌐 フロー一覧API呼び出ぁE', url);
+        console.log('🌐 フロー一覧API呼び出し', url);
 
         const response = await fetch(url, {
-          method: 'GET',
+          method: 'GT',
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
             Pragma: 'no-cache',
-            Expires: 'Thu, 01 Jan 1970 00:00:00 GMT',
+            xpires: 'Thu, 01 Jan 1970 00:00:00 GMT',
             'X-Force-Refresh': forceRefresh.toString(),
             'X-Timestamp': timestamp.toString(),
           },
         });
 
         console.log(
-          '📡 フロー一覧APIレスポンス状慁E',
+          '📡 フロー一覧APIレスポンス状態',
           response.status,
           response.statusText
         );
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('❁Eフロー一覧API エラー:', errorText);
-          throw new Error(
+          console.error('❌フロー一覧API エラー:', errorText);
+          throw new rror(
             'フロー一覧の取得に失敗しました: ' +
               response.status +
               ' - ' +
@@ -199,7 +199,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         const data = await response.json();
         console.log('📊 フロー一覧生APIレスポンス:', data);
 
-        // APIレスポンスの構造に合わせてチE�Eタを�E琁E
+        // APIレスポンスの構造に合わせてデ�タを�理
         const flows =
           data.success && data.data
             ? data.data
@@ -207,15 +207,15 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
               ? data
               : [];
         console.log(
-          '全フローチE�Eタを表示: ' + flows.length + '件�E�フィルタリング無効�E�E
+          '全フローデ�タを表示: ' + flows.length + '件��フィルタリング無効��
         );
-        console.log('フローチE�Eタ詳細:', flows);
+        console.log('フローデ�タ詳細:', flows);
         setFlowList(flows);
 
-        // 他�Eコンポ�Eネントにフロー一覧更新を通知
+        // 他�コンポ�ネントにフロー一覧更新を通知
         setTimeout(() => {
-          window.dispatchEvent(
-            new CustomEvent('flowListUpdated', {
+          window.dispatchvent(
+            new Customvent('flowListUpdated', {
               detail: {
                 flowList: data,
                 timestamp: Date.now(),
@@ -225,7 +225,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
           );
         }, 100);
       } catch (error) {
-        console.error('❁Eフロー一覧取得エラー:', error);
+        console.error('❌フロー一覧取得エラー:', error);
         toast({
           title: '取得エラー',
           description: 'フロー一覧の取得に失敗しました',
@@ -239,31 +239,31 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
     [toast]
   );
 
-  // 初期化時にフロー一覧を取得（一度だけ！E
-  useEffect(() => {
+  // 初期化時にフロー一覧を取得（一度だけ！
+  useffect(() => {
     if (!hasInitialized.current) {
       hasInitialized.current = true;
       fetchFlowList();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // 初回のみ実衁E
+  }, []); // 初回のみ実行
 
-  // 強制更新イベントリスナ�E
-  useEffect(() => {
+  // 強制更新イベントリスナ�
+  useffect(() => {
     const handleForceRefresh = (event: any) => {
       console.log('🔄 強制フロー一覧更新イベント受信');
       fetchFlowList(true);
     };
 
-    window.addEventListener('forceRefreshFlowList', handleForceRefresh);
+    window.addventListener('forceRefreshFlowList', handleForceRefresh);
 
     return () => {
-      window.removeEventListener('forceRefreshFlowList', handleForceRefresh);
+      window.removeventListener('forceRefreshFlowList', handleForceRefresh);
     };
   }, [fetchFlowList]);
 
-  // ファイル選抁E
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // ファイル選抁
+  const handleFileSelect = (event: React.Changevent<HTMLInputlement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setSelectedFile(file);
@@ -272,7 +272,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
     }
   };
 
-  // ファイルアチE�EローチE
+  // ファイルアデ�ローデ
   const handleUpload = async () => {
     if (!selectedFile) {
       toast({
@@ -308,7 +308,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       setUploadProgress(100);
 
       if (!response.ok) {
-        throw new Error('アチE�Eロードに失敗しました');
+        throw new rror('アデ�ロードに失敗しました');
       }
 
       const result = await response.json();
@@ -317,20 +317,20 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       setUploadedFileName(selectedFile.name);
 
       toast({
-        title: 'アチE�Eロード完亁E,
-        description: `${selectedFile.name} がアチE�Eロードされました`,
+        title: 'アデ�ロード完了,
+        description: `${selectedFile.name} がアデ�ロードされました`,
       });
 
       // フロー一覧を更新
       await fetchFlowList(true);
 
-      // 編雁E��ブに刁E��替ぁE
+      // 編集��ブに刁��替ぁ
       setActiveTab('edit');
     } catch (error) {
-      console.error('アチE�Eロードエラー:', error);
+      console.error('アデ�ロードエラー:', error);
       toast({
-        title: 'アチE�Eロードエラー',
-        description: 'ファイルのアチE�Eロードに失敗しました',
+        title: 'アデ�ロードエラー',
+        description: 'ファイルのアデ�ロードに失敗しました',
         variant: 'destructive',
       });
     } finally {
@@ -343,65 +343,65 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
     }
   };
 
-  // フロー編雁E��のチE�Eタ読み込み
-  const loadFlowForEdit = async (flowId: string) => {
+  // フロー編集��のデ�タ読み込み
+  const loadFlowFordit = async (flowId: string) => {
     try {
-      console.log('🔄 フロー編雁E��ータ読み込み開姁E', flowId);
+      console.log('🔄 フロー編集��ータ読み込み開始', flowId);
 
-      // 🎯 フロー一覧からファイル惁E��を取征E
+      // 🎯 フロー一覧からファイル情報��を取得
       const targetFlow = flowList.find(flow => flow.id === flowId);
       if (!targetFlow) {
-        throw new Error('フローが見つかりません: ' + flowId);
+        throw new rror('フローが見つかりません: ' + flowId);
       }
 
-      console.log('📋 対象フロー惁E��:', targetFlow);
+      console.log('📋 対象フロー情報��:', targetFlow);
 
-      // 🎯 ファイルパスを確実に設定！EroubleshootingチE��レクトリ限定！E
+      // 🎯 ファイルパスを確実に設定！roubleshootingデ��レクトリ限定！
       const fileName = targetFlow.fileName.endsWith('.json')
         ? targetFlow.fileName
         : flowId + '.json';
       const filePath = 'knowledge-base/troubleshooting/' + fileName;
       setSelectedFilePath(filePath);
-      console.log('📁 編雁E��象ファイルパス設宁E', filePath);
+      console.log('📁 編集��象ファイルパス設定', filePath);
 
-      // 🚫 ブラウザキャチE��ュを強制クリア
+      // 🚫 ブラウザキャデ��ュを強制クリア
       if ('caches' in window) {
         const cacheNames = await caches.keys();
         await Promise.all(cacheNames.map(name => caches.delete(name)));
-        console.log('🧹 ブラウザキャチE��ュクリア完亁E);
+        console.log('🧹 ブラウザキャデ��ュクリア完了);
       }
 
-      // 🎯 統一されたAPIエンド�Eイントで直接取征E
+      // 🎯 統一されたAPIエンド�イントで直接取得
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
       
-      // buildApiUrlを使用して正しいURLを構篁E
+      // buildApiUrlを使用して正しいURLを構築
       const { buildApiUrl } = await import('../../lib/api');
       const apiUrl = `${buildApiUrl(`/emergency-flow/${flowId}`)}?ts=${timestamp}&_r=${randomId}`;
 
-      console.log('🌐 API呼び出ぁE', apiUrl);
+      console.log('🌐 API呼び出し', apiUrl);
 
       const response = await fetch(apiUrl, {
-        method: 'GET',
+        method: 'GT',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           Pragma: 'no-cache',
-          Expires: 'Thu, 01 Jan 1970 00:00:00 GMT',
+          xpires: 'Thu, 01 Jan 1970 00:00:00 GMT',
           'X-Force-Fresh': 'true',
         },
       });
 
       console.log(
-        '📡 APIレスポンス状慁E',
+        '📡 APIレスポンス状態',
         response.status,
         response.statusText
       );
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❁EAPI エラー:', errorText);
-        throw new Error(
-          'フローチE�Eタの取得に失敗しました (' +
+        console.error('❌API エラー:', errorText);
+        throw new rror(
+          'フローデ�タの取得に失敗しました (' +
             response.status +
             '): ' +
             errorText
@@ -415,9 +415,9 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         responseData.success && responseData.data
           ? responseData.data
           : responseData;
-      console.log('🔍 処琁E��象チE�Eタ:', data);
+      console.log('🔍 処理��象デ�タ:', data);
 
-      // 🎯 チE��チE��: APIレスポンスの詳細確誁E
+      // 🎯 デ��デ��: APIレスポンスの詳細確認
       console.log('🔍 APIレスポンス詳細:', {
         responseData: responseData,
         data: data,
@@ -430,16 +430,16 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         dataKeys: Object.keys(data),
       });
 
-      // 🎯 フロー一覧のチE�Eタ構造をエチE��ター用に変換�E�Elides/steps統一�E�E
+      // 🎯 フロー一覧のデ�タ構造をエデ��ター用に変換��lides/steps統一��
       const sourceSteps = data.steps || data.slides || [];
-      console.log('📋 ソーススチE��チE', sourceSteps);
+      console.log('📋 ソーススデ��デ', sourceSteps);
 
-      // チE�Eタが空の場合�E処琁E
+      // デ�タが空の場合�処理
       if (!sourceSteps || sourceSteps.length === 0) {
-        console.warn('⚠�E�EフローチE�EタにスチE��プが含まれてぁE��せん');
+        console.warn('⚠��フローデ�タにスデ��プが含まれてぁ��せん');
         toast({
-          title: 'チE�Eタ警呁E,
-          description: 'フローチE�EタにスチE��プが含まれてぁE��せん',
+          title: 'デ�タ警告,
+          description: 'フローデ�タにスデ��プが含まれてぁ��せん',
           variant: 'destructive',
         });
       }
@@ -450,15 +450,15 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         description: data.description || '',
         triggerKeywords: data.trigger || data.triggerKeywords || [],
         steps: sourceSteps.map((step, index) => {
-          console.log(`🔧 スチE��プ[${index}]処琁E��姁E`, step);
+          console.log(`🔧 スデ��プ[${index}]処理��開始`, step);
 
-          // 画像情報の処琁E��改喁E
+          // 画像情報の処理��改善
           let processedImages = [];
 
-          // 新しい 'images' 配�Eが存在する場吁E
+          // 新しい 'images' 配�が存在する場合
           if (step.images && Array.isArray(step.images)) {
             console.log(
-              `📸 スチE��プ[${index}]で新しいimages形式を検�E:`,
+              `📸 スデ��プ[${index}]で新しいimages形式を検�:`,
               step.images
             );
             processedImages = step.images
@@ -468,9 +468,9 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
                 fileName: img.fileName,
               }));
           }
-          // 古ぁE��式�E画像情報がある場合、新しい形式に変換
+          // 古い��式�画像情報がある場合、新しい形式に変換
           else if (step.imageUrl && step.imageFileName) {
-            console.log(`🔧 スチE��プ[${index}]を古ぁE��式から変換:`, {
+            console.log(`🔧 スデ��プ[${index}]を古い��式から変換:`, {
               imageUrl: step.imageUrl,
               imageFileName: step.imageFileName,
             });
@@ -481,9 +481,9 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
               },
             ];
           }
-          // 古ぁE��式�EimageUrlのみの場吁E
+          // 古い��式�imageUrlのみの場合
           else if (step.imageUrl) {
-            console.log(`🔧 スチE��プ[${index}]をimageUrlのみから変換:`, {
+            console.log(`🔧 スデ��プ[${index}]をimageUrlのみから変換:`, {
               imageUrl: step.imageUrl,
             });
             const fileName = step.imageUrl.split('/').pop() || 'unknown.jpg';
@@ -500,12 +500,12 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
             // description と message の同期
             description: step.description || step.message || '',
             message: step.message || step.description || '',
-            // 画像情報を確実に設定（空配�Eをデフォルトに�E�E
+            // 画像情報を確実に設定（空配�をデフォルトに��
             images: processedImages || [],
-            // 古ぁE�Eロパティを削除
+            // 古い�ププロパティを削除
             imageUrl: undefined,
             imageFileName: undefined,
-            // オプションの整合性確俁E
+            // オプションの整合性確保
             options: (step.options || []).map(option => ({
               text: option.text || '',
               nextStepId: option.nextStepId || '',
@@ -515,16 +515,16 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
             })),
           };
 
-          console.log(`✁EスチE��プ[${index}]処琁E��亁E`, processedStep);
+          console.log(`✅スデ��プ[${index}]処理��完了`, processedStep);
           return processedStep;
         }),
         updatedAt: data.createdAt || data.updatedAt || new Date().toISOString(),
       };
 
-      console.log('🎯 最終的なエチE��ターチE�Eタ:', editorData);
+      console.log('🎯 最終的なエデ��ターデ�タ:', editorData);
 
-      // チE�Eタ整合性の厳寁E��ェチE��
-      console.log('取得したフローチE�Eタ:', {
+      // デ�タ整合性の厳密��ェデ��
+      console.log('取得したフローデ�タ:', {
         requestedId: flowId,
         retrievedId: editorData.id,
         title: editorData.title,
@@ -539,53 +539,53 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         dataSource: 'emergency-flow-api',
       });
 
-      // スチE��プ数不一致の警告（任意�EスチE��プ数を許可�E�E
+      // スデ��プ数不一致の警告（任意�スデ��プ数を許可��
       if (editorData.steps?.length === 0) {
-        console.warn('スチE��プデータが存在しません');
+        console.warn('スデ��プデータが存在しません');
         toast({
-          title: 'チE�Eタ警呁E,
-          description: 'フローチE�EタにスチE��プが含まれてぁE��せん',
+          title: 'デ�タ警告,
+          description: 'フローデ�タにスデ��プが含まれてぁ��せん',
           variant: 'destructive',
         });
       }
 
-      // 🎯 編雁E��面の状態を更新
-      console.log('🔄 状態更新開姁E);
+      // 🎯 編集��面の状態を更新
+      console.log('🔄 状態更新開始);
       setCurrentFlowData(editorData);
-      setSelectedFlowForEdit(flowId);
+      setSelectedFlowFordit(flowId);
 
-      console.log('🔄 状態更新完亁E', {
-        selectedFlowForEdit: flowId,
+      console.log('🔄 状態更新完了', {
+        selectedFlowFordit: flowId,
         currentFlowData: editorData,
       });
 
-      // 強制皁E��再レンダリングをトリガー
+      // 強制的��再レンダリングをトリガー
       setTimeout(() => {
-        console.log('🔄 強制再レンダリング実衁E);
+        console.log('🔄 強制再レンダリング実行);
         setCurrentFlowData({ ...editorData });
       }, 100);
 
-      console.log('✁Eフロー編雁E��ータ読み込み完亁E);
+      console.log('✅フロー編集��ータ読み込み完了);
     } catch (error) {
-      console.error('❁Eフロー編雁E��ータ読み込みエラー:', error);
+      console.error('❌フロー編集��ータ読み込みエラー:', error);
       toast({
         title: 'エラー',
-        description: `フローチE�Eタの読み込みに失敗しました: ${error instanceof Error ? error.message : ''}`,
+        description: `フローデ�タの読み込みに失敗しました: ${error instanceof rror ? error.message : ''}`,
         variant: 'destructive',
       });
     }
   };
 
-  // フロー削除 - 物琁E��ァイル削除とフロー一覧からの完�E除去
+  // フロー削除 - 物理��ァイル削除とフロー一覧からの完�除去
   const deleteFlow = async (flowId: string) => {
     setIsDeleting(true);
     try {
-      console.log('🗑�E�Eフロー削除開姁E ' + flowId);
+      console.log('🗑��フロー削除開始 ' + flowId);
 
-      // 削除対象のフロー惁E��を取征E
+      // 削除対象のフロー情報��を取得
       const targetFlow = flowList.find(flow => flow.id === flowId);
       if (!targetFlow) {
-        throw new Error('削除対象のフローが見つかりません');
+        throw new rror('削除対象のフローが見つかりません');
       }
 
       console.log('🎯 削除対象:', {
@@ -594,13 +594,13 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         fileName: targetFlow.fileName,
       });
 
-      // 削除APIを呼び出ぁE
+      // 削除APIを呼び出し
       const fileName = targetFlow.fileName || flowId + '.json';
       const url = `/api/emergency-flow/${flowId}?fileName=${encodeURIComponent(fileName)}`;
-      console.log('🌐 削除API呼び出ぁE', url);
+      console.log('🌐 削除API呼び出し', url);
 
       const response = await fetch(url, {
-        method: 'DELETE',
+        method: 'DLT',
         headers: {
           'Cache-Control': 'no-cache',
           'Content-Type': 'application/json',
@@ -617,31 +617,31 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         let errorMessage = `削除に失敗しました: ${response.status} - ${response.statusText}`;
         try {
           const errorData = await response.json();
-          console.log('❁E削除エラーチE�Eタ:', errorData);
+          console.log('❌削除エラーデ�タ:', errorData);
           errorMessage = errorData.error || errorData.details || errorMessage;
-        } catch (parseError) {
-          console.warn('⚠�E�Eエラーレスポンスの解析に失敁E', parseError);
+        } catch (parserror) {
+          console.warn('⚠��エラーレスポンスの解析に失敗', parserror);
         }
-        throw new Error(errorMessage);
+        throw new rror(errorMessage);
       }
 
       const result = await response.json();
-      console.log('✁E削除レスポンス:', result);
+      console.log('✅削除レスポンス:', result);
 
-      // 成功メチE��ージを表示
+      // 成功メデ��ージを表示
       toast({
-        title: '削除完亁E,
-        description: `、E{targetFlow.title}」が正常に削除されました`,
+        title: '削除完了,
+        description: `、{targetFlow.title}」が正常に削除されました`,
       });
 
-      // 削除されたアイチE��が現在編雁E��の場合�Eクリア
-      if (selectedFlowForEdit === flowId) {
-        setSelectedFlowForEdit(null);
+      // 削除されたアイテム��が現在編集��の場合�クリア
+      if (selectedFlowFordit === flowId) {
+        setSelectedFlowFordit(null);
         setCurrentFlowData(null);
         setSelectedFilePath(null);
       }
 
-      // フロー一覧から削除されたアイチE��を即座に除去
+      // フロー一覧から削除されたアイテム��を即座に除去
       setFlowList(prevList => {
         const filteredList = prevList.filter(flow => flow.id !== flowId);
         console.log(
@@ -654,23 +654,23 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         return filteredList;
       });
 
-      // サーバ�Eから最新のフロー一覧を強制取征E
-      console.log('🔄 フロー一覧を�E取得中...');
+      // サーバ�から最新のフロー一覧を強制取得
+      console.log('🔄 フロー一覧を�取得中...');
       await fetchFlowList(true);
 
-      // 他�Eコンポ�Eネントに削除完亁E��通知
+      // 他�コンポ�ネントに削除完了��通知
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(
-          new CustomEvent('flowDeleted', {
+        window.dispatchvent(
+          new Customvent('flowDeleted', {
             detail: { deletedId: flowId, deletedTitle: targetFlow.title },
           })
         );
-        window.dispatchEvent(new CustomEvent('forceRefreshFlowList'));
+        window.dispatchvent(new Customvent('forceRefreshFlowList'));
       }
     } catch (error) {
-      console.error('❁E削除エラー:', error);
+      console.error('❌削除エラー:', error);
       const errorMessage =
-        error instanceof Error ? error.message : 'フローの削除に失敗しました';
+        error instanceof rror ? error.message : 'フローの削除に失敗しました';
       toast({
         title: '削除エラー',
         description: errorMessage,
@@ -686,15 +686,15 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
   // フロー保存コールバック
   const handleFlowSave = async (savedData: FlowData) => {
     try {
-      console.log('💾 フロー保存開姁E', {
+      console.log('💾 フロー保存開始', {
         id: savedData.id,
         title: savedData.title,
         stepsCount: savedData.steps?.length,
       });
 
-      // 画像URLの存在確誁E
+      // 画像URLの存在確認
       const stepsWithImages = savedData.steps.map(step => {
-        console.log('🔍 スチE��プ画像�E琁E��姁E', {
+        console.log('🔍 スデ��プ画像�理��開始', {
           stepId: step.id,
           stepTitle: step.title,
           originalImages: step.images,
@@ -702,11 +702,11 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
           imagesLength: step.images?.length || 0,
         });
 
-        // 新しい images 配�Eを優先的に使用する
+        // 新しい images 配�を優先的に使用する
         const images = step.images
           ?.filter(img => img && img.url && img.url.trim() !== '')
           .map(img => {
-            console.log('🖼�E�E画像�E琁E', {
+            console.log('🖼��画像�理', {
               originalImg: img,
               url: img.url,
               fileName: img.fileName,
@@ -714,13 +714,13 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
               fileNameValid: img.fileName && img.fileName.trim() !== '',
             });
             
-            // 画像URLが有効でなぁE��合�EスキチE�E
+            // 画像URLが有効でない��合�スキデ�
             if (!img.url || img.url.trim() === '') {
-              console.log('❁E無効な画像URLをスキチE�E:', img);
+              console.log('❌無効な画像URLをスキデ�:', img);
               return null;
             }
             
-            // ファイル名が無ぁE��合�EURLから抽出
+            // ファイル名が無い��合�URLから抽出
             let fileName = img.fileName;
             if (!fileName || fileName.trim() === '') {
               // URLからファイル名を抽出
@@ -739,17 +739,17 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
               fileName: fileName,
             };
           })
-          .filter(img => img !== null) || []; // nullを除夁E
+          .filter(img => img !== null) || []; // nullを除外
 
         if (images && images.length > 0) {
-          console.log('✁E有効な画像情報:', {
+          console.log('✅有効な画像情報:', {
             stepId: step.id,
             stepTitle: step.title,
             imagesCount: images.length,
             images: images,
           });
         } else {
-          console.log('❁E有効な画像なぁE', {
+          console.log('❌有効な画像ない', {
             stepId: step.id,
             stepTitle: step.title,
             originalImages: step.images,
@@ -757,14 +757,14 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
           });
         }
 
-        // 古ぁE�Eロパティを削除し、新しい `images` プロパティのみにする
+        // 古い�ププロパティを削除し、新しい `images` プププロパティのみにする
         const { imageUrl, imageFileName, ...restOfStep } = step;
         const processedStep = {
           ...restOfStep,
-          images: images || [], // 確実に空配�Eを設宁E
+          images: images || [], // 確実に空配�を設定
         };
 
-        console.log('🔍 処琁E���EスチE��チE', {
+        console.log('🔍 処理���スデ��デ', {
           stepId: processedStep.id,
           stepTitle: processedStep.title,
           finalImages: processedStep.images,
@@ -775,14 +775,14 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         return processedStep;
       });
 
-      // フローチE�Eタを更新
+      // フローデ�タを更新
       const updatedFlowData = {
         ...savedData,
         steps: stepsWithImages,
         updatedAt: new Date().toISOString(),
       };
 
-      console.log('📤 送信チE�Eタ詳細:', {
+      console.log('📤 送信デ�タ詳細:', {
         id: updatedFlowData.id,
         title: updatedFlowData.title,
         stepsCount: updatedFlowData.steps.length,
@@ -798,7 +798,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         }))
       });
 
-      // APIにチE�Eタを送信
+      // APIにデ�タを送信
       const { buildApiUrl } = await import('../../lib/api');
       const response = await fetch(
         buildApiUrl(`/emergency-flow/${updatedFlowData.id}`),
@@ -811,18 +811,18 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         }
       );
 
-      console.log('📡 レスポンス状慁E', response.status, response.statusText);
+      console.log('📡 レスポンス状態', response.status, response.statusText);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❁EAPI エラー:', errorText);
-        throw new Error(
+        console.error('❌API エラー:', errorText);
+        throw new rror(
           `保存に失敗しました: ${response.status} ${response.statusText} - ${errorText}`
         );
       }
 
       const result = await response.json();
-      console.log('✁Eフロー保存完亁E', {
+      console.log('✅フロー保存完了', {
         success: result.success,
         data: result.data,
         stepsCount: updatedFlowData.steps.length,
@@ -840,20 +840,20 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         }))
       });
 
-      // 成功メチE��ージを表示
+      // 成功メデ��ージを表示
       toast({
-        title: '保存完亁E,
+        title: '保存完了,
         description: 'フローが正常に保存されました',
       });
 
       // フロー一覧を更新
       await fetchFlowList(true);
     } catch (error) {
-      console.error('❁Eフロー保存エラー:', error);
+      console.error('❌フロー保存エラー:', error);
       toast({
         title: '保存エラー',
         description:
-          error instanceof Error ? error.message : 'フローの保存に失敗しました',
+          error instanceof rror ? error.message : 'フローの保存に失敗しました',
         variant: 'destructive',
       });
     }
@@ -899,7 +899,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
     }
   };
 
-  const handleConditionEdit = (
+  const handleConditiondit = (
     slideId: string,
     conditionId: string,
     text: string,
@@ -944,19 +944,19 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
   };
 
   const handleSave = () => {
-    // idがUUID形式でなければ新規発衁E
+    // idがUUID形式でなければ新規発衁
     let validId = initialData?.id || '';
     const uuidRegex =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(validId)) {
       validId = uuidv4();
     }
-    // triggerKeywordsがundefinedなら空配�E
+    // triggerKeywordsがundefinedなら空配�
     const triggerKeywords = Array.isArray(initialData?.triggerKeywords)
       ? initialData.triggerKeywords
       : [];
     
-    // currentFlowDataが存在する場合�Eそれを使用、そぁE��なければslidesを使用
+    // currentFlowDataが存在する場合�それを使用、そぁ��なければslidesを使用
     const dataToSave = currentFlowData || {
       id: validId,
       title,
@@ -985,22 +985,22 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
     onSave(dataToSave);
   };
 
-  // 画像追加時�E自動保存（ファイル一覧に戻らなぁE��E
+  // 画像追加時�自動保存（ファイル一覧に戻らない��
   const handleAutoSave = async () => {
     try {
-      // idがUUID形式でなければ新規発衁E
+      // idがUUID形式でなければ新規発衁
       let validId = initialData?.id || '';
       const uuidRegex =
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(validId)) {
         validId = uuidv4();
       }
-      // triggerKeywordsがundefinedなら空配�E
+      // triggerKeywordsがundefinedなら空配�
       const triggerKeywords = Array.isArray(initialData?.triggerKeywords)
         ? initialData.triggerKeywords
         : [];
       
-      // currentFlowDataが存在する場合�Eそれを使用、そぁE��なければslidesを使用
+      // currentFlowDataが存在する場合�それを使用、そぁ��なければslidesを使用
       const dataToSave = currentFlowData || {
         id: validId,
         title,
@@ -1010,12 +1010,12 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         updatedAt: new Date().toISOString(),
       };
 
-      // 統一された保存�E琁E��使用して自動保孁E
+      // 統一された保存�理��使用して自動保孁
       const { saveFlowData } = await import('../../lib/flow-save-manager');
       const result = await saveFlowData(dataToSave);
       
       if (result.success) {
-        console.log('画像追加後�E自動保存完亁E);
+        console.log('画像追加後�自動保存完了);
       } else {
         console.error('自動保存エラー:', result.error);
       }
@@ -1026,16 +1026,16 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
 
   const handleImageUpload = async (stepId: string, file: File) => {
     try {
-      // ファイルサイズチェチE���E�E0MB�E�E
+      // ファイルサイズチェック����0MB��
       const maxSize = 10 * 1024 * 1024; // 10MB
       if (file.size > maxSize) {
-        alert(`ファイル "${file.name}" のサイズが大きすぎます、E0MB以下�Eファイルを選択してください。`);
+        alert(`ファイル "${file.name}" のサイズが大きすぎます、0MB以下�ファイルを選択してください。`);
         return;
       }
 
-      console.log('🖼�E�E画像アチE�Eロード開姁E', { stepId, fileName: file.name, fileSize: file.size });
+      console.log('🖼��画像アデ�ロード開始', { stepId, fileName: file.name, fileSize: file.size });
 
-      // 重褁E��ェチE��: 同じファイル名�E画像が既に存在するかチェチE��
+      // 重褁��ェデ��: 同じファイル名�画像が既に存在するかチェック��
       if (currentFlowData) {
         const stepToUpdate = currentFlowData.steps.find(
           step => step.id === stepId
@@ -1046,20 +1046,20 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
             .find(
               img =>
                 img.fileName === file.name ||
-                img.fileName === file.name.replace(/\.[^/.]+$/, '') // 拡張子を除ぁE��比輁E
+                img.fileName === file.name.replace(/\.[^/.]+$/, '') // 拡張子を除ぁ��比輁
             );
 
           if (existingImage) {
             const confirmReplace = window.confirm(
-              `同じファイル名�E画僁E"${file.name}" が既に存在します、En` +
-                `既存�E画像を置き換えますか�E�`
+              `同じファイル名�画僁"${file.name}" が既に存在します、n` +
+                `既存�画像を置き換えますか��`
             );
 
             if (!confirmReplace) {
               return;
             }
 
-            // 既存�E画像を削除
+            // 既存�画像を削除
             const updatedSteps = currentFlowData.steps.map(step => {
               if (step.id === stepId) {
                 const updatedImages =
@@ -1093,29 +1093,29 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       );
 
       if (!response.ok) {
-        throw new Error('画像�EアチE�Eロードに失敗しました');
+        throw new rror('画像�アデ�ロードに失敗しました');
       }
 
       const result = await response.json();
 
       if (result.success && currentFlowData) {
-        // imageFileNameが返されてぁE��ぁE��合�EfileNameを使用
+        // imageFileNameが返されてぁ��ぁ��合�fileNameを使用
         const imageFileName = result.imageFileName || result.fileName;
 
         const newImage = {
-          url: result.imageUrl, // サーバ�Eから返された正しいURLを使用
+          url: result.imageUrl, // サーバ�から返された正しいURLを使用
           fileName: imageFileName,
         };
 
-        // 重褁E��像�E場合�E通知
+        // 重褁��像�場合�通知
         if (result.isDuplicate) {
           console.log(
-            '🔄 重褁E��像を検�E、既存ファイルを使用:',
+            '🔄 重褁��像を検�、既存ファイルを使用:',
             result.fileName
           );
         }
 
-        // 該当するスチE��プ�Eimages配�Eを更新
+        // 該当するスデ��プ�images配�を更新
         const updatedSteps = currentFlowData.steps.map(step => {
           if (step.id === stepId) {
             const currentImages = (step.images || []).filter(img => img && img.url && img.url.trim() !== '');
@@ -1129,29 +1129,29 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
           return step;
         });
 
-        // フローチE�Eタを更新
+        // フローデ�タを更新
         setCurrentFlowData({
           ...currentFlowData,
           steps: updatedSteps,
         });
 
-        // 自動保存を実行（ファイル一覧に戻らなぁE��E
+        // 自動保存を実行（ファイル一覧に戻らない��
         handleAutoSave();
 
         const message = result.isDuplicate
-          ? `重褁E��像を検�Eしました。既存�E画僁E"${result.fileName}" を使用します。`
-          : '画像が正常にアチE�Eロードされました';
+          ? `重褁��像を検�しました。既存�画僁"${result.fileName}" を使用します。`
+          : '画像が正常にアデ�ロードされました';
 
         toast({
-          title: '画像アチE�Eロード完亁E,
+          title: '画像アデ�ロード完了,
           description: message,
         });
       }
     } catch (error) {
-      console.error('画像アチE�Eロードエラー:', error);
+      console.error('画像アデ�ロードエラー:', error);
       toast({
         title: 'エラー',
-        description: '画像�EアチE�Eロードに失敗しました',
+        description: '画像�アデ�ロードに失敗しました',
         variant: 'destructive',
       });
     }
@@ -1173,28 +1173,28 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
     const imageToRemove = step.images[imageIndex];
 
     const confirmDelete = window.confirm(
-      `画僁E"${imageToRemove.fileName}" を削除しますか�E�\nサーバ�Eからファイルが削除され、この操作�E允E��戻せません。`
+      `画僁"${imageToRemove.fileName}" を削除しますか��\nサーバ�からファイルが削除され、この操作�允��戻せません。`
     );
 
     if (confirmDelete) {
       try {
-        // APIを呼び出してサーバ�Eから画像を削除
+        // APIを呼び出してサーバ�から画像を削除
         const { buildApiUrl } = await import('../../lib/api');
         const response = await fetch(
           buildApiUrl(`/emergency-flow/image/${imageToRemove.fileName}`),
           {
-            method: 'DELETE',
+            method: 'DLT',
           }
         );
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(
-            errorData.error || 'サーバ�E上�E画像ファイル削除に失敗しました、E
+          throw new rror(
+            errorData.error || 'サーバ�上�画像ファイル削除に失敗しました、
           );
         }
 
-        // フロントエンド�E状態を更新
+        // フロントエンド�状態を更新
         const updatedSteps = currentFlowData.steps.map(s => {
           if (s.id === slideId) {
             const updatedImages =
@@ -1208,18 +1208,18 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
           steps: updatedSteps,
         });
 
-        // 変更を保孁E
+        // 変更を保孁
         handleSave();
 
         toast({
-          title: '画像削除完亁E,
-          description: `画僁E"${imageToRemove.fileName}" を削除しました。`,
+          title: '画像削除完了,
+          description: `画僁"${imageToRemove.fileName}" を削除しました。`,
         });
       } catch (error) {
         console.error('画像削除エラー:', error);
         toast({
           title: 'エラー',
-          description: `画像�E削除に失敗しました: ${error instanceof Error ? error.message : '未知のエラー'}`,
+          description: `画像�削除に失敗しました: ${error instanceof rror ? error.message : '未知のエラー'}`,
           variant: 'destructive',
         });
       }
@@ -1238,7 +1238,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
               );
               setSlides(updatedSlides);
             }}
-            placeholder='スライド�E冁E��を�E劁E
+            placeholder='スライド�冁��を�劁
             className='text-base-2x h-12'
           />
           <div className='flex items-center gap-3'>
@@ -1258,17 +1258,17 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
               variant='outline'
               size='sm'
               onClick={() =>
-                document.getElementById(`image-upload-${slide.id}`)?.click()
+                document.getlementById(`image-upload-${slide.id}`)?.click()
               }
               className='text-base-2x h-12 px-4'
             >
               <Upload className='w-6 h-6 mr-2' />
-              画像アチE�EローチE
+              画像アデ�ローデ
             </Button>
           </div>
         </div>
 
-        {/* 画像表示部刁E��改喁E*/}
+        {/* 画像表示部刁��改善*/}
         {currentFlowData &&
           (() => {
             const step = currentFlowData.steps.find(s => s.id === slide.id);
@@ -1276,7 +1276,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
               return (
                 <div className='mt-6'>
                   <Label className='text-base-2x font-medium'>
-                    アチE�Eロード済み画僁E
+                    アデ�ロード済み画僁
                   </Label>
                   <div className='mt-3 grid grid-cols-2 md:grid-cols-3 gap-3'>
                     {step.images.map((image, index) => (
@@ -1285,14 +1285,14 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
                           src={convertImageUrl(image.url)}
                           alt={image.fileName}
                           className='w-full h-32 object-cover rounded border'
-                          onError={e => {
+                          onrror={e => {
                             console.error('画像読み込みエラー:', image.url);
                             e.currentTarget.style.display = 'none';
                             // エラー表示を追加
-                            const errorDiv = document.createElement('div');
+                            const errorDiv = document.createlement('div');
                             errorDiv.className =
                               'w-full h-32 bg-red-100 border border-red-300 text-red-700 flex items-center justify-center text-base-2x rounded';
-                            errorDiv.textContent = '画像読み込み失敁E;
+                            errorDiv.textContent = '画像読み込み失敗;
                             e.currentTarget.parentNode?.appendChild(errorDiv);
                           }}
                           onLoad={() => {
@@ -1326,14 +1326,14 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
                 <Input
                   value={condition.text}
                   onChange={e =>
-                    handleConditionEdit(
+                    handleConditiondit(
                       slide.id,
                       condition.id,
                       e.target.value,
                       condition.nextSlideId
                     )
                   }
-                  placeholder='条件を�E劁E..'
+                  placeholder='条件を�劁..'
                   className='text-base-2x h-12'
                 />
                 <Button
@@ -1355,7 +1355,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
   return (
     <div className='space-y-6'>
       <div className='flex items-center justify-between'>
-        <h2 className='text-xl font-bold'>応急処置フロー管琁E/h2>
+        <h2 className='text-xl font-bold'>応急処置フロー管理/h2>
         <Button onClick={() => fetchFlowList(true)} variant='outline' size='sm'>
           <RefreshCw className='w-4 h-4 mr-2' />
           更新
@@ -1364,10 +1364,10 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className='grid w-full grid-cols-3'>
-          <TabsTrigger value='new'>新規作�E</TabsTrigger>
-          <TabsTrigger value='upload'>アチE�EローチE/TabsTrigger>
+          <TabsTrigger value='new'>新規作�</TabsTrigger>
+          <TabsTrigger value='upload'>アデ�ローデ/TabsTrigger>
           <TabsTrigger value='edit' disabled={!flowList.length}>
-            編雁E
+            編集
           </TabsTrigger>
         </TabsList>
 
@@ -1376,14 +1376,14 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
             <CardHeader>
               <CardTitle className='flex items-center gap-2'>
                 <Plus className='w-5 h-5' />
-                新規フロー作�E
+                新規フロー作�
               </CardTitle>
               <CardDescription>
-                フローエチE��ターを使用して新しい応急処置フローを作�EしまぁE
+                フローエデ��ターを使用して新しい応急処置フローを作�しまぁ
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <EmergencyFlowEditor flowData={null} onSave={handleFlowSave} />
+              <mergencyFlowditor flowData={null} onSave={handleFlowSave} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -1393,10 +1393,10 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
             <CardHeader>
               <CardTitle className='flex items-center gap-2'>
                 <Upload className='w-5 h-5' />
-                ファイルアチE�EローチE
+                ファイルアデ�ローデ
               </CardTitle>
               <CardDescription>
-                既存�Eフローファイル�E�ESON形式）をアチE�EロードしまぁE
+                既存�フローファイル��SON形式）をアデ�ロードしまぁ
               </CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
@@ -1429,7 +1429,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
                   onClick={() => fileInputRef.current?.click()}
                   className='mt-2'
                 >
-                  ファイル選抁E
+                  ファイル選抁
                 </Button>
               </div>
 
@@ -1437,7 +1437,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
                 <div className='space-y-2'>
                   <Progress value={uploadProgress} />
                   <p className='text-sm text-center'>
-                    アチE�Eロード中... {uploadProgress}%
+                    アデ�ロード中... {uploadProgress}%
                   </p>
                 </div>
               )}
@@ -1449,7 +1449,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
                   className='flex-1'
                 >
                   <Upload className='w-4 h-4 mr-2' />
-                  {isUploading ? 'アチE�Eロード中...' : 'アチE�EローチE}
+                  {isUploading ? 'アデ�ロード中...' : 'アデ�ローデ}
                 </Button>
                 {selectedFile && (
                   <Button
@@ -1476,21 +1476,21 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
               <CardHeader>
                 <CardTitle>フロー一覧</CardTitle>
                 <CardDescription>
-                  編雁E��るフローを選択してください ({flowList.length}件)
+                  編集��るフローを選択してください ({flowList.length}件)
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {/* チE��チE��惁E��表示 */}
+                {/* デ��デ��情報��表示 */}
                 <div className='p-3 bg-yellow-50 border border-yellow-200 rounded mb-4'>
                   <h4 className='text-sm font-medium text-yellow-800 mb-2'>
-                    チE��チE��惁E��
+                    デ��デ��情報��
                   </h4>
                   <div className='text-xs text-yellow-700 space-y-1'>
                     <p>フロー一覧数: {flowList.length}</p>
                     <p>読み込み中: {isLoadingFlowList.toString()}</p>
-                    <p>選択中フロー: {selectedFlowForEdit || 'なぁE}</p>
+                    <p>選択中フロー: {selectedFlowFordit || 'ない}</p>
                     <p>
-                      現在のフローチE�Eタ: {currentFlowData ? 'あり' : 'なぁE}
+                      現在のフローデ�タ: {currentFlowData ? 'あり' : 'ない}
                     </p>
                     <p>フロー一覧詳細: {flowList.map(f => f.id).join(', ')}</p>
                   </div>
@@ -1518,7 +1518,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
                       <div
                         key={flow.id}
                         className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                          selectedFlowForEdit === flow.id
+                          selectedFlowFordit === flow.id
                             ? 'border-blue-500 bg-blue-50'
                             : 'border-gray-200 hover:border-gray-300'
                         }`}
@@ -1528,11 +1528,11 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
                             className='flex-1'
                             onClick={() => {
                               console.log(
-                                '🖱�E�Eフロー選抁E',
+                                '🖱��フロー選抁',
                                 flow.id,
                                 flow.title
                               );
-                              loadFlowForEdit(flow.id);
+                              loadFlowFordit(flow.id);
                             }}
                           >
                             <h4 className='font-medium text-sm'>
@@ -1569,16 +1569,16 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
               </CardContent>
             </Card>
 
-            {/* フロー編雁E��リア */}
+            {/* フロー編集��リア */}
             <Card>
               <CardHeader>
-                <CardTitle>フロー編雁E/CardTitle>
+                <CardTitle>フロー編集/CardTitle>
               </CardHeader>
               <CardContent>
-                {selectedFlowForEdit && currentFlowData ? (
+                {selectedFlowFordit && currentFlowData ? (
                   <>
-                    {console.log('🎯 EmergencyFlowEditorに渡すデータ:', {
-                      selectedFlowForEdit,
+                    {console.log('🎯 mergencyFlowditorに渡すデータ:', {
+                      selectedFlowFordit,
                       currentFlowDataId: currentFlowData.id,
                       currentFlowDataTitle: currentFlowData.title,
                       selectedFilePath,
@@ -1593,21 +1593,21 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
                       timestamp: Date.now(),
                     })}
 
-                    {/* チE��チE��惁E��表示 */}
+                    {/* デ��デ��情報��表示 */}
                     <div className='p-3 bg-blue-50 border border-blue-200 rounded mb-4'>
                       <h4 className='text-sm font-medium text-blue-800 mb-2'>
-                        チE�Eタ確誁E
+                        デ�タ確認
                       </h4>
                       <div className='text-xs text-blue-700 space-y-1'>
-                        <p>選択されたフローID: {selectedFlowForEdit}</p>
-                        <p>フローチE�EタID: {currentFlowData.id}</p>
+                        <p>選択されたフローID: {selectedFlowFordit}</p>
+                        <p>フローデ�タID: {currentFlowData.id}</p>
                         <p>フロータイトル: {currentFlowData.title}</p>
-                        <p>スチE��プ数: {currentFlowData.steps?.length || 0}</p>
+                        <p>スデ��プ数: {currentFlowData.steps?.length || 0}</p>
                         <p>ファイルパス: {selectedFilePath}</p>
                       </div>
                     </div>
 
-                    <EmergencyFlowEditor
+                    <mergencyFlowditor
                       key={`${currentFlowData.id}-${Date.now()}`}
                       flowData={currentFlowData}
                       currentTab='slides'
@@ -1619,10 +1619,10 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
                 ) : (
                   <div className='text-center py-8'>
                     <p className='text-gray-500'>
-                      編雁E��るフローを選択してください
+                      編集��るフローを選択してください
                     </p>
-                    {console.log('📝 フロー編雁E��面の状慁E', {
-                      selectedFlowForEdit,
+                    {console.log('📝 フロー編集��面の状態', {
+                      selectedFlowFordit,
                       hasCurrentFlowData: !!currentFlowData,
                       currentFlowDataId: currentFlowData?.id,
                       currentFlowDataTitle: currentFlowData?.title,
@@ -1640,11 +1640,11 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>フローを削除しますか�E�E/AlertDialogTitle>
+            <AlertDialogTitle>フローを削除しますか��/AlertDialogTitle>
             <AlertDialogDescription>
-              {'、E +
+              {'、 +
                 flowToDelete?.title +
-                '」を削除します。この操作�E取り消せません、E}
+                '」を削除します。この操作�取り消せません、}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1662,4 +1662,4 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
   );
 };
 
-export default EmergencyFlowCreator;
+export default mergencyFlowCreator;

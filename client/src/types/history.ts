@@ -24,6 +24,17 @@ export interface SupportHistoryItem {
   originalChatData?: any;
   messages?: any[];
   savedImages?: any[];
+  images?: Array<{
+    id?: string;
+    fileName?: string;
+    originalFileName?: string;
+    url?: string;
+    path?: string;
+    description?: string;
+    mimeType?: string;
+    fileSize?: string;
+    createdAt?: string;
+  }>;
   machineInfo?: {
     machineTypeName?: string;
     machineNumber?: string;

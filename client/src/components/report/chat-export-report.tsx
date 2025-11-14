@@ -146,6 +146,7 @@ interface ChatExportReportProps {
   onClose: () => void;
   onSave?: (reportData: ReportData) => void;
   onPrint?: (reportData: ReportData) => void;
+  initialEditMode?: boolean; // 初期状態を編集モードにする
 }
 
 const ChatExportReport: React.FC<ChatExportReportProps> = ({
@@ -154,8 +155,9 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({
   onClose,
   onSave,
   onPrint,
+  initialEditMode = false,
 }) => {
-  const [isEditing, setIsEditing] = useState(false); // 初期状態をプレビューモードに設定
+  const [isEditing, setIsEditing] = useState(initialEditMode); // 初期状態を設定
   const [showDiff, setShowDiff] = useState(false); // 差分表示の状態
   const [reportData, setReportData] = useState<ReportData>({
     reportId: `R${data.chatId.slice(-5).toUpperCase()}`,
@@ -606,6 +608,7 @@ ${(data.conversationHistory || data.chatData?.messages || [])
                 <Button
                   onClick={handleSave}
                   className='flex items-center gap-2'
+                  data-save-button
                 >
                   <Save className='h-4 w-4' />
                   保存
@@ -614,6 +617,7 @@ ${(data.conversationHistory || data.chatData?.messages || [])
                   onClick={handleCancel}
                   variant='outline'
                   className='flex items-center gap-2'
+                  data-cancel-button
                 >
                   <X className='h-4 w-4' />
                   キャンセル

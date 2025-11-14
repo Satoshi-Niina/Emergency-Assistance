@@ -44,7 +44,7 @@ export default function SystemDiagnosticPage() {
   // APIのベースURLを取得
   const apiBaseUrl =
     import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-  
+
   // API URLを構築（/apiの重複を防ぐ）
   const buildApiPath = (path: string) => {
     const base = apiBaseUrl.replace(/\/$/, ''); // 末尾の/を削除
@@ -61,18 +61,18 @@ export default function SystemDiagnosticPage() {
     setDbCheckResult(null);
 
     try {
-      const response = await fetch(buildApiPath('/_diag/postgresql'));
+      const response = await fetch(buildApiPath('/system-check/db-check'));
       const result = await response.json();
 
       // サーバーのレスポンス形式に合わせて変換
       const checkResult = {
-        success: result.success,
-        status: result.success ? 'OK' : 'ERROR',
-        message: result.message,
-        error: result.error,
-        current_time: result.data?.current_time,
-        version: result.data?.version,
-        timestamp: result.timestamp
+        success: result.status === 'OK',
+        status: result.status || 'ERROR',
+        message: result.message || 'データベース接続確認完了',
+        error: result.status === 'ERROR' ? result.message : undefined,
+        current_time: result.db_time,
+        version: result.version,
+        timestamp: result.timestamp || new Date().toISOString()
       };
       setDbCheckResult(checkResult);
 
@@ -112,10 +112,15 @@ export default function SystemDiagnosticPage() {
     setGptCheckResult(null);
 
     try {
-      const response = await fetch(buildApiPath('/_diag/gpt'));
+      const response = await fetch(buildApiPath('/system-check/gpt-check'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
       const result = await response.json();
-      
+
       // サーバーのレスポンス形式に合わせて変換
       const checkResult = {
         success: result.success,

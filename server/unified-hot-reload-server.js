@@ -32,11 +32,21 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // 環境変数の読み込み
-const envPath = path.join(__dirname, '.env');
-if (fs.existsSync(envPath)) {
-  dotenv.config({ path: envPath, encoding: 'utf8' });
-  console.log('📄 Loaded .env file from:', envPath);
-} else {
+// まずルートの.envを読み込み、その後server/.envがあれば上書き
+const rootEnvPath = path.join(__dirname, '..', '.env');
+const serverEnvPath = path.join(__dirname, '.env');
+
+if (fs.existsSync(rootEnvPath)) {
+  dotenv.config({ path: rootEnvPath, encoding: 'utf8' });
+  console.log('📄 Loaded .env file from:', rootEnvPath);
+}
+
+if (fs.existsSync(serverEnvPath)) {
+  dotenv.config({ path: serverEnvPath, encoding: 'utf8', override: true });
+  console.log('📄 Loaded server/.env file from:', serverEnvPath);
+}
+
+if (!fs.existsSync(rootEnvPath) && !fs.existsSync(serverEnvPath)) {
   console.log('📄 .env file not found, using system environment variables');
 }
 
@@ -50,6 +60,49 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 // データベース接続プール
 let dbPool = null;
 
+// データベース接続テスト関数
+async function testDatabaseConnection() {
+  if (!dbPool) {
+    return { connected: false, error: 'Database pool not initialized' };
+  }
+
+  try {
+    const client = await dbPool.connect();
+    await client.query('SELECT 1');
+    client.release();
+    return { connected: true };
+  } catch (error) {
+    // AggregateErrorの場合、個々のエラーを取得
+    let errorMessage = error.message || String(error);
+    let errorCode = error.code || 'UNKNOWN';
+
+    // AggregateErrorの場合は、最初のエラーを取得
+    if (error.name === 'AggregateError' && error.errors && error.errors.length > 0) {
+      const firstError = error.errors[0];
+      errorMessage = firstError.message || errorMessage;
+      errorCode = firstError.code || errorCode;
+    }
+
+    // エラーメッセージが空の場合は、エラーの種類を表示
+    if (!errorMessage || errorMessage === 'AggregateError') {
+      errorMessage = `Database connection failed: ${errorCode || 'Unknown error'}`;
+    }
+
+    console.error('❌ Database connection test failed:', {
+      name: error.name,
+      message: errorMessage,
+      code: errorCode,
+      stack: error.stack
+    });
+
+    return {
+      connected: false,
+      error: errorMessage || 'Unknown database connection error',
+      errorCode: errorCode
+    };
+  }
+}
+
 // データベース初期化
 function initializeDatabase() {
   if (!process.env.DATABASE_URL) {
@@ -60,11 +113,33 @@ function initializeDatabase() {
   try {
     console.log('🔗 Initializing database connection...');
 
-    // DATABASE_URLから秘密情報をマスク
-    const maskedDbUrl = process.env.DATABASE_URL.replace(/:[^:@]+@/, ':****@');
+    // DATABASE_URLを正規化（localhostを127.0.0.1に変換してIPv6問題を回避）
+    let databaseUrl = process.env.DATABASE_URL;
 
-    const isLocalhost = process.env.DATABASE_URL.includes('localhost') ||
-      process.env.DATABASE_URL.includes('127.0.0.1');
+    // localhostを127.0.0.1に変換（IPv6の::1への接続を回避）
+    if (databaseUrl.includes('localhost')) {
+      databaseUrl = databaseUrl.replace(/localhost/g, '127.0.0.1');
+      console.log('🔧 Converted localhost to 127.0.0.1 to avoid IPv6 connection issues');
+    }
+
+    // DATABASE_URLから秘密情報をマスク
+    const maskedDbUrl = databaseUrl.replace(/:[^:@]+@/, ':****@');
+
+    const isLocalhost = databaseUrl.includes('127.0.0.1') || databaseUrl.includes('localhost');
+
+    // DATABASE_URLをパースして接続情報を表示
+    try {
+      const url = new URL(databaseUrl);
+      console.log('📊 Database connection info:', {
+        host: url.hostname,
+        port: url.port || '5432 (default)',
+        database: url.pathname.replace('/', '') || 'not specified',
+        user: url.username || 'not specified',
+        ssl: isLocalhost ? 'disabled (localhost)' : 'enabled'
+      });
+    } catch (parseError) {
+      console.warn('⚠️ Could not parse DATABASE_URL:', parseError.message);
+    }
 
     const sslConfig = isLocalhost
       ? false
@@ -75,16 +150,34 @@ function initializeDatabase() {
           : { rejectUnauthorized: false };
 
     dbPool = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString: databaseUrl,
       ssl: sslConfig,
       max: 5,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 60000,
+      connectionTimeoutMillis: 10000, // 接続タイムアウトを短くしてエラーを早く検出
     });
 
     console.log('✅ Database pool initialized', isLocalhost ? '(localhost)' : `(${maskedDbUrl.split('@')[1] || 'remote'})`);
+
+    // 接続テストを実行
+    testDatabaseConnection().then(result => {
+      if (result.connected) {
+        console.log('✅ Database connection test successful');
+      } else {
+        console.error('❌ Database connection test failed:', result.error);
+        console.error('❌ Error code:', result.errorCode);
+        console.error('💡 Troubleshooting tips:');
+        console.error('   1. PostgreSQLサーバーが起動しているか確認してください');
+        console.error('   2. DATABASE_URLの接続情報（ホスト、ポート、データベース名）が正しいか確認してください');
+        console.error('   3. ファイアウォールやネットワーク設定を確認してください');
+        if (isLocalhost) {
+          console.error('   4. ローカル環境の場合: psql -h localhost -p 5432 -U postgres -d webappdb_dev で接続テストを実行してください');
+        }
+      }
+    });
   } catch (error) {
     console.error('❌ Database initialization failed:', error.message);
+    console.error('❌ Error details:', error);
   }
 }
 
@@ -661,47 +754,65 @@ apiRouter.post('/auth/logout', (req, res) => {
 apiRouter.get('/machines/machine-types', async (req, res) => {
   try {
     console.log('🔍 機種一覧取得リクエスト');
+    console.log('🔍 DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
+    console.log('🔍 dbPool:', dbPool ? 'INITIALIZED' : 'NOT INITIALIZED');
 
-    if (dbPool) {
-      try {
-        // タイムアウトを短くしてすぐにフォールバックする
-        const result = await Promise.race([
-          dbPool.query(`
-            SELECT id, machine_type_name as machine_type_name
-            FROM machine_types
-            ORDER BY machine_type_name
-          `),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Database query timeout')), 3000)
-          )
-        ]);
-
-        return res.json({
-          success: true,
-          data: result.rows,
-          total: result.rows.length,
-          timestamp: new Date().toISOString()
-        });
-      } catch (dbError) {
-        console.error('Database error, falling back to dummy data:', dbError.message);
-        // データベースエラーの場合はダミーデータにフォールバック
-      }
+    if (!dbPool) {
+      console.error('❌ Database pool not initialized');
+      return res.status(503).json({
+        success: false,
+        error: 'データベース接続がありません',
+        message: 'DATABASE_URL環境変数が設定されていないか、データベース接続の初期化に失敗しました',
+        timestamp: new Date().toISOString()
+      });
     }
 
-    console.log('📋 データベース接続なし、ダミーデータを返します');
-    const dummyData = [
-      { id: '1', machine_type_name: 'MT-100' },
-      { id: '2', machine_type_name: 'MR-400' },
-      { id: '3', machine_type_name: 'TC-250' },
-      { id: '4', machine_type_name: 'SS-750' }
-    ];
+    try {
+      // データベース接続テスト
+      const connectionTest = await testDatabaseConnection();
+      if (!connectionTest.connected) {
+        console.error('❌ Database connection test failed:', connectionTest);
+        const errorDetails = connectionTest.error || 'Unknown error';
+        return res.status(503).json({
+          success: false,
+          error: 'データベース接続エラー',
+          message: 'データベースに接続できませんでした',
+          details: errorDetails,
+          errorCode: connectionTest.errorCode || 'UNKNOWN',
+          databaseUrl: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
+          timestamp: new Date().toISOString()
+        });
+      }
 
-    res.json({
-      success: true,
-      data: dummyData,
-      total: dummyData.length,
-      timestamp: new Date().toISOString()
-    });
+      const result = await dbPool.query(`
+        SELECT id, machine_type_name as machine_type_name
+        FROM machine_types
+        ORDER BY machine_type_name
+      `);
+
+      console.log(`✅ 機種一覧取得成功: ${result.rows.length}件`);
+
+      return res.json({
+        success: true,
+        data: result.rows,
+        total: result.rows.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (dbError) {
+      console.error('❌ Database query error:', dbError);
+      console.error('❌ Error code:', dbError.code);
+      console.error('❌ Error message:', dbError.message);
+      console.error('❌ Error stack:', dbError.stack);
+
+      return res.status(500).json({
+        success: false,
+        error: 'データベースクエリエラー',
+        message: '機種一覧の取得に失敗しました',
+        details: dbError.message,
+        errorCode: dbError.code,
+        timestamp: new Date().toISOString()
+      });
+    }
   } catch (error) {
     console.error('❌ 機種一覧取得エラー:', error);
     res.status(500).json({
@@ -923,57 +1034,84 @@ apiRouter.get('/machines', async (req, res) => {
   try {
     const { type_id } = req.query;
     console.log('🔍 機械番号一覧取得リクエスト:', { type_id });
+    console.log('🔍 DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
+    console.log('🔍 dbPool:', dbPool ? 'INITIALIZED' : 'NOT INITIALIZED');
 
-    if (dbPool) {
-      try {
-        let query, params;
-
-        if (type_id) {
-          // 特定の機種IDの機械番号のみ取得
-          query = `
-            SELECT m.id, m.machine_number, m.machine_type_id, mt.machine_type_name
-            FROM machines m
-            LEFT JOIN machine_types mt ON m.machine_type_id = mt.id
-            WHERE m.machine_type_id = $1
-            ORDER BY m.machine_number
-          `;
-          params = [type_id];
-        } else {
-          // 全機械番号を取得
-          query = `
-            SELECT m.id, m.machine_number, m.machine_type_id, mt.machine_type_name
-            FROM machines m
-            LEFT JOIN machine_types mt ON m.machine_type_id = mt.id
-            ORDER BY m.machine_number
-          `;
-          params = [];
-        }
-
-        const result = await dbPool.query(query, params);
-
-        return res.json({
-          success: true,
-          data: result.rows,
-          total: result.rows.length,
-          timestamp: new Date().toISOString()
-        });
-      } catch (dbError) {
-        console.error('Database error:', dbError.message);
-      }
+    if (!dbPool) {
+      console.error('❌ Database pool not initialized');
+      return res.status(503).json({
+        success: false,
+        error: 'データベース接続がありません',
+        message: 'DATABASE_URL環境変数が設定されていないか、データベース接続の初期化に失敗しました',
+        timestamp: new Date().toISOString()
+      });
     }
 
-    const dummyData = [
-      { id: '1', machine_number: 'M001', machine_type_id: '1', machine_type_name: 'MT-100' },
-      { id: '2', machine_number: 'M002', machine_type_id: '1', machine_type_name: 'MT-100' },
-      { id: '3', machine_number: 'M003', machine_type_id: '2', machine_type_name: 'MR-400' }
-    ];
+    try {
+      // データベース接続テスト
+      const connectionTest = await testDatabaseConnection();
+      if (!connectionTest.connected) {
+        console.error('❌ Database connection test failed:', connectionTest);
+        const errorDetails = connectionTest.error || 'Unknown error';
+        return res.status(503).json({
+          success: false,
+          error: 'データベース接続エラー',
+          message: 'データベースに接続できませんでした',
+          details: errorDetails,
+          errorCode: connectionTest.errorCode || 'UNKNOWN',
+          databaseUrl: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
+          timestamp: new Date().toISOString()
+        });
+      }
 
-    res.json({
-      success: true,
-      data: dummyData,
-      total: dummyData.length,
-      timestamp: new Date().toISOString()
-    });
+      let query, params;
+
+      if (type_id) {
+        // 特定の機種IDの機械番号のみ取得
+        query = `
+          SELECT m.id, m.machine_number, m.machine_type_id, mt.machine_type_name
+          FROM machines m
+          LEFT JOIN machine_types mt ON m.machine_type_id = mt.id
+          WHERE m.machine_type_id = $1
+          ORDER BY m.machine_number
+        `;
+        params = [type_id];
+      } else {
+        // 全機械番号を取得
+        query = `
+          SELECT m.id, m.machine_number, m.machine_type_id, mt.machine_type_name
+          FROM machines m
+          LEFT JOIN machine_types mt ON m.machine_type_id = mt.id
+          ORDER BY m.machine_number
+        `;
+        params = [];
+      }
+
+      const result = await dbPool.query(query, params);
+
+      console.log(`✅ 機械番号一覧取得成功: ${result.rows.length}件`);
+
+      return res.json({
+        success: true,
+        data: result.rows,
+        total: result.rows.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (dbError) {
+      console.error('❌ Database query error:', dbError);
+      console.error('❌ Error code:', dbError.code);
+      console.error('❌ Error message:', dbError.message);
+      console.error('❌ Error stack:', dbError.stack);
+
+      return res.status(500).json({
+        success: false,
+        error: 'データベースクエリエラー',
+        message: '機械番号一覧の取得に失敗しました',
+        details: dbError.message,
+        errorCode: dbError.code,
+        timestamp: new Date().toISOString()
+      });
+    }
   } catch (error) {
     console.error('❌ 機械番号一覧取得エラー:', error);
     res.status(500).json({
@@ -1195,33 +1333,65 @@ apiRouter.delete('/machines/:id', authenticateToken, async (req, res) => {
 apiRouter.get('/users', async (req, res) => {
   try {
     console.log('🔍 ユーザー一覧取得リクエスト');
+    console.log('🔍 DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
+    console.log('🔍 dbPool:', dbPool ? 'INITIALIZED' : 'NOT INITIALIZED');
 
-    if (dbPool) {
-      try {
-        const result = await dbPool.query(`
-          SELECT id, username, display_name, role, department, description, created_at
-          FROM users
-          ORDER BY created_at DESC
-        `);
-
-        return res.json({
-          success: true,
-          data: result.rows,
-          total: result.rows.length,
-          timestamp: new Date().toISOString()
-        });
-      } catch (dbError) {
-        console.error('Database error:', dbError.message);
-      }
+    if (!dbPool) {
+      console.error('❌ Database pool not initialized');
+      return res.status(503).json({
+        success: false,
+        error: 'データベース接続がありません',
+        message: 'DATABASE_URL環境変数が設定されていないか、データベース接続の初期化に失敗しました',
+        timestamp: new Date().toISOString()
+      });
     }
 
-    res.json({
-      success: true,
-      data: [],
-      total: 0,
-      message: 'データベース接続がありません',
-      timestamp: new Date().toISOString()
-    });
+    try {
+      // データベース接続テスト
+      const connectionTest = await testDatabaseConnection();
+      if (!connectionTest.connected) {
+        console.error('❌ Database connection test failed:', connectionTest);
+        const errorDetails = connectionTest.error || 'Unknown error';
+        return res.status(503).json({
+          success: false,
+          error: 'データベース接続エラー',
+          message: 'データベースに接続できませんでした',
+          details: errorDetails,
+          errorCode: connectionTest.errorCode || 'UNKNOWN',
+          databaseUrl: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const result = await dbPool.query(`
+        SELECT id, username, display_name, role, department, description, created_at
+        FROM users
+        ORDER BY created_at DESC
+      `);
+
+      console.log(`✅ ユーザー一覧取得成功: ${result.rows.length}件`);
+
+      return res.json({
+        success: true,
+        data: result.rows,
+        total: result.rows.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (dbError) {
+      console.error('❌ Database query error:', dbError);
+      console.error('❌ Error code:', dbError.code);
+      console.error('❌ Error message:', dbError.message);
+      console.error('❌ Error stack:', dbError.stack);
+
+      return res.status(500).json({
+        success: false,
+        error: 'データベースクエリエラー',
+        message: 'ユーザー一覧の取得に失敗しました',
+        details: dbError.message,
+        errorCode: dbError.code,
+        timestamp: new Date().toISOString()
+      });
+    }
   } catch (error) {
     console.error('❌ ユーザー一覧取得エラー:', error);
     res.status(500).json({
@@ -6422,6 +6592,46 @@ import('./routes/_diag.js').then(module => {
   console.log('✅ Diagnostic routes mounted');
 }).catch(err => {
   console.error('❌ Failed to load diagnostic routes:', err);
+});
+
+// データベース接続診断エンドポイント（APIルーターの前に追加）
+app.get('/api/debug/database', async (req, res) => {
+  try {
+    const debugInfo = {
+      databaseUrl: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
+      databaseUrlMasked: process.env.DATABASE_URL
+        ? process.env.DATABASE_URL.replace(/:[^:@]+@/, ':****@')
+        : null,
+      dbPoolInitialized: !!dbPool,
+      connectionTest: null,
+      timestamp: new Date().toISOString()
+    };
+
+    if (dbPool) {
+      try {
+        const connectionTest = await testDatabaseConnection();
+        debugInfo.connectionTest = connectionTest;
+      } catch (error) {
+        debugInfo.connectionTest = {
+          connected: false,
+          error: error.message || String(error),
+          errorCode: error.code || 'UNKNOWN'
+        };
+      }
+    }
+
+    res.json({
+      success: true,
+      debug: debugInfo
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: '診断エンドポイントエラー',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // APIルーターをマウント（すべてのエンドポイント定義の後）

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useffect } from 'react';
 import {
   Card,
   CardContent,
@@ -41,9 +41,9 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
   const [flowData, setFlowData] = useState<FlowData | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>('');
+  const [error, setrror] = useState<string>('');
 
-  useEffect(() => {
+  useffect(() => {
     const fetchFlowData = async () => {
       try {
         setLoading(true);
@@ -54,7 +54,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
         console.log('🌐 フロープレビューAPI URL:', apiUrl);
 
         const response = await fetch(apiUrl, {
-          method: 'GET',
+          method: 'GT',
           credentials: 'include', // セッション維持のため
           headers: {
             'Content-Type': 'application/json',
@@ -70,7 +70,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
             statusText: response.statusText,
             body: errorText
           });
-          throw new Error(`Failed to fetch flow data: ${response.status} - ${errorText}`);
+          throw new rror(`Failed to fetch flow data: ${response.status} - ${errorText}`);
         }
 
         const responseData = await response.json();
@@ -93,7 +93,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
         setFlowData(flowData);
       } catch (err) {
         console.error('Flow data fetch error:', err);
-        setError('フローデータの取得に失敗しました');
+        setrror('フローデータの取得に失敗しました');
       } finally {
         setLoading(false);
       }
@@ -269,7 +269,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
               <h4 className='font-medium text-gray-900'>画像</h4>
               <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
                 {currentStep.images.map((img, index) => {
-                  // 画像情報がオブジェクトの場合、プロパティを参照、文字列の場合はそのまま
+                  // 画像情報がオブジェクトの場合、プププロパティを参照、文字列の場合はそのまま
                   // buildImageUrlを使用して統一されたURL変換を適用
                   const imageUrl =
                     typeof img === 'object' && img !== null
@@ -303,7 +303,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
                             imageUrl: imageUrl?.substring(0, 100) + '...',
                           });
                         }}
-                        onError={e => {
+                        onrror={e => {
                           const originalUrl = typeof img === 'object' && img !== null
                             ? (img as { url: string; fileName: string }).url
                             : String(img);
