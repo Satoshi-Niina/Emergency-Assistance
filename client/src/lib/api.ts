@@ -6,6 +6,7 @@ const isProduction = import.meta.env.PROD;
 const isDevelopment = import.meta.env.DEV;
 
 // APIベースURL決定（シンプル版）
+// 実行時に毎回評価して、window.runtimeConfigが確実に反映されるようにする
 const getApiBaseUrl = (): string => {
     // window.runtimeConfigが設定されている場合は最優先（index.htmlで設定される）
     if (typeof window !== 'undefined' && (window as any).runtimeConfig?.API_BASE_URL) {
@@ -21,19 +22,18 @@ const getApiBaseUrl = (): string => {
     return '';
 };
 
-// APIベースURL
-const API_BASE_URL = getApiBaseUrl();
-
 // API URL構築（シンプル版）
+// 実行時に毎回getApiBaseUrl()を呼び出して、最新の設定を取得
 export const buildApiUrl = (path: string): string => {
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    const apiBaseUrl = getApiBaseUrl(); // 実行時に毎回取得
 
-    if (API_BASE_URL) {
-        // 本番環境: 絶対URL
+    if (apiBaseUrl) {
+        // 絶対URLが設定されている場合
         // API_BASE_URLに既に/apiが含まれている場合は追加しない
-        const baseUrl = API_BASE_URL.endsWith('/api')
-            ? API_BASE_URL
-            : `${API_BASE_URL}/api`;
+        const baseUrl = apiBaseUrl.endsWith('/api')
+            ? apiBaseUrl
+            : `${apiBaseUrl}/api`;
         return `${baseUrl}${cleanPath}`;
     } else {
         // 開発環境: 相対パス（統合サーバーが処理）
@@ -164,14 +164,17 @@ export const health = {
     check: () => api.get('/health').then(() => true).catch(() => false),
 };
 
-// 設定をログ出力
-console.log('🔧 Simple API Client:', {
-    isDevelopment,
-    isProduction,
-    API_BASE_URL,
-    VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
-    exampleUrl: buildApiUrl('/health'),
-    loginUrl: buildApiUrl('/auth/login')
-});
+// 設定をログ出力（実行時に評価）
+setTimeout(() => {
+    console.log('🔧 Simple API Client:', {
+        isDevelopment,
+        isProduction,
+        API_BASE_URL: getApiBaseUrl(),
+        runtimeConfig: typeof window !== 'undefined' ? (window as any).runtimeConfig : undefined,
+        VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+        exampleUrl: buildApiUrl('/health'),
+        loginUrl: buildApiUrl('/auth/login')
+    });
+}, 100); // window.runtimeConfigが設定されるまで少し待つ
 
 export default api;
