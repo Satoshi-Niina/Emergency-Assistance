@@ -9,10 +9,10 @@
     "npm": ">=10.0.0"
   },
   "scripts": {
-    "start": "node app.js",
+    "start": "node azure-server.mjs",
     "start:fallback": "node app.js",
     "start:legacy": "node server.js",
-    "start:debug": "node --inspect app.js",
+    "start:debug": "node --inspect azure-server.mjs",
     "dev": "cross-env NODE_ENV=development PORT=8080 node unified-hot-reload-server.js",
     "build": "echo Build step completed",
     "test": "echo No tests specified"
