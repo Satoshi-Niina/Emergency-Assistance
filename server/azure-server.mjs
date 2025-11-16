@@ -104,41 +104,55 @@ const corsOptions = {
   optionsSuccessStatus: 204
 };
 
-// OPTIONSリクエスト（プリフライト）の明示的な処理（corsミドルウェアより前に配置）
-app.options('*', (req, res) => {
-  const origin = req.headers.origin;
-  console.log('🔍 OPTIONS request from origin:', origin);
+// Azure App ServiceのCORS機能を使用するため、アプリケーション側のCORS処理はコメントアウト
+// 本番環境ではAzure App ServiceのCORS設定が優先されます
+// ローカル開発環境の場合は、以下のcorsミドルウェアが有効になります
 
-  // オリジンの許可チェック
-  let originAllowed = false;
+// 環境変数でCORS処理の切り替え（Azure App Serviceでは無効化）
+const useAppCors = process.env.USE_APP_CORS === 'true' || !process.env.WEBSITE_SITE_NAME;
 
-  if (!origin) {
-    originAllowed = true; // オリジンなしは許可
-  } else if (allowedOrigins.includes(origin)) {
-    originAllowed = true; // 許可リストに含まれている
-  } else if (origin.includes('azurestaticapps.net')) {
-    originAllowed = true; // Azure Static Web Apps
-    console.log('🌐 Azure Static Web Apps origin detected:', origin);
-  } else if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-    originAllowed = true; // ローカル開発環境
-  }
+if (useAppCors) {
+  console.log('🔧 Using application-level CORS (local development)');
 
-  if (originAllowed) {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires');
-    res.header('Access-Control-Max-Age', '86400'); // 24時間キャッシュ
-    console.log('✅ OPTIONS request approved for origin:', origin);
-    return res.status(204).end();
-  } else {
-    console.warn('❌ OPTIONS request denied for origin:', origin);
-    console.warn('   Allowed origins:', allowedOrigins);
-    return res.status(403).end();
-  }
-});
+  // OPTIONSリクエスト（プリフライト）の明示的な処理
+  app.options('*', (req, res) => {
+    const origin = req.headers.origin;
+    console.log('🔍 OPTIONS request from origin:', origin);
 
-app.use(cors(corsOptions));
+    // オリジンの許可チェック
+    let originAllowed = false;
+
+    if (!origin) {
+      originAllowed = true;
+    } else if (allowedOrigins.includes(origin)) {
+      originAllowed = true;
+    } else if (origin.includes('azurestaticapps.net')) {
+      originAllowed = true;
+      console.log('🌐 Azure Static Web Apps origin detected:', origin);
+    } else if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      originAllowed = true;
+    }
+
+    if (originAllowed) {
+      res.header('Access-Control-Allow-Origin', origin || '*');
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires');
+      res.header('Access-Control-Max-Age', '86400');
+      console.log('✅ OPTIONS request approved for origin:', origin);
+      return res.status(204).end();
+    } else {
+      console.warn('❌ OPTIONS request denied for origin:', origin);
+      console.warn('   Allowed origins:', allowedOrigins);
+      return res.status(403).end();
+    }
+  });
+
+  app.use(cors(corsOptions));
+} else {
+  console.log('🔧 Using Azure App Service CORS (production)');
+  console.log('📋 Configured in Azure Portal - application CORS disabled');
+}
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));
@@ -578,31 +592,8 @@ app.get('/api/_diag/env', (req, res) => {
 
 // 認証エンドポイント（データベース認証）
 app.post('/api/auth/login', async (req, res) => {
-  // 明示的なCORSヘッダー設定（Azure Static Web Apps対応）
   const origin = req.headers.origin;
   console.log('🔐 Login request from origin:', origin);
-
-  if (origin) {
-    let originAllowed = false;
-
-    if (allowedOrigins.includes(origin)) {
-      originAllowed = true;
-    } else if (origin.includes('azurestaticapps.net')) {
-      originAllowed = true;
-    } else if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-      originAllowed = true;
-    }
-
-    if (originAllowed) {
-      res.header('Access-Control-Allow-Origin', origin);
-      res.header('Access-Control-Allow-Credentials', 'true');
-      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-      console.log('✅ Login CORS headers set for origin:', origin);
-    } else {
-      console.warn('❌ Login CORS denied for origin:', origin);
-    }
-  }
 
   try {
     const { username, password } = req.body || {};
