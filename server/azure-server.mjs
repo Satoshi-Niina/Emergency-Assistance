@@ -2858,46 +2858,8 @@ app.use((err, req, res, _next) => {
   });
 });
 
-// ===== 優雅なシャットダウン =====
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Server listening on port ${PORT} (env: ${process.env.NODE_ENV || 'dev'})`);
-  console.log(`🗂️ Serving static files from: ${clientDistPath}`);
-  console.log(`🌍 Frontend URL: ${FRONTEND_URL}`);
-
-  // サービス状態の詳細確認
-  console.log('📊 Service Status Check:');
-  console.log(`   Database Pool: ${dbPool ? 'Initialized' : 'Not initialized'}`);
-  const blobClient = getBlobServiceClient();
-  console.log(`   Blob Service Client: ${blobClient ? 'Initialized' : 'Not initialized'}`);
-  console.log(`   Application Insights: ${process.env.APPLICATIONINSIGHTS_CONNECTION_STRING ? 'Configured' : 'Not configured'}`);
-  console.log(`   Health Token: ${HEALTH_TOKEN ? 'Set' : 'Not set'}`);
-  console.log(`   Session Secret: ${process.env.SESSION_SECRET ? 'Set' : 'Using default'}`);
-
-  // リクエスト可能なAPI一覧表示
-  console.log('📋 Available API Endpoints:');
-  console.log('   GET  /api/users - ユーザー一覧');
-  console.log('   POST /api/users - ユーザー作成');
-  console.log('   PUT  /api/users/:id - ユーザー更新');
-  console.log('   DELETE /api/users/:id - ユーザー削除');
-  console.log('   GET  /api/machines - 機械データ');
-  console.log('   POST /api/machines - 機械作成');
-  console.log('   PUT  /api/machines/:id - 機械更新');
-  console.log('   DELETE /api/machines/:id - 機械削除');
-  console.log('   GET  /ready - ヘルスチェック');
-
-  // デバッグ用：ディレクトリ構造を表示
-  console.log('📋 Directory structure debug:');
-  console.log(`   Current working directory: ${process.cwd()}`);
-  console.log(`   __dirname: ${__dirname}`);
-  console.log(`   Client dist path: ${clientDistPath}`);
-
-  try {
-    const files = fs.readdirSync(clientDistPath);
-    console.log(`   Client dist contents: ${files.join(', ')}`);
-  } catch (err) {
-    console.error(`   ❌ Cannot read client dist directory: ${err.message}`);
-  }
-});
+// ===== サーバー起動準備 =====
+// サーバー起動は最後に行う（ファイルの最後を参照）
 
 const shutdown = (sig) => () => {
   console.log(`↩️  Received ${sig}, shutting down gracefully...`);
@@ -2928,6 +2890,47 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('⚠️ Unhandled Promise Rejection (continuing):', reason);
   console.error('Promise:', promise);
   // プロセスを終了させない - ログのみ記録
+});
+
+// サーバー起動（これが必須！）
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log('');
+  console.log('🎉 ================================================');
+  console.log('🚀 Azure Production Server Started Successfully!');
+  console.log('🎉 ================================================');
+  console.log('');
+  console.log(`📍 Server listening on: http://0.0.0.0:${PORT}`);
+  console.log(`🌐 Public URL: https://${process.env.WEBSITE_HOSTNAME || 'localhost'}`);
+  console.log(`🔧 Environment: ${process.env.NODE_ENV || 'production'}`);
+  console.log(`📦 Node Version: ${process.version}`);
+  console.log(`⏰ Started at: ${new Date().toISOString()}`);
+  console.log('');
+  console.log('📋 Available Endpoints:');
+  console.log('   GET  /health - ヘルスチェック');
+  console.log('   GET  /api/ping - Ping');
+  console.log('   POST /api/auth/login - ログイン');
+  console.log('   GET  /api/auth/me - 現在のユーザー');
+  console.log('   GET  /api/users - ユーザー一覧');
+  console.log('   POST /api/users - ユーザー作成');
+  console.log('   PUT  /api/users/:id - ユーザー更新');
+  console.log('   DELETE /api/users/:id - ユーザー削除');
+  console.log('   GET  /api/machines - 機械データ');
+  console.log('   POST /api/machines - 機械作成');
+  console.log('   PUT  /api/machines/:id - 機械更新');
+  console.log('   DELETE /api/machines/:id - 機械削除');
+  console.log('   GET  /ready - ヘルスチェック');
+  console.log('');
+  console.log('✅ Server is ready to accept connections!');
+  console.log('🎉 ================================================');
+});
+
+// エラーハンドリング
+server.on('error', (error) => {
+  console.error('❌ Server error:', error);
+  if (error.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${PORT} is already in use`);
+    process.exit(1);
+  }
 });
 
 export default app;
