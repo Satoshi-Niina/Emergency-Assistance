@@ -1,5 +1,5 @@
 {
-  "initialPrompt": "何かありましたか？支援のため現在の状況を教えてください！",
+  "initialPrompt": "何かありましたか？支援いたしますので、現在の状況を教えてください！",
   "conversationStyle": "frank",
   "questionFlow": {
     "step1": "具体的な症状を教えてください",

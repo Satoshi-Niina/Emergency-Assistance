@@ -10,7 +10,7 @@ echo.
 
 REM Step 1: Switch to local configuration
 echo [CONFIG] Applying local development settings...
-powershell -Command "(Get-Content 'client\public\runtime-config.js') -replace '.*API_BASE_URL.*', '    \"API_BASE_URL\": \"http://localhost:8081/api\",' | Set-Content 'client\public\runtime-config.js'"
+powershell -Command "(Get-Content 'client\public\runtime-config.js') -replace '.*API_BASE_URL.*', '    \"API_BASE_URL\": \"http://localhost:8080/api\",' | Set-Content 'client\public\runtime-config.js'"
 
 REM Step 2: Kill old Node processes
 echo [CLEANUP] Stopping old Node.js processes...
@@ -44,6 +44,6 @@ echo    cd client ^&^& npm run dev
 echo.
 echo Access URLs:
 echo Frontend: http://localhost:5173
-echo API: http://localhost:8081/api
+echo API: http://localhost:8080/api
 echo.
 pause

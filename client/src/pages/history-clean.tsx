@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import * as XLSX from 'xlsx';
 import { useAuth } from '../context/auth-context';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -360,6 +361,153 @@ export default function HistoryPage() {
         }
     };
 
+    // Excelファイル作成ヘルパー関数
+    const createExcelBlob = (items: SupportHistoryItem[]): Blob => {
+        const worksheetData = items.map(item => ({
+            '日時': new Date(item.createdAt).toLocaleString('ja-JP'),
+            'タイトル': item.title || '',
+            '機種': item.machineType || '',
+            '機械番号': item.machineNumber || '',
+            '問題内容': item.problemDescription || '',
+            '抽出された部品': (item.extractedComponents || []).join(', '),
+            '抽出された症状': (item.extractedSymptoms || []).join(', '),
+            '可能性のある型式': (item.possibleModels || []).join(', '),
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(worksheetData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '履歴');
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        return new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    };
+
+    // テキストファイル作成ヘルパー関数
+    const createTextBlob = (items: SupportHistoryItem[]): Blob => {
+        const textContent = items.map(item => {
+            return `
+========================================
+日時: ${new Date(item.createdAt).toLocaleString('ja-JP')}
+タイトル: ${item.title || ''}
+機種: ${item.machineType || ''}
+機械番号: ${item.machineNumber || ''}
+問題内容: ${item.problemDescription || ''}
+抽出された部品: ${(item.extractedComponents || []).join(', ')}
+抽出された症状: ${(item.extractedSymptoms || []).join(', ')}
+可能性のある型式: ${(item.possibleModels || []).join(', ')}
+========================================
+`;
+        }).join('\n');
+        return new Blob([textContent], { type: 'text/plain; charset=utf-8' });
+    };
+
+    // ファイルダウンロード処理（保存先選択対応）
+    const downloadFile = async (blob: Blob, filename: string) => {
+        // File System Access API がサポートされている場合は保存先を選択
+        if ('showSaveFilePicker' in window) {
+            try {
+                const extension = filename.split('.').pop() || '';
+                const fileTypes: Record<string, { description: string; accept: Record<string, string[]> }> = {
+                    'xlsx': {
+                        description: 'Excel ファイル',
+                        accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] }
+                    },
+                    'json': {
+                        description: 'JSON ファイル',
+                        accept: { 'application/json': ['.json'] }
+                    },
+                    'txt': {
+                        description: 'テキスト ファイル',
+                        accept: { 'text/plain': ['.txt'] }
+                    },
+                    'csv': {
+                        description: 'CSV ファイル',
+                        accept: { 'text/csv': ['.csv'] }
+                    },
+                    'pdf': {
+                        description: 'PDF ファイル',
+                        accept: { 'application/pdf': ['.pdf'] }
+                    }
+                };
+
+                const opts = {
+                    suggestedName: filename,
+                    types: [fileTypes[extension] || { description: 'ファイル', accept: { '*/*': ['.' + extension] } }]
+                };
+
+                const handle = await (window as any).showSaveFilePicker(opts);
+                const writable = await handle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+                return;
+            } catch (err: any) {
+                // ユーザーがキャンセルした場合
+                if (err.name === 'AbortError') {
+                    console.log('ファイル保存がキャンセルされました');
+                    return;
+                }
+                console.warn('File System Access API でのエラー、従来の方法にフォールバック:', err);
+            }
+        }
+
+        // フォールバック: 従来のダウンロード方法
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    };
+
+    // エクスポート処理
+    const handleExportSelected = async (format: 'xlsx' | 'json' | 'txt' = 'xlsx') => {
+        try {
+            const selectedItemsArray = filteredItems.slice(0, 1); // 仮実装: 最初の項目
+            if (selectedItemsArray.length === 0) {
+                alert('エクスポートする履歴を選択してください');
+                return;
+            }
+
+            let blob: Blob;
+            if (format === 'xlsx') {
+                blob = createExcelBlob(selectedItemsArray);
+            } else if (format === 'txt') {
+                blob = createTextBlob(selectedItemsArray);
+            } else {
+                const ids = selectedItemsArray.map(item => item.id);
+                blob = await exportSelectedHistory(ids, 'json');
+            }
+
+            await downloadFile(blob, `selected_history_${new Date().toISOString().split('T')[0]}.${format}`);
+        } catch (error) {
+            console.error('選択履歴エクスポートエラー:', error);
+            alert('エクスポートに失敗しました');
+        }
+    };
+
+    const handleExportAll = async (format: 'xlsx' | 'json' | 'txt' = 'xlsx') => {
+        if (filteredItems.length === 0) {
+            alert('エクスポートする履歴がありません');
+            return;
+        }
+        try {
+            let blob: Blob;
+            if (format === 'xlsx') {
+                blob = createExcelBlob(filteredItems);
+            } else if (format === 'txt') {
+                blob = createTextBlob(filteredItems);
+            } else {
+                blob = await exportAllHistory(filters, 'json');
+            }
+
+            await downloadFile(blob, `all_history_${new Date().toISOString().split('T')[0]}.${format}`);
+        } catch (error) {
+            console.error('全履歴エクスポートエラー:', error);
+            alert('エクスポートに失敗しました');
+        }
+    };
+
     return (
         <div className="container mx-auto p-6">
             <div className="mb-6">
@@ -556,18 +704,22 @@ export default function HistoryPage() {
                     <CardTitle>エクスポート処理</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex gap-2">
-                        <Button variant="outline" disabled={filteredItems.length === 0}>
-                            選択した履歴をエクスポート
-                        </Button>
-                        <Button variant="outline" disabled={filteredItems.length === 0}>
-                            すべての履歴をエクスポート
-                        </Button>
+                    <div className="space-y-4">
+                        <div>
+                            <div className="text-sm font-medium text-gray-700 mb-2">全履歴のエクスポート ({filteredItems.length}件)</div>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="default"
+                                    disabled={filteredItems.length === 0}
+                                    onClick={() => handleExportAll('xlsx')}
+                                >
+                                    すべての履歴をエクスポート
+                                </Button>
+                            </div>
+                        </div>
                     </div>
                 </CardContent>
-            </Card>
-
-            {/* ページネーション */}
+            </Card>            {/* ページネーション */}
             {totalPages > 1 && (
                 <div className="mt-6 flex justify-center">
                     <div className="flex gap-2">

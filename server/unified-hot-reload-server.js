@@ -32,11 +32,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // 環境変数の読み込み
-// まずルートの.envを読み込み、その後server/.envがあれば上書き
+// 開発環境では.env.developmentを優先、なければ.envを読み込む
+const nodeEnv = process.env.NODE_ENV || 'development';
 const rootEnvPath = path.join(__dirname, '..', '.env');
 const serverEnvPath = path.join(__dirname, '.env');
+const serverEnvDevPath = path.join(__dirname, '.env.development');
 
-if (fs.existsSync(rootEnvPath)) {
+// 開発環境用の.env.developmentを優先的に読み込む
+if (nodeEnv === 'development' && fs.existsSync(serverEnvDevPath)) {
+  dotenv.config({ path: serverEnvDevPath, encoding: 'utf8' });
+  console.log('📄 Loaded .env.development from:', serverEnvDevPath);
+} else if (fs.existsSync(rootEnvPath)) {
   dotenv.config({ path: rootEnvPath, encoding: 'utf8' });
   console.log('📄 Loaded .env file from:', rootEnvPath);
 }
@@ -46,8 +52,8 @@ if (fs.existsSync(serverEnvPath)) {
   console.log('📄 Loaded server/.env file from:', serverEnvPath);
 }
 
-if (!fs.existsSync(rootEnvPath) && !fs.existsSync(serverEnvPath)) {
-  console.log('📄 .env file not found, using system environment variables');
+if (!fs.existsSync(serverEnvDevPath) && !fs.existsSync(rootEnvPath) && !fs.existsSync(serverEnvPath)) {
+  console.warn('⚠️ .env file not found, using system environment variables');
 }
 
 const app = express();
@@ -599,6 +605,116 @@ apiRouter.get('/health', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   }
+});
+
+// システムチェック用のデータベース接続確認エンドポイント
+apiRouter.get('/system-check/db-check', async (req, res) => {
+  try {
+    console.log('[api/system-check/db-check] データベース接続チェックリクエスト');
+
+    if (!dbPool) {
+      return res.json({
+        success: false,
+        status: 'ERROR',
+        connected: false,
+        message: 'データベース接続プールが初期化されていません',
+        details: {
+          environment: process.env.NODE_ENV || 'development',
+          database: 'not_initialized',
+          database_url_set: !!process.env.DATABASE_URL
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // 接続タイムアウトを設定
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Database connection timeout')), 30000);
+    });
+
+    const queryPromise = dbPool.query('SELECT NOW() as current_time, version() as version');
+
+    const result = await Promise.race([queryPromise, timeoutPromise]);
+
+    res.json({
+      success: true,
+      status: 'OK',
+      connected: true,
+      message: 'データベース接続チェック成功',
+      db_time: result.rows[0].current_time,
+      version: result.rows[0].version,
+      details: {
+        environment: process.env.NODE_ENV || 'development',
+        database: 'connected',
+        current_time: result.rows[0].current_time,
+        version: result.rows[0].version,
+        pool_stats: {
+          totalCount: dbPool.totalCount,
+          idleCount: dbPool.idleCount,
+          waitingCount: dbPool.waitingCount
+        }
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/system-check/db-check] エラー:', error);
+    res.json({
+      success: false,
+      status: 'ERROR',
+      connected: false,
+      message: error.message || 'データベース接続チェック失敗',
+      error: error.message,
+      details: {
+        environment: process.env.NODE_ENV || 'development',
+        database: 'connection_failed',
+        error: error.message,
+        error_type: error.constructor.name,
+        database_url_set: !!process.env.DATABASE_URL
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// システムチェック用のGPT接続確認エンドポイント
+apiRouter.post('/system-check/gpt-check', (req, res) => {
+  console.log('[api/system-check/gpt-check] GPT接続チェックリクエスト');
+
+  // OpenAI APIキーの設定を確認
+  const isOpenAIConfigured = process.env.OPENAI_API_KEY &&
+    process.env.OPENAI_API_KEY !== 'dev-mock-key' &&
+    process.env.OPENAI_API_KEY.startsWith('sk-');
+
+  if (!isOpenAIConfigured || !openai) {
+    return res.json({
+      success: false,
+      status: 'ERROR',
+      connected: false,
+      message: 'OpenAI APIキーが設定されていません',
+      error: 'APIキーが未設定または無効です',
+      details: {
+        environment: process.env.NODE_ENV || 'development',
+        apiKey: 'not_configured',
+        model: 'not_available'
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  // APIキーが設定されている場合
+  res.json({
+    success: true,
+    status: 'OK',
+    connected: true,
+    message: 'OpenAI APIキーが設定されています',
+    details: {
+      environment: process.env.NODE_ENV || 'development',
+      apiKey: 'configured',
+      model: 'available',
+      client_initialized: !!openai
+    },
+    timestamp: new Date().toISOString()
+  });
 });
 
 // 現在のユーザー情報取得エンドポイント
@@ -6643,45 +6759,51 @@ apiRouter.post('/chatgpt', async (req, res) => {
       // 本番環境（node）と開発環境（tsx）の両方に対応
       let processOpenAIRequest;
       try {
-        // まず、.jsファイルを試す（本番環境用）
-        const openaiJsPath = path.join(__dirname, 'lib', 'openai.js');
-        // FIXME: TypeScript file cannot be imported directly in Node.js
-        // const openaiTsPath = path.join(__dirname, 'lib', 'openai.ts');
+        // CommonJSファイルを読み込む
+        const openaiCjsPath = path.join(__dirname, 'lib', 'openai.cjs');
 
-        if (fs.existsSync(openaiJsPath)) {
-          // .jsファイルが存在する場合
+        if (fs.existsSync(openaiCjsPath)) {
+          console.log('[api/chatgpt] 📁 openai.cjsファイルを検出:', openaiCjsPath);
+
+          // CommonJS形式で動的import
           try {
-            const fileUrl = pathToFileURL(openaiJsPath).href;
+            const fileUrl = pathToFileURL(openaiCjsPath).href;
             const module = await import(fileUrl);
-            processOpenAIRequest = module.processOpenAIRequest;
-            console.log('[api/chatgpt] ✅ openai.js を読み込みました');
-          } catch (jsError) {
-            // 相対パスでも試す
-            try {
-              const module = await import('./lib/openai.js');
+            console.log('[api/chatgpt] 📦 モジュール読み込み成功');
+            console.log('[api/chatgpt] 🔍 モジュールキー:', Object.keys(module));
+
+
+            // ES Modules形式のエクスポートを取得
+            if (module.processOpenAIRequest) {
               processOpenAIRequest = module.processOpenAIRequest;
-              console.log('[api/chatgpt] ✅ openai.js を相対パスで読み込みました');
-            } catch (relError) {
-              throw new Error(`openai.js の読み込みに失敗: ${jsError.message}`);
+              console.log('[api/chatgpt] ✅ processOpenAIRequestを直接取得');
+            } else if (module.default && typeof module.default === 'object') {
+              processOpenAIRequest = module.default.processOpenAIRequest;
+              console.log('[api/chatgpt] ✅ processOpenAIRequestをdefaultから取得');
+            } else {
+              throw new Error('processOpenAIRequest関数が見つかりません');
             }
+
+            if (!processOpenAIRequest) {
+              throw new Error('processOpenAIRequest関数がundefinedです');
+            }
+
+            console.log('[api/chatgpt] ✅ openai.cjs を読み込みました');
+          } catch (importError) {
+            console.error('[api/chatgpt] ❌ import失敗:', importError);
+            throw new Error(`openai.cjs の読み込みに失敗: ${importError.message}`);
           }
         } else {
-          // FIXME: TypeScriptインポートを一時的に無効化
-          console.warn('[api/chatgpt] ⚠️ OpenAI機能は一時的に無効化されています（TypeScriptインポート問題のため）');
-          processOpenAIRequest = async (prompt) => {
-            return 'OpenAI機能は現在一時的に無効化されています。サーバー管理者にお問い合わせください。';
-          };
+          throw new Error(`openai.cjs が見つかりません: ${openaiCjsPath}`);
         }
       } catch (importError) {
-        console.error('[api/chatgpt] Failed to import openai module:', importError);
-        console.error('[api/chatgpt] Import error details:', {
+        console.error('[api/chatgpt] ❌ OpenAIモジュール読み込みエラー:', importError);
+        console.error('[api/chatgpt] エラー詳細:', {
           message: importError instanceof Error ? importError.message : String(importError),
           stack: importError instanceof Error ? importError.stack : undefined
         });
-        throw new Error('OpenAI module could not be loaded. In production, ensure TypeScript files are compiled to .js files.');
-      }
-
-      // knowledge-baseからのデータのみを使用（useOnlyKnowledgeBaseがtrueの場合）
+        throw new Error(`OpenAI module could not be loaded: ${importError instanceof Error ? importError.message : String(importError)}`);
+      }      // knowledge-baseからのデータのみを使用（useOnlyKnowledgeBaseがtrueの場合）
       const useKnowledgeBase = useOnlyKnowledgeBase !== false; // デフォルトはtrue
 
       // AI支援カスタマイズ設定を読み込む

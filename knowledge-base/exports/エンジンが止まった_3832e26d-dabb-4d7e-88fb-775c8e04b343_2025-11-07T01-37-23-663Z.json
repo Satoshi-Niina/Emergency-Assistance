@@ -60,10 +60,29 @@
   },
   "savedImages": [
     {
-      "messageId": 1762479438672,
       "fileName": "chat_image_3832e26d-dabb-4d7e-88fb-775c8e04b343_1762479443666.jpg",
-      "path": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\system\\Emergency-Assistance\\knowledge-base\\images\\chat-exports\\chat_image_3832e26d-dabb-4d7e-88fb-775c8e04b343_1762479443666.jpg",
-      "url": "/api/images/chat-exports/chat_image_3832e26d-dabb-4d7e-88fb-775c8e04b343_1762479443666.jpg"
+      "url": "/api/images/chat-exports/chat_image_3832e26d-dabb-4d7e-88fb-775c8e04b343_1762479443666.jpg",
+      "path": "chat_image_3832e26d-dabb-4d7e-88fb-775c8e04b343_1762479443666.jpg"
+    }
+  ],
+  "problemDescription": "走行中に突然エンジンが止まった",
+  "answer": "走行中に突然エンジンが止まった",
+  "machineType": "MC300(堀川）",
+  "machineNumber": "1000",
+  "lastModified": "2025-11-16T01:51:00.991Z",
+  "updateHistory": [
+    {
+      "timestamp": "2025-11-16T01:51:00.991Z",
+      "updatedFields": [
+        "title",
+        "problemDescription",
+        "answer",
+        "machineType",
+        "machineNumber",
+        "savedImages",
+        "lastModified"
+      ],
+      "updatedBy": "user"
     }
   ]
 }

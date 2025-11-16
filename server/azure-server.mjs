@@ -2569,6 +2569,78 @@ app.get('/api/db-check', async (req, res) => {
   }
 });
 
+// システムチェック用のエンドポイント（/api/system-check/db-check）
+app.get('/api/system-check/db-check', async (req, res) => {
+  try {
+    console.log('[api/system-check/db-check] データベース接続チェックリクエスト');
+
+    if (!dbPool) {
+      return res.json({
+        success: false,
+        status: 'ERROR',
+        connected: false,
+        message: 'データベース接続プールが初期化されていません',
+        details: {
+          environment: 'azure-production',
+          database: 'not_initialized',
+          ssl: process.env.PG_SSL || 'not_set',
+          database_url_set: !!process.env.DATABASE_URL
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // 接続タイムアウトを設定
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Database connection timeout')), 30000);
+    });
+
+    const queryPromise = dbPool.query('SELECT NOW() as current_time, version() as version');
+
+    const result = await Promise.race([queryPromise, timeoutPromise]);
+
+    res.json({
+      success: true,
+      status: 'OK',
+      connected: true,
+      message: 'データベース接続チェック成功',
+      db_time: result.rows[0].current_time,
+      version: result.rows[0].version,
+      details: {
+        environment: 'azure-production',
+        database: 'connected',
+        ssl: process.env.PG_SSL || 'prefer',
+        current_time: result.rows[0].current_time,
+        version: result.rows[0].version,
+        pool_stats: {
+          totalCount: dbPool.totalCount,
+          idleCount: dbPool.idleCount,
+          waitingCount: dbPool.waitingCount
+        }
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/system-check/db-check] エラー:', error);
+    res.json({
+      success: false,
+      status: 'ERROR',
+      connected: false,
+      message: error.message || 'データベース接続チェック失敗',
+      error: error.message,
+      details: {
+        environment: 'azure-production',
+        database: 'connection_failed',
+        error: error.message,
+        error_type: error.constructor.name,
+        database_url_set: !!process.env.DATABASE_URL,
+        ssl_setting: process.env.PG_SSL || 'not_set'
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // 24. GPT接続チェックAPI
 app.post('/api/gpt-check', (req, res) => {
   res.json({
@@ -2579,6 +2651,42 @@ app.post('/api/gpt-check', (req, res) => {
       environment: 'azure-production',
       apiKey: 'not_configured',
       model: 'not_available'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// システムチェック用のGPT接続チェックエンドポイント（/api/system-check/gpt-check）
+app.post('/api/system-check/gpt-check', (req, res) => {
+  console.log('[api/system-check/gpt-check] GPT接続チェックリクエスト');
+
+  // OpenAI APIキーの設定を確認
+  if (!isOpenAIAvailable) {
+    return res.json({
+      success: false,
+      status: 'ERROR',
+      connected: false,
+      message: 'OpenAI APIキーが設定されていません',
+      error: 'APIキーが未設定または無効です',
+      details: {
+        environment: 'azure-production',
+        apiKey: 'not_configured',
+        model: 'not_available'
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  // APIキーが設定されている場合
+  res.json({
+    success: true,
+    status: 'OK',
+    connected: true,
+    message: 'OpenAI APIキーが設定されています',
+    details: {
+      environment: 'azure-production',
+      apiKey: 'configured',
+      model: 'available'
     },
     timestamp: new Date().toISOString()
   });

@@ -14,8 +14,8 @@ import {
   TabsList,
   TabsTrigger,
 } from '../../components/ui/tabs';
-import mergencyFlowditor from './emergency-flow-editor';
-import mergencyGuideDisplay from './emergency-guide-display';
+import EmergencyFlowEditor from './emergency-flow-editor';
+import EmergencyGuideDisplay from './emergency-guide-display';
 import { convertImageUrl } from '../../lib/image-utils';
 
 interface FlowData {
@@ -98,7 +98,7 @@ function getObjectDiff(original: any, fixed: any, path = ''): string[] {
       }
     } else if (origVal !== fixVal) {
       diffs.push(
-        `${currentPath}: 、{origVal ?? '未設定}」�、{fixVal ?? '未設定}」`
+        `${currentPath}: 「${origVal ?? '未設定'}」→「${fixVal ?? '未設定'}」`
       );
     }
   }
@@ -149,7 +149,7 @@ const FlowList: React.FC<FlowListProps> = ({
                 window.dispatchEvent(new CustomEvent('switchToGenerator'))
               }
             >
-              新規フロー生�へ
+              新規フロー生成へ
             </Button>
             <Button variant='outline' onClick={() => window.location.reload()}>
               再読み込み
@@ -170,19 +170,19 @@ const FlowList: React.FC<FlowListProps> = ({
                 タイトル
               </th>
               <th className='border border-gray-300 p-3 text-left text-sm font-medium'>
-                説昁
+                説明
               </th>
               <th className='border border-gray-300 p-3 text-left text-sm font-medium'>
-                スデ��プ数
+                ステップ数
               </th>
               <th className='border border-gray-300 p-3 text-left text-sm font-medium'>
-                更新日晁
+                更新日時
               </th>
               <th className='border border-gray-300 p-3 text-center text-sm font-medium'>
-                画僁
+                画像
               </th>
               <th className='border border-gray-300 p-3 text-center text-sm font-medium'>
-                操佁
+                操作
               </th>
             </tr>
           </thead>
@@ -215,11 +215,11 @@ const FlowList: React.FC<FlowListProps> = ({
                     {flow.steps && flow.steps.length > 0 && flow.steps.some((step: any) => step.imageUrl || (step.images && step.images.length > 0)) ? (
                       <div className='flex gap-1'>
                         {flow.steps.slice(0, 3).map((step: any, stepIndex: number) => {
-                          // 新しい images 配�を優先的に使用
+                          // 新しい images 配列を優先的に使用
                           if (step.images && step.images.length > 0) {
                             return step.images.slice(0, 1).map((image: any, imageIndex: number) => {
                               const imageUrl = convertImageUrl(image);
-                              console.log('🖼��フロー一覧画像表示:', {
+                              console.log('🖼️ フロー一覧画像表示:', {
                                 stepId: step.id,
                                 imageIndex,
                                 originalImage: image,
@@ -246,10 +246,10 @@ const FlowList: React.FC<FlowListProps> = ({
                               );
                             });
                           }
-                          // 古いimageUrl プププロパティの処理��後方互換性��
+                          // 古いimageUrl プロパティの処理（後方互換性）
                           if (step.imageUrl) {
                             const imageUrl = convertImageUrl(step.imageUrl);
-                            console.log('🖼��フロー一覧画像表示��古い��式！', {
+                            console.log('🖼️ フロー一覧画像表示（古い形式）', {
                               stepId: step.id,
                               originalImageUrl: step.imageUrl,
                               convertedUrl: imageUrl
@@ -261,7 +261,7 @@ const FlowList: React.FC<FlowListProps> = ({
                                 alt={`${step.title} - 画像`}
                                 className='w-8 h-8 object-cover rounded border'
                                 onError={(e) => {
-                                  console.error('画像読み込みエラー��古い��式！', {
+                                  console.error('画像読み込みエラー（古い形式）', {
                                     imageUrl,
                                     originalImageUrl: step.imageUrl,
                                     stepId: step.id
@@ -269,7 +269,7 @@ const FlowList: React.FC<FlowListProps> = ({
                                   e.currentTarget.style.display = 'none';
                                 }}
                                 onLoad={() => {
-                                  console.log('画像読み込み成功��古い��式！', imageUrl);
+                                  console.log('画像読み込み成功（古い形式）', imageUrl);
                                 }}
                               />
                             );
@@ -325,13 +325,13 @@ const FlowList: React.FC<FlowListProps> = ({
   );
 };
 
-const mergencyGuidedit: React.FC = () => {
+const EmergencyGuideEdit: React.FC = () => {
   const { toast } = useToast();
   const [flowList, setFlowList] = useState<FlowData[]>([]);
   const [selectedFlow, setSelectedFlow] = useState<FlowData | null>(null);
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [editorTab, setditorTab] = useState<string | null>(null);
+  const [editorTab, setEditorTab] = useState<string | null>(null);
   const [currentTab, setCurrentTab] = useState('list'); // 'list' or 'editor'
   const [previewFlow, setPreviewFlow] = useState<FlowData | null>(null);
 
@@ -346,7 +346,7 @@ const mergencyGuidedit: React.FC = () => {
         const randomId = Math.random().toString(36).substring(2);
         const cacheBuster = `?ts=${timestamp}&r=${randomId}`;
 
-        // 統一API設定を使用 - flows APIを使用��確実に動作するエンド�イント！
+        // 統一API設定を使用 - flows APIを使用（確実に動作するエンドポイント）
         const { buildApiUrl } = await import('../../lib/api');
         const apiUrl = buildApiUrl(`/emergency-flow/list${cacheBuster}`);
 
@@ -375,7 +375,7 @@ const mergencyGuidedit: React.FC = () => {
         const data = await response.json();
         console.log('📊 取得したデータ:', data);
 
-        // APIレスポンスの構造に合わせてデ�タを�デ��ング
+        // APIレスポンスの構造に合わせてデータをデコーディング
         const flows =
           data.success && data.flows
             ? data.flows
@@ -384,7 +384,7 @@ const mergencyGuidedit: React.FC = () => {
               : Array.isArray(data)
                 ? data
                 : [];
-        console.log('🔄 処理��象フロー数:', flows.length);
+        console.log('🔄 処理対象フロー数:', flows.length);
 
         const mappedFlows = flows.map((flow: any) => ({
           id: flow.id || flow.fileName?.replace('.json', '') || '',
@@ -416,7 +416,7 @@ const mergencyGuidedit: React.FC = () => {
               : 'フロー一覧の取得に失敗しました',
           variant: 'destructive',
         });
-        setFlowList([]); // エラー時�空配�を設定
+        setFlowList([]); // エラー時は空配列を設定
       } finally {
         setIsLoading(false);
       }
@@ -454,13 +454,13 @@ const mergencyGuidedit: React.FC = () => {
 
     try {
       setSelectedFlow(flow);
-      setditorTab('metadata');
+      setEditorTab('metadata');
       setPreviewFlow(null);
 
-      console.log('📡 フロー詳細デ�タを取得中:', flow.id);
+      console.log('📡 フロー詳細データを取得中:', flow.id);
       console.log('📋 選択されたフロー:', flow);
 
-      // フローの詳細デ�タを取得- /detail/:id エンド�イントを使用
+      // フローの詳細データを取得 - /detail/:id エンドポイントを使用
       const timestamp = Date.now();
       const { buildApiUrl } = await import('../../lib/api');
       const apiUrl = buildApiUrl(`/emergency-flow/detail/${flow.id}?_t=${timestamp}`);
@@ -489,7 +489,7 @@ const mergencyGuidedit: React.FC = () => {
 
       const flowDetail = await response.json();
       console.log('📊 生APIレスポンス:', flowDetail);
-      console.log('✅フロー詳細デ�タ取得完了', flowDetail);
+      console.log('✅フロー詳細データ取得完了', flowDetail);
 
       // APIレスポンスの構造を詳しく確認
       console.log('🔍 APIレスポンス構造:', {
@@ -502,19 +502,19 @@ const mergencyGuidedit: React.FC = () => {
         allKeys: Object.keys(flowDetail),
       });
 
-      // APIレスポンスの構造に応じてデ�タを取得
+      // APIレスポンスの構造に応じてデータを取得
       const actualFlowData =
         flowDetail.success && flowDetail.data ? flowDetail.data : flowDetail;
-      console.log('🔍 実際のフローデ�タ:', actualFlowData);
+      console.log('🔍 実際のフローデータ:', actualFlowData);
 
-      // 詳細デ�タと一覧デ�タを�ージ
+      // 詳細データと一覧データをマージ
       const completeFlowData = {
         ...flow,
         ...actualFlowData,
         steps: actualFlowData.steps || flow.steps || [],
       };
 
-      console.log('🔧 マ�ジ後�デ�タ:', completeFlowData);
+      console.log('🔧 マージ後のデータ:', completeFlowData);
       console.log('✅フロー選択完了', {
         flowId: completeFlowData.id,
         stepsLength: completeFlowData.steps?.length || 0,
@@ -526,7 +526,7 @@ const mergencyGuidedit: React.FC = () => {
       });
 
       setSelectedFlow(completeFlowData);
-      setditorTab('metadata');
+      setEditorTab('metadata');
       setPreviewFlow(null);
 
       console.log('🔄 状態更新完了', {
@@ -541,19 +541,19 @@ const mergencyGuidedit: React.FC = () => {
         description: `フロー詳細の取得に失敗しました: ${error instanceof Error ? error.message : ''}`,
         variant: 'destructive',
       });
-      // エラー時�一覧デ�タを使用
+      // エラー時は一覧データを使用
       console.log('🔄 エラー時のフォールバック処理');
       setSelectedFlow(flow);
-      setditorTab('metadata');
+      setEditorTab('metadata');
       setPreviewFlow(null);
     }
   };
 
   const handlePreviewFlow = async (flow: FlowData) => {
     try {
-      console.log('🔄 プレビュー用フロー詳細デ�タを取得中:', flow.id);
+      console.log('🔄 プレビュー用フロー詳細データを取得中:', flow.id);
 
-      // フローの詳細デ�タを取得- emergency-flow APIを使用
+      // フローの詳細データを取得 - emergency-flow APIを使用
       const timestamp = Date.now();
       const { buildApiUrl } = await import('../../lib/api');
       const apiUrl = buildApiUrl(`/emergency-flow/detail/${flow.id}?_t=${timestamp}`);
@@ -575,9 +575,9 @@ const mergencyGuidedit: React.FC = () => {
       }
 
       const flowDetail = await response.json();
-      console.log('✅プレビュー用フロー詳細デ�タ取得完了', flowDetail);
+      console.log('✅プレビュー用フロー詳細データ取得完了', flowDetail);
 
-      // 詳細デ�タと一覧デ�タを�ージ
+      // 詳細データと一覧データをマージ
       const completeFlowData = {
         ...flow,
         ...flowDetail,
@@ -593,7 +593,7 @@ const mergencyGuidedit: React.FC = () => {
         description: `フロー詳細の取得に失敗しました: ${error instanceof Error ? error.message : ''}`,
         variant: 'destructive',
       });
-      // エラー時�一覧デ�タを使用
+      // エラー時は一覧データを使用
       setPreviewFlow(flow);
       setSelectedFlow(null);
     }
@@ -639,10 +639,10 @@ const mergencyGuidedit: React.FC = () => {
         description: 'フローが正常に保存されました。',
       });
 
-      // 保存後、リストを強制的��再読み込みして最新の状態を反映
+      // 保存後、リストを強制的に再読み込みして最新の状態を反映
       await fetchFlowList(true);
 
-      // 更新されたフローデ�タを特定して再選抁
+      // 更新されたフローデータを特定して再選択
       setSelectedFlow(prev => updatedFlowData);
     } catch (error) {
       console.error('❌フローの保存に失敗しました:', error);
@@ -656,7 +656,7 @@ const mergencyGuidedit: React.FC = () => {
 
   const handleDeleteFlow = async (flowId: string, filePath: string) => {
     try {
-      console.log('🗑��フロー削除リクエストを送信:', {
+      console.log('🗑️ フロー削除リクエストを送信:', {
         id: flowId,
         filePath: filePath,
       });
@@ -682,10 +682,10 @@ const mergencyGuidedit: React.FC = () => {
         description: 'フローが正常に削除されました。',
       });
 
-      // 削除後、リストを強制的��再読み込みして最新の状態を反映
+      // 削除後、リストを強制的に再読み込みして最新の状態を反映
       await fetchFlowList(true);
 
-      // 削除されたフローデ�タを特定して再選抁
+      // 削除されたフローデータを特定して再選択
       setSelectedFlow(null);
     } catch (error) {
       console.error('❌フローの削除に失敗しました:', error);
@@ -713,18 +713,18 @@ const mergencyGuidedit: React.FC = () => {
         console.log('🧹 ブラウザキャッシュクリア完了');
       }
 
-      // フロー一覧を�取得
+      // フロー一覧を再取得
       await fetchFlowList(true);
 
       toast({
         title: '成功',
-        description: 'キャデ��ュをクリアしてフロー一覧を�読み込みしました',
+        description: 'キャッシュをクリアしてフロー一覧を再読み込みしました',
       });
     } catch (error) {
-      console.error('❌強制リフレデ��ュエラー:', error);
+      console.error('❌強制リフレッシュエラー:', error);
       toast({
         title: 'エラー',
-        description: 'リフレデ��ュに失敗しました',
+        description: 'リフレッシュに失敗しました',
         variant: 'destructive',
       });
     }
@@ -747,7 +747,7 @@ const mergencyGuidedit: React.FC = () => {
               <CardTitle>{selectedFlow.title}</CardTitle>
               <Button variant='ghost' onClick={handleBackToList}>
                 <X className='h-4 w-4 mr-2' />
-                一覧に戻め
+                一覧に戻る
               </Button>
             </div>
           </CardHeader>
@@ -755,23 +755,23 @@ const mergencyGuidedit: React.FC = () => {
             <Tabs
               value={editorTab || 'metadata'}
               onValueChange={value => {
-                console.log('🔄 タブ�り替ぁ', { from: editorTab, to: value });
-                setditorTab(value);
+                console.log('🔄 タブ切り替え', { from: editorTab, to: value });
+                setEditorTab(value);
               }}
               className='w-full h-full flex flex-col'
             >
               <TabsList className='w-full grid grid-cols-2 mb-4'>
-                <TabsTrigger value='metadata'>メタデ�タ</TabsTrigger>
-                <TabsTrigger value='slides'>スライド�容</TabsTrigger>
+                <TabsTrigger value='metadata'>メタデータ</TabsTrigger>
+                <TabsTrigger value='slides'>スライド内容</TabsTrigger>
               </TabsList>
               <TabsContent
                 value='metadata'
                 className='flex-1 flex flex-col min-h-0'
               >
-                <mergencyFlowditor
+                <EmergencyFlowEditor
                   flowData={selectedFlow}
                   onSave={handleSaveFlow}
-                  onTabChange={setditorTab}
+                  onTabChange={setEditorTab}
                   currentTab='metadata'
                   selectedFilePath={selectedFlow?.filePath}
                 />
@@ -780,10 +780,10 @@ const mergencyGuidedit: React.FC = () => {
                 value='slides'
                 className='flex-1 flex flex-col min-h-0'
               >
-                <mergencyFlowditor
+                <EmergencyFlowEditor
                   flowData={selectedFlow}
                   onSave={handleSaveFlow}
-                  onTabChange={setditorTab}
+                  onTabChange={setEditorTab}
                   currentTab='slides'
                   selectedFilePath={selectedFlow?.filePath}
                 />
@@ -792,9 +792,9 @@ const mergencyGuidedit: React.FC = () => {
           </CardContent>
         </Card>
       ) : previewFlow ? (
-        <mergencyGuideDisplay
+        <EmergencyGuideDisplay
           guideId={previewFlow.id}
-          onxit={handleBackToList}
+          onExit={handleBackToList}
           isPreview={true}
           onSendToChat={() => { }}
         />
@@ -807,7 +807,7 @@ const mergencyGuidedit: React.FC = () => {
               onClick={handleForceRefresh}
               className='text-sm'
             >
-              🔄 強制リフレデ��ュ
+              🔄 強制リフレッシュ
             </Button>
           </div>
           <FlowList
@@ -817,9 +817,9 @@ const mergencyGuidedit: React.FC = () => {
             onPreviewFlow={handlePreviewFlow}
             isLoading={isLoading}
           />
-          {/* デ��デ��情報�� */}
+          {/* デバッグ情報 */}
           <div className="mt-4 p-4 bg-gray-100 rounded text-xs">
-            <h4>デ��デ��情報��:</h4>
+            <h4>デバッグ情報:</h4>
             <p>flowList.length: {flowList.length}</p>
             <p>isLoading: {isLoading.toString()}</p>
             <p>selectedFlow: {selectedFlow ? selectedFlow.id : 'null'}</p>
@@ -831,4 +831,4 @@ const mergencyGuidedit: React.FC = () => {
   );
 };
 
-export default mergencyGuidedit;
+export default EmergencyGuideEdit;

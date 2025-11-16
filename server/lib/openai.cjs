@@ -1,22 +1,22 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function (o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
     if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
+        desc = { enumerable: true, get: function () { return m[k]; } };
     }
     Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
+}) : (function (o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
 }));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function (o, v) {
     Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
+}) : function (o, v) {
     o["default"] = v;
 });
 var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
+    var ownKeys = function (o) {
         ownKeys = Object.getOwnPropertyNames || function (o) {
             var ar = [];
             for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
@@ -48,17 +48,15 @@ const openai_1 = __importDefault(require("openai"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
-const url_1 = require("url");
-// ESM用__dirname定義
-const __filename = (0, url_1.fileURLToPath)(import.meta.url);
-const __dirname = path.dirname(__filename);
+// CommonJS用__dirname定義（既に利用可能）
 // .envファイルの読み込み（相対パスで指定）
+// 開発環境用の.env.developmentを優先的に読み込む
+dotenv_1.default.config({ path: path.resolve(__dirname, '../../server/.env.development') });
+dotenv_1.default.config({ path: path.resolve(__dirname, '../../server/.env.production') });
 dotenv_1.default.config({ path: path.resolve(__dirname, '../../server/.env') });
+dotenv_1.default.config({ path: path.resolve(__dirname, '../../.env') });
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const OPENAI_MODEL = 'gpt-4o';
-// 複数の場所から.envファイルを読み込み
-dotenv_1.default.config({ path: path.resolve(__dirname, '../../.env') });
-dotenv_1.default.config({ path: path.resolve(__dirname, '../../server/.env') });
 // APIキーの取得
 const apiKey = process.env.OPENAI_API_KEY;
 // デバッグ用ログを有効化
@@ -268,7 +266,7 @@ async function processOpenAIRequest(prompt, useKnowledgeBase = true) {
         // コンテキスト分析を実行
         let contextAnalysis;
         try {
-            const { analyzeUserContext, adjustSystemPromptForContext } = await import('./context-analyzer.js');
+            const { analyzeUserContext, adjustSystemPromptForContext } = await import('./context-analyzer.cjs');
             contextAnalysis = analyzeUserContext(prompt);
             console.log('[DEBUG] Context analysis:', contextAnalysis);
         }
@@ -307,7 +305,7 @@ async function processOpenAIRequest(prompt, useKnowledgeBase = true) {
         // ナレッジベースから関連情報を取得して含める
         if (useKnowledgeBase) {
             try {
-                const { generateSystemPromptWithKnowledge } = await import('./knowledge-base.js');
+                const { generateSystemPromptWithKnowledge } = await import('./knowledge-base.cjs');
                 // RAG設定を読み込む（settings.tsの設定ファイルから）
                 let ragSettings = null;
                 try {
@@ -363,7 +361,7 @@ async function processOpenAIRequest(prompt, useKnowledgeBase = true) {
                 systemPrompt = await generateSystemPromptWithKnowledge(prompt, ragSettings);
                 // コンテキスト分析結果でシステムプロンプトを調整
                 if (contextAnalysis) {
-                    const { adjustSystemPromptForContext } = await import('./context-analyzer.js');
+                    const { adjustSystemPromptForContext } = await import('./context-analyzer.cjs');
                     systemPrompt = adjustSystemPromptForContext(systemPrompt, contextAnalysis);
                 }
             }

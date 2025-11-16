@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import * as XLSX from 'xlsx';
 import { useAuth } from '../context/auth-context';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -287,42 +288,42 @@ export default function HistoryPage() {
 
       // データを変換（空配列でも処理を続行）
       const historyItems = items.map((file: any) => ({
-          id: file.id || file.chatId,
-          chatId: file.chatId || file.id,
-          fileName: file.fileName || file.name || `${file.title}_${file.id}.json`,
-          title: file.title || '故障履歴',
-          machineType: file.machineType || file.machineInfo?.machineTypeName || 'Unknown',
-          machineNumber: file.machineNumber || file.machineInfo?.machineNumber || 'Unknown',
-          createdAt: file.createdAt || file.exportTimestamp || new Date().toISOString(),
-          lastModified: file.updatedAt || file.createdAt || file.exportTimestamp || new Date().toISOString(),
-          extractedComponents: file.extractedComponents || file.keywords || [],
-          extractedSymptoms: file.extractedSymptoms || [],
-          possibleModels: file.possibleModels || [],
-          machineInfo: file.machineInfo || {
-            machineTypeName: file.machineType,
-            machineNumber: file.machineNumber,
-          },
-          description: file.description || file.problemDescription || '',
-          userId: file.userId || 'system',
-          sessionId: file.chatId || file.id,
-          conversationData: file.conversationHistory || [],
-          tags: file.tags || [],
-          images: file.images || file.savedImages || [],
-          jsonData: file.jsonData || {
-            title: file.title,
-            problemDescription: file.description || file.problemDescription,
-            machineType: file.machineType,
-            machineNumber: file.machineNumber,
-            conversationHistory: file.conversationHistory || [],
-            savedImages: file.savedImages || file.images || [],
-            metadata: file.metadata || {},
-          },
-          metadata: {
-            source: 'history-file',
-            originalFile: file.fileName || file.name,
-            ...file.metadata,
-          }
-        }));
+        id: file.id || file.chatId,
+        chatId: file.chatId || file.id,
+        fileName: file.fileName || file.name || `${file.title}_${file.id}.json`,
+        title: file.title || '故障履歴',
+        machineType: file.machineType || file.machineInfo?.machineTypeName || 'Unknown',
+        machineNumber: file.machineNumber || file.machineInfo?.machineNumber || 'Unknown',
+        createdAt: file.createdAt || file.exportTimestamp || new Date().toISOString(),
+        lastModified: file.updatedAt || file.createdAt || file.exportTimestamp || new Date().toISOString(),
+        extractedComponents: file.extractedComponents || file.keywords || [],
+        extractedSymptoms: file.extractedSymptoms || [],
+        possibleModels: file.possibleModels || [],
+        machineInfo: file.machineInfo || {
+          machineTypeName: file.machineType,
+          machineNumber: file.machineNumber,
+        },
+        description: file.description || file.problemDescription || '',
+        userId: file.userId || 'system',
+        sessionId: file.chatId || file.id,
+        conversationData: file.conversationHistory || [],
+        tags: file.tags || [],
+        images: file.images || file.savedImages || [],
+        jsonData: file.jsonData || {
+          title: file.title,
+          problemDescription: file.description || file.problemDescription,
+          machineType: file.machineType,
+          machineNumber: file.machineNumber,
+          conversationHistory: file.conversationHistory || [],
+          savedImages: file.savedImages || file.images || [],
+          metadata: file.metadata || {},
+        },
+        metadata: {
+          source: 'history-file',
+          originalFile: file.fileName || file.name,
+          ...file.metadata,
+        }
+      }));
 
       setHistoryItems(historyItems);
       setFilteredItems(historyItems);
@@ -870,9 +871,8 @@ export default function HistoryPage() {
           </div>
         </div>
 
-        ${
-          imageUrl
-            ? `
+        ${imageUrl
+        ? `
         <div class="section">
           <h2>故障箇所の画像</h2>
           <div class="image-section">
@@ -882,8 +882,8 @@ export default function HistoryPage() {
           </div>
         </div>
         `
-            : ''
-        }
+        : ''
+      }
 
         <div class="section">
           <h2>修繕計画</h2>
@@ -1001,26 +1001,151 @@ export default function HistoryPage() {
     }
   };
 
+  // Excelファイル作成ヘルパー関数
+  const createExcelBlob = (items: SupportHistoryItem[]): Blob => {
+    const worksheetData = items.map(item => ({
+      '日時': new Date(item.createdAt).toLocaleString('ja-JP'),
+      'タイトル': item.title || '',
+      '機種': item.machineType || '',
+      '機械番号': item.machineNumber || '',
+      '問題内容': item.problemDescription || '',
+      '抽出された部品': (item.extractedComponents || []).join(', '),
+      '抽出された症状': (item.extractedSymptoms || []).join(', '),
+      '可能性のある型式': (item.possibleModels || []).join(', '),
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(worksheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '履歴');
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    return new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  };
+
+  // テキストファイル作成ヘルパー関数
+  const createTextBlob = (items: SupportHistoryItem[]): Blob => {
+    const textContent = items.map(item => {
+      return `
+========================================
+日時: ${new Date(item.createdAt).toLocaleString('ja-JP')}
+タイトル: ${item.title || ''}
+機種: ${item.machineType || ''}
+機械番号: ${item.machineNumber || ''}
+問題内容: ${item.problemDescription || ''}
+抽出された部品: ${(item.extractedComponents || []).join(', ')}
+抽出された症状: ${(item.extractedSymptoms || []).join(', ')}
+可能性のある型式: ${(item.possibleModels || []).join(', ')}
+========================================
+`;
+    }).join('\n');
+    return new Blob([textContent], { type: 'text/plain; charset=utf-8' });
+  };
+
+  // ファイルダウンロード処理（保存先選択対応）
+  const downloadFile = async (blob: Blob, filename: string) => {
+    // File System Access API がサポートされている場合は保存先を選択
+    if ('showSaveFilePicker' in window) {
+      try {
+        const extension = filename.split('.').pop() || '';
+        const fileTypes: Record<string, { description: string; accept: Record<string, string[]> }> = {
+          'xlsx': {
+            description: 'Excel ファイル',
+            accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] }
+          },
+          'json': {
+            description: 'JSON ファイル',
+            accept: { 'application/json': ['.json'] }
+          },
+          'txt': {
+            description: 'テキスト ファイル',
+            accept: { 'text/plain': ['.txt'] }
+          },
+          'csv': {
+            description: 'CSV ファイル',
+            accept: { 'text/csv': ['.csv'] }
+          },
+          'pdf': {
+            description: 'PDF ファイル',
+            accept: { 'application/pdf': ['.pdf'] }
+          }
+        };
+
+        const opts = {
+          suggestedName: filename,
+          types: [fileTypes[extension] || { description: 'ファイル', accept: { '*/*': ['.' + extension] } }]
+        };
+
+        const handle = await (window as any).showSaveFilePicker(opts);
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return;
+      } catch (err: any) {
+        // ユーザーがキャンセルした場合
+        if (err.name === 'AbortError') {
+          console.log('ファイル保存がキャンセルされました');
+          return;
+        }
+        console.warn('File System Access API でのエラー、従来の方法にフォールバック:', err);
+      }
+    }
+
+    // フォールバック: 従来のダウンロード方法
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  };
+
   // エクスポート処理
-  const handleExportSelected = async () => {
+  const handleExportSelected = async (format: 'xlsx' | 'json' | 'txt' = 'xlsx') => {
     if (selectedItems.size === 0) {
       alert('エクスポートする履歴を選択してください');
       return;
     }
-    const selectedItemsArray = Array.from(selectedItems);
-    console.log('選択した履歴をエクスポート:', selectedItemsArray);
-    // TODO: エクスポート処理を実装
-    alert(`${selectedItemsArray.length}件の履歴をエクスポートします`);
+    try {
+      const selectedItemsArray = filteredItems.filter(item => selectedItems.has(item.id));
+      let blob: Blob;
+
+      if (format === 'xlsx') {
+        blob = createExcelBlob(selectedItemsArray);
+      } else if (format === 'txt') {
+        blob = createTextBlob(selectedItemsArray);
+      } else {
+        blob = await exportSelectedHistory(selectedItemsArray, 'json');
+      }
+
+      await downloadFile(blob, `selected_history_${new Date().toISOString().split('T')[0]}.${format}`);
+    } catch (error) {
+      console.error('選択履歴エクスポートエラー:', error);
+      alert('エクスポートに失敗しました');
+    }
   };
 
-  const handleExportAll = async () => {
+  const handleExportAll = async (format: 'xlsx' | 'json' | 'txt' = 'xlsx') => {
     if (filteredItems.length === 0) {
       alert('エクスポートする履歴がありません');
       return;
     }
-    console.log('すべての履歴をエクスポート:', filteredItems.length, '件');
-    // TODO: エクスポート処理を実装
-    alert(`${filteredItems.length}件の履歴をエクスポートします`);
+    try {
+      let blob: Blob;
+
+      if (format === 'xlsx') {
+        blob = createExcelBlob(filteredItems);
+      } else if (format === 'txt') {
+        blob = createTextBlob(filteredItems);
+      } else {
+        blob = await exportAllHistory(filters, 'json');
+      }
+
+      await downloadFile(blob, `all_history_${new Date().toISOString().split('T')[0]}.${format}`);
+    } catch (error) {
+      console.error('全履歴エクスポートエラー:', error);
+      alert('エクスポートに失敗しました');
+    }
   };
 
   return (
@@ -1336,21 +1461,45 @@ export default function HistoryPage() {
           <CardTitle>エクスポート処理</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              disabled={selectedItems.size === 0}
-              onClick={handleExportSelected}
-            >
-              選択した履歴をエクスポート ({selectedItems.size}件)
-            </Button>
-            <Button
-              variant="outline"
-              disabled={filteredItems.length === 0}
-              onClick={handleExportAll}
-            >
-              すべての履歴をエクスポート ({filteredItems.length}件)
-            </Button>
+          <div className="space-y-4">
+            <div>
+              <div className="text-sm font-medium text-gray-700 mb-2">選択履歴のエクスポート ({selectedItems.size}件)</div>
+              <div className="flex gap-2">
+                <Button
+                  variant="default"
+                  disabled={selectedItems.size === 0}
+                  onClick={() => handleExportSelected('xlsx')}
+                >
+                  Excel形式
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={selectedItems.size === 0}
+                  onClick={() => handleExportSelected('json')}
+                >
+                  JSON形式
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={selectedItems.size === 0}
+                  onClick={() => handleExportSelected('txt')}
+                >
+                  テキスト形式
+                </Button>
+              </div>
+            </div>
+            <div>
+              <div className="text-sm font-medium text-gray-700 mb-2">全履歴のエクスポート ({filteredItems.length}件)</div>
+              <div className="flex gap-2">
+                <Button
+                  variant="default"
+                  disabled={filteredItems.length === 0}
+                  onClick={() => handleExportAll('xlsx')}
+                >
+                  すべての履歴をエクスポート
+                </Button>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

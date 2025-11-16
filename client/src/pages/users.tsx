@@ -409,7 +409,7 @@ export default function UsersPage() {
   };
 
   // エクセルファイルエクスポート
-  const handleExportUsers = () => {
+  const handleExportUsers = async () => {
     try {
       const ws = XLSX.utils.json_to_sheet(
         users.map(user => ({
@@ -424,10 +424,42 @@ export default function UsersPage() {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Users');
 
-      XLSX.writeFile(
-        wb,
-        `users_${new Date().toISOString().split('T')[0]}.xlsx`
-      );
+      const filename = `users_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+      // File System Access API がサポートされている場合は保存先を選択
+      if ('showSaveFilePicker' in window) {
+        try {
+          const opts = {
+            suggestedName: filename,
+            types: [{
+              description: 'Excel ファイル',
+              accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] }
+            }]
+          };
+
+          const handle = await (window as any).showSaveFilePicker(opts);
+          const writable = await handle.createWritable();
+          const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+          await writable.write(new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+          await writable.close();
+
+          toast({
+            title: '成功',
+            description: 'ユーザー一覧をエクスポートしました',
+          });
+          return;
+        } catch (err: any) {
+          // ユーザーがキャンセルした場合
+          if (err.name === 'AbortError') {
+            console.log('ファイル保存がキャンセルされました');
+            return;
+          }
+          console.warn('File System Access API でのエラー、従来の方法にフォールバック:', err);
+        }
+      }
+
+      // フォールバック: 従来のダウンロード方法
+      XLSX.writeFile(wb, filename);
 
       toast({
         title: '成功',

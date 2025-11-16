@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import {
   Search,
   FileText,
@@ -943,9 +944,9 @@ const HistoryPage: React.FC = () => {
     }
   };
 
-  const handleExportSelected = async (format: 'json' | 'csv' = 'json') => {
+  const handleExportSelected = async (format: 'xlsx' | 'json' | 'txt' = 'xlsx') => {
     if (selectedItems.size === 0) {
-      alert('エクスポ�Eトする履歴を選択してください、E);
+      alert('エクスポートする履歴を選択してください');
       return;
     }
 
@@ -954,10 +955,19 @@ const HistoryPage: React.FC = () => {
       const selectedItemsArray = filteredItems.filter(item =>
         selectedItems.has(item.id)
       );
-      const blob = await exportSelectedHistory(selectedItemsArray, format);
-      downloadFile(blob, `selected_history.${format}`);
+
+      let blob: Blob;
+      if (format === 'xlsx') {
+        blob = createExcelBlob(selectedItemsArray);
+      } else if (format === 'txt') {
+        blob = createTextBlob(selectedItemsArray);
+      } else {
+        blob = await exportSelectedHistory(selectedItemsArray, 'json');
+      }
+
+      await downloadFile(blob, `selected_history_${new Date().toISOString().split('T')[0]}.${format}`);
     } catch (error) {
-      console.error('選択履歴エクスポ�Eトエラー:', error);
+      console.error('選択履歴エクスポートエラー:', error);
     } finally {
       setExportLoading(false);
     }
@@ -972,7 +982,55 @@ const HistoryPage: React.FC = () => {
     }
   };
 
-  const downloadFile = (blob: Blob, filename: string) => {
+  const downloadFile = async (blob: Blob, filename: string) => {
+    // File System Access API がサポートされている場合は保存先を選択
+    if ('showSaveFilePicker' in window) {
+      try {
+        const extension = filename.split('.').pop() || '';
+        const fileTypes: Record<string, { description: string; accept: Record<string, string[]> }> = {
+          'xlsx': {
+            description: 'Excel ファイル',
+            accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] }
+          },
+          'json': {
+            description: 'JSON ファイル',
+            accept: { 'application/json': ['.json'] }
+          },
+          'txt': {
+            description: 'テキスト ファイル',
+            accept: { 'text/plain': ['.txt'] }
+          },
+          'csv': {
+            description: 'CSV ファイル',
+            accept: { 'text/csv': ['.csv'] }
+          },
+          'pdf': {
+            description: 'PDF ファイル',
+            accept: { 'application/pdf': ['.pdf'] }
+          }
+        };
+
+        const opts = {
+          suggestedName: filename,
+          types: [fileTypes[extension] || { description: 'ファイル', accept: { '*/*': ['.' + extension] } }]
+        };
+
+        const handle = await (window as any).showSaveFilePicker(opts);
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return;
+      } catch (err: any) {
+        // ユーザーがキャンセルした場合
+        if (err.name === 'AbortError') {
+          console.log('ファイル保存がキャンセルされました');
+          return;
+        }
+        console.warn('File System Access API でのエラー、従来の方法にフォールバック:', err);
+      }
+    }
+
+    // フォールバック: 従来のダウンロード方法
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -983,28 +1041,85 @@ const HistoryPage: React.FC = () => {
     document.body.removeChild(a);
   };
 
+  // Excelファイル作成ヘルパー関数
+  const createExcelBlob = (items: SupportHistoryItem[]): Blob => {
+    const worksheetData = items.map(item => ({
+      '日時': new Date(item.createdAt).toLocaleString('ja-JP'),
+      'タイトル': item.title || '',
+      '機種': item.machineType || '',
+      '機械番号': item.machineNumber || '',
+      '問題内容': item.problemDescription || '',
+      '抽出された部品': (item.extractedComponents || []).join(', '),
+      '抽出された症状': (item.extractedSymptoms || []).join(', '),
+      '可能性のある型式': (item.possibleModels || []).join(', '),
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(worksheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '履歴');
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    return new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  };
+
+  // テキストファイル作成ヘルパー関数
+  const createTextBlob = (items: SupportHistoryItem[]): Blob => {
+    const textContent = items.map(item => {
+      return `
+========================================
+日時: ${new Date(item.createdAt).toLocaleString('ja-JP')}
+タイトル: ${item.title || ''}
+機種: ${item.machineType || ''}
+機械番号: ${item.machineNumber || ''}
+問題内容: ${item.problemDescription || ''}
+抽出された部品: ${(item.extractedComponents || []).join(', ')}
+抽出された症状: ${(item.extractedSymptoms || []).join(', ')}
+可能性のある型式: ${(item.possibleModels || []).join(', ')}
+========================================
+`;
+    }).join('\n');
+    return new Blob([textContent], { type: 'text/plain; charset=utf-8' });
+  };
+
   const handleExportItem = async (
     item: SupportHistoryItem,
-    format: 'json' | 'csv' = 'json'
+    format: 'xlsx' | 'json' | 'txt' = 'xlsx'
   ) => {
     try {
       setExportLoading(true);
-      const blob = await exportHistoryItem(item.id, format);
-      downloadFile(blob, `history_${item.id}.${format}`);
+      let blob: Blob;
+
+      if (format === 'xlsx') {
+        blob = createExcelBlob([item]);
+      } else if (format === 'txt') {
+        blob = createTextBlob([item]);
+      } else {
+        blob = await exportHistoryItem(item.id, 'json');
+      }
+
+      await downloadFile(blob, `history_${item.id}.${format}`);
     } catch (error) {
-      console.error('エクスポ�Eトエラー:', error);
+      console.error('エクスポートエラー:', error);
     } finally {
       setExportLoading(false);
     }
   };
 
-  const handleExportAll = async (format: 'json' | 'csv' = 'json') => {
+  const handleExportAll = async (format: 'xlsx' | 'json' | 'txt' = 'xlsx') => {
     try {
       setExportLoading(true);
-      const blob = await exportAllHistory(filters, format);
-      downloadFile(blob, `all_history.${format}`);
+      let blob: Blob;
+
+      if (format === 'xlsx') {
+        blob = createExcelBlob(filteredItems);
+      } else if (format === 'txt') {
+        blob = createTextBlob(filteredItems);
+      } else {
+        blob = await exportAllHistory(filters, 'json');
+      }
+
+      await downloadFile(blob, `all_history_${new Date().toISOString().split('T')[0]}.${format}`);
     } catch (error) {
-      console.error('エクスポ�Eトエラー:', error);
+      console.error('エクスポートエラー:', error);
     } finally {
       setExportLoading(false);
     }
@@ -4446,55 +4561,63 @@ const HistoryPage: React.FC = () => {
         </div>
 
         <div className='flex flex-wrap gap-4 mb-4'>
-          {/* 選択履歴エクスポ�EチE*/}
-          <div className='flex gap-2'>
-            <Button
-              onClick={() => handleExportSelected('json')}
-              disabled={exportLoading || selectedItems.size === 0}
-              variant='default'
-              className='flex items-center gap-2'
-            >
-              <Download className='h-4 w-4' />
-              選択履歴をJSONエクスポ�EチE({selectedItems.size})
-            </Button>
-            <Button
-              onClick={() => handleExportSelected('csv')}
-              disabled={exportLoading || selectedItems.size === 0}
-              variant='default'
-              className='flex items-center gap-2'
-            >
-              <Download className='h-4 w-4' />
-              選択履歴をCSVエクスポ�EチE({selectedItems.size})
-            </Button>
-            <Button
-              onClick={handlePrintTable}
-              disabled={exportLoading || selectedItems.size === 0}
-              variant='outline'
-              className='flex items-center gap-2'
-            >
-              <FileText className='h-4 w-4' />
-              選択�E一覧を印刷 ({selectedItems.size})
-            </Button>
+          {/* 選択履歴エクスポート */}
+          <div className='flex flex-col gap-2'>
+            <div className='text-sm font-medium text-gray-700'>選択履歴のエクスポート ({selectedItems.size}件)</div>
+            <div className='flex gap-2'>
+              <Button
+                onClick={() => handleExportSelected('xlsx')}
+                disabled={exportLoading || selectedItems.size === 0}
+                variant='default'
+                className='flex items-center gap-2'
+              >
+                <Download className='h-4 w-4' />
+                Excel形式
+              </Button>
+              <Button
+                onClick={() => handleExportSelected('json')}
+                disabled={exportLoading || selectedItems.size === 0}
+                variant='outline'
+                className='flex items-center gap-2'
+              >
+                <Download className='h-4 w-4' />
+                JSON形式
+              </Button>
+              <Button
+                onClick={() => handleExportSelected('txt')}
+                disabled={exportLoading || selectedItems.size === 0}
+                variant='outline'
+                className='flex items-center gap-2'
+              >
+                <Download className='h-4 w-4' />
+                テキスト形式
+              </Button>
+              <Button
+                onClick={handlePrintTable}
+                disabled={exportLoading || selectedItems.size === 0}
+                variant='outline'
+                className='flex items-center gap-2'
+              >
+                <FileText className='h-4 w-4' />
+                印刷
+              </Button>
+            </div>
           </div>
 
-          {/* 全履歴エクスポ�EチE*/}
-          <div className='flex gap-2'>
-            <Button
-              onClick={() => handleExportAll('json')}
-              disabled={exportLoading}
-              variant='secondary'
-              className='flex items-center gap-2'
-            >
-              <Download className='h-4 w-4' />
-              全履歴をJSONエクスポ�EチE            </Button>
-            <Button
-              onClick={() => handleExportAll('csv')}
-              disabled={exportLoading}
-              variant='secondary'
-              className='flex items-center gap-2'
-            >
-              <Download className='h-4 w-4' />
-              全履歴をCSVエクスポ�EチE            </Button>
+          {/* 全履歴エクスポート */}
+          <div className='flex flex-col gap-2'>
+            <div className='text-sm font-medium text-gray-700'>全履歴のエクスポート ({filteredItems.length}件)</div>
+            <div className='flex gap-2'>
+              <Button
+                onClick={() => handleExportAll('xlsx')}
+                disabled={exportLoading}
+                variant='default'
+                className='flex items-center gap-2'
+              >
+                <Download className='h-4 w-4' />
+                すべての履歴をエクスポート
+              </Button>
+            </div>
           </div>
         </div>
 

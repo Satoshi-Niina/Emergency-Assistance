@@ -469,14 +469,14 @@ export default function ChatPage() {
           console.log('✁E機種一覧設定完亁E', typesData.length, '件');
           console.log('✓ 機種データ:', typesData);
 
-          // チE�Eタ形式を統一�E�Eachine_type_nameフィールドに統一�E�E
+          // データ形式を統一（machine_type_nameフィールドに統一）
           const formattedData = typesData.map((type: any) => ({
             id: type.id,
             machine_type_name: type.name || type.machine_type_name || type.category
           }));
 
           setMachineTypes(formattedData);
-          setFilteredMachineTypes(formattedData); // 初期表示用にも設宁E
+          setFilteredMachineTypes(formattedData); // 初期表示用にも設定
 
           if (formattedData.length === 0) {
             console.log('⚠️ 機種データが0件です');
@@ -498,7 +498,7 @@ export default function ChatPage() {
         setFilteredMachineTypes([]);
       }
     } catch (error) {
-      console.error('❁E機種一覧取得エラー:', error);
+      console.error('❌ 機種一覧取得エラー:', error);
       setMachineTypes([]);
       setFilteredMachineTypes([]);
     } finally {
@@ -510,16 +510,16 @@ export default function ChatPage() {
     }
   }, []);
 
-  // 機種入力�Eフィルタリング
+  // 機種入力のフィルタリング
   const filterMachineTypes = (input: string) => {
     console.log(
-      '🔍 機種フィルタリング開姁E',
+      '🔍 機種フィルタリング開始:',
       input,
       '機種数:',
       machineTypes.length
     );
     if (!input.trim()) {
-      console.log('✁E入力が空のため全機種を表示:', machineTypes.length, '件');
+      console.log('✅ 入力が空のため全機種を表示:', machineTypes.length, '件');
       setFilteredMachineTypes(machineTypes);
       return;
     }
@@ -527,11 +527,11 @@ export default function ChatPage() {
     const filtered = machineTypes.filter(type =>
       type.machine_type_name.toLowerCase().includes(input.toLowerCase())
     );
-    console.log('✁Eフィルタリング結果:', filtered.length, '件');
+    console.log('✅ フィルタリング結果:', filtered.length, '件');
     setFilteredMachineTypes(filtered);
   };
 
-  // 機械番号入力�Eフィルタリング
+  // 機械番号入力のフィルタリング
   const filterMachines = (input: string) => {
     console.log(
       '🔍 機械番号フィルタリング開姁E',
@@ -548,11 +548,11 @@ export default function ChatPage() {
     const filtered = machines.filter(machine =>
       machine.machine_number.toLowerCase().includes(input.toLowerCase())
     );
-    console.log('✁Eフィルタリング結果:', filtered.length, '件');
+    console.log('✅ フィルタリング結果:', filtered.length, '件');
     setFilteredMachines(filtered);
   };
 
-  // 機種選択�E琁E
+  // 機種選択の処理
   const handleMachineTypeSelect = (type: {
     id: string;
     machine_type_name: string;
@@ -577,21 +577,21 @@ export default function ChatPage() {
       // 警告メッセージのrefをリセット（機種が変更されたため）
       lastWarningMessageRef.current = null;
 
-      console.log('✁E機種選択完亁E', type.machine_type_name);
+      console.log('✅ 機種選択完了:', type.machine_type_name);
 
-      // 対応する機械番号を取征E
+      // 対応する機械番号を取得
       fetchMachines(type.id);
     } catch (error) {
       console.error('❌ 機種選択処理にエラー:', error);
     }
   };
 
-  // 機械番号選択�E琁E
+  // 機械番号選択の処理
   const handleMachineNumberSelect = (machine: {
     id: string;
     machine_number: string;
   }) => {
-    console.log('🔍 機械番号選択開姁E', machine);
+    console.log('🔍 機械番号選択開始:', machine);
 
     try {
       // 状態を確実に更新
@@ -601,7 +601,7 @@ export default function ChatPage() {
       setShowMachineNumberSuggestions(false);
 
       // 機種・機械番号が両方入力された場合は警告メッセージのrefをリセット
-      // refとstateの両方を確誁E
+      // refとstateの両方を確認
       const hasMachineType = (selectedMachineTypeRef.current && selectedMachineTypeRef.current.trim() !== '') ||
         (selectedMachineType && selectedMachineType.trim() !== '');
       const hasMachineNumber = machine.id && machine.id.trim() !== '';
@@ -620,12 +620,12 @@ export default function ChatPage() {
     }
   };
 
-  // 追加: 持E��機種に紐づく機械番号一覧を取得する関数�E�設定UIと同じAPIを使用�E�E
+  // 追加: 特定の機種に紐づく機械番号一覧を取得する関数（設定UIと同じAPIを使用）
   const fetchMachines = useCallback(
     async (typeId: string) => {
       try {
         setIsLoadingMachines(true);
-        console.log('🔍 機械番号一覧取得開姁E 機種ID:', typeId);
+        console.log('🔍 機械番号一覧取得開始 - 機種ID:', typeId);
 
         // 統一API設定を使用
         const { buildApiUrl } = await import('../lib/api');
@@ -638,23 +638,23 @@ export default function ChatPage() {
             Pragma: 'no-cache',
             Expires: '0',
           },
-          credentials: 'include', // セチE��ョン維持�Eため
+          credentials: 'include', // セッション維持のため
         });
         console.log(
-          '🔍 機械番号一覧取得レスポンススチE�Eタス:',
+          '🔍 機械番号一覧取得レスポンスステータス:',
           response.status
         );
 
         if (response.ok) {
           const result = await response.json();
-          console.log('✁E機械番号一覧取得結果:', result);
+          console.log('✅ 機械番号一覧取得結果:', result);
           if (result.success) {
-            // APIレスポンス形式に対応！EachinesキーにチE�Eタが�EってぁE���E�E
+            // APIレスポンス形式に対応（machinesキーにデータが入っている）
             const machinesData = result.machines || result.data || [];
-            console.log('✁E機械番号一覧設定完亁E', machinesData.length, '件');
-            console.log('✁E機械番号チE�Eタ:', machinesData);
+            console.log('✅ 機械番号一覧設定完了:', machinesData.length, '件');
+            console.log('✅ 機械番号データ:', machinesData);
 
-            // チE�Eタ形式を統一�E�Eachine_numberフィールドに統一�E�E
+            // データ形式を統一（machine_numberフィールドに統一）
             const formattedMachines = machinesData.map((machine: any) => ({
               id: machine.id,
               machine_number: machine.machine_number
@@ -663,7 +663,7 @@ export default function ChatPage() {
             setMachines(formattedMachines);
             setFilteredMachines(formattedMachines); // 初期表示用
 
-            // 機械番号チE�Eタ取得完亁E�EチE��チE��惁E��
+            // 機械番号データ取得完了、状態確認
             console.log('🔧 機械番号取得後の状態', {
               machinesCount: formattedMachines.length,
               machines: formattedMachines,
@@ -672,14 +672,14 @@ export default function ChatPage() {
               showMachineNumberSuggestions,
             });
           } else {
-            console.error('❁E機械番号一覧取得�E功だがsuccess=false:', result);
+            console.error('❌ 機械番号一覧取得成功だがsuccess=false:', result);
             setMachines([]);
             setFilteredMachines([]);
           }
         } else {
           const errorText = await response.text();
           console.error(
-            '❁E機械番号一覧取得エラー:',
+            '❌ 機械番号一覧取得エラー:',
             response.status,
             errorText
           );
@@ -687,7 +687,7 @@ export default function ChatPage() {
           setFilteredMachines([]);
         }
       } catch (error) {
-        console.error('❁E機械番号一覧取得エラー:', error);
+        console.error('❌ 機械番号一覧取得エラー:', error);
         setMachines([]);
         setFilteredMachines([]);
       } finally {
@@ -707,14 +707,14 @@ export default function ChatPage() {
     ]
   );
 
-  // 追加: 機種選択時の処琁E��オートコンプリート用�E�E
+  // 追加: 機種選択時の処理（オートコンプリート用）
   const handleMachineTypeChange = (typeId: string) => {
     setSelectedMachineType(typeId);
     selectedMachineTypeRef.current = typeId; // refも更新
-    setSelectedMachineNumber(''); // 機種変更時�E機械番号をリセチE��
+    setSelectedMachineNumber(''); // 機種変更時は機械番号をリセット
     selectedMachineNumberRef.current = ''; // refも更新
-    setMachineNumberInput(''); // 機械番号入力もリセチE��
-    lastWarningMessageRef.current = null; // 警告メチE��ージのrefをリセチE��
+    setMachineNumberInput(''); // 機械番号入力もリセット
+    lastWarningMessageRef.current = null; // 警告メッセージのrefをリセット
 
     if (typeId) {
       fetchMachines(typeId);
@@ -787,15 +787,15 @@ export default function ChatPage() {
           // AI支援設定を読み込み�E�結果を征E���E�E
           const loadedSettings = await loadAiAssistSettings();
 
-          // AI支援モードを開姁E
+          // AI支援モードを開始
           setAiSupportMode(true);
           setAiSupportStartTime(new Date());
           setElapsedTime(0);
 
-          // GPTの初期メチE��ージを表示�E�機種・機械番号のチェチE��はメチE��ージ送信時に行う�E�E
+          // GPTの初期メッセージを表示（機種・機械番号のチェックはメッセージ送信時に行う）
           if (!initialPromptSentRef.current) {
             initialPromptSentRef.current = true;
-            // 読み込んだ設定�EinitialPromptを使用�E�なければ現在の状態を使用�E�E
+            // 読み込んだ設定のinitialPromptを使用、なければ現在の状態を使用
             const initialPrompt = loadedSettings?.initialPrompt || aiAssistSettings.initialPrompt;
             const aiSupportMessage = {
               id: Date.now().toString(),
@@ -1623,18 +1623,18 @@ export default function ChatPage() {
             type: 'ai_support',
           };
           setMessages((prev: any) => [...prev, warningMessage]);
-          console.log('⚠�E�E警告メチE��ージを表示:', warningContent);
+          console.log('⚠️ 警告メッセージを表示:', warningContent);
         } else {
-          console.log('⏭�E�E警告メチE��ージをスキチE�E�E�E秒以冁E��E', timeSinceLastWarning);
+          console.log('⏭️ 警告メッセージをスキップ（30秒以内）', timeSinceLastWarning);
         }
-        return; // GPT応答を生�Eせずに終亁E
+        return; // GPT応答を生成せずに終了
       }
 
       // 機種・機械番号が入力されている場合は、警告メッセージのrefをリセット
       lastWarningMessageRef.current = null;
       console.log('✅ 機種・機械番号が入力されています。GPT応答を生成します');
 
-      // 会話履歴を取得！EI支援メチE��ージのみ、最新のメチE��ージを含める�E�E
+      // 会話履歴を取得（AI支援メッセージのみ、最新のメッセージを含める）
       const conversationHistory = updatedMessages
         .filter(msg => msg.type === 'ai_support' || msg.type === 'ai_support_response' || msg.type === 'user_message')
         .map(msg => ({
@@ -1644,10 +1644,10 @@ export default function ChatPage() {
           type: msg.type,
         }));
 
-      // GPTにリクエストを送信してAI応答を生�E
+      // GPTにリクエストを送信してAI応答を生成
       const aiResponse = await generateAiSupportResponse(content, conversationHistory);
 
-      // AI応答メチE��ージを追加
+      // AI応答メッセージを追加
       const aiMessage = {
         id: (Date.now() + 1).toString(),
         content: aiResponse,
@@ -1917,7 +1917,7 @@ export default function ChatPage() {
       const { buildApiUrl } = await import('../lib/api');
       const apiUrl = buildApiUrl('/chatgpt');
 
-      // 会話履歴から経過時間を計箁E
+      // 会話履歴から経過時間を計算
       const startTime = conversationHistory.find(msg =>
         msg.type === 'ai_support'
       )?.timestamp;
@@ -1925,18 +1925,18 @@ export default function ChatPage() {
       const elapsedMinutes = startTime ?
         Math.floor((Date.now() - new Date(startTime).getTime()) / (1000 * 60)) : 0;
 
-      // 時間制限チェチE���E�E0刁E��E
+      // 時間制限チェック（20分）
       if (elapsedMinutes >= 20) {
-        return `⏰ 診断時間ぁE0刁E��趁E��ました、En\n技術支援センターへの救援要請をお勧めします：\n📞 技術支援センター: 0123-456-789\n\nお疲れ様でした�E�また何かお困り�Eことがあれ�E、いつでもお声がけください。`;
+        return `⏰ 診断時間が20分を超過しました。\n技術支援センターへの救援要請をお勧めします：\n📞 技術支援センター: 0123-456-789\n\nお疲れ様でした。また何かお困りのことがあれば、いつでもお声がけください。`;
       }
 
-      // 会話履歴を構築（ナレチE��ベ�Eス検索用のコンチE��ストとして使用�E�E
+      // 会話履歴を構築（ナレッジベース検索用のコンテキストとして使用）
       const conversationContext = conversationHistory
-        .slice(-6) // 直迁E件の履歴を使用
+        .slice(-6) // 直近6件の履歴を使用
         .map(msg => `${msg.isAiResponse ? 'AI' : 'ユーザー'}: ${msg.content}`)
         .join('\n');
 
-      // ユーザーメチE��ージと会話履歴を絁E��合わせたプロンプト
+      // ユーザーメッセージと会話履歴を組み合わせたプロンプト
       const enhancedPrompt = conversationContext
         ? `【これまでの会話】\n${conversationContext}\n\n【現在の質問】\n${userMessage}`
         : userMessage;
@@ -1949,8 +1949,8 @@ export default function ChatPage() {
         credentials: 'include',
         body: JSON.stringify({
           text: enhancedPrompt,
-          useOnlyKnowledgeBase: true, // knowledge-baseからのチE�Eタのみを使用
-          conversationHistory: conversationHistory.slice(-4), // 直迁E件の履歴
+          useOnlyKnowledgeBase: true, // knowledge-baseからのデータのみを使用
+          conversationHistory: conversationHistory.slice(-4), // 直近4件の履歴
           elapsedMinutes: elapsedMinutes,
           aiSupportMode: true,
           aiAssistSettings: {
@@ -1964,7 +1964,13 @@ export default function ChatPage() {
       });
 
       if (!response.ok) {
-        throw new Error('AI支援応答�E取得に失敗しました');
+        const errorText = await response.text();
+        console.error('❌ GPT APIエラー:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText: errorText
+        });
+        throw new Error(`AI支援応答の取得に失敗しました (${response.status}: ${response.statusText})`);
       }
 
       const data = await response.json();
@@ -1987,14 +1993,14 @@ export default function ChatPage() {
 
       // カスタム指示を適用
       if (aiAssistSettings.customInstructions) {
-        // カスタム持E��があれ�E、応答�E最後に追加�E�忁E��に応じて�E�E
-        // ただし、E啁E答形式を維持するため、ここでは適用しなぁE
+        // カスタム指示があれば、応答の最後に追加するが、状況に応じて判断
+        // ただし、1問1答形式を維持するため、ここでは適用しない
       }
 
-      // フレンドリーな言ぁE��しに調整
+      // フレンドリーな言い回しに調整
       aiResponse = makeFriendlyResponse(aiResponse);
 
-      // 時間制限�E警告を追加�E�E5刁E��過時！E
+      // 時間制限の警告を追加（15分経過時）
       if (elapsedMinutes >= 15 && elapsedMinutes < 20) {
         aiResponse += `\n\n⏰ 診断開始から${elapsedMinutes}分が経過しています。あと5分で技術支援センターへの救援要請をお勧めします。`;
       }
@@ -2006,9 +2012,9 @@ export default function ChatPage() {
     }
   };
 
-  // フレンドリーな言ぁE��しに調整する関数�E�厳格版！E
+  // フレンドリーな言い回しに調整する関数（厳格版）
   const makeFriendlyResponse = (response: string): string => {
-    // チE��ストをクリーンアチE�E
+    // テキストをクリーンアップ
     let cleanResponse = response.trim();
 
     // 複数の質問がある場合は最初の質問のみを抽出
@@ -2017,7 +2023,7 @@ export default function ChatPage() {
       cleanResponse = questionMarks[0] + '？';
     }
 
-    // 改行で刁E��して最初�E質問�Eみを取征E
+    // 改行で分割して最初の質問のみを取得
     const lines = cleanResponse.split('\n');
     for (const line of lines) {
       const trimmedLine = line.trim();
@@ -2351,7 +2357,7 @@ export default function ChatPage() {
                       />
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent side='bottom' className='bg-yellow-100 text-yellow-800 border-yellow-300'>
+                  <TooltipContent side='top' className='bg-yellow-100 text-yellow-800 border-yellow-300'>
                     <p>選択または入力してください</p>
                   </TooltipContent>
                 </Tooltip>
@@ -2463,11 +2469,11 @@ export default function ChatPage() {
                               '件'
                             );
                           } else {
-                            console.log('⚠�E�Eフォーカス時に機械番号がありません');
+                            console.log('⚠️ フォーカス時に機械番号がありません');
                           }
                         }}
                         onBlur={e => {
-                          // ドロチE�Eダウン冁E�EクリチE��の場合�E閉じなぁE
+                          // ドロップダウン内のクリックの場合は閉じない
                           const relatedTarget = e.relatedTarget as HTMLElement;
                           if (
                             relatedTarget &&
@@ -2475,7 +2481,7 @@ export default function ChatPage() {
                           ) {
                             return;
                           }
-                          // 少し遁E��させてクリチE��イベントが処琁E��れるのを征E��
+                          // 少し遅延させてクリックイベントが処理されるのを待つ
                           setTimeout(() => {
                             setShowMachineNumberSuggestions(false);
                           }, 150);
@@ -2485,7 +2491,7 @@ export default function ChatPage() {
                       />
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent side='bottom' className='bg-yellow-100 text-yellow-800 border-yellow-300'>
+                  <TooltipContent side='top' className='bg-yellow-100 text-yellow-800 border-yellow-300'>
                     <p>選択または入力してください</p>
                   </TooltipContent>
                 </Tooltip>
@@ -2530,7 +2536,7 @@ export default function ChatPage() {
                       {machineNumberInput.trim()
                         ? '該当する機械番号が見つかりません'
                         : selectedMachineType
-                          ? 'こ�E機種に登録されてぁE��機械番号がありません'
+                          ? 'この機種に登録されている機械番号がありません'
                           : '先に機種を選択してください'}
                     </div>
                   )}
