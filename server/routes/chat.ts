@@ -598,16 +598,16 @@ export function registerChatRoutes(app: any): void {
         });
       }
 
-      // knowledge-base/exports フォルダを作成（ルートディレクトリ）
+      // knowledge-base/troubleshooting フォルダを作成（プロジェクトルート直下）
+      const projectRoot = path.resolve(__dirname, '..', '..');
       const exportsDir = path.join(
-        process.cwd(),
-        '..',
+        projectRoot,
         'knowledge-base',
-        'exports'
+        'troubleshooting'
       );
       if (!fs.existsSync(exportsDir)) {
         fs.mkdirSync(exportsDir, { recursive: true });
-        console.log('exports フォルダを作成しました:', exportsDir);
+        console.log('troubleshooting フォルダを作成しました:', exportsDir);
       }
 
       // チャットデータをJSONファイルとして保存
@@ -684,7 +684,7 @@ export function registerChatRoutes(app: any): void {
       // チャットメッセージから画像を抽出してファイルとして保存
       const savedImages: any[] = [];
       const cleanedChatData = JSON.parse(JSON.stringify(chatData)); // ディープコピー
-      
+
       for (const message of cleanedChatData.messages) {
         if (message.content && message.content.startsWith('data:image/')) {
           try {
@@ -718,7 +718,7 @@ export function registerChatRoutes(app: any): void {
             }
 
             const imageUrl = `/api/images/chat-exports/${imageFileName}`;
-            
+
             // 画像データをURLに置き換え
             message.content = imageUrl;
 
@@ -832,11 +832,11 @@ export function registerChatRoutes(app: any): void {
       // Content-Typeを明示的に設定
       res.setHeader('Content-Type', 'application/json');
 
+      const projectRoot = path.resolve(__dirname, '..', '..');
       const exportsDir = path.join(
-        process.cwd(),
-        '..',
+        projectRoot,
         'knowledge-base',
-        'exports'
+        'troubleshooting'
       );
 
       if (!fs.existsSync(exportsDir)) {
@@ -1051,7 +1051,7 @@ export function registerChatRoutes(app: any): void {
       // チャットメッセージから画像を抽出してファイルとして保存
       const savedImages: any[] = [];
       const cleanedChatData = JSON.parse(JSON.stringify(chatData)); // ディープコピー
-      
+
       for (const message of cleanedChatData.messages) {
         if (message.content && message.content.startsWith('data:image/')) {
           try {
@@ -1085,7 +1085,7 @@ export function registerChatRoutes(app: any): void {
             }
 
             const imageUrl = `/api/images/chat-exports/${imageFileName}`;
-            
+
             // 画像データをURLに置き換え
             message.content = imageUrl;
 
