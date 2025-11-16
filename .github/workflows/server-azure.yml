@@ -199,6 +199,55 @@ jobs:
           echo "   Directories: $(find . -type d | wc -l)"
           echo "✅ Optimized deployment package ready"
 
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set Azure App Service Environment Variables
+        run: |
+          echo "🔧 Setting environment variables in Azure App Service..."
+
+          # 環境変数を設定（既存の値を上書きしない場合はコメントアウト）
+          az webapp config appsettings set \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name ${{ env.AZURE_APP_NAME }} \
+            --settings \
+              NODE_ENV=production \
+              PORT=80 \
+              API_BASE_URL=${{ env.APP_URL }}/api \
+              API_PREFIX=/api \
+              DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+              JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+              SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
+              BCRYPT_SALT_ROUNDS=12 \
+              BYPASS_DB_FOR_LOGIN=false \
+              OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+              OPENAI_MODEL=gpt-4o \
+              OPENAI_EMERGENCY_MODEL=gpt-4o \
+              OPENAI_KNOWLEDGE_MODEL=gpt-3.5-turbo \
+              OPENAI_MAX_TOKENS=2000 \
+              OPENAI_TEMPERATURE=0.7 \
+              CORS_ALLOW_ORIGINS="https://witty-river-012f39e00.1.azurestaticapps.net,${{ env.APP_URL }}" \
+              STATIC_WEB_APP_URL=https://witty-river-012f39e00.1.azurestaticapps.net \
+              FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net \
+              LOCAL_DEV=false \
+              KNOWLEDGE_BASE_PATH=/home/site/wwwroot/knowledge-base \
+              IMAGES_BASE_PATH=/home/site/wwwroot/knowledge-base/images \
+              KNOWLEDGE_BASE_ENABLED=true \
+              FAULT_HISTORY_STORAGE_MODE=database \
+              CHAT_EXPORTS_PATH=/tmp/chat-exports \
+              CHAT_IMAGES_PATH=/tmp/chat-images \
+              FAULT_HISTORY_IMAGES_DIR=/tmp/fault-history-images \
+              SESSION_DRIVER=database \
+              SESSION_LIFETIME=60 \
+              DEBUG_MODE=false \
+              HOT_RELOAD=false \
+              VERBOSE_LOGGING=false \
+            --output none
+
+          echo "✅ Environment variables configured successfully"
+
       - name: Deploy to Azure App Service (Production)
         id: deploy
         uses: azure/webapps-deploy@v3
@@ -451,6 +500,41 @@ jobs:
           echo "   Files: $(find . -type f | wc -l)"
           echo "   Size: $(du -sh . | cut -f1)"
           echo "✅ Optimized staging package ready"
+
+      - name: Azure Login (Staging)
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set Azure App Service Environment Variables (Staging)
+        run: |
+          echo "🔧 Setting environment variables in Azure App Service (Staging)..."
+
+          az webapp config appsettings set \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name ${{ env.AZURE_APP_NAME }} \
+            --settings \
+              NODE_ENV=production \
+              PORT=80 \
+              API_BASE_URL=${{ env.APP_URL }}/api \
+              API_PREFIX=/api \
+              DATABASE_URL="${{ secrets.DATABASE_URL_STAGING || secrets.DATABASE_URL }}" \
+              JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+              SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
+              BCRYPT_SALT_ROUNDS=12 \
+              BYPASS_DB_FOR_LOGIN=false \
+              OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+              OPENAI_MODEL=gpt-4o \
+              OPENAI_EMERGENCY_MODEL=gpt-4o \
+              OPENAI_KNOWLEDGE_MODEL=gpt-3.5-turbo \
+              LOCAL_DEV=false \
+              KNOWLEDGE_BASE_ENABLED=true \
+              FAULT_HISTORY_STORAGE_MODE=database \
+              SESSION_DRIVER=database \
+              DEBUG_MODE=false \
+            --output none
+
+          echo "✅ Staging environment variables configured"
 
       - name: Deploy to Azure App Service (Staging)
         uses: azure/webapps-deploy@v3
