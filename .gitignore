@@ -23,14 +23,18 @@ force-deploy.txt
 frontend-trigger.txt
 trigger.txt
 # Environment variables (Local・Docker use)
-# Exclude only specific .env files (not patterns)
+# Exclude ALL .env files by default
+*.env
+*.env.*
 .env
 .env.local
-# .env.production - Allow for deployment configuration
+.env.development
 .env.staging
-# Allow template files and examples
-!*.env.example
-!*.env.template
+
+# ALLOW only these specific files needed for deployment
+!server/.env.production   # ✅ Server production config
+!client/.env.production   # ✅ Client production config (template-style, no secrets)
+!client/.env.template     # ✅ Client template for reference
 # Essential server files - NEVER exclude
 !server/package.json
 !server/package-lock.json
@@ -325,6 +329,7 @@ data/ai-assist-settings.json
 # Development environment files
 env.development
 server/env.development
+server/.env.development  # ⚠️ CRITICAL: Exclude to prevent API key leaks
 server/startup.txt
 server/server_run.log
 server/startup-migration.js
