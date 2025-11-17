@@ -10,10 +10,12 @@ COPY package*.json ./
 COPY server/package*.json ./server/
 COPY client/package*.json ./client/
 
-# Install dependencies
+# Install production dependencies for server
 RUN npm ci --only=production --no-audit --no-fund && \
-    cd server && npm ci --only=production --no-audit --no-fund && \
-    cd ../client && npm ci --only=production --no-audit --no-fund
+    cd server && npm ci --only=production --no-audit --no-fund
+
+# Install all dependencies for client (needed for build)
+RUN cd client && npm ci --no-audit --no-fund
 
 # Build client
 FROM base AS builder
