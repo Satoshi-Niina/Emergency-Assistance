@@ -128,10 +128,10 @@ bash -lc "npm start"
 以下の環境変数が正しく設定されているか確認してください：
 
 - `PORT` - ポート番号（通常は`8080`、Azureが自動設定）
-- `NODE_ENV` - `production`
+- `NODE_ENV` - `production`（Azure Portalで直接設定）
 - `DATABASE_URL` - PostgreSQL接続文字列
 - `JWT_SECRET` - JWT署名用シークレット
-- `SESSION_SECRET` - セッション管理用シークレット
+- `SESSION_SECRET` - セッション管理用シークレット（Azure Portalで直接設定）
 - `FRONTEND_URL` - フロントエンドURL
 
 詳細は [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md) を参照してください。

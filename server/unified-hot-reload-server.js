@@ -824,11 +824,17 @@ apiRouter.post('/auth/login', async (req, res) => {
     if (dbPool) {
       try {
         console.log('Attempting database authentication...');
+        console.log('Database pool config:', {
+          host: dbPool.options.host,
+          port: dbPool.options.port,
+          database: dbPool.options.database
+        });
         const result = await dbPool.query(
           'SELECT id, username, password, role, display_name, department FROM users WHERE username = $1 LIMIT 1',
           [username]
         );
 
+        console.log(`Query result: Found ${result.rows.length} users`);
         if (result.rows.length === 0) {
           console.log('User not found in database');
           return res.status(401).json({
@@ -2153,48 +2159,40 @@ apiRouter.get('/history', async (req, res) => {
   }
 });
 
-// 履歴詳細取得API（ファイルベース）
-// 注意: export-filesなどの具体的なルートは既に上で定義されているため、ここでは通常のIDのみを処理
+// 履歴詳細取得API（ハイブリッドモード対応 - JSONファイルから直接取得）
 apiRouter.get('/history/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { format = 'unified', includeImages = 'true' } = req.query;
-    console.log(`📋 履歴詳細取得リクエスト（ファイルベース）: ${id}`);
+    console.log(`📋 履歴アイテム取得リクエスト: ${id}`);
 
     const projectRoot = path.resolve(__dirname, '..');
     const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
 
     if (!fs.existsSync(exportsDir)) {
       return res.status(404).json({
-        success: false,
-        error: 'エクスポートディレクトリが見つかりません',
-        timestamp: new Date().toISOString()
+        error: 'not_found',
+        message: 'エクスポートディレクトリが見つかりません'
       });
     }
 
+    // IDに一致するJSONファイルを検索
     const files = fs.readdirSync(exportsDir);
-    const jsonFiles = files.filter(file =>
-      file.endsWith('.json') &&
-      !file.includes('index') &&
-      !file.includes('railway-maintenance-ai-prompt')
-    );
-
     let foundFile = null;
     let foundData = null;
 
-    for (const file of jsonFiles) {
+    for (const file of files) {
+      if (!file.endsWith('.json') || file.includes('.backup.')) continue;
+
       const fileName = file.replace('.json', '');
       const uuidMatch = fileName.match(/_([a-f0-9-]{36})_/);
       const fileId = uuidMatch ? uuidMatch[1] : fileName;
 
-      if (fileId === id || fileName === id) {
+      if (fileId === id || fileName === id || file.includes(id)) {
         try {
           const filePath = path.join(exportsDir, file);
           const content = fs.readFileSync(filePath, { encoding: 'utf8' });
-          const data = JSON.parse(content);
-
+          foundData = JSON.parse(content);
           foundFile = file;
-          foundData = data;
           break;
         } catch (error) {
           console.error(`ファイル読み込みエラー: ${file}`, error);
@@ -2203,51 +2201,61 @@ apiRouter.get('/history/:id', async (req, res) => {
     }
 
     if (!foundData) {
+      console.log(`❌ 履歴が見つかりません: ${id}`);
       return res.status(404).json({
-        success: false,
-        error: '履歴が見つかりません',
-        timestamp: new Date().toISOString()
+        error: 'not_found',
+        message: '指定された履歴が見つかりません'
       });
     }
 
-    const imageDir = path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
-    let imageInfo = [];
-
-    if (includeImages === 'true' && fs.existsSync(imageDir)) {
-      const imageFiles = fs.readdirSync(imageDir);
-      const matchingImages = imageFiles.filter(imgFile =>
-        imgFile.includes(id) && (imgFile.endsWith('.jpg') || imgFile.endsWith('.jpeg'))
-      );
-
-      imageInfo = matchingImages.map(imgFile => ({
-        fileName: imgFile,
-        url: `/api/images/chat-exports/${imgFile}`,
-        path: imgFile
-      }));
-    }
-
-    const response = {
-      success: true,
-      id: id,
+    // 画像データをJSONから取得（savedImages優先）
+    const savedImages = foundData.savedImages || foundData.images || [];
+    console.log('🖼️ 取得した画像データ:', {
+      id,
       fileName: foundFile,
-      title: foundData.title || 'タイトルなし',
-      machineType: foundData.machineType || 'Unknown',
-      machineNumber: foundData.machineNumber || 'Unknown',
-      description: foundData.description || foundData.problemDescription || '',
-      createdAt: foundData.createdAt || new Date().toISOString(),
-      lastModified: foundData.lastModified || foundData.createdAt || new Date().toISOString(),
-      source: 'files',
-      images: imageInfo,
-      imageCount: imageInfo.length,
-      hasImages: imageInfo.length > 0,
-      status: 'active',
-      data: foundData,
-      timestamp: new Date().toISOString(),
-      version: '2.0'
+      savedImagesLength: savedImages.length,
+      savedImages: savedImages
+    });
+
+    // フロントエンドが期待する形式に変換
+    const convertedItem = {
+      id: id,
+      type: 'fault_history',
+      fileName: foundFile,
+      chatId: foundData.chatId || id,
+      userId: foundData.userId || '',
+      exportType: foundData.exportType || 'file_stored',
+      exportTimestamp: foundData.createdAt || new Date().toISOString(),
+      messageCount: foundData.metadata?.total_messages || 0,
+      machineType: foundData.machineType || '',
+      machineNumber: foundData.machineNumber || '',
+      machineInfo: {
+        selectedMachineType: '',
+        selectedMachineNumber: '',
+        machineTypeName: foundData.machineType || '',
+        machineNumber: foundData.machineNumber || '',
+      },
+      title: foundData.title || '',
+      incidentTitle: foundData.title || '',
+      problemDescription: foundData.problemDescription || foundData.description || '',
+      extractedComponents: foundData.extractedComponents || [],
+      extractedSymptoms: foundData.extractedSymptoms || [],
+      possibleModels: foundData.possibleModels || [],
+      conversationHistory: foundData.conversationHistory || foundData.conversation_history || [],
+      metadata: foundData.metadata || {},
+      savedImages: savedImages,  // JSONから取得した画像データ
+      images: savedImages,        // imagesフィールドにも同じデータ
+      fileSize: 0,
+      lastModified: foundData.lastModified || foundData.updateHistory?.[0]?.timestamp || foundData.createdAt,
+      createdAt: foundData.createdAt,
+      jsonData: {
+        ...foundData,
+        savedImages: savedImages,  // jsonData内にも画像データを含める
+      },
     };
 
-    console.log(`✅ ファイルベース履歴詳細取得成功: ${id}`);
-    res.json(response);
+    console.log(`✅ 履歴アイテム取得完了: ${id} (画像: ${savedImages.length}件)`);
+    res.json(convertedItem);
   } catch (error) {
     console.error('❌ 履歴詳細取得エラー:', error);
     res.status(500).json({
@@ -5732,22 +5740,10 @@ apiRouter.put('/history/update-item/:id', async (req, res) => {
       updatedBy: updatedBy,
     });
 
-    // バックアップを作成（簡易版：タイムスタンプ付きファイル名）
+    // バックアップ作成は無効化（DBをメインバックアップとして使用）
+    // ハイブリッドモードではDBに履歴が保存されるため、JSONファイルのバックアップは不要
     let backupPath = null;
-    try {
-      const backupDir = path.join(exportsDir, 'backups');
-      if (!fs.existsSync(backupDir)) {
-        fs.mkdirSync(backupDir, { recursive: true });
-      }
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const backupFileName = `${timestamp}_${path.basename(targetFile)}`;
-      backupPath = path.join(backupDir, backupFileName);
-      fs.copyFileSync(targetFile, backupPath);
-      console.log('💾 バックアップ作成完了:', backupPath);
-    } catch (backupError) {
-      console.warn('⚠️ バックアップ作成に失敗:', backupError);
-      // バックアップに失敗しても続行
-    }
+    console.log('ℹ️ JSONファイルバックアップはスキップ（DBをバックアップとして使用）');
 
     // ファイルに上書き保存
     fs.writeFileSync(
@@ -5761,11 +5757,10 @@ apiRouter.put('/history/update-item/:id', async (req, res) => {
 
     res.json({
       success: true,
-      message: '履歴ファイルが更新されました',
+      message: '履歴ファイルが更新されました（バックアップはDBに保存）',
       updatedFile: path.basename(targetFile),
       updatedData: updatedJsonData,
-      backupFile: backupPath ? path.basename(backupPath) : null,
-      backupPath: backupPath,
+      backupNote: 'DBをバックアップとして使用',
     });
   } catch (error) {
     console.error('❌ 履歴アイテム更新エラー:', error);

@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: emergency-assistance-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password_dev
+      POSTGRES_DB: emergency_assistance
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./create-users-table-postgres.sql:/docker-entrypoint-initdb.d/01-users.sql
+      - ./create-chat-history-postgres.sql:/docker-entrypoint-initdb.d/02-chat.sql
+      - ./server/create-machine-tables-postgres.js:/docker-entrypoint-initdb.d/03-machines.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - emergency-net
+
+  # Application Server
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: emergency-assistance-app
+    environment:
+      # Server Configuration
+      NODE_ENV: production
+      PORT: 8080
+
+      # Database Configuration
+      DATABASE_URL: postgresql://postgres:postgres_password_dev@postgres:5432/emergency_assistance
+      PG_SSL: disable
+      USE_SQLITE: false
+
+      # CORS Configuration
+      FRONTEND_URL: http://localhost:8080
+      STATIC_WEB_APP_URL: http://localhost:8080
+      CORS_ALLOW_ORIGINS: http://localhost:8080,http://localhost:5173
+
+      # Session Configuration
+      SESSION_SECRET: local-dev-session-secret-32-chars-min
+
+      # Storage Configuration (Local File System)
+      STORAGE_MODE: local_files
+      LOCAL_EXPORT_DIR: /app/knowledge-base/exports
+      FAULT_HISTORY_IMAGES_DIR: /app/knowledge-base/images/chat-exports
+
+      # OpenAI Configuration (Optional)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+
+      # Feature Flags
+      SAFE_MODE: false
+      BYPASS_DB_FOR_LOGIN: false
+
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount knowledge-base for persistent storage
+      - ./knowledge-base:/app/knowledge-base
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - emergency-net
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  emergency-net:
+    driver: bridge

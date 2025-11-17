@@ -1,0 +1,88 @@
+version: '3.8'
+
+# 開発環境用のDocker Compose設定
+# ホットリロード対応
+
+services:
+  # PostgreSQL Database (本番と同じ)
+  postgres:
+    image: postgres:15-alpine
+    container_name: emergency-assistance-db-dev
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password_dev
+      POSTGRES_DB: emergency_assistance
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./create-users-table-postgres.sql:/docker-entrypoint-initdb.d/01-users.sql
+      - ./create-chat-history-postgres.sql:/docker-entrypoint-initdb.d/02-chat.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - emergency-net-dev
+
+  # Application Server (開発モード - ボリュームマウント)
+  app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: development
+    container_name: emergency-assistance-app-dev
+    environment:
+      # Server Configuration
+      NODE_ENV: development
+      PORT: 8080
+
+      # Database Configuration
+      # ホストマシンのPostgreSQLに接続（実際のデータ）
+      DATABASE_URL: postgresql://postgres:takabeni@host.docker.internal:5432/webappdb
+      PG_SSL: disable
+      USE_SQLITE: false
+
+      # CORS Configuration
+      FRONTEND_URL: http://localhost:8080
+      CORS_ALLOW_ORIGINS: http://localhost:8080,http://localhost:5173,http://localhost:3000
+
+      # Session Configuration
+      SESSION_SECRET: local-dev-session-secret-32-chars-min
+
+      # Storage Configuration
+      STORAGE_MODE: local_files
+      LOCAL_EXPORT_DIR: /app/knowledge-base/exports
+      FAULT_HISTORY_IMAGES_DIR: /app/knowledge-base/images/chat-exports
+
+      # Development Features
+      SAFE_MODE: false
+      BYPASS_DB_FOR_LOGIN: false
+
+    ports:
+      - "8080:8080"
+      - "5173:5173"  # Vite dev server
+    volumes:
+      # ソースコードをマウント（ホットリロード用）
+      - ./server:/app/server
+      - ./client:/app/client
+      - ./shared:/app/shared
+      - ./knowledge-base:/app/knowledge-base
+      # node_modulesは除外
+      - /app/server/node_modules
+      - /app/client/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - emergency-net-dev
+    command: npm run dev
+
+volumes:
+  postgres_data_dev:
+    driver: local
+
+networks:
+  emergency-net-dev:
+    driver: bridge

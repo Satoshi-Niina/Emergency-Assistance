@@ -10,7 +10,7 @@
 |---------|------|------|--------|
 | `DATABASE_URL` | PostgreSQL接続文字列 | 🔴 **最高** | Azure App Service |
 | `JWT_SECRET` | JWT署名用シークレット | 🔴 **最高** | Azure App Service |
-| `SESSION_SECRET` | セッション管理用シークレット | 🔴 **最高** | Azure App Service |
+| `SESSION_SECRET` | セッション管理用シークレット | 🔴 **最高** | Azure Portalで直接設定（CI/CDでは設定しない） |
 | `FRONTEND_URL` | フロントエンドURL | 🟡 **高** | Azure App Service |
 | `STATIC_WEB_APP_URL` | Azure Static Web AppのURL | 🟡 **高** | Azure App Service |
 | `AZURE_STORAGE_CONNECTION_STRING` | BLOBストレージ接続文字列 | 🟡 **高** | Azure App Service |
@@ -44,7 +44,7 @@ PORT: 8080
 |---------|--------|--------|
 | `DATABASE_URL` | `postgresql://username:password@servername.postgres.database.azure.com:5432/dbname?sslmode=require` | Azure PostgreSQLから取得 |
 | `JWT_SECRET` | `your-very-secure-jwt-secret-key-at-least-32-characters-long` | ランダムな32文字以上の文字列 |
-| `SESSION_SECRET` | `your-very-secure-session-secret-key-at-least-32-characters-long` | ランダムな32文字以上の文字列 |
+| `SESSION_SECRET` | `your-very-secure-session-secret-key-at-least-32-characters-long` | Azure Portalで直接設定（CI/CDでは設定しない） |
 
 #### 🟡 高優先度
 
@@ -68,6 +68,8 @@ PORT: 8080
    FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net
    STATIC_WEB_APP_URL=https://witty-river-012f39e00.1.azurestaticapps.net
    NODE_ENV=production
+
+   注意: SESSION_SECRETとNODE_ENVはAzure Portalで直接設定してください（CI/CDでは設定しません）
    ```
 
 ### ステップ2: 手動でアプリを再起動

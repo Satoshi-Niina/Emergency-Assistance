@@ -81,6 +81,16 @@ router.get('/', async (req, res) => {
                 console.warn('JSON解析エラー:', error);
                 jsonData = {};
             }
+            // 画像データを複数のフィールドから取得
+            const savedImages = jsonData.savedImages || jsonData.images || [];
+            console.log('🖼️ DB履歴の画像データ:', {
+                id: dbItem.id,
+                hasSavedImages: !!jsonData.savedImages,
+                hasImages: !!jsonData.images,
+                savedImagesLength: savedImages.length,
+                savedImages: savedImages
+            });
+
             return {
                 id: dbItem.id,
                 type: 'fault_history',
@@ -105,7 +115,8 @@ router.get('/', async (req, res) => {
                 possibleModels: [],
                 conversationHistory: jsonData.conversationHistory || jsonData.conversation_history || [],
                 metadata: jsonData.metadata || {},
-                savedImages: jsonData.savedImages || [],
+                savedImages: savedImages,  // 取得した画像データを設定
+                images: savedImages,       // imagesフィールドにも設定
                 fileSize: 0,
                 lastModified: dbItem.updatedAt || dbItem.createdAt,
                 createdAt: dbItem.createdAt,
@@ -115,6 +126,7 @@ router.get('/', async (req, res) => {
                     problemDescription: dbItem.description,
                     machineType: dbItem.machineType,
                     machineNumber: dbItem.machineNumber,
+                    savedImages: savedImages,  // jsonData内にも画像データを含める
                 },
             };
         });
@@ -207,19 +219,19 @@ router.get('/machine-data', async (_req, res) => {
         // PostgreSQLのmachineTypesテーブルから機種一覧を取得
         const machineTypesData = await index_js_1.db
             .select({
-            id: schema_js_1.machineTypes.id,
-            machineTypeName: schema_js_1.machineTypes.machineTypeName,
-        })
+                id: schema_js_1.machineTypes.id,
+                machineTypeName: schema_js_1.machineTypes.machineTypeName,
+            })
             .from(schema_js_1.machineTypes);
         console.log('📋 PostgreSQLから取得した機種データ:', machineTypesData.length, '件');
         // PostgreSQLのmachinesテーブルから機械番号一覧を取得（機種名も含む）
         const machinesData = await index_js_1.db
             .select({
-            id: schema_js_1.machines.id,
-            machineNumber: schema_js_1.machines.machineNumber,
-            machineTypeId: schema_js_1.machines.machineTypeId,
-            machineTypeName: schema_js_1.machineTypes.machineTypeName,
-        })
+                id: schema_js_1.machines.id,
+                machineNumber: schema_js_1.machines.machineNumber,
+                machineTypeId: schema_js_1.machines.machineTypeId,
+                machineTypeName: schema_js_1.machineTypes.machineTypeName,
+            })
             .from(schema_js_1.machines)
             .leftJoin(schema_js_1.machineTypes, (0, drizzle_orm_1.eq)(schema_js_1.machines.machineTypeId, schema_js_1.machineTypes.id));
         console.log('📋 PostgreSQLから取得した機械データ:', machinesData.length, '件');
@@ -510,32 +522,32 @@ router.get('/export-history', async (_req, res) => {
             exportHistory = files
                 .filter(file => file.endsWith('.json'))
                 .map(file => {
-                const filePath = path_1.default.join(exportsDir, file);
-                const stats = fs_1.default.statSync(filePath);
-                try {
-                    const content = fs_1.default.readFileSync(filePath, 'utf8');
-                    const data = JSON.parse(content);
-                    return {
-                        id: `export_${file.replace('.json', '')}`,
-                        filename: file,
-                        format: 'json',
-                        exportedAt: data.exportTimestamp || stats.mtime.toISOString(),
-                        fileSize: stats.size,
-                        recordCount: data.chatData?.messages?.length || 0,
-                    };
-                }
-                catch (error) {
-                    console.warn(`エクスポートファイルの読み込みエラー: ${filePath}`, error);
-                    return {
-                        id: `export_${file.replace('.json', '')}`,
-                        filename: file,
-                        format: 'json',
-                        exportedAt: stats.mtime.toISOString(),
-                        fileSize: stats.size,
-                        recordCount: 0,
-                    };
-                }
-            })
+                    const filePath = path_1.default.join(exportsDir, file);
+                    const stats = fs_1.default.statSync(filePath);
+                    try {
+                        const content = fs_1.default.readFileSync(filePath, 'utf8');
+                        const data = JSON.parse(content);
+                        return {
+                            id: `export_${file.replace('.json', '')}`,
+                            filename: file,
+                            format: 'json',
+                            exportedAt: data.exportTimestamp || stats.mtime.toISOString(),
+                            fileSize: stats.size,
+                            recordCount: data.chatData?.messages?.length || 0,
+                        };
+                    }
+                    catch (error) {
+                        console.warn(`エクスポートファイルの読み込みエラー: ${filePath}`, error);
+                        return {
+                            id: `export_${file.replace('.json', '')}`,
+                            filename: file,
+                            format: 'json',
+                            exportedAt: stats.mtime.toISOString(),
+                            fileSize: stats.size,
+                            recordCount: 0,
+                        };
+                    }
+                })
                 .sort((a, b) => new Date(b.exportedAt).getTime() - new Date(a.exportedAt).getTime());
         }
         console.log(`📋 エクスポート履歴取得完了: ${exportHistory.length}件`);
@@ -642,16 +654,16 @@ router.get('/export-all', async (_req, res) => {
             allHistory = files
                 .filter(file => file.endsWith('.json'))
                 .map(file => {
-                const filePath = path_1.default.join(exportsDir, file);
-                try {
-                    const content = fs_1.default.readFileSync(filePath, 'utf8');
-                    return JSON.parse(content);
-                }
-                catch (error) {
-                    console.warn(`ファイル読み込みエラー: ${filePath}`, error);
-                    return null;
-                }
-            })
+                    const filePath = path_1.default.join(exportsDir, file);
+                    try {
+                        const content = fs_1.default.readFileSync(filePath, 'utf8');
+                        return JSON.parse(content);
+                    }
+                    catch (error) {
+                        console.warn(`ファイル読み込みエラー: ${filePath}`, error);
+                        return null;
+                    }
+                })
                 .filter(item => item !== null);
         }
         // フィルター適用
@@ -731,32 +743,32 @@ router.post('/advanced-search', async (_req, res) => {
             searchResults = files
                 .filter(file => file.endsWith('.json'))
                 .map(file => {
-                const filePath = path_1.default.join(exportsDir, file);
-                try {
-                    const content = fs_1.default.readFileSync(filePath, 'utf8');
-                    const data = JSON.parse(content);
-                    // 検索テキストでマッチング
-                    const searchLower = searchText.toLowerCase();
-                    const contentStr = JSON.stringify(data).toLowerCase();
-                    if (contentStr.includes(searchLower)) {
-                        return {
-                            id: `export_${file.replace('.json', '')}`,
-                            filename: file,
-                            chatId: data.chatId,
-                            userId: data.userId,
-                            machineInfo: data.chatData?.machineInfo || {},
-                            exportTimestamp: data.exportTimestamp,
-                            messageCount: data.chatData?.messages?.length || 0,
-                            matchScore: contentStr.split(searchLower).length - 1, // マッチ回数
-                        };
+                    const filePath = path_1.default.join(exportsDir, file);
+                    try {
+                        const content = fs_1.default.readFileSync(filePath, 'utf8');
+                        const data = JSON.parse(content);
+                        // 検索テキストでマッチング
+                        const searchLower = searchText.toLowerCase();
+                        const contentStr = JSON.stringify(data).toLowerCase();
+                        if (contentStr.includes(searchLower)) {
+                            return {
+                                id: `export_${file.replace('.json', '')}`,
+                                filename: file,
+                                chatId: data.chatId,
+                                userId: data.userId,
+                                machineInfo: data.chatData?.machineInfo || {},
+                                exportTimestamp: data.exportTimestamp,
+                                messageCount: data.chatData?.messages?.length || 0,
+                                matchScore: contentStr.split(searchLower).length - 1, // マッチ回数
+                            };
+                        }
+                        return null;
                     }
-                    return null;
-                }
-                catch (error) {
-                    console.warn(`検索ファイル読み込みエラー: ${filePath}`, error);
-                    return null;
-                }
-            })
+                    catch (error) {
+                        console.warn(`検索ファイル読み込みエラー: ${filePath}`, error);
+                        return null;
+                    }
+                })
                 .filter(item => item !== null)
                 .sort((a, b) => b.matchScore - a.matchScore)
                 .slice(0, limit);
@@ -800,16 +812,16 @@ router.post('/generate-report', async (_req, res) => {
             reportData = files
                 .filter(file => file.endsWith('.json'))
                 .map(file => {
-                const filePath = path_1.default.join(exportsDir, file);
-                try {
-                    const content = fs_1.default.readFileSync(filePath, 'utf8');
-                    return JSON.parse(content);
-                }
-                catch (error) {
-                    console.warn(`レポートファイル読み込みエラー: ${filePath}`, error);
-                    return null;
-                }
-            })
+                    const filePath = path_1.default.join(exportsDir, file);
+                    try {
+                        const content = fs_1.default.readFileSync(filePath, 'utf8');
+                        return JSON.parse(content);
+                    }
+                    catch (error) {
+                        console.warn(`レポートファイル読み込みエラー: ${filePath}`, error);
+                        return null;
+                    }
+                })
                 .filter(item => item !== null);
             // フィルター適用
             if (searchFilters) {
@@ -925,21 +937,123 @@ router.get('/export/:sessionId', async (_req, res) => {
 });
 /**
  * DELETE /api/history/:sessionId
- * セッションを削除
+ * セッションを削除（関連画像も削除）
  */
 router.delete('/:sessionId', async (req, res) => {
     try {
         const { sessionId } = req.params;
         console.log(`📋 セッション削除リクエスト: ${sessionId}`);
-        const success = await historyService_1.HistoryService.deleteSession(sessionId);
-        if (!success) {
-            return res.status(404).json({
-                error: 'セッションが見つかりません',
-            });
+
+        // まず、削除前にJSONファイルから画像情報を取得
+        const exportsDir = path_1.default.join(process.cwd(), 'knowledge-base', 'exports');
+        const files = fs_1.default.readdirSync(exportsDir);
+        const targetFile = files.find(file => file.includes(sessionId) && file.endsWith('.json'));
+
+        let imagesToDelete = [];
+        if (targetFile) {
+            const filePath = path_1.default.join(exportsDir, targetFile);
+            try {
+                const content = fs_1.default.readFileSync(filePath, 'utf8');
+                const data = JSON.parse(content);
+
+                // savedImagesから画像パスを収集
+                if (data.savedImages && Array.isArray(data.savedImages)) {
+                    imagesToDelete = data.savedImages
+                        .filter(img => img.fileName || img.url)
+                        .map(img => {
+                            const fileName = img.fileName || (img.url ? path_1.default.basename(img.url) : null);
+                            if (fileName) {
+                                return path_1.default.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports', fileName);
+                            }
+                            return null;
+                        })
+                        .filter(Boolean);
+                }
+
+                // jsonData.savedImagesからも収集
+                if (data.jsonData?.savedImages && Array.isArray(data.jsonData.savedImages)) {
+                    const additionalImages = data.jsonData.savedImages
+                        .filter(img => img.fileName || img.url)
+                        .map(img => {
+                            const fileName = img.fileName || (img.url ? path_1.default.basename(img.url) : null);
+                            if (fileName) {
+                                return path_1.default.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports', fileName);
+                            }
+                            return null;
+                        })
+                        .filter(Boolean);
+                    imagesToDelete = [...new Set([...imagesToDelete, ...additionalImages])];
+                }
+
+                console.log(`🗑️ 削除対象画像: ${imagesToDelete.length}件`, imagesToDelete);
+            } catch (error) {
+                console.warn('画像情報の取得エラー:', error);
+            }
         }
+
+        // ハイブリッドモード: DBとファイル両方から削除
+        const storageMode = fault_history_service_js_1.faultHistoryService.storageMode;
+        const shouldDeleteFromDb = storageMode === 'database' || storageMode === 'hybrid';
+        const shouldDeleteFromFile = storageMode === 'file' || storageMode === 'hybrid';
+
+        // DB削除
+        if (shouldDeleteFromDb && fault_history_service_js_1.faultHistoryService.db) {
+            try {
+                // 画像レコードを削除
+                await fault_history_service_js_1.faultHistoryService.db
+                    .delete(schema_js_1.faultHistoryImages)
+                    .where((0, drizzle_orm_1.eq)(schema_js_1.faultHistoryImages.faultHistoryId, sessionId));
+
+                // メインレコードを削除
+                await fault_history_service_js_1.faultHistoryService.db
+                    .delete(schema_js_1.faultHistory)
+                    .where((0, drizzle_orm_1.eq)(schema_js_1.faultHistory.id, sessionId));
+
+                console.log('✅ データベースから削除完了:', sessionId);
+            }
+            catch (dbError) {
+                console.error('❌ データベース削除エラー:', dbError);
+                if (storageMode === 'database') {
+                    throw dbError;
+                }
+                console.log('⚠️ ハイブリッドモード: ファイル削除を続行');
+            }
+        }
+
+        // ファイル削除
+        if (shouldDeleteFromFile) {
+            const success = await historyService_1.HistoryService.deleteSession(sessionId);
+            if (!success && storageMode === 'file') {
+                return res.status(404).json({
+                    error: 'セッションが見つかりません',
+                });
+            }
+        }
+
+        // 関連画像を物理削除
+        let deletedImagesCount = 0;
+        for (const imagePath of imagesToDelete) {
+            try {
+                if (fs_1.default.existsSync(imagePath)) {
+                    fs_1.default.unlinkSync(imagePath);
+                    deletedImagesCount++;
+                    console.log(`✅ 画像削除成功: ${path_1.default.basename(imagePath)}`);
+                } else {
+                    console.log(`⚠️ 画像が見つかりません: ${imagePath}`);
+                }
+            } catch (error) {
+                console.error(`❌ 画像削除エラー: ${imagePath}`, error);
+            }
+        }
+
+        console.log(`✅ セッション削除完了: ${sessionId}, 画像${deletedImagesCount}/${imagesToDelete.length}件削除`);
+
         res.json({
             success: true,
             message: 'セッションを削除しました',
+            storageMode: storageMode,
+            deletedImages: deletedImagesCount,
+            totalImages: imagesToDelete.length
         });
     }
     catch (error) {
@@ -1058,11 +1172,11 @@ router.put('/update-item/:id', async (_req, res) => {
                         file.split('_').some(part => part === normalizedId),
                         // 短縮IDと比較
                         id.length > 8 &&
-                            (data.chatId?.startsWith(id.substring(0, 8)) ||
-                                data.id?.startsWith(id.substring(0, 8))),
+                        (data.chatId?.startsWith(id.substring(0, 8)) ||
+                            data.id?.startsWith(id.substring(0, 8))),
                         normalizedId.length > 8 &&
-                            (data.chatId?.startsWith(normalizedId.substring(0, 8)) ||
-                                data.id?.startsWith(normalizedId.substring(0, 8))),
+                        (data.chatId?.startsWith(normalizedId.substring(0, 8)) ||
+                            data.id?.startsWith(normalizedId.substring(0, 8))),
                     ];
                     if (matches.some(Boolean)) {
                         targetFile = filePath;
@@ -1099,6 +1213,16 @@ router.put('/update-item/:id', async (_req, res) => {
                 if (value === undefined) {
                     continue;
                 }
+                // 特別な処理: savedImagesとimagesは完全に置き換える
+                if (key === 'savedImages' || key === 'images') {
+                    console.log(`🖼️ ${key}を更新:`, {
+                        oldLength: Array.isArray(original[key]) ? original[key].length : 0,
+                        newLength: Array.isArray(value) ? value.length : 0,
+                        newValue: value
+                    });
+                    result[key] = value;
+                    continue;
+                }
                 if (value !== null &&
                     typeof value === 'object' &&
                     !Array.isArray(value) &&
@@ -1119,10 +1243,27 @@ router.put('/update-item/:id', async (_req, res) => {
             }
             return result;
         };
+
+        // jsonData内のsavedImagesも同期する
+        if (updatedData.savedImages || updatedData.images) {
+            console.log('📝 jsonData.savedImagesを同期します');
+            if (!updatedData.jsonData) {
+                updatedData.jsonData = {};
+            }
+            updatedData.jsonData.savedImages = updatedData.savedImages || updatedData.images || [];
+        }
+
         // 既存のデータを保持しながら、更新データをマージ
         const updatedJsonData = mergeData(originalData, {
             ...updatedData,
             lastModified: new Date().toISOString(),
+        });
+
+        console.log('✅ マージ完了 - 画像データ確認:', {
+            hasSavedImages: !!updatedJsonData.savedImages,
+            savedImagesLength: Array.isArray(updatedJsonData.savedImages) ? updatedJsonData.savedImages.length : 0,
+            hasJsonDataSavedImages: !!(updatedJsonData.jsonData && updatedJsonData.jsonData.savedImages),
+            jsonDataSavedImagesLength: updatedJsonData.jsonData?.savedImages ? updatedJsonData.jsonData.savedImages.length : 0
         });
         // 更新履歴を追加（既存のupdateHistoryは保持）
         if (!updatedJsonData.updateHistory || !Array.isArray(updatedJsonData.updateHistory)) {
@@ -1147,14 +1288,58 @@ router.put('/update-item/:id', async (_req, res) => {
             backupPath: backupPath || 'バックアップが無効化されています',
             success: !!backupPath,
         });
-        // ファイルに上書き保存
-        fs_1.default.writeFileSync(targetFile, JSON.stringify(updatedJsonData, null, 2), 'utf8');
-        console.log('✅ 履歴ファイル更新完了:', targetFile);
+        // ハイブリッドモード: DBとファイル両方を更新
+        const storageMode = fault_history_service_js_1.faultHistoryService.storageMode;
+        const shouldUpdateDb = storageMode === 'database' || storageMode === 'hybrid';
+        const shouldUpdateFile = storageMode === 'file' || storageMode === 'hybrid';
+
+        // DB更新
+        if (shouldUpdateDb && fault_history_service_js_1.faultHistoryService.db) {
+            try {
+                const dbUpdateData = {
+                    title: updatedJsonData.title,
+                    description: updatedJsonData.problemDescription || updatedJsonData.description,
+                    machineType: updatedJsonData.machineType,
+                    machineNumber: updatedJsonData.machineNumber,
+                    jsonData: JSON.stringify(updatedJsonData.jsonData || updatedJsonData),
+                    updatedAt: new Date(),
+                };
+
+                await fault_history_service_js_1.faultHistoryService.db
+                    .update(schema_js_1.faultHistory)
+                    .set(dbUpdateData)
+                    .where((0, drizzle_orm_1.eq)(schema_js_1.faultHistory.id, normalizedId));
+
+                console.log('✅ データベース更新完了:', normalizedId);
+            }
+            catch (dbError) {
+                console.error('❌ データベース更新エラー:', dbError);
+                if (storageMode === 'database') {
+                    throw dbError;
+                }
+                console.log('⚠️ ハイブリッドモード: ファイル更新を続行');
+            }
+        }
+
+        // ファイル更新
+        if (shouldUpdateFile) {
+            fs_1.default.writeFileSync(targetFile, JSON.stringify(updatedJsonData, null, 2), 'utf8');
+            console.log('✅ 履歴ファイル更新完了:', targetFile);
+        }
+
         console.log('📊 更新されたフィールド:', Object.keys(updatedData));
+        console.log('🖼️ 保存された画像データの最終確認:', {
+            savedImages: updatedJsonData.savedImages,
+            images: updatedJsonData.images,
+            jsonDataSavedImages: updatedJsonData.jsonData?.savedImages,
+            storageMode: storageMode
+        });
+
         res.json({
             success: true,
-            message: '履歴ファイルが更新されました',
-            updatedFile: path_1.default.basename(targetFile),
+            message: '履歴が更新されました',
+            storageMode: storageMode,
+            updatedFile: shouldUpdateFile ? path_1.default.basename(targetFile) : null,
             updatedData: updatedJsonData,
             backupFile: backupPath ? path_1.default.basename(backupPath) : null,
             backupPath: backupPath,
@@ -1234,64 +1419,64 @@ router.get('/export-files', async (_req, res) => {
         // 各ファイルを確認
         const exportFiles = jsonFiles
             .filter(file => {
-            const excludeBackup = file.includes('.backup.');
-            const excludeTest = file.startsWith('test-backup-');
-            if (excludeBackup || excludeTest) {
-                console.log('⚠️ 除外ファイル:', file, { excludeBackup, excludeTest });
-            }
-            return !excludeBackup && !excludeTest;
-        })
+                const excludeBackup = file.includes('.backup.');
+                const excludeTest = file.startsWith('test-backup-');
+                if (excludeBackup || excludeTest) {
+                    console.log('⚠️ 除外ファイル:', file, { excludeBackup, excludeTest });
+                }
+                return !excludeBackup && !excludeTest;
+            })
             .map(file => {
-            const filePath = path_1.default.join(exportsDir, file);
-            console.log('🔍 ファイル処理中:', filePath);
-            try {
-                // ファイルの存在確認
-                if (!fs_1.default.existsSync(filePath)) {
-                    console.warn('❌ ファイルが見つかりません:', filePath);
+                const filePath = path_1.default.join(exportsDir, file);
+                console.log('🔍 ファイル処理中:', filePath);
+                try {
+                    // ファイルの存在確認
+                    if (!fs_1.default.existsSync(filePath)) {
+                        console.warn('❌ ファイルが見つかりません:', filePath);
+                        return null;
+                    }
+                    const stats = fs_1.default.statSync(filePath);
+                    if (!stats.isFile()) {
+                        console.warn('❌ ファイルではありません:', filePath);
+                        return null;
+                    }
+                    const content = fs_1.default.readFileSync(filePath, 'utf8');
+                    const data = JSON.parse(content);
+                    // 機種と機械番号を抽出（複数の形式に対応）
+                    const machineType = data.machineType ||
+                        data.chatData?.machineInfo?.machineTypeName ||
+                        data.machineInfo?.machineTypeName ||
+                        '';
+                    const machineNumber = data.machineNumber ||
+                        data.chatData?.machineInfo?.machineNumber ||
+                        data.machineInfo?.machineNumber ||
+                        '';
+                    const fileInfo = {
+                        fileName: file,
+                        filePath: filePath,
+                        chatId: data.chatId || data.id || 'unknown',
+                        title: data.title || data.problemDescription || 'タイトルなし',
+                        machineType: machineType,
+                        machineNumber: machineNumber,
+                        createdAt: data.createdAt ||
+                            data.exportTimestamp ||
+                            new Date().toISOString(),
+                        exportTimestamp: data.exportTimestamp || data.createdAt || new Date().toISOString(),
+                        lastModified: stats.mtime.toISOString(),
+                        size: stats.size,
+                        content: data, // 完全なJSONデータも含める
+                    };
+                    console.log('✅ ファイル読み込み成功:', file, 'タイトル:', fileInfo.title, '機種:', machineType, '機械番号:', machineNumber);
+                    return fileInfo;
+                }
+                catch (error) {
+                    console.error(`❌ ファイル読み込みエラー: ${filePath}`, error);
+                    if (error instanceof Error) {
+                        console.error('エラー詳細:', error.message, error.stack);
+                    }
                     return null;
                 }
-                const stats = fs_1.default.statSync(filePath);
-                if (!stats.isFile()) {
-                    console.warn('❌ ファイルではありません:', filePath);
-                    return null;
-                }
-                const content = fs_1.default.readFileSync(filePath, 'utf8');
-                const data = JSON.parse(content);
-                // 機種と機械番号を抽出（複数の形式に対応）
-                const machineType = data.machineType ||
-                    data.chatData?.machineInfo?.machineTypeName ||
-                    data.machineInfo?.machineTypeName ||
-                    '';
-                const machineNumber = data.machineNumber ||
-                    data.chatData?.machineInfo?.machineNumber ||
-                    data.machineInfo?.machineNumber ||
-                    '';
-                const fileInfo = {
-                    fileName: file,
-                    filePath: filePath,
-                    chatId: data.chatId || data.id || 'unknown',
-                    title: data.title || data.problemDescription || 'タイトルなし',
-                    machineType: machineType,
-                    machineNumber: machineNumber,
-                    createdAt: data.createdAt ||
-                        data.exportTimestamp ||
-                        new Date().toISOString(),
-                    exportTimestamp: data.exportTimestamp || data.createdAt || new Date().toISOString(),
-                    lastModified: stats.mtime.toISOString(),
-                    size: stats.size,
-                    content: data, // 完全なJSONデータも含める
-                };
-                console.log('✅ ファイル読み込み成功:', file, 'タイトル:', fileInfo.title, '機種:', machineType, '機械番号:', machineNumber);
-                return fileInfo;
-            }
-            catch (error) {
-                console.error(`❌ ファイル読み込みエラー: ${filePath}`, error);
-                if (error instanceof Error) {
-                    console.error('エラー詳細:', error.message, error.stack);
-                }
-                return null;
-            }
-        })
+            })
             .filter(item => item !== null);
         console.log('📦 最終エクスポートファイル数:', exportFiles.length);
         console.log('📋 返却ファイル一覧:', exportFiles.map(f => f.fileName));
@@ -1575,6 +1760,95 @@ router.get('/backup-config', (_req, res) => {
     catch (error) {
         console.error('バックアップ設定取得エラー:', error);
         res.status(500).json({ error: 'バックアップ設定の取得に失敗しました' });
+    }
+});
+/**
+ * GET /api/history/:id
+ * 特定の履歴アイテムを取得（編集用）
+ * 注意: このルートは全ての特定パスの後に配置する必要があります
+ */
+router.get('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        console.log('📋 履歴アイテム取得リクエスト:', id);
+
+        // DBから故障履歴を取得
+        const dbItem = await fault_history_service_js_1.faultHistoryService.getFaultHistoryById(id);
+
+        if (!dbItem) {
+            return res.status(404).json({
+                error: 'not_found',
+                message: '指定された履歴が見つかりません',
+            });
+        }
+
+        // JSONデータをパース
+        let jsonData;
+        try {
+            jsonData = typeof dbItem.jsonData === 'string'
+                ? JSON.parse(dbItem.jsonData)
+                : dbItem.jsonData;
+        } catch (error) {
+            console.warn('JSON解析エラー:', error);
+            jsonData = {};
+        }
+
+        // 画像データを複数のフィールドから取得
+        const savedImages = jsonData.savedImages || jsonData.images || [];
+        console.log('🖼️ 取得した画像データ:', {
+            id: dbItem.id,
+            savedImagesLength: savedImages.length,
+            savedImages: savedImages,
+        });
+
+        // 履歴表示フォーマットに変換
+        const convertedItem = {
+            id: dbItem.id,
+            type: 'fault_history',
+            fileName: `${dbItem.title}_${dbItem.id}.json`,
+            chatId: jsonData.chatId || dbItem.id,
+            userId: jsonData.userId || '',
+            exportType: jsonData.exportType || 'db_stored',
+            exportTimestamp: dbItem.createdAt || new Date().toISOString(),
+            messageCount: jsonData.metadata?.total_messages || 0,
+            machineType: dbItem.machineType || '',
+            machineNumber: dbItem.machineNumber || '',
+            machineInfo: {
+                selectedMachineType: '',
+                selectedMachineNumber: '',
+                machineTypeName: dbItem.machineType || '',
+                machineNumber: dbItem.machineNumber || '',
+            },
+            title: dbItem.title || '',
+            problemDescription: dbItem.description || '',
+            extractedComponents: dbItem.keywords || [],
+            extractedSymptoms: [],
+            possibleModels: [],
+            conversationHistory: jsonData.conversationHistory || jsonData.conversation_history || [],
+            metadata: jsonData.metadata || {},
+            savedImages: savedImages,
+            images: savedImages,
+            fileSize: 0,
+            lastModified: dbItem.updatedAt || dbItem.createdAt,
+            createdAt: dbItem.createdAt,
+            jsonData: {
+                ...jsonData,
+                title: dbItem.title,
+                problemDescription: dbItem.description,
+                machineType: dbItem.machineType,
+                machineNumber: dbItem.machineNumber,
+                savedImages: savedImages,
+            },
+        };
+
+        console.log('📋 履歴アイテム取得完了:', convertedItem.id);
+        return res.json(convertedItem);
+    } catch (error) {
+        console.error('❌ 履歴アイテム取得エラー:', error);
+        return res.status(500).json({
+            error: 'history_item_fetch_error',
+            message: error instanceof Error ? error.message : 'Unknown error',
+        });
     }
 });
 /**
@@ -1950,9 +2224,9 @@ router.post('/upload-image', image_uploader_js_1.upload.single('image'), async (
         try {
             const resizedBuffer = await (0, sharp_1.default)(req.file.buffer)
                 .resize(120, 120, {
-                fit: 'inside', // アスペクト比を維持しながら、120x120以内に収める
-                withoutEnlargement: true, // 拡大しない
-            })
+                    fit: 'inside', // アスペクト比を維持しながら、120x120以内に収める
+                    withoutEnlargement: true, // 拡大しない
+                })
                 .jpeg({ quality: 85 })
                 .toBuffer();
             fs_1.default.writeFileSync(filePath, resizedBuffer);

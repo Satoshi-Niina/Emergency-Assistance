@@ -37,17 +37,37 @@ class FaultHistoryService {
             writable: true,
             value: void 0
         });
-        // 強制的にファイルモードで動作（DB関連を削除）
-        this.useDatabase = false;
+        Object.defineProperty(this, "storageMode", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: void 0
+        });
+
+        // ストレージモードを環境変数から決定
+        // 'database': DBのみ、'file': ファイルのみ、'hybrid': 両方（推奨）
+        this.storageMode = process.env.STORAGE_MODE || 'hybrid';
+        this.useDatabase = this.storageMode === 'database' || this.storageMode === 'hybrid';
+
         // 画像保存ディレクトリを設定
         this.imagesDir = process.env.FAULT_HISTORY_IMAGES_DIR ||
             path_1.default.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
+
         // ディレクトリが存在しない場合は作成
         if (!fs_1.default.existsSync(this.imagesDir)) {
             fs_1.default.mkdirSync(this.imagesDir, { recursive: true });
         }
-        console.log('🔧 故障履歴サービス初期化: ファイルモード（強制）');
-        console.log(`📁 画像保存ディレクトリ: ${this.imagesDir}`);
+
+        console.log('🔧 故障履歴サービス初期化:', {
+            storageMode: this.storageMode,
+            useDatabase: this.useDatabase,
+            imagesDir: this.imagesDir
+        });
+
+        // DBモードまたはハイブリッドモードの場合はDB初期化
+        if (this.useDatabase) {
+            this.initializeDatabase();
+        }
     }
     initializeDatabase() {
         try {
@@ -86,7 +106,11 @@ class FaultHistoryService {
             imagePaths = imageExtraction.imagePaths;
             imageRecords = imageExtraction.imageRecords;
         }
-        if (this.useDatabase) {
+        // ハイブリッドモード: 両方に保存
+        const shouldSaveToDb = this.storageMode === 'database' || this.storageMode === 'hybrid';
+        const shouldSaveToFile = this.storageMode === 'file' || this.storageMode === 'hybrid';
+
+        if (shouldSaveToDb && this.db) {
             // データベースに保存
             try {
                 const historyRecord = {
@@ -101,7 +125,7 @@ class FaultHistoryService {
                     emergencyGuideTitle,
                     emergencyGuideContent,
                     jsonData: JSON.stringify(jsonData),
-                    storageMode: 'database',
+                    storageMode: this.storageMode,
                     createdAt: now,
                     updatedAt: now,
                 };
@@ -114,10 +138,14 @@ class FaultHistoryService {
             }
             catch (error) {
                 console.error('❌ データベース保存エラー:', error);
-                throw error;
+                if (this.storageMode === 'database') {
+                    throw error; // DBのみモードの場合はエラーを投げる
+                }
+                console.log('⚠️ ハイブリッドモード: ファイル保存を続行');
             }
         }
-        else {
+
+        if (shouldSaveToFile) {
             // ファイルシステムに保存
             const exportDir = process.env.LOCAL_EXPORT_DIR ||
                 path_1.default.join(process.cwd(), 'knowledge-base', 'exports');
@@ -138,7 +166,7 @@ class FaultHistoryService {
                 emergencyGuideContent,
                 jsonData,
                 metadata: {
-                    storageMode: 'file',
+                    storageMode: this.storageMode,
                     imagePaths,
                     imageRecords,
                 },
@@ -173,7 +201,7 @@ class FaultHistoryService {
                     conditions.push((0, drizzle_orm_1.eq)(schema_js_1.faultHistory.office, options.office));
                 }
                 if (options.keyword) {
-                    conditions.push((0, drizzle_orm_1.sql) `${schema_js_1.faultHistory.title} ILIKE ${`%${options.keyword}%`} OR 
+                    conditions.push((0, drizzle_orm_1.sql)`${schema_js_1.faultHistory.title} ILIKE ${`%${options.keyword}%`} OR
                 ${schema_js_1.faultHistory.description} ILIKE ${`%${options.keyword}%`}`);
                 }
                 if (conditions.length > 0) {
@@ -185,7 +213,7 @@ class FaultHistoryService {
                     .offset(offset);
                 // 総数を取得
                 const totalQuery = await this.db
-                    .select({ count: (0, drizzle_orm_1.sql) `count(*)` })
+                    .select({ count: (0, drizzle_orm_1.sql)`count(*)` })
                     .from(schema_js_1.faultHistory);
                 const total = totalQuery[0]?.count || 0;
                 return { items, total };
@@ -220,6 +248,41 @@ class FaultHistoryService {
                     .select()
                     .from(schema_js_1.faultHistoryImages)
                     .where((0, drizzle_orm_1.eq)(schema_js_1.faultHistoryImages.faultHistoryId, id));
+
+                // ハイブリッドモードの場合、JSONファイルからも画像データを読み込む
+                if (this.storageMode === 'hybrid') {
+                    const exportDir = process.env.LOCAL_EXPORT_DIR ||
+                        path_1.default.join(process.cwd(), 'knowledge-base', 'exports');
+
+                    const files = fs_1.default.readdirSync(exportDir);
+                    const matchingFile = files.find(file =>
+                        file.includes(id) && file.endsWith('.json')
+                    );
+
+                    if (matchingFile) {
+                        const filePath = path_1.default.join(exportDir, matchingFile);
+                        const fileContent = fs_1.default.readFileSync(filePath, 'utf8');
+                        const jsonData = JSON.parse(fileContent);
+
+                        // JSONファイルから画像データを取得
+                        const savedImages = jsonData.savedImages || jsonData.images || [];
+                        console.log('🖼️ ハイブリッドモード: JSONファイルから画像取得:', {
+                            id,
+                            fileName: matchingFile,
+                            savedImagesLength: savedImages.length,
+                        });
+
+                        // JSONデータに画像情報を追加
+                        if (typeof item[0].jsonData === 'string') {
+                            const parsedJsonData = JSON.parse(item[0].jsonData);
+                            parsedJsonData.savedImages = savedImages;
+                            item[0].jsonData = JSON.stringify(parsedJsonData);
+                        } else {
+                            item[0].jsonData.savedImages = savedImages;
+                        }
+                    }
+                }
+
                 return {
                     ...item[0],
                     images,
@@ -267,25 +330,46 @@ class FaultHistoryService {
         const files = fs_1.default.readdirSync(exportDir)
             .filter(file => file.endsWith('.json'))
             .map(file => {
-            try {
-                const filePath = path_1.default.join(exportDir, file);
-                const content = fs_1.default.readFileSync(filePath, 'utf8');
-                const data = JSON.parse(content);
-                // ファイル名からUUIDを抽出（複合ID対応）
-                const fileName = file.replace('.json', '');
-                const uuidMatch = fileName.match(/_([a-f0-9-]{36})_/);
-                const actualId = uuidMatch ? uuidMatch[1] : fileName;
-                return {
-                    ...data,
-                    id: actualId, // UUIDを抽出してIDとして使用
-                    originalFileName: fileName, // 元のファイル名も保持
-                };
-            }
-            catch (error) {
-                console.error(`ファイル読み込みエラー: ${file}`, error);
-                return null;
-            }
-        })
+                try {
+                    const filePath = path_1.default.join(exportDir, file);
+                    const content = fs_1.default.readFileSync(filePath, 'utf8');
+                    const data = JSON.parse(content);
+                    // ファイル名からUUIDを抽出（複合ID対応）
+                    const fileName = file.replace('.json', '');
+                    const uuidMatch = fileName.match(/_([a-f0-9-]{36})_/);
+                    const actualId = uuidMatch ? uuidMatch[1] : fileName;
+
+                    // 画像データを確実に含める（複数のフィールドから取得）
+                    const savedImages = data.savedImages || data.images || data.jsonData?.savedImages || data.jsonData?.images || [];
+
+                    console.log('📂 ファイルから履歴読み込み:', {
+                        file,
+                        id: actualId,
+                        hasSavedImages: !!data.savedImages,
+                        hasImages: !!data.images,
+                        hasJsonDataSavedImages: !!(data.jsonData && data.jsonData.savedImages),
+                        savedImagesLength: savedImages.length,
+                        firstImage: savedImages[0]
+                    });
+
+                    return {
+                        ...data,
+                        id: actualId, // UUIDを抽出してIDとして使用
+                        originalFileName: fileName, // 元のファイル名も保持
+                        savedImages: savedImages,  // 画像データを確実に含める
+                        images: savedImages,        // imagesフィールドにも設定
+                        jsonData: {
+                            ...data.jsonData,
+                            savedImages: savedImages, // jsonData内にも画像データを含める
+                            images: savedImages
+                        }
+                    };
+                }
+                catch (error) {
+                    console.error(`ファイル読み込みエラー: ${file}`, error);
+                    return null;
+                }
+            })
             .filter(item => item !== null);
         // フィルタリング
         let filteredItems = files;

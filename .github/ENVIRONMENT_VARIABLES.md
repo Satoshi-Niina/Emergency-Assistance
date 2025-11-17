@@ -10,7 +10,7 @@
 |---------|------|-----|---------------|
 | `DATABASE_URL` | PostgreSQL接続文字列 | `postgresql://user:password@host:5432/dbname` | `DATABASE_URL` |
 | `JWT_SECRET` | JWT署名用シークレット | 32文字以上のランダム文字列 | `JWT_SECRET` |
-| `SESSION_SECRET` | セッション管理用シークレット | 32文字以上のランダム文字列 | `SESSION_SECRET` |
+| `SESSION_SECRET` | セッション管理用シークレット | 32文字以上のランダム文字列 | Azure Portalで直接設定（CI/CDでは設定しない） |
 | `FRONTEND_URL` | フロントエンドURL | `https://your-static-web-app.azurestaticapps.net` | `FRONTEND_URL` |
 | `FRONTEND_ORIGIN` | フロントエンドオリジン（CORS用） | `https://your-static-web-app.azurestaticapps.net` | `FRONTEND_URL`（同じ値） |
 
@@ -18,7 +18,7 @@
 
 | 環境変数名 | 説明 | デフォルト値 | GitHub Secret名 |
 |---------|------|------------|---------------|
-| `NODE_ENV` | 実行環境 | `production` | 自動設定 |
+| `NODE_ENV` | 実行環境 | `production` | Azure Portalで直接設定（CI/CDで自動設定） |
 | `PORT` | サーバーポート | `8080` | `PORT`（通常は設定不要） |
 | `PG_SSL` | PostgreSQL SSL設定 | `require` | `PG_SSL` |
 | `CORS_ALLOW_ORIGINS` | CORS許可オリジン | `*` | `CORS_ALLOW_ORIGINS` |

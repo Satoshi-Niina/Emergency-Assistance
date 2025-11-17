@@ -23,7 +23,6 @@ GitHubリポジトリの **Settings > Secrets and variables > Actions** で設�
 |---------|------|-----|------|
 | `DATABASE_URL` | PostgreSQL接続文字列 | `postgresql://user:password@host:5432/dbname` | **必須** |
 | `JWT_SECRET` | JWT署名用シークレット | `your-super-secret-jwt-key-min-32-chars` | **必須** 32文字以上 |
-| `SESSION_SECRET` | セッション管理用シークレット | `your-super-secret-session-key-min-32-chars` | **必須** 32文字以上 |
 | `FRONTEND_URL` | フロントエンドURL | `https://your-static-web-app.azurestaticapps.net` | **必須** |
 
 ### バックエンド（Azure App Service）オプション環境変数

@@ -3,6 +3,14 @@
 // Azure App Service専用サーバー
 // Windows/Linux環境で確実に動作する最小限のサーバー
 
+// 環境変数読み込み（ローカル開発のみ、本番では不要）
+import dotenv from 'dotenv';
+if (!process.env.WEBSITE_SITE_NAME) {
+  // Azure App Service以外（ローカル環境）でのみ.envを読み込む
+  dotenv.config();
+  console.log('📄 Local .env file loaded');
+}
+
 // Azure App Service environment setup
 console.log('🚀 Azure Server Starting (ES Module)...');
 console.log('📍 Working directory:', process.cwd());
@@ -30,6 +38,7 @@ import { BlobServiceClient } from '@azure/storage-blob';
 import bcrypt from 'bcryptjs';
 import session from 'express-session';
 import fs from 'fs';
+import Database from 'better-sqlite3';
 
 // ==== まず環境値（ログより前に宣言）=====
 const FRONTEND_URL =
@@ -234,11 +243,78 @@ const norm = (p) =>
     .replace(/\/+/g, '/');
 
 // データベース接続プール
-let dbPool = null;
+let dbPool = null; // PostgreSQL (production)
+let sqliteDb = null; // SQLite (local development)
 
 // データベース接続初期化（改善版）
 function initializeDatabase() {
-  // Azure App Service用の複数の環境変数候補をチェック
+  // ローカル開発環境: SQLite を使用
+  const useSQLite = process.env.USE_SQLITE === 'true' || process.env.NODE_ENV === 'development';
+
+  if (useSQLite) {
+    console.log('🔗 Initializing SQLite database for local development...');
+    const dbPath = process.env.SQLITE_DB_PATH || path.join(__dirname, '..', 'knowledge-base', 'data', 'local.db');
+
+    try {
+      sqliteDb = new Database(dbPath);
+      console.log('✅ SQLite database opened:', dbPath);
+
+      // テーブル作成（存在しない場合）
+      sqliteDb.exec(`
+        CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT UNIQUE NOT NULL,
+          password TEXT NOT NULL,
+          display_name TEXT,
+          role TEXT DEFAULT 'user',
+          department TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS machine_types (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          machine_type_name TEXT UNIQUE NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS machines (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          machine_number TEXT NOT NULL,
+          machine_type_id INTEGER,
+          FOREIGN KEY (machine_type_id) REFERENCES machine_types(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS chat_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT,
+          machine_type TEXT,
+          machine_number TEXT,
+          content TEXT,
+          conversation_history TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          user_id INTEGER,
+          FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+      `);
+
+      // デフォルト管理者ユーザーが存在しない場合は作成
+      const adminExists = sqliteDb.prepare('SELECT id FROM users WHERE username = ?').get('admin');
+      if (!adminExists) {
+        const hashedPassword = bcrypt.hashSync('admin', 10);
+        sqliteDb.prepare('INSERT INTO users (username, password, display_name, role, department) VALUES (?, ?, ?, ?, ?)').run(
+          'admin', hashedPassword, '管理者', 'admin', 'システム管理'
+        );
+        console.log('✅ Default admin user created (username: admin, password: admin)');
+      }
+
+      console.log('✅ SQLite database initialized successfully');
+      return true;
+    } catch (error) {
+      console.error('❌ SQLite initialization failed:', error);
+      return false;
+    }
+  }
+
+  // 本番環境: PostgreSQL を使用
   const databaseUrl = process.env.DATABASE_URL ||
     process.env.POSTGRES_URL ||
     process.env.AZURE_POSTGRESQL_CONNECTIONSTRING;
@@ -327,6 +403,41 @@ function initializeDatabase() {
   } catch (error) {
     console.error('❌ Database initialization failed:', error);
     return false;
+  }
+}
+
+// ユニバーサルデータベースクエリヘルパー
+async function dbQuery(sql, params = []) {
+  if (sqliteDb) {
+    // SQLite: 同期的にクエリを実行
+    try {
+      if (sql.trim().toUpperCase().startsWith('SELECT')) {
+        const stmt = sqliteDb.prepare(sql);
+        const rows = params.length > 0 ? stmt.all(...params) : stmt.all();
+        return { rows, rowCount: rows.length };
+      } else {
+        const stmt = sqliteDb.prepare(sql);
+        const info = params.length > 0 ? stmt.run(...params) : stmt.run();
+        return {
+          rows: info.lastInsertRowid ? [{ id: info.lastInsertRowid }] : [],
+          rowCount: info.changes
+        };
+      }
+    } catch (error) {
+      console.error('SQLite query error:', error);
+      throw error;
+    }
+  } else if (dbPool) {
+    // PostgreSQL: 非同期クエリ
+    const client = await dbPool.connect();
+    try {
+      const result = await client.query(sql, params);
+      return result;
+    } finally {
+      client.release();
+    }
+  } else {
+    throw new Error('No database connection available');
   }
 }
 
@@ -609,17 +720,9 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    // データベースバイパスモードの確認
-    const bypassDb = process.env.BYPASS_DB_FOR_LOGIN === 'true';
-
-    // データベース接続がない場合はエラー（バイパスモード以外）
-    if (!dbPool && !bypassDb) {
-      console.error('[auth/login] Database pool not initialized');
-      console.error('[auth/login] Environment variables check:');
-      console.error('  - DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
-      console.error('  - POSTGRES_URL:', process.env.POSTGRES_URL ? 'Set' : 'Not set');
-      console.error('  - AZURE_POSTGRESQL_CONNECTIONSTRING:', process.env.AZURE_POSTGRESQL_CONNECTIONSTRING ? 'Set' : 'Not set');
-
+    // データベース接続がない場合はエラー
+    if (!dbPool && !sqliteDb) {
+      console.error('[auth/login] No database connection available');
       return res.status(500).json({
         success: false,
         error: 'database_unavailable',
@@ -627,48 +730,11 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    // バイパスモード: データベースなしでダミーログイン
-    if (bypassDb || !dbPool) {
-      console.log('[auth/login] バイパスモードでログイン:', { username });
-
-      // ダミーユーザー情報
-      const dummyUser = {
-        id: 1,
-        username: username,
-        role: 'admin',
-        display_name: `テストユーザー (${username})`,
-        department: 'システム管理'
-      };
-
-      // セッション設定
-      req.session.userId = dummyUser.id;
-      req.session.username = dummyUser.username;
-      req.session.role = dummyUser.role;
-      req.session.displayName = dummyUser.display_name;
-
-      console.log('[auth/login] バイパスログイン成功:', {
-        userId: dummyUser.id,
-        username: dummyUser.username,
-        role: dummyUser.role
-      });
-
-      return res.json({
-        success: true,
-        message: 'ログインしました（バイパスモード）',
-        user: {
-          id: dummyUser.id,
-          username: dummyUser.username,
-          role: dummyUser.role,
-          display_name: dummyUser.display_name,
-          department: dummyUser.department
-        }
-      });
-    }
-
     try {
       // データベースからユーザーを検索
       console.log('[auth/login] ユーザー検索開始:', { username });
-      const result = await dbPool.query(
+
+      const result = await dbQuery(
         'SELECT id, username, password, role, display_name, department FROM users WHERE username = $1 LIMIT 1',
         [username]
       );
@@ -1081,8 +1147,8 @@ app.get('/api/users', async (req, res) => {
       timestamp: new Date().toISOString()
     });
 
-    if (!dbPool) {
-      console.warn('⚠️ Database pool not initialized');
+    if (!dbPool && !sqliteDb) {
+      console.warn('⚠️ No database connection available');
       return res.json({
         success: true,
         data: [],
@@ -1091,13 +1157,11 @@ app.get('/api/users', async (req, res) => {
       });
     }
 
-    const client = await dbPool.connect();
-    const result = await client.query(`
+    const result = await dbQuery(`
       SELECT id, username, display_name, role, department, created_at
       FROM users
       ORDER BY created_at DESC
     `);
-    await client.release();
 
     console.log('[api/users] ユーザー一覧取得成功:', result.rows.length + '件');
 
@@ -1499,8 +1563,8 @@ app.get('/api/machines', async (req, res) => {
       timestamp: new Date().toISOString()
     });
 
-    if (!dbPool) {
-      console.warn('⚠️ Database pool not initialized for machines API');
+    if (!dbPool && !sqliteDb) {
+      console.warn('⚠️ No database connection available for machines API');
       return res.json({
         success: true,
         machineTypes: [],
@@ -1510,24 +1574,20 @@ app.get('/api/machines', async (req, res) => {
       });
     }
 
-    const client = await dbPool.connect();
-
     // 機種一覧を取得
-    const typesResult = await client.query(`
+    const typesResult = await dbQuery(`
       SELECT id, machine_type_name
       FROM machine_types
       ORDER BY machine_type_name
     `);
 
     // 機械番号一覧を取得
-    const machinesResult = await client.query(`
+    const machinesResult = await dbQuery(`
       SELECT m.id, m.machine_number, m.machine_type_id, mt.machine_type_name
       FROM machines m
       LEFT JOIN machine_types mt ON m.machine_type_id = mt.id
       ORDER BY mt.machine_type_name, m.machine_number
     `);
-
-    await client.release();
 
     console.log('[api/machines] 機械データ取得成功:', {
       machineTypes: typesResult.rows.length,
@@ -2355,7 +2415,7 @@ app.get('/api/history', async (req, res) => {
 
     const { limit = 50, offset = 0, machineType, machineNumber } = req.query;
 
-    if (!dbPool) {
+    if (!dbPool && !sqliteDb) {
       return res.json({
         success: true,
         data: [],
@@ -2364,9 +2424,7 @@ app.get('/api/history', async (req, res) => {
       });
     }
 
-    const client = await dbPool.connect();
-
-    // 履歴データを取得（実際のテーブル構造に応じて調整）
+    // 履歴データを取得
     let query = `
       SELECT
         h.id,
@@ -2380,25 +2438,21 @@ app.get('/api/history', async (req, res) => {
       WHERE 1=1
     `;
     let params = [];
-    let paramCount = 0;
 
     if (machineType) {
-      paramCount++;
-      query += ` AND h.machine_type = $${paramCount}`;
+      query += ` AND h.machine_type = ?`;
       params.push(machineType);
     }
 
     if (machineNumber) {
-      paramCount++;
-      query += ` AND h.machine_number = $${paramCount}`;
+      query += ` AND h.machine_number = ?`;
       params.push(machineNumber);
     }
 
-    query += ` ORDER BY h.created_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
+    query += ` ORDER BY h.created_at DESC LIMIT ? OFFSET ?`;
     params.push(parseInt(limit), parseInt(offset));
 
-    const result = await client.query(query, params);
-    await client.release();
+    const result = await dbQuery(query, params);
 
     console.log('[api/history] 履歴データ取得成功:', result.rows.length + '件');
 

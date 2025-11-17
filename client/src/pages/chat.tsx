@@ -1542,27 +1542,20 @@ export default function ChatPage() {
       // refとstateの両方を確認して最新の状態を取得（どちらかが有効な値を持ってぁE��かを確認！E
       // 最新の状態を確実に取得するため、refを優先し、なければstateを使用
       // 機械番号につぁE��は、selectedMachineNumber�E�ED�E�また�EmachineNumberInput�E�表示値�E��Eどちらかがあれ�EOK
-      const refMachineType = selectedMachineTypeRef.current;
-      const refMachineNumber = selectedMachineNumberRef.current;
-      const stateMachineType = selectedMachineType;
-      const stateMachineNumber = selectedMachineNumber;
+      // stateを優先的に確認し、なければ入力値を確認
 
       // refとstateの両方を確認し、どちらかが有効な値を持ってぁE��かを確誁E
       // refが優先、なければstateを使用
       // 機種は、selectedMachineType�E�ED�E�また�EmachineTypeInput�E�表示値�E��Eどちらかがあれ�EOK
-      const currentMachineType = (refMachineType && refMachineType.trim() !== '' && refMachineType !== 'null' && refMachineType !== 'undefined')
-        ? refMachineType
-        : (stateMachineType && stateMachineType.trim() !== '' && stateMachineType !== 'null' && stateMachineType !== 'undefined')
-          ? stateMachineType
+      const currentMachineType = (selectedMachineType && selectedMachineType.trim() !== '' && selectedMachineType !== 'null' && selectedMachineType !== 'undefined')
+        ? selectedMachineType
           : (machineTypeInput && machineTypeInput.trim() !== '')
             ? machineTypeInput.trim()
             : '';
 
       // 機械番号は、selectedMachineNumber�E�ED�E�また�EmachineNumberInput�E�表示値�E��Eどちらかがあれ�EOK
-      const currentMachineNumber = (refMachineNumber && refMachineNumber.trim() !== '' && refMachineNumber !== 'null' && refMachineNumber !== 'undefined')
-        ? refMachineNumber
-        : (stateMachineNumber && stateMachineNumber.trim() !== '' && stateMachineNumber !== 'null' && stateMachineNumber !== 'undefined')
-          ? stateMachineNumber
+      const currentMachineNumber = (selectedMachineNumber && selectedMachineNumber.trim() !== '' && selectedMachineNumber !== 'null' && selectedMachineNumber !== 'undefined')
+        ? selectedMachineNumber
           : (machineNumberInput && machineNumberInput.trim() !== '')
             ? machineNumberInput.trim()
             : '';
@@ -1572,10 +1565,8 @@ export default function ChatPage() {
       const hasMachineNumber = currentMachineNumber !== '';
 
       console.log('🔍 機種・機械番号チェチE��:', {
-        refMachineType,
-        refMachineNumber,
-        stateMachineType,
-        stateMachineNumber,
+        selectedMachineType,
+        selectedMachineNumber,
         machineTypeInput,
         machineNumberInput,
         currentMachineType,

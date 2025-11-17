@@ -239,10 +239,20 @@ export default function HistoryPage() {
       // 機械故障履歴ファイル一覧を取得
       console.log('🔍 機械故障履歴ファイル一覧取得開始');
       const { buildApiUrl } = await import('../lib/api');
-      const requestUrl = buildApiUrl('/history');
+      // キャッシュバスターを追加して最新データを確実に取得
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 15);
+      const requestUrl = `${buildApiUrl('/history')}?_t=${timestamp}&_r=${randomId}&no_cache=true`;
       console.log('🔍 APIリクエストURL:', requestUrl);
 
-      const response = await fetch(requestUrl);
+      const response = await fetch(requestUrl, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
+        },
+      });
       console.log('🔍 レスポンスステータス:', response.status, response.statusText);
 
       if (!response.ok) {
@@ -287,43 +297,69 @@ export default function HistoryPage() {
       console.log('🔍 最初のアイテム:', items[0]);
 
       // データを変換（空配列でも処理を続行）
-      const historyItems = items.map((file: any) => ({
-        id: file.id || file.chatId,
-        chatId: file.chatId || file.id,
-        fileName: file.fileName || file.name || `${file.title}_${file.id}.json`,
-        title: file.title || '故障履歴',
-        machineType: file.machineType || file.machineInfo?.machineTypeName || 'Unknown',
-        machineNumber: file.machineNumber || file.machineInfo?.machineNumber || 'Unknown',
-        createdAt: file.createdAt || file.exportTimestamp || new Date().toISOString(),
-        lastModified: file.updatedAt || file.createdAt || file.exportTimestamp || new Date().toISOString(),
-        extractedComponents: file.extractedComponents || file.keywords || [],
-        extractedSymptoms: file.extractedSymptoms || [],
-        possibleModels: file.possibleModels || [],
-        machineInfo: file.machineInfo || {
-          machineTypeName: file.machineType,
-          machineNumber: file.machineNumber,
-        },
-        description: file.description || file.problemDescription || '',
-        userId: file.userId || 'system',
-        sessionId: file.chatId || file.id,
-        conversationData: file.conversationHistory || [],
-        tags: file.tags || [],
-        images: file.images || file.savedImages || [],
-        jsonData: file.jsonData || {
-          title: file.title,
-          problemDescription: file.description || file.problemDescription,
-          machineType: file.machineType,
-          machineNumber: file.machineNumber,
-          conversationHistory: file.conversationHistory || [],
-          savedImages: file.savedImages || file.images || [],
-          metadata: file.metadata || {},
-        },
-        metadata: {
-          source: 'history-file',
-          originalFile: file.fileName || file.name,
-          ...file.metadata,
-        }
-      }));
+      const historyItems = items.map((file: any) => {
+        // 画像データの正規化
+        const savedImages = file.savedImages || file.images || file.jsonData?.savedImages || [];
+        const normalizedImages = savedImages.map((img: any) => {
+          if (typeof img === 'string') {
+            return { url: img, fileName: img };
+          }
+          if (img && typeof img === 'object') {
+            return {
+              url: img.url || img.fileName || img.path || '',
+              fileName: img.fileName || img.url || img.path || '',
+              ...img
+            };
+          }
+          return img;
+        });
+
+        console.log('🖼️ 画像データ処理:', {
+          id: file.id,
+          savedImagesCount: savedImages.length,
+          normalizedImagesCount: normalizedImages.length,
+          firstImage: normalizedImages[0]
+        });
+
+        return {
+          id: file.id || file.chatId,
+          chatId: file.chatId || file.id,
+          fileName: file.fileName || file.name || `${file.title}_${file.id}.json`,
+          title: file.title || '故障履歴',
+          machineType: file.machineType || file.machineInfo?.machineTypeName || 'Unknown',
+          machineNumber: file.machineNumber || file.machineInfo?.machineNumber || 'Unknown',
+          createdAt: file.createdAt || file.exportTimestamp || new Date().toISOString(),
+          lastModified: file.updatedAt || file.createdAt || file.exportTimestamp || new Date().toISOString(),
+          extractedComponents: file.extractedComponents || file.keywords || [],
+          extractedSymptoms: file.extractedSymptoms || [],
+          possibleModels: file.possibleModels || [],
+          machineInfo: file.machineInfo || {
+            machineTypeName: file.machineType,
+            machineNumber: file.machineNumber,
+          },
+          description: file.description || file.problemDescription || '',
+          userId: file.userId || 'system',
+          sessionId: file.chatId || file.id,
+          conversationData: file.conversationHistory || [],
+          tags: file.tags || [],
+          images: normalizedImages,
+          jsonData: {
+            ...(file.jsonData || {}),
+            title: file.title || file.jsonData?.title,
+            problemDescription: file.description || file.problemDescription || file.jsonData?.problemDescription,
+            machineType: file.machineType || file.jsonData?.machineType,
+            machineNumber: file.machineNumber || file.jsonData?.machineNumber,
+            conversationHistory: file.conversationHistory || file.jsonData?.conversationHistory || [],
+            savedImages: normalizedImages,
+            metadata: file.metadata || file.jsonData?.metadata || {},
+          },
+          metadata: {
+            source: 'history-file',
+            originalFile: file.fileName || file.name,
+            ...file.metadata,
+          }
+        };
+      });
 
       setHistoryItems(historyItems);
       setFilteredItems(historyItems);
@@ -509,7 +545,14 @@ export default function HistoryPage() {
         }
       }
 
-      // 更新データの準備
+      // 更新データの準備（画像データを含む）
+      const savedImages = editedItem.jsonData?.savedImages || editedItem.images || [];
+
+      console.log('📤 サーバーへ送信する画像データ:', {
+        savedImagesCount: savedImages.length,
+        savedImages: savedImages
+      });
+
       const updatePayload = {
         updatedData: {
           ...(editedItem.jsonData?.title && { title: editedItem.jsonData.title }),
@@ -521,10 +564,10 @@ export default function HistoryPage() {
           ...(editedItem.jsonData?.location && { location: editedItem.jsonData.location }),
           ...(editedItem.jsonData?.status && { status: editedItem.jsonData.status }),
           ...(editedItem.jsonData?.remarks && { remarks: editedItem.jsonData.remarks }),
-          ...(editedItem.jsonData?.savedImages && { savedImages: editedItem.jsonData.savedImages }),
+          savedImages: savedImages,  // 画像データを必ず含める
+          images: savedImages,        // imagesフィールドも含める
           ...(editedItem.machineType && { machineType: editedItem.machineType }),
           ...(editedItem.machineNumber && { machineNumber: editedItem.machineNumber }),
-          ...(editedItem.jsonData?.title && { title: editedItem.jsonData.title }),
           lastModified: new Date().toISOString(),
         },
         updatedBy: 'user',
@@ -555,16 +598,54 @@ export default function HistoryPage() {
       const result = await response.json();
       console.log('履歴更新完了', result);
 
-      // 履歴リストの該当アイテムを更新
+      // サーバーからのレスポンスから最新の画像データを取得（優先的に使用）
+      const serverUpdatedData = result.updatedData || {};
+      const serverImages = serverUpdatedData.savedImages || serverUpdatedData.images || serverUpdatedData.jsonData?.savedImages || [];
+
+      // サーバーからの画像データが存在する場合はそれを使用、なければローカルのデータを使用
+      const finalImages = serverImages.length > 0 ? serverImages : savedImages;
+
+      // 画像データの正規化
+      const normalizedImages = finalImages.map((img: any) => {
+        if (typeof img === 'string') {
+          return { url: img, fileName: img };
+        }
+        if (img && typeof img === 'object') {
+          return {
+            url: img.url || img.fileName || img.path || '',
+            fileName: img.fileName || img.url || img.path || '',
+            ...img
+          };
+        }
+        return img;
+      });
+
+      console.log('✅ 保存後の画像データ:', {
+        itemId,
+        serverImagesCount: serverImages.length,
+        savedImagesCount: savedImages.length,
+        finalImagesCount: finalImages.length,
+        normalizedImagesCount: normalizedImages.length,
+        images: normalizedImages,
+        usingServerData: serverImages.length > 0
+      });
+
+      // サーバーからのレスポンスデータを優先的に使用して履歴リストを更新
       const updatedItem = {
         ...editedItem,
-        jsonData: editedItem.jsonData,
-        lastModified: new Date().toISOString(),
-        machineType: editedItem.jsonData?.machineType || editedItem.machineType,
-        machineNumber: editedItem.jsonData?.machineNumber || editedItem.machineNumber,
-        title: editedItem.jsonData?.title || editedItem.title,
-        incidentTitle: editedItem.jsonData?.title || editedItem.incidentTitle,
-        savedImages: editedItem.jsonData?.savedImages || [],
+        // サーバーからのデータを優先的に使用
+        ...(serverUpdatedData.title && { title: serverUpdatedData.title }),
+        ...(serverUpdatedData.machineType && { machineType: serverUpdatedData.machineType }),
+        ...(serverUpdatedData.machineNumber && { machineNumber: serverUpdatedData.machineNumber }),
+        jsonData: {
+          ...editedItem.jsonData,
+          ...(serverUpdatedData.jsonData || {}),
+          savedImages: normalizedImages,
+        },
+        images: normalizedImages,  // imagesフィールドも更新
+        savedImages: normalizedImages,
+        lastModified: serverUpdatedData.lastModified || new Date().toISOString(),
+        incidentTitle: serverUpdatedData.title || editedItem.jsonData?.title || editedItem.incidentTitle,
       };
 
       setHistoryItems(prevItems =>
@@ -591,8 +672,51 @@ export default function HistoryPage() {
       setEditingItem(null);
       setOriginalEditingItem(null);
 
-      // 一覧を再読み込み
-      fetchHistoryData(currentPage);
+      // 一覧を再読み込み（キャッシュを無効化して最新データを取得）
+      // ただし、更新されたアイテムについてはサーバーからのレスポンスデータを優先する
+      setTimeout(async () => {
+        // 更新されたアイテムのIDと画像データを保存
+        const updatedItemId = itemId;
+        const updatedItemImages = normalizedImages;
+
+        // キャッシュバスターを追加して最新データを取得
+        await fetchHistoryData(currentPage);
+
+        // 再取得後、更新されたアイテムの画像データを確実に反映
+        setHistoryItems(prevItems =>
+          prevItems.map(item => {
+            if (item.id === updatedItemId || item.chatId === updatedItemId) {
+              return {
+                ...item,
+                images: updatedItemImages,
+                savedImages: updatedItemImages,
+                jsonData: {
+                  ...item.jsonData,
+                  savedImages: updatedItemImages,
+                },
+              };
+            }
+            return item;
+          })
+        );
+
+        setFilteredItems(prevItems =>
+          prevItems.map(item => {
+            if (item.id === updatedItemId || item.chatId === updatedItemId) {
+              return {
+                ...item,
+                images: updatedItemImages,
+                savedImages: updatedItemImages,
+                jsonData: {
+                  ...item.jsonData,
+                  savedImages: updatedItemImages,
+                },
+              };
+            }
+            return item;
+          })
+        );
+      }, 300);
     } catch (error) {
       console.error('履歴保存エラー:', error);
       const errorMessage =
@@ -936,21 +1060,32 @@ export default function HistoryPage() {
       }
     }
 
-    // 印刷ウィンドウが読み込まれた後に印刷ダイアログを表示
+    // 印刷ウィンドウが読み込まれた後に印刷ダイアログを表示（1回のみ）
+    let printExecuted = false;
+
     printWindow.onload = () => {
-      printWindow.focus();
-      setTimeout(() => {
-        printWindow.print();
-      }, 1000);
+      if (!printExecuted) {
+        printExecuted = true;
+        printWindow.focus();
+
+        // 画像が読み込まれるまで少し待つ
+        setTimeout(() => {
+          if (printWindow && !printWindow.closed) {
+            printWindow.print();
+          }
+        }, 500);
+      }
     };
 
-    // フォールバック: 一定時間後に印刷ダイアログを表示
-    setTimeout(() => {
-      if (printWindow && !printWindow.closed) {
-        printWindow.focus();
-        printWindow.print();
-      }
-    }, 2000);
+    // 印刷後またはキャンセル後のイベントリスナー
+    printWindow.onafterprint = () => {
+      console.log('印刷が完了またはキャンセルされました');
+      // ウィンドウは自動的に閉じない（ユーザーが「閉じる」ボタンをクリックする）
+    };
+
+    printWindow.onbeforeunload = () => {
+      console.log('印刷プレビューウィンドウが閉じられます');
+    };
   };
 
   // SupportHistoryItemをChatExportDataに変換
@@ -1423,12 +1558,45 @@ export default function HistoryPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => {
-                                // 編集開始時に元のデータをディープコピーで保存
-                                const originalItem = JSON.parse(JSON.stringify(item));
-                                setEditingItem(item);
-                                setOriginalEditingItem(originalItem);
-                                setShowEditDialog(true);
+                              onClick={async () => {
+                                // 編集開始時にサーバーから最新データを取得
+                                try {
+                                  let itemId = item.id || item.chatId;
+                                  if (!itemId) {
+                                    alert('アイテムIDが見つかりません');
+                                    return;
+                                  }
+
+                                  // export_プレフィックスがある場合は除去
+                                  if (itemId.startsWith('export_')) {
+                                    itemId = itemId.replace('export_', '');
+                                    if (itemId.endsWith('.json')) {
+                                      itemId = itemId.replace('.json', '');
+                                    }
+                                    const parts = itemId.split('_');
+                                    if (parts.length >= 2 && parts[1].match(/^[a-f0-9-]+$/)) {
+                                      itemId = parts[1];
+                                    }
+                                  }
+
+                                  // サーバーから最新データを取得
+                                  const response = await fetch(`/api/history/${itemId}`);
+                                  if (!response.ok) {
+                                    throw new Error('履歴データの取得に失敗しました');
+                                  }
+
+                                  const latestItem = await response.json();
+                                  console.log('📥 編集用に取得した最新データ:', latestItem);
+
+                                  // 元のデータをディープコピーで保存
+                                  const originalItem = JSON.parse(JSON.stringify(latestItem));
+                                  setEditingItem(latestItem);
+                                  setOriginalEditingItem(originalItem);
+                                  setShowEditDialog(true);
+                                } catch (error) {
+                                  console.error('編集データ取得エラー:', error);
+                                  alert('最新データの取得に失敗しました');
+                                }
                               }}
                               className="px-3 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                               style={{ height: '42px' }}
@@ -1548,7 +1716,10 @@ export default function HistoryPage() {
                     保存
                   </Button>
                   <Button
-                    onClick={() => {
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       if (editingItem) {
                         handlePrintEditReport(editingItem);
                       }
@@ -1927,44 +2098,91 @@ export default function HistoryPage() {
                     if (imageList.length > 0) {
                       return (
                         <div className="grid grid-cols-3 gap-4">
-                          {imageList.map((image, index) => (
-                            <div key={index} className="relative group">
-                              <img
-                                src={image.url}
-                                alt={`故障画像${index + 1}`}
-                                className="w-full h-auto max-h-48 object-contain border border-gray-300 rounded-md shadow-sm"
-                                onError={(e) => {
-                                  console.error(`🖼️ 画像読み込みエラー (編集画面):`, image.url);
-                                  (e.target as HTMLImageElement).style.display = 'none';
-                                }}
-                              />
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() => {
-                                  const currentSavedImages = editingItem.jsonData?.savedImages || [];
-                                  const updatedSavedImages = currentSavedImages.filter((img: any, idx: number) => {
-                                    if (image.fileName && img.fileName === image.fileName) return false;
-                                    if (img.url === image.url) return false;
-                                    if (img.path === image.url) return false;
-                                    return true;
-                                  });
+                          {imageList.map((image) => {
+                            // 一意なキーを生成（fileName優先、なければurl）
+                            const imageKey = image.fileName || image.url || `img-${Math.random()}`;
 
-                                  setEditingItem({
-                                    ...editingItem,
-                                    jsonData: {
-                                      ...editingItem.jsonData,
-                                      savedImages: updatedSavedImages,
-                                    },
-                                  });
-                                }}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
+                            return (
+                              <div key={imageKey} className="relative group">
+                                <img
+                                  src={image.url}
+                                  alt={image.fileName || '故障画像'}
+                                  className="w-full h-auto max-h-48 object-contain border border-gray-300 rounded-md shadow-sm"
+                                  onError={(e) => {
+                                    console.error(`🖼️ 画像読み込みエラー (編集画面):`, image.url);
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                  }}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="sm"
+                                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => {
+                                    console.log('🗑️ 画像削除リクエスト:', {
+                                      fileName: image.fileName,
+                                      url: image.url,
+                                      クリックされた画像: image
+                                    });
+
+                                    const currentSavedImages = editingItem.jsonData?.savedImages || [];
+                                    console.log('📋 現在の画像リスト:', currentSavedImages);
+
+                                    // 削除対象の画像を特定（fileName または url で完全一致）
+                                    // いずれかの条件に一致したら削除（!== を使って、一致しないものだけ残す）
+                                    const updatedSavedImages = currentSavedImages.filter((img: any) => {
+                                      // fileName が両方存在する場合は fileName で比較
+                                      if (image.fileName && img.fileName) {
+                                        const isMatch = img.fileName === image.fileName;
+                                        console.log(`  - fileName比較: ${img.fileName} === ${image.fileName} = ${isMatch}`);
+                                        if (isMatch) return false; // 一致したら削除（falseで除外）
+                                      }
+
+                                      // url が両方存在する場合は url で比較
+                                      if (image.url && img.url) {
+                                        const isMatch = img.url === image.url;
+                                        console.log(`  - url比較: ${img.url} === ${image.url} = ${isMatch}`);
+                                        if (isMatch) return false; // 一致したら削除
+                                      }
+
+                                      // pathとurlで比較（フォールバック）
+                                      if (img.path && image.url) {
+                                        const isMatch = img.path === image.url;
+                                        console.log(`  - path比較: ${img.path} === ${image.url} = ${isMatch}`);
+                                        if (isMatch) return false; // 一致したら削除
+                                      }
+
+                                      // fileNameとurlのクロス比較（urlがfileNameを含む場合）
+                                      if (img.fileName && image.url && image.url.includes(img.fileName)) {
+                                        console.log(`  - クロス比較: url(${image.url})にfileName(${img.fileName})が含まれる`);
+                                        return false; // 一致したら削除
+                                      }
+
+                                      // どの条件にも一致しない場合は残す
+                                      return true;
+                                    });
+
+                                    console.log('📝 削除後の画像リスト:', {
+                                      削除前: currentSavedImages.length,
+                                      削除後: updatedSavedImages.length,
+                                      削除された画像数: currentSavedImages.length - updatedSavedImages.length,
+                                      削除後の画像: updatedSavedImages
+                                    });
+
+                                    setEditingItem({
+                                      ...editingItem,
+                                      jsonData: {
+                                        ...editingItem.jsonData,
+                                        savedImages: updatedSavedImages,
+                                      },
+                                    });
+                                  }}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            );
+                          })}
                         </div>
                       );
                     }
