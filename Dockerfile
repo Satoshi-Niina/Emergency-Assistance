@@ -47,14 +47,23 @@ COPY --from=builder /app/server ./server
 COPY --from=builder /app/client/dist ./client/dist
 COPY --from=builder /app/knowledge-base ./knowledge-base
 COPY --from=builder /app/shared ./shared
+COPY --from=builder /app/package.json ./package.json
 
-# Create necessary directories
-RUN mkdir -p knowledge-base/exports knowledge-base/images/chat-exports && \
-    chown -R expressjs:nodejs /app
+# Create necessary directories with proper permissions
+RUN mkdir -p knowledge-base/exports \
+    knowledge-base/images/chat-exports \
+    knowledge-base/data \
+    knowledge-base/documents \
+    /tmp/uploads && \
+    chown -R expressjs:nodejs /app /tmp/uploads
 
 USER expressjs
 
 EXPOSE 8080
 
-# Use azure-server.mjs as the single entry point
-CMD ["node", "server/azure-server.mjs"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:8080/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
+
+# Use azure-server.mjs as the single entry point with error tracing
+CMD ["node", "--trace-warnings", "server/azure-server.mjs"]
