@@ -41,13 +41,16 @@ ENV PORT=8080
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 expressjs
 
-# Copy necessary files
+# Copy necessary files in correct order
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/shared ./shared
 COPY --from=deps /app/server/node_modules ./server/node_modules
 COPY --from=builder /app/server ./server
 COPY --from=builder /app/client/dist ./client/dist
 COPY --from=builder /app/knowledge-base ./knowledge-base
-COPY --from=builder /app/shared ./shared
-COPY --from=builder /app/package.json ./package.json
+
+# Verify server files are copied
+RUN ls -la /app/ && ls -la /app/server/ && test -f /app/server/azure-server.mjs || (echo "ERROR: azure-server.mjs not found!" && exit 1)
 
 # Create necessary directories with proper permissions
 RUN mkdir -p knowledge-base/exports \
