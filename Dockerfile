@@ -21,11 +21,21 @@ RUN cd client && npm ci --no-audit --no-fund
 FROM base AS builder
 WORKDIR /app
 
-# Copy all source files
+# Copy all source files FIRST
+COPY . .
+
+# Then copy node_modules
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/server/node_modules ./server/node_modules
 COPY --from=deps /app/client/node_modules ./client/node_modules
-COPY . .
+
+# Debug: List what we have
+RUN echo "=== Checking copied files ===" && \
+    ls -la /app/ && \
+    echo "=== Server directory ===" && \
+    ls -la /app/server/ && \
+    echo "=== Checking for azure-server.mjs ===" && \
+    test -f /app/server/azure-server.mjs && echo "✅ azure-server.mjs found!" || (echo "❌ azure-server.mjs NOT found!" && exit 1)
 
 # Build client
 RUN cd client && npm run build
