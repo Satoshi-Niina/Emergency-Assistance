@@ -153,12 +153,12 @@ jobs:
     - name: Wait for deployment to stabilize
       run: |
         echo "⏳ Waiting for Docker container to start..."
-        sleep 60
+        sleep 120
 
     - name: Verify deployment health
       env:
-        MAX_RETRIES: 10
-        RETRY_INTERVAL: 15
+        MAX_RETRIES: 15
+        RETRY_INTERVAL: 20
       run: |
         echo "🏥 Running health check..."
         HEALTH_URL="${{ env.APP_URL }}/health"
@@ -166,7 +166,7 @@ jobs:
         for attempt in $(seq 1 $MAX_RETRIES); do
           echo "🔍 Attempt $attempt/$MAX_RETRIES..."
 
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$HEALTH_URL")
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$HEALTH_URL")
           if [ "$HTTP_CODE" = "200" ]; then
             echo "✅ Health check passed (HTTP $HTTP_CODE)"
             exit 0
