@@ -107,10 +107,9 @@ const corsOptions = {
 // アプリケーションレベルのCORS処理（Azure App Service含む全環境で有効）
 console.log('🔧 Initializing application-level CORS...');
 
-// OPTIONSリクエスト（プリフライト）の明示的な処理
-app.options('*', (req, res) => {
+// グローバルCORSミドルウェア（全てのリクエストに適用）
+app.use((req, res, next) => {
   const origin = req.headers.origin;
-  console.log('🔍 OPTIONS request from origin:', origin);
 
   // オリジンの許可チェック
   let originAllowed = false;
@@ -121,24 +120,31 @@ app.options('*', (req, res) => {
     originAllowed = true;
   } else if (origin.includes('azurestaticapps.net')) {
     originAllowed = true;
-    console.log('🌐 Azure Static Web Apps origin detected:', origin);
   } else if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
     originAllowed = true;
   }
 
-  if (originAllowed) {
-    res.header('Access-Control-Allow-Origin', origin || '*');
+  if (originAllowed && origin) {
+    res.header('Access-Control-Allow-Origin', origin);
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires');
-    res.header('Access-Control-Max-Age', '86400');
-    console.log('✅ OPTIONS request approved for origin:', origin);
-    return res.status(204).end();
-  } else {
-    console.warn('❌ OPTIONS request denied for origin:', origin);
-    console.warn('   Allowed origins:', allowedOrigins);
-    return res.status(403).end();
   }
+
+  // OPTIONSリクエストの処理
+  if (req.method === 'OPTIONS') {
+    console.log('🔍 OPTIONS (preflight) request from:', origin);
+    if (originAllowed) {
+      res.header('Access-Control-Max-Age', '86400');
+      console.log('✅ OPTIONS request approved');
+      return res.status(204).end();
+    } else {
+      console.warn('❌ OPTIONS request denied for origin:', origin);
+      return res.status(403).end();
+    }
+  }
+
+  next();
 });
 
 app.use(cors(corsOptions));
@@ -880,6 +886,113 @@ app.get('/api/troubleshooting/:id', (req, res) => {
     },
     message: `トラブルシューティングファイルを取得しました（本番環境ではサンプル）: ${id}`
   });
+});
+
+// 履歴詳細取得API（ハイブリッドモード対応 - JSONファイルから直接取得）
+app.get('/api/history/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`📋 履歴アイテム取得リクエスト: ${id}`);
+
+    const projectRoot = path.resolve(__dirname, '..');
+    const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
+
+    if (!fs.existsSync(exportsDir)) {
+      return res.status(404).json({
+        error: 'not_found',
+        message: 'エクスポートディレクトリが見つかりません'
+      });
+    }
+
+    // IDに一致するJSONファイルを検索
+    const files = fs.readdirSync(exportsDir);
+    let foundFile = null;
+    let foundData = null;
+
+    for (const file of files) {
+      if (!file.endsWith('.json') || file.includes('.backup.')) continue;
+
+      const fileName = file.replace('.json', '');
+      const uuidMatch = fileName.match(/_([a-f0-9-]{36})_/);
+      const fileId = uuidMatch ? uuidMatch[1] : fileName;
+
+      if (fileId === id || fileName === id || file.includes(id)) {
+        try {
+          const filePath = path.join(exportsDir, file);
+          const content = fs.readFileSync(filePath, { encoding: 'utf8' });
+          foundData = JSON.parse(content);
+          foundFile = file;
+          break;
+        } catch (error) {
+          console.error(`ファイル読み込みエラー: ${file}`, error);
+        }
+      }
+    }
+
+    if (!foundData) {
+      console.log(`❌ 履歴が見つかりません: ${id}`);
+      return res.status(404).json({
+        error: 'not_found',
+        message: '指定された履歴が見つかりません'
+      });
+    }
+
+    // 画像データをJSONから取得（savedImages優先）
+    const savedImages = foundData.savedImages || foundData.images || [];
+    console.log('🖼️ 取得した画像データ:', {
+      id,
+      fileName: foundFile,
+      savedImagesLength: savedImages.length,
+      savedImages: savedImages
+    });
+
+    // フロントエンドが期待する形式に変換
+    const convertedItem = {
+      id: id,
+      type: 'fault_history',
+      fileName: foundFile,
+      chatId: foundData.chatId || id,
+      userId: foundData.userId || '',
+      exportType: foundData.exportType || 'file_stored',
+      exportTimestamp: foundData.createdAt || new Date().toISOString(),
+      messageCount: foundData.metadata?.total_messages || 0,
+      machineType: foundData.machineType || '',
+      machineNumber: foundData.machineNumber || '',
+      machineInfo: {
+        selectedMachineType: '',
+        selectedMachineNumber: '',
+        machineTypeName: foundData.machineType || '',
+        machineNumber: foundData.machineNumber || '',
+      },
+      title: foundData.title || '',
+      incidentTitle: foundData.title || '',
+      problemDescription: foundData.problemDescription || foundData.description || '',
+      extractedComponents: foundData.extractedComponents || [],
+      extractedSymptoms: foundData.extractedSymptoms || [],
+      possibleModels: foundData.possibleModels || [],
+      conversationHistory: foundData.conversationHistory || foundData.conversation_history || [],
+      metadata: foundData.metadata || {},
+      savedImages: savedImages,
+      images: savedImages,
+      fileSize: 0,
+      lastModified: foundData.lastModified || foundData.updateHistory?.[0]?.timestamp || foundData.createdAt,
+      createdAt: foundData.createdAt,
+      jsonData: {
+        ...foundData,
+        savedImages: savedImages,
+      },
+    };
+
+    console.log(`✅ 履歴アイテム取得完了: ${id} (画像: ${savedImages.length}件)`);
+    res.json(convertedItem);
+  } catch (error) {
+    console.error('❌ 履歴詳細取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '履歴の取得に失敗しました',
+      details: error.message
+    });
+  }
 });
 
 // 16. 履歴API（機種・機械番号データ）
