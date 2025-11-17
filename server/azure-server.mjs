@@ -42,14 +42,17 @@ import fs from 'fs';
 import Database from 'better-sqlite3';
 
 // ==== まず環境値（ログより前に宣言）=====
+// Azure Static Web Apps のデフォルトURL
+const DEFAULT_STATIC_WEB_APP_URL = 'https://witty-river-012f39e00.1.azurestaticapps.net';
+
 const FRONTEND_URL =
   process.env.FRONTEND_URL ||
   process.env.STATIC_WEB_APP_URL ||
   (process.env.NODE_ENV === 'production'
-    ? 'https://example-static.azurestaticapps.net'
+    ? DEFAULT_STATIC_WEB_APP_URL
     : 'http://localhost:8080');
 
-const STATIC_WEB_APP_URL = process.env.STATIC_WEB_APP_URL || FRONTEND_URL;
+const STATIC_WEB_APP_URL = process.env.STATIC_WEB_APP_URL || process.env.FRONTEND_URL || DEFAULT_STATIC_WEB_APP_URL;
 const HEALTH_TOKEN = process.env.HEALTH_TOKEN || ''; // 任意。設定時は /ready に x-health-token を要求
 const PORT = process.env.PORT || 3000;
 
@@ -117,7 +120,7 @@ const corsOptions = {
 // アプリケーションレベルのCORS処理（Azure App Service含む全環境で有効）
 console.log('🔧 Initializing application-level CORS...');
 
-// グローバルCORSミドルウェア（全てのリクエストに適用）
+// グローバルCORSミドルウェア（全てのリクエストに適用）- 最優先で設定
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
@@ -134,29 +137,39 @@ app.use((req, res, next) => {
     originAllowed = true;
   }
 
-  if (originAllowed && origin) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires');
+  // CORS ヘッダーを常に設定
+  if (origin) {
+    if (originAllowed) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires, Cookie');
+      res.setHeader('Access-Control-Max-Age', '86400');
+      res.setHeader('Access-Control-Expose-Headers', 'Set-Cookie');
+    }
+  } else {
+    // オリジンがない場合（同一オリジン）は全て許可
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires, Cookie');
   }
 
-  // OPTIONSリクエストの処理
+  // OPTIONSリクエストの処理（preflightリクエスト）
   if (req.method === 'OPTIONS') {
-    console.log('🔍 OPTIONS (preflight) request from:', origin);
-    if (originAllowed) {
-      res.header('Access-Control-Max-Age', '86400');
-      console.log('✅ OPTIONS request approved');
+    console.log('🔍 OPTIONS (preflight) request from:', origin || 'no-origin');
+    if (originAllowed || !origin) {
+      console.log('✅ OPTIONS request approved for origin:', origin || 'no-origin');
       return res.status(204).end();
     } else {
       console.warn('❌ OPTIONS request denied for origin:', origin);
-      return res.status(403).end();
+      return res.status(403).json({ error: 'CORS not allowed' });
     }
   }
 
   next();
 });
 
+// CORS ミドルウェア（バックアップとして）
 app.use(cors(corsOptions));
 console.log('✅ Application-level CORS initialized');
 
