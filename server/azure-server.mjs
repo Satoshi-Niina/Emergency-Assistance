@@ -2,6 +2,7 @@
 
 // Azure App Service専用サーバー
 // Windows/Linux環境で確実に動作する最小限のサーバー
+// Version: 2024-11-17
 
 // 環境変数読み込み（ローカル開発のみ、本番では不要）
 import dotenv from 'dotenv';
