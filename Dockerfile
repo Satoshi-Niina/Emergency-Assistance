@@ -57,17 +57,13 @@ COPY --from=builder /app/shared ./shared
 COPY --from=deps /app/server/node_modules ./server/node_modules
 COPY --from=builder /app/server ./server
 COPY --from=builder /app/client/dist ./client/dist
-COPY --from=builder /app/knowledge-base ./knowledge-base
 
 # Verify server files are copied
 RUN ls -la /app/ && ls -la /app/server/ && test -f /app/server/azure-server.mjs || (echo "ERROR: azure-server.mjs not found!" && exit 1)
 
 # Create necessary directories with proper permissions
-RUN mkdir -p knowledge-base/exports \
-    knowledge-base/images/chat-exports \
-    knowledge-base/data \
-    knowledge-base/documents \
-    /tmp/uploads && \
+# Note: knowledge-base is stored in Azure Blob Storage, not in the container
+RUN mkdir -p /tmp/uploads && \
     chown -R expressjs:nodejs /app /tmp/uploads
 
 USER expressjs

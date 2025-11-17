@@ -37,6 +37,9 @@ docs/
 *.md
 !README.md
 
+# Knowledge base - stored in Azure Blob Storage
+knowledge-base/
+
 # Test files - not needed in production
 *.test.js
 *.test.ts
