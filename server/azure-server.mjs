@@ -3108,10 +3108,36 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 // エラーハンドリング
 server.on('error', (error) => {
   console.error('❌ Server error:', error);
+  console.error('❌ Error code:', error.code);
+  console.error('❌ Error message:', error.message);
+  console.error('❌ Error stack:', error.stack);
+
   if (error.code === 'EADDRINUSE') {
     console.error(`❌ Port ${PORT} is already in use`);
     process.exit(1);
+  } else if (error.code === 'EACCES') {
+    console.error(`❌ Permission denied to bind to port ${PORT}`);
+    process.exit(1);
+  } else {
+    console.error('❌ Unexpected server error, but continuing...');
   }
 });
+
+// 追加のグローバルエラーハンドラー
+process.on('uncaughtException', (error) => {
+  console.error('💥 Uncaught Exception:', error);
+  console.error('💥 Stack:', error.stack);
+  // Azure App Serviceではプロセスを継続（再起動はAzureが管理）
+  console.log('⚠️ Server continuing after uncaught exception...');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 Unhandled Rejection at:', promise);
+  console.error('💥 Reason:', reason);
+  // Azure App Serviceではプロセスを継続
+  console.log('⚠️ Server continuing after unhandled rejection...');
+});
+
+console.log('✅ Global error handlers registered');
 
 export default app;
