@@ -40,6 +40,14 @@ docs/
 # Knowledge base - stored in Azure Blob Storage
 knowledge-base/
 
+# IMPORTANT: Ensure server files are NOT excluded
+# server/ folder must be included in Docker build context
+!server/
+!server/**/*.js
+!server/**/*.mjs
+!server/**/*.json
+!server/**/*.ts
+
 # Test files - not needed in production
 *.test.js
 *.test.ts

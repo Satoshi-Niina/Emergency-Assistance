@@ -29,13 +29,17 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/server/node_modules ./server/node_modules
 COPY --from=deps /app/client/node_modules ./client/node_modules
 
-# Debug: List what we have
-RUN echo "=== Checking copied files ===" && \
+# Debug: List what we have (Enhanced verification)
+RUN echo "=== Builder Stage: Checking copied files ===" && \
     ls -la /app/ && \
-    echo "=== Server directory ===" && \
+    echo "=== Builder Stage: Server directory ===" && \
     ls -la /app/server/ && \
-    echo "=== Checking for azure-server.mjs ===" && \
-    test -f /app/server/azure-server.mjs && echo "✅ azure-server.mjs found!" || (echo "❌ azure-server.mjs NOT found!" && exit 1)
+    echo "=== Builder Stage: Server .mjs files ===" && \
+    find /app/server -name "*.mjs" -type f && \
+    echo "=== Builder Stage: Verifying azure-server.mjs ===" && \
+    test -f /app/server/azure-server.mjs && echo "✅ azure-server.mjs found in builder!" || (echo "❌ azure-server.mjs NOT found in builder!" && exit 1) && \
+    echo "=== Builder Stage: Verifying app.js ===" && \
+    test -f /app/server/app.js && echo "✅ app.js found in builder!" || (echo "❌ app.js NOT found in builder!" && exit 1)
 
 # Build client
 RUN cd client && npm run build
@@ -52,14 +56,36 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 expressjs
 
 # Copy necessary files in correct order
+# First copy package.json
 COPY --from=builder /app/package.json ./package.json
+
+# Copy shared folder
 COPY --from=builder /app/shared ./shared
+
+# Copy server files - CRITICAL: server source files must be copied
+COPY --from=builder /app/server/*.mjs ./server/
+COPY --from=builder /app/server/*.js ./server/
+COPY --from=builder /app/server/package*.json ./server/
+COPY --from=builder /app/server/routes ./server/routes
+COPY --from=builder /app/server/middleware ./server/middleware
+COPY --from=builder /app/server/utils ./server/utils
+COPY --from=builder /app/server/services ./server/services
+COPY --from=builder /app/server/scripts ./server/scripts
+
+# Copy node_modules for server
 COPY --from=deps /app/server/node_modules ./server/node_modules
-COPY --from=builder /app/server ./server
+
+# Copy client dist
 COPY --from=builder /app/client/dist ./client/dist
 
-# Verify server files are copied
-RUN ls -la /app/ && ls -la /app/server/ && test -f /app/server/azure-server.mjs || (echo "ERROR: azure-server.mjs not found!" && exit 1)
+# Verify server files are copied - enhanced check
+RUN echo "=== Verifying production image ===" && \
+    ls -la /app/ && \
+    echo "=== Server directory ===" && \
+    ls -la /app/server/ && \
+    echo "=== Checking critical files ===" && \
+    test -f /app/server/azure-server.mjs && echo "✅ azure-server.mjs found" || (echo "❌ azure-server.mjs NOT found!" && exit 1) && \
+    test -f /app/server/app.js && echo "✅ app.js found" || (echo "❌ app.js NOT found!" && exit 1)
 
 # Create necessary directories with proper permissions
 # Note: knowledge-base is stored in Azure Blob Storage, not in the container
@@ -72,7 +98,7 @@ EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:8080/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
+    CMD node -e "require('http').get('http://localhost:8080/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
 
 # Use azure-server.mjs as the single entry point with error tracing
 CMD ["node", "--trace-warnings", "server/azure-server.mjs"]
