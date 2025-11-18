@@ -104,4 +104,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD node -e "require('http').get('http://localhost:8080/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
 
 # Use azure-server.mjs as the single entry point with error tracing
-CMD ["node", "--trace-warnings", "server/azure-server.mjs"]
+CMD ["node", "--trace-warnings", "/app/server/azure-server.mjs"]
