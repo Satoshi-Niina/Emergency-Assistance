@@ -26,17 +26,14 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  REGISTRY_NAME: emergencyassistanceacr
   IMAGE_NAME: emergency-assistance
-  WEBAPP_NAME: Emergency-Assistance
   NODE_VERSION: '20'
 
 jobs:
   build-and-deploy:
-    if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'production'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: production
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
 
     steps:
     - name: Checkout code
@@ -46,24 +43,47 @@ jobs:
 
     - name: Set Environment Variables
       run: |
-        echo "ENVIRONMENT=production" >> $GITHUB_ENV
-        echo "APP_URL=https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net" >> $GITHUB_ENV
-        echo "STATIC_WEB_APP_URL=https://witty-river-012f39e00.1.azurestaticapps.net" >> $GITHUB_ENV
-        echo "✅ Environment: production"
-        echo "🔗 Backend: $APP_URL"
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.event.inputs.environment }}" == "production" ]]; then
+          echo "ENVIRONMENT=production" >> $GITHUB_ENV
+          echo "WEBAPP_NAME=Emergency-Assistance" >> $GITHUB_ENV
+          echo "RESOURCE_GROUP=${{ secrets.AZURE_RESOURCE_GROUP }}" >> $GITHUB_ENV
+          echo "APP_URL=https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net" >> $GITHUB_ENV
+          echo "STATIC_WEB_APP_URL=https://witty-river-012f39e00.1.azurestaticapps.net" >> $GITHUB_ENV
+          echo "✅ Environment: production"
+        else
+          echo "ENVIRONMENT=staging" >> $GITHUB_ENV
+          echo "WEBAPP_NAME=Emergency-Assistance-Staging" >> $GITHUB_ENV
+          echo "RESOURCE_GROUP=${{ secrets.AZURE_RESOURCE_GROUP_STAGING }}" >> $GITHUB_ENV
+          echo "APP_URL=https://emergency-assistance-staging.azurewebsites.net" >> $GITHUB_ENV
+          echo "STATIC_WEB_APP_URL=https://witty-river-012f39e00-staging.azurestaticapps.net" >> $GITHUB_ENV
+          echo "✅ Environment: staging"
+        fi
+        echo "🔗 Backend: ${APP_URL}"
+        echo "🔗 Frontend: ${STATIC_WEB_APP_URL}"
 
-    - name: Validate Secrets
+    - name: Validate Required Secrets
       run: |
         echo "🔍 Validating deployment secrets..."
+        
+        # Azure Container Registry
         if [ -z "${{ secrets.ACR_LOGIN_SERVER }}" ] || [ -z "${{ secrets.ACR_USERNAME }}" ] || [ -z "${{ secrets.ACR_PASSWORD }}" ]; then
-          echo "❌ Azure Container Registry secrets are missing"
+          echo "❌ Azure Container Registry secrets (ACR_LOGIN_SERVER, ACR_USERNAME, ACR_PASSWORD) are missing"
           exit 1
         fi
-        if [ -z "${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}" ]; then
-          echo "❌ AZURE_WEBAPP_PUBLISH_PROFILE secret is missing"
+        
+        # Azure Resource Group
+        if [ -z "${{ env.RESOURCE_GROUP }}" ]; then
+          echo "❌ AZURE_RESOURCE_GROUP secret is missing"
           exit 1
         fi
-        echo "✅ Required secrets validated"
+        
+        # Application secrets
+        if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+          echo "❌ DATABASE_URL secret is missing"
+          exit 1
+        fi
+        
+        echo "✅ All required secrets validated"
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -75,65 +95,33 @@ jobs:
         username: ${{ secrets.ACR_USERNAME }}
         password: ${{ secrets.ACR_PASSWORD }}
 
-    - name: Extract metadata for Docker
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=sha,prefix={{branch}}-
-          type=raw,value=latest,enable={{is_default_branch}}
-
-    - name: Build and push Docker image
+    - name: Build and Push Docker Image to ACR
       uses: docker/build-push-action@v5
       with:
         context: .
+        file: ./Dockerfile
         push: true
         no-cache: true
         tags: |
           ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:latest
+          ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.ENVIRONMENT }}-latest
+        build-args: |
+          NODE_ENV=${{ env.ENVIRONMENT }}
 
     - name: Azure Login
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Stop App Service (Clean Deploy)
+    - name: Configure App Service Environment Variables
       run: |
-        echo "🛑 Stopping App Service to clear container cache..."
-        az webapp stop \
-          --name ${{ env.WEBAPP_NAME }} \
-          --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
-
-        echo "⏳ Waiting for complete shutdown..."
-        sleep 30
-        echo "✅ App Service stopped"
-
-    - name: Configure Azure App Service for Docker
-      run: |
-        echo "🔧 Configuring Azure App Service for Docker deployment..."
-
-        # App ServiceでDockerコンテナを使用するように設定
-        az webapp config container set \
-          --name ${{ env.WEBAPP_NAME }} \
-          --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-          --docker-custom-image-name ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-          --docker-registry-server-url https://${{ secrets.ACR_LOGIN_SERVER }} \
-          --docker-registry-server-user ${{ secrets.ACR_USERNAME }} \
-          --docker-registry-server-password ${{ secrets.ACR_PASSWORD }}
-
-        echo "✅ Docker configuration completed"
-
-    - name: Set Azure App Service Environment Variables
-      run: |
-        echo "🔧 Setting environment variables in Azure App Service..."
-
+        echo "🔧 Configuring App Service environment variables..."
+        
         az webapp config appsettings set \
-          --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
           --name ${{ env.WEBAPP_NAME }} \
           --settings \
-            NODE_ENV=production \
+            NODE_ENV=${{ env.ENVIRONMENT }} \
             PORT=8080 \
             DATABASE_URL="${{ secrets.DATABASE_URL }}" \
             PG_SSL=require \
@@ -142,7 +130,7 @@ jobs:
             OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
             FRONTEND_URL="${{ env.STATIC_WEB_APP_URL }}" \
             STATIC_WEB_APP_URL="${{ env.STATIC_WEB_APP_URL }}" \
-            CORS_ALLOW_ORIGINS="${{ env.STATIC_WEB_APP_URL }},${{ env.APP_URL }}" \
+            ALLOWED_ORIGINS="${{ env.STATIC_WEB_APP_URL }},http://localhost:5173,http://localhost:8080" \
             AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
             AZURE_STORAGE_CONTAINER_NAME="${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}" \
             STORAGE_MODE=hybrid \
@@ -150,96 +138,93 @@ jobs:
             FAULT_HISTORY_IMAGES_DIR=/app/knowledge-base/images/chat-exports \
             WEBSITES_PORT=8080 \
             WEBSITES_CONTAINER_START_TIME_LIMIT=600 \
+            WEBSITES_ENABLE_APP_SERVICE_STORAGE=false \
           --output none
 
         echo "✅ Environment variables configured"
 
-    - name: Deploy Docker Image to Azure Web App
+    - name: Deploy Docker Container to App Service
       run: |
-        echo "📦 Deploying Docker image to Azure Web App..."
-
-        # DockerイメージをApp Serviceに紐付け (再度実行して確実に反映)
+        echo "🐳 Deploying Docker container to Azure App Service..."
+        
         az webapp config container set \
           --name ${{ env.WEBAPP_NAME }} \
-          --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
           --docker-custom-image-name ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
           --docker-registry-server-url https://${{ secrets.ACR_LOGIN_SERVER }} \
           --docker-registry-server-user ${{ secrets.ACR_USERNAME }} \
           --docker-registry-server-password ${{ secrets.ACR_PASSWORD }}
 
-        echo "✅ Docker image deployment configured"
+        echo "✅ Docker container configured"
 
-    - name: Force restart App Service (Pull New Image)
+    - name: Restart App Service
       run: |
-        echo "🔄 Force restarting App Service to pull and start new Docker image..."
+        echo "🔄 Restarting App Service to pull and start new Docker image..."
+        
         az webapp restart \
           --name ${{ env.WEBAPP_NAME }} \
-          --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
+          --resource-group ${{ env.RESOURCE_GROUP }}
 
-        echo "✅ Restart command sent"
+        echo "✅ App Service restarted"
 
-    - name: Wait for deployment to stabilize
+    - name: Wait for Container Startup
       run: |
-        echo "⏳ Waiting for Docker container to start with fresh image..."
+        echo "⏳ Waiting for Docker container to start (120 seconds)..."
         sleep 120
 
-    - name: Verify deployment health
+    - name: Health Check
       continue-on-error: true
-      env:
-        MAX_RETRIES: 15
-        RETRY_INTERVAL: 20
       run: |
-        echo "🏥 Running health check..."
-        HEALTH_URL="${{ env.APP_URL }}/health"
-
+        echo "🏥 Verifying deployment health..."
+        
+        MAX_RETRIES=10
+        RETRY_INTERVAL=15
+        
         for attempt in $(seq 1 $MAX_RETRIES); do
-          echo "🔍 Attempt $attempt/$MAX_RETRIES..."
-
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$HEALTH_URL" || echo "000")
+          echo "🔍 Health check attempt $attempt/$MAX_RETRIES..."
+          
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "${{ env.APP_URL }}/health" || echo "000")
+          
           if [ "$HTTP_CODE" = "200" ]; then
             echo "✅ Health check passed (HTTP $HTTP_CODE)"
+            echo "🎉 Deployment successful and server is responding"
             exit 0
           fi
-
-          echo "⏳ Waiting... (HTTP $HTTP_CODE)"
-          if [ $attempt -lt $MAX_RETRIES ]; then
-            sleep $RETRY_INTERVAL
-          fi
+          
+          echo "⏳ Server not ready yet (HTTP $HTTP_CODE), retrying..."
+          [ $attempt -lt $MAX_RETRIES ] && sleep $RETRY_INTERVAL
         done
+        
+        echo "⚠️ Health check timeout after $MAX_RETRIES attempts"
+        echo "📋 Check logs: az webapp log tail --name ${{ env.WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}"
 
-        echo "⚠️ Health check failed after $MAX_RETRIES attempts"
-        echo "⚠️ Deployment completed but health check timed out"
-        echo "📋 Please check Azure App Service logs manually:"
-        echo "   az webapp log tail --name Emergency-Assistance --resource-group <your-rg>"
-        exit 0
-
-    - name: Deployment summary
+    - name: Deployment Summary
       if: always()
       run: |
+        echo "## 🐳 Docker Deployment Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "## 🐳 Docker Server Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+        echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Environment | ${{ env.ENVIRONMENT }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Docker Image | \`${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| Web App | ${{ env.WEBAPP_NAME }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Backend URL | ${{ env.APP_URL }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Frontend URL | ${{ env.STATIC_WEB_APP_URL }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "- **Environment**: Production" >> $GITHUB_STEP_SUMMARY
-        echo "- **Docker Image**: ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Web App**: ${{ env.APP_URL }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Health Check**: ${{ env.APP_URL }}/health" >> $GITHUB_STEP_SUMMARY
-        echo "- **Frontend**: ${{ env.STATIC_WEB_APP_URL }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-
+        
         if [ "${{ job.status }}" = "success" ]; then
-          echo "✅ **Deployment Successful!**" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Deployment Successful" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🎯 Next Steps:" >> $GITHUB_STEP_SUMMARY
-          echo "1. Visit: ${{ env.STATIC_WEB_APP_URL }}" >> $GITHUB_STEP_SUMMARY
-          echo "2. Test API: ${{ env.APP_URL }}/api/ping" >> $GITHUB_STEP_SUMMARY
-          echo "3. Check logs if needed" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. 🌐 Open frontend: ${{ env.STATIC_WEB_APP_URL }}" >> $GITHUB_STEP_SUMMARY
+          echo "2. 🔍 Test API: ${{ env.APP_URL }}/api/health" >> $GITHUB_STEP_SUMMARY
+          echo "3. 📊 View logs: \`az webapp log tail --name ${{ env.WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}\`" >> $GITHUB_STEP_SUMMARY
         else
-          echo "❌ **Deployment Failed**" >> $GITHUB_STEP_SUMMARY
+          echo "### ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🔧 Troubleshooting:" >> $GITHUB_STEP_SUMMARY
-          echo "1. Check Azure App Service logs" >> $GITHUB_STEP_SUMMARY
-          echo "2. Verify Docker image build" >> $GITHUB_STEP_SUMMARY
-          echo "3. Check environment variables" >> $GITHUB_STEP_SUMMARY
+          echo "**Troubleshooting:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Check workflow logs above for errors" >> $GITHUB_STEP_SUMMARY
+          echo "- Verify Azure credentials and secrets" >> $GITHUB_STEP_SUMMARY
+          echo "- Check App Service logs: \`az webapp log tail --name ${{ env.WEBAPP_NAME }}\`" >> $GITHUB_STEP_SUMMARY
         fi
