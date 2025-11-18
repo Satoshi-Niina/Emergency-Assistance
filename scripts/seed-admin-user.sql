@@ -1,14 +1,11 @@
 -- =====================================================
--- Emergency Assistance - 本番環境用管理者ユーザーシード
+-- Emergency Assistance - Production Admin User Seed
 -- =====================================================
--- 実行方法:
+-- Usage:
 -- psql $DATABASE_URL -f scripts/seed-admin-user.sql
 -- =====================================================
 
--- UUID拡張機能を有効化（必要な場合のみ）
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- usersテーブルが存在しない場合は作成
+-- Create users table if not exists
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
@@ -20,21 +17,21 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
--- 既存の admin ユーザーを削除（パスワード不一致を解消）
+-- Delete existing admin user to fix password mismatch
 DELETE FROM users WHERE username = 'admin';
 
--- 管理者ユーザーを作成
--- ユーザー名: admin
--- パスワード: admin
--- bcrypt ハッシュ値（saltRounds=10）: $2a$10$N9qo8uLOickgx2ZMRZoMye6IjF4N/fU6.kcXLX3fLgO.F7o4g7X6m
+-- Create admin user
+-- Username: admin
+-- Password: admin
+-- bcrypt hash (saltRounds=10): $2a$10$N9qo8uLOickgx2ZMRZoMye6IjF4N/fU6.kcXLX3fLgO.F7o4g7X6m
 INSERT INTO users (username, password, display_name, role, department, description)
 VALUES (
     'admin',
     '$2a$10$N9qo8uLOickgx2ZMRZoMye6IjF4N/fU6.kcXLX3fLgO.F7o4g7X6m',
-    '管理者',
+    'Administrator',
     'admin',
-    'システム管理',
-    'デフォルト管理者アカウント'
+    'System Administration',
+    'Default admin account'
 )
 ON CONFLICT (username) DO UPDATE SET
     password = EXCLUDED.password,
@@ -43,33 +40,33 @@ ON CONFLICT (username) DO UPDATE SET
     department = EXCLUDED.department,
     description = EXCLUDED.description;
 
--- テスト用従業員ユーザーを作成（オプション）
--- ユーザー名: testuser
--- パスワード: testuser
+-- Create test employee user (optional)
+-- Username: testuser
+-- Password: testuser
 INSERT INTO users (username, password, display_name, role, department, description)
 VALUES (
     'testuser',
     '$2a$10$rN.EHQqYOYdw3B7E6R7tM.7XGQZvZKxLZKZ0Z5Yq9YJQZvZKxLZKZ',
-    'テストユーザー',
+    'Test User',
     'employee',
-    'テスト部門',
-    'テスト用アカウント'
+    'Test Department',
+    'Test account'
 )
 ON CONFLICT (username) DO NOTHING;
 
--- インデックス作成
+-- Create indexes
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 
--- 確認
+-- Verification
 SELECT
-    'シード完了' AS status,
+    'Seed completed' AS status,
     COUNT(*) AS total_users,
     COUNT(*) FILTER (WHERE role = 'admin') AS admin_count,
     COUNT(*) FILTER (WHERE role = 'employee') AS employee_count
 FROM users;
 
--- 作成されたユーザー一覧表示
+-- Display created users
 SELECT
     id,
     username,
