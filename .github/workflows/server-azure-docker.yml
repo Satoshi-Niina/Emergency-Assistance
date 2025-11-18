@@ -101,9 +101,6 @@ jobs:
         context: .
         file: ./Dockerfile
         push: true
-        no-cache: false
-        cache-from: type=registry,ref=${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.ENVIRONMENT }}-cache
-        cache-to: type=registry,ref=${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.ENVIRONMENT }}-cache,mode=max
         tags: |
           ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.ENVIRONMENT }}-latest
