@@ -99,6 +99,17 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+    - name: Stop App Service (Clean Deploy)
+      run: |
+        echo "🛑 Stopping App Service to clear container cache..."
+        az webapp stop \
+          --name ${{ env.WEBAPP_NAME }} \
+          --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
+        
+        echo "⏳ Waiting for complete shutdown..."
+        sleep 30
+        echo "✅ App Service stopped"
+
     - name: Configure Azure App Service for Docker
       run: |
         echo "🔧 Configuring Azure App Service for Docker deployment..."
@@ -150,9 +161,18 @@ jobs:
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
         images: ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
+    - name: Force restart App Service (Clear Cache)
+      run: |
+        echo "🔄 Force restarting App Service to ensure new image is loaded..."
+        az webapp restart \
+          --name ${{ env.WEBAPP_NAME }} \
+          --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
+        
+        echo "✅ Restart command sent"
+
     - name: Wait for deployment to stabilize
       run: |
-        echo "⏳ Waiting for Docker container to start..."
+        echo "⏳ Waiting for Docker container to start with fresh image..."
         sleep 120
 
     - name: Verify deployment health
