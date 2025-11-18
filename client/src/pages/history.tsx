@@ -781,8 +781,24 @@ export default function HistoryPage() {
   // 編集画面の印刷プレビュー
   const handlePrintEditReport = (item: SupportHistoryItem) => {
     console.log('🖨️ 編集画面から印刷レポートを開きます', item);
+    console.log('🖼️ 印刷時の画像データ:', {
+      'item.jsonData?.savedImages': item.jsonData?.savedImages,
+      'item.savedImages': item.savedImages,
+      'item.images': item.images,
+      savedImagesCount: item.jsonData?.savedImages?.length || 0,
+    });
 
-    const printWindow = window.open('', '_blank');
+    // iframeを使用して直接印刷ダイアログを開く
+    const printFrame = document.createElement('iframe');
+    printFrame.style.position = 'fixed';
+    printFrame.style.right = '0';
+    printFrame.style.bottom = '0';
+    printFrame.style.width = '0';
+    printFrame.style.height = '0';
+    printFrame.style.border = 'none';
+    document.body.appendChild(printFrame);
+
+    const printWindow = printFrame.contentWindow;
     if (!printWindow) {
       console.error('❌ 印刷ウィンドウを開けませんでした');
       alert('印刷ウィンドウを開けませんでした。ポップアップブロッカーを無効にしてください。');
@@ -833,48 +849,43 @@ export default function HistoryPage() {
     const machineNumber = item.jsonData?.machineNumber || jsonData?.machineNumber || item.machineNumber || '';
     const location = item.jsonData?.location || jsonData?.location || '○○線';
 
-    // 画像URLを取得
-    let imageUrl = '';
-    let imageFileName = '';
+    // 全ての画像URLを取得
+    const savedImages = item.jsonData?.savedImages || jsonData?.savedImages || item.savedImages || item.images || [];
+    console.log('🖼️ 印刷用画像データ取得:', {
+      savedImages,
+      savedImagesCount: savedImages?.length || 0,
+    });
 
-    // savedImagesから画像を取得（最優先）
-    if (jsonData?.savedImages && Array.isArray(jsonData.savedImages) && jsonData.savedImages.length > 0) {
-      const firstImage = jsonData.savedImages[0];
-      const imgUrl = typeof firstImage === 'string' ? firstImage : (firstImage.url || firstImage.path || firstImage.fileName);
-      if (imgUrl && !imgUrl.startsWith('data:image/')) {
-        if (imgUrl.startsWith('http')) {
-          imageUrl = imgUrl;
-        } else if (imgUrl.startsWith('/')) {
-          let baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-          baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
-          const path = imgUrl.startsWith('/api') ? imgUrl : `/api${imgUrl}`;
-          imageUrl = `${baseUrl}${path}`;
-        } else {
-          const imagePath = `/api/images/chat-exports/${imgUrl}`;
-          let baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-          baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
-          imageUrl = `${baseUrl}${imagePath}`;
-        }
-        imageFileName = typeof firstImage === 'object' ? firstImage.fileName || `故障画像_${item.id}` : `故障画像_${item.id}`;
+    // 画像URL変換関数
+    const convertToImageUrl = (img: any): string | null => {
+      const imgUrl = typeof img === 'string' ? img : (img?.url || img?.path || img?.fileName);
+      if (!imgUrl || imgUrl.startsWith('data:image/')) return null;
+
+      if (imgUrl.startsWith('http')) {
+        return imgUrl;
+      } else if (imgUrl.startsWith('/')) {
+        let baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+        baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
+        const path = imgUrl.startsWith('/api') ? imgUrl : `/api${imgUrl}`;
+        return `${baseUrl}${path}`;
+      } else {
+        const imagePath = `/api/images/chat-exports/${imgUrl}`;
+        let baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+        baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
+        return `${baseUrl}${imagePath}`;
       }
+    };
+
+    // 全ての画像URLを変換
+    const imageUrls: string[] = [];
+    if (Array.isArray(savedImages) && savedImages.length > 0) {
+      savedImages.forEach((img) => {
+        const url = convertToImageUrl(img);
+        if (url) imageUrls.push(url);
+      });
     }
 
-    // images配列からも取得
-    if (!imageUrl && item.images && Array.isArray(item.images) && item.images.length > 0) {
-      const firstImage = item.images[0];
-      const imgUrl = typeof firstImage === 'string' ? firstImage : (firstImage.url || firstImage.path || firstImage.fileName);
-      if (imgUrl && !imgUrl.startsWith('data:image/')) {
-        if (imgUrl.startsWith('http')) {
-          imageUrl = imgUrl;
-        } else {
-          const imagePath = `/api/images/chat-exports/${imgUrl}`;
-          let baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-          baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
-          imageUrl = `${baseUrl}${imagePath}`;
-        }
-        imageFileName = `故障画像_${item.id}`;
-      }
-    }
+    console.log('🖼️ 印刷用画像URL一覧:', imageUrls);
 
     const reportContent = `
       <!DOCTYPE html>
@@ -892,8 +903,9 @@ export default function HistoryPage() {
           .info-item { padding: 10px; background-color: #f9f9f9; border-radius: 5px; }
           .info-item strong { display: block; margin-bottom: 5px; color: #333; }
           .content-box { background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin-top: 10px; }
-          .image-section { text-align: center; margin: 20px 0; }
-          .image-section img { max-width: 100%; max-height: 300px; border: 1px solid #ddd; border-radius: 5px; }
+          .image-section { margin: 20px 0; }
+          .image-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 15px 0; }
+          .image-grid img { width: 100%; height: auto; max-height: 250px; object-fit: contain; border: 1px solid #ddd; border-radius: 5px; }
           @media print {
             .no-print { display: none; }
             body {
@@ -931,8 +943,12 @@ export default function HistoryPage() {
             .image-section {
               margin: 8px 0;
             }
-            .image-section img {
+            .image-grid {
+              gap: 8px;
+            }
+            .image-grid img {
               max-height: 150px;
+              page-break-inside: avoid;
             }
             @page {
               size: A4;
@@ -995,13 +1011,17 @@ export default function HistoryPage() {
           </div>
         </div>
 
-        ${imageUrl
+        ${imageUrls.length > 0
         ? `
         <div class="section">
           <h2>故障箇所の画像</h2>
           <div class="image-section">
-            <p>機械故障箇所の画像</p>
-            <img src="${imageUrl}" alt="故障箇所の画像" />
+            <p>機械故障箇所の画像（${imageUrls.length}枚）</p>
+            <div class="image-grid">
+              ${imageUrls.map((url, index) => `
+                <img src="${url}" alt="故障箇所の画像${index + 1}" />
+              `).join('')}
+            </div>
             <p style="font-size: 12px; color: #666;">上記の故障箇所の写真です。</p>
           </div>
         </div>
@@ -1044,48 +1064,35 @@ export default function HistoryPage() {
       </html>
     `;
 
-    try {
-      printWindow.document.write(reportContent);
-      printWindow.document.close();
-    } catch (writeError) {
-      console.error('❌ document.write()でエラー:', writeError);
-      try {
-        printWindow.document.open();
-        printWindow.document.write(reportContent);
-        printWindow.document.close();
-      } catch (innerError) {
-        console.error('❌ 代替方法でもエラー:', innerError);
-        alert('印刷プレビューの表示に失敗しました。');
-        return;
-      }
+    if (!printWindow) {
+      console.error('❌ 印刷フレームのwindowオブジェクトを取得できませんでした');
+      alert('印刷の準備に失敗しました。');
+      document.body.removeChild(printFrame);
+      return;
     }
 
-    // 印刷ウィンドウが読み込まれた後に印刷ダイアログを表示（1回のみ）
-    let printExecuted = false;
+    try {
+      printWindow.document.open();
+      printWindow.document.write(reportContent);
+      printWindow.document.close();
 
-    printWindow.onload = () => {
-      if (!printExecuted) {
-        printExecuted = true;
-        printWindow.focus();
-
-        // 画像が読み込まれるまで少し待つ
+      // 画像が読み込まれるまで待ってから印刷ダイアログを開く
+      printWindow.onload = () => {
         setTimeout(() => {
-          if (printWindow && !printWindow.closed) {
-            printWindow.print();
-          }
+          printWindow.focus();
+          printWindow.print();
+
+          // 印刷後にiframeを削除
+          setTimeout(() => {
+            document.body.removeChild(printFrame);
+          }, 1000);
         }, 500);
-      }
-    };
-
-    // 印刷後またはキャンセル後のイベントリスナー
-    printWindow.onafterprint = () => {
-      console.log('印刷が完了またはキャンセルされました');
-      // ウィンドウは自動的に閉じない（ユーザーが「閉じる」ボタンをクリックする）
-    };
-
-    printWindow.onbeforeunload = () => {
-      console.log('印刷プレビューウィンドウが閉じられます');
-    };
+      };
+    } catch (error) {
+      console.error('❌ 印刷HTMLの書き込みに失敗:', error);
+      alert('印刷の準備に失敗しました。');
+      document.body.removeChild(printFrame);
+    }
   };
 
   // SupportHistoryItemをChatExportDataに変換
@@ -1137,6 +1144,31 @@ export default function HistoryPage() {
   };
 
   // Excelファイル作成ヘルパー関数
+  // CSV作成ヘルパー関数
+  const createCSVBlob = (items: SupportHistoryItem[]): Blob => {
+    const headers = ['日時', 'タイトル', '機種', '機械番号', '問題内容', '抽出された部品', '抽出された症状', '可能性のある型式'];
+    const rows = items.map(item => [
+      new Date(item.createdAt).toLocaleString('ja-JP'),
+      item.title || '',
+      item.machineType || '',
+      item.machineNumber || '',
+      item.problemDescription || '',
+      (item.extractedComponents || []).join(', '),
+      (item.extractedSymptoms || []).join(', '),
+      (item.possibleModels || []).join(', '),
+    ]);
+
+    // CSVフォーマットに変換（引用符でエスケープ）
+    const csvContent = [
+      headers.map(h => `"${h}"`).join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\r\n');
+
+    // BOM付きUTF-8でエンコード（Excel対応）
+    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+    return new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
+  };
+
   const createExcelBlob = (items: SupportHistoryItem[]): Blob => {
     const worksheetData = items.map(item => ({
       '日時': new Date(item.createdAt).toLocaleString('ja-JP'),
@@ -1236,7 +1268,7 @@ export default function HistoryPage() {
   };
 
   // エクスポート処理
-  const handleExportSelected = async (format: 'xlsx' | 'json' | 'txt' = 'xlsx') => {
+  const handleExportSelected = async (format: 'csv' | 'xlsx' = 'csv') => {
     if (selectedItems.size === 0) {
       alert('エクスポートする履歴を選択してください');
       return;
@@ -1244,16 +1276,48 @@ export default function HistoryPage() {
     try {
       const selectedItemsArray = filteredItems.filter(item => selectedItems.has(item.id));
       let blob: Blob;
+      let extension: string;
+      let mimeType: string;
 
       if (format === 'xlsx') {
         blob = createExcelBlob(selectedItemsArray);
-      } else if (format === 'txt') {
-        blob = createTextBlob(selectedItemsArray);
+        extension = 'xlsx';
+        mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
       } else {
-        blob = await exportSelectedHistory(selectedItemsArray, 'json');
+        // CSV形式
+        blob = createCSVBlob(selectedItemsArray);
+        extension = 'csv';
+        mimeType = 'text/csv;charset=utf-8;';
       }
 
-      await downloadFile(blob, `selected_history_${new Date().toISOString().split('T')[0]}.${format}`);
+      // ファイル保存ダイアログを開く
+      const fileName = `selected_history_${new Date().toISOString().split('T')[0]}.${extension}`;
+
+      // File System Access API が使用可能な場合
+      if ('showSaveFilePicker' in window) {
+        try {
+          const handle = await (window as any).showSaveFilePicker({
+            suggestedName: fileName,
+            types: [{
+              description: format === 'xlsx' ? 'Excel ファイル' : 'CSV ファイル',
+              accept: format === 'xlsx'
+                ? { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] }
+                : { 'text/csv': ['.csv'] },
+            }],
+          });
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          alert('エクスポートが完了しました');
+        } catch (err: any) {
+          if (err.name !== 'AbortError') {
+            throw err;
+          }
+        }
+      } else {
+        // フォールバック: 通常のダウンロード
+        await downloadFile(blob, fileName);
+      }
     } catch (error) {
       console.error('選択履歴エクスポートエラー:', error);
       alert('エクスポートに失敗しました');
@@ -1497,60 +1561,76 @@ export default function HistoryPage() {
                         </td>
                         <td className="border border-gray-300 p-3">
                           <div className="flex justify-center gap-1 flex-wrap">
-                            {item.images && item.images.length > 0 ? (
-                              <>
-                                {item.images.slice(0, 3).map((image: any, idx: number) => {
-                                  // 画像URLを生成（優先順位: fileName > url > path）
-                                  let imageUrl = '';
-                                  let fileName = '';
+                            {(() => {
+                              // savedImages と images の両方をチェック（savedImagesを優先）
+                              const displayImages = (item.jsonData?.savedImages && item.jsonData.savedImages.length > 0)
+                                ? item.jsonData.savedImages
+                                : (item.images && item.images.length > 0)
+                                  ? item.images
+                                  : [];
 
-                                  if (image.fileName) {
-                                    fileName = image.fileName;
-                                    const actualFileName = fileName.includes('/')
-                                      ? fileName.split('/').pop()
-                                      : fileName.includes('\\')
-                                        ? fileName.split('\\').pop()
-                                        : fileName;
-                                    imageUrl = `/api/images/chat-exports/${actualFileName}`;
-                                  } else if (image.url) {
-                                    imageUrl = image.url;
-                                    fileName = image.originalFileName || `画像${idx + 1}`;
-                                  } else if (image.path) {
-                                    const pathParts = image.path.split(/[/\\]/);
-                                    fileName = pathParts[pathParts.length - 1] || `画像${idx + 1}`;
-                                    imageUrl = `/api/images/chat-exports/${fileName}`;
-                                  } else {
-                                    return null;
-                                  }
+                              return displayImages.length > 0 ? (
+                                <>
+                                  {displayImages.slice(0, 3).map((image: any, idx: number) => {
+                                    // 画像URLを生成（優先順位: fileName > url > path）
+                                    let imageUrl = '';
+                                    let fileName = '';
 
-                                  if (!imageUrl) return null;
+                                    if (image.fileName) {
+                                      fileName = image.fileName;
+                                      const actualFileName = fileName.includes('/')
+                                        ? fileName.split('/').pop()
+                                        : fileName.includes('\\')
+                                          ? fileName.split('\\').pop()
+                                          : fileName;
+                                      imageUrl = `/api/images/chat-exports/${actualFileName}`;
+                                    } else if (image.url) {
+                                      // URLパスの正規化（/api/api/のような重複を防ぐ）
+                                      imageUrl = image.url;
+                                      while (imageUrl.includes('/api/api/')) {
+                                        imageUrl = imageUrl.replace('/api/api/', '/api/');
+                                      }
+                                      fileName = image.originalFileName || `画像${idx + 1}`;
+                                    } else if (image.path) {
+                                      const pathParts = image.path.split(/[/\\]/);
+                                      fileName = pathParts[pathParts.length - 1] || `画像${idx + 1}`;
+                                      imageUrl = `/api/images/chat-exports/${fileName}`;
+                                    } else {
+                                      return null;
+                                    }
 
-                                  return (
-                                    <img
-                                      key={idx}
-                                      src={imageUrl}
-                                      alt={fileName}
-                                      className="w-12 h-12 object-cover rounded border border-gray-300 cursor-pointer hover:opacity-80"
-                                      onError={(e) => {
-                                        const fallbackUrl = `/api/fault-history/images/${fileName}`;
-                                        (e.target as HTMLImageElement).src = fallbackUrl;
-                                      }}
-                                      onClick={() => {
-                                        window.open(imageUrl, '_blank');
-                                      }}
-                                      title={fileName}
-                                    />
-                                  );
-                                })}
-                                {item.images.length > 3 && (
-                                  <div className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded border border-gray-300 text-xs text-gray-500">
-                                    +{item.images.length - 3}
-                                  </div>
-                                )}
-                              </>
-                            ) : (
-                              <span className="text-xs text-gray-400">画像なし</span>
-                            )}
+                                    if (!imageUrl) return null;
+
+                                    // 一意なキーを生成
+                                    const imageKey = `${item.id}-${fileName}-${idx}`;
+
+                                    return (
+                                      <img
+                                        key={imageKey}
+                                        src={imageUrl}
+                                        alt={fileName}
+                                        className="w-12 h-12 object-cover rounded border border-gray-300 cursor-pointer hover:opacity-80"
+                                        onError={(e) => {
+                                          const fallbackUrl = `/api/fault-history/images/${fileName}`;
+                                          (e.target as HTMLImageElement).src = fallbackUrl;
+                                        }}
+                                        onClick={() => {
+                                          window.open(imageUrl, '_blank');
+                                        }}
+                                        title={fileName}
+                                      />
+                                    );
+                                  })}
+                                  {displayImages.length > 3 && (
+                                    <div className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded border border-gray-300 text-xs text-gray-500">
+                                      +{displayImages.length - 3}
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-xs text-gray-400">画像なし</span>
+                              );
+                            })()}
                           </div>
                         </td>
                         <td className="border border-gray-300 p-3">
@@ -1636,23 +1716,16 @@ export default function HistoryPage() {
                 <Button
                   variant="default"
                   disabled={selectedItems.size === 0}
+                  onClick={() => handleExportSelected('csv')}
+                >
+                  CSV形式でエクスポート
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={selectedItems.size === 0}
                   onClick={() => handleExportSelected('xlsx')}
                 >
-                  Excel形式
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={selectedItems.size === 0}
-                  onClick={() => handleExportSelected('json')}
-                >
-                  JSON形式
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={selectedItems.size === 0}
-                  onClick={() => handleExportSelected('txt')}
-                >
-                  テキスト形式
+                  Excel形式でエクスポート
                 </Button>
               </div>
             </div>
@@ -2001,11 +2074,22 @@ export default function HistoryPage() {
 
                         if (newImages.length > 0) {
                           const currentSavedImages = editingItem.jsonData?.savedImages || [];
+                          const updatedSavedImages = [...newImages, ...currentSavedImages];
+
+                          console.log('🖼️ 画像追加処理:', {
+                            新規画像数: newImages.length,
+                            既存画像数: currentSavedImages.length,
+                            合計画像数: updatedSavedImages.length,
+                            新規画像: newImages,
+                            既存画像: currentSavedImages,
+                            統合後: updatedSavedImages
+                          });
+
                           setEditingItem({
                             ...editingItem,
                             jsonData: {
                               ...editingItem.jsonData,
-                              savedImages: [...newImages, ...currentSavedImages],
+                              savedImages: updatedSavedImages,
                             },
                           });
                         }
@@ -2029,64 +2113,87 @@ export default function HistoryPage() {
                     const getAllImages = (item: SupportHistoryItem): Array<{ url: string; fileName?: string; index: number }> => {
                       const images: Array<{ url: string; fileName?: string; index: number }> = [];
 
-                      if (Array.isArray(item?.savedImages) && item.savedImages.length > 0) {
-                        item.savedImages.forEach((img: any, idx: number) => {
-                          if (typeof img === 'string' && !img.startsWith('data:image/')) {
-                            images.push({ url: img, index: idx });
-                          } else if (img && typeof img === 'object') {
-                            if (img.fileName) {
-                              const imagePath = `/api/images/chat-exports/${img.fileName}`;
-                              let baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-                              baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
-                              images.push({ url: `${baseUrl}${imagePath}`, fileName: img.fileName, index: idx });
-                            } else if (img.url) {
-                              const finalUrl = img.url.startsWith('http') ? img.url : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${img.url}`;
-                              images.push({ url: finalUrl, fileName: img.fileName, index: idx });
-                            } else if (img.path) {
-                              const finalUrl = img.path.startsWith('http') ? img.path : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${img.path}`;
-                              images.push({ url: finalUrl, fileName: img.fileName, index: idx });
-                            }
-                          }
-                        });
-                      }
+                      // 画像URLを正規化する関数（/api/api/の重複を防ぐ）
+                      const normalizeImageUrl = (url: string): string => {
+                        if (!url) return '';
+                        // 既に完全なURLの場合はそのまま返す
+                        if (url.startsWith('http://') || url.startsWith('https://')) {
+                          return url;
+                        }
+                        // /api/api/ のような重複を削除
+                        let cleanUrl = url;
+                        while (cleanUrl.includes('/api/api/')) {
+                          cleanUrl = cleanUrl.replace('/api/api/', '/api/');
+                        }
+                        // /api/で始まっていない場合は/api/を追加しない（そのまま返す）
+                        return cleanUrl;
+                      };
 
-                      if (Array.isArray(item?.images) && item.images.length > 0) {
-                        item.images.forEach((img: any, idx: number) => {
-                          if (typeof img === 'string') {
-                            images.push({ url: img, index: idx + 1000 });
-                          } else if (img && typeof img === 'object') {
-                            const url = img.url || img.path || img.fileName;
-                            if (url && !url.startsWith('data:image/')) {
-                              const finalUrl = url.startsWith('http') ? url : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${url}`;
-                              images.push({ url: finalUrl, fileName: img.fileName, index: idx + 1000 });
-                            }
-                          }
-                        });
-                      }
-
+                      // jsonData.savedImagesを優先的に使用
                       if (Array.isArray(item?.jsonData?.savedImages) && item.jsonData.savedImages.length > 0) {
                         item.jsonData.savedImages.forEach((img: any, idx: number) => {
                           if (typeof img === 'string' && !img.startsWith('data:image/')) {
-                            images.push({ url: img, index: idx + 2000 });
+                            images.push({ url: normalizeImageUrl(img), index: idx });
                           } else if (img && typeof img === 'object') {
                             if (img.fileName) {
-                              const imagePath = `/api/images/chat-exports/${img.fileName}`;
-                              let baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-                              baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
-                              images.push({ url: `${baseUrl}${imagePath}`, fileName: img.fileName, index: idx + 2000 });
+                              const actualFileName = img.fileName.includes('/')
+                                ? img.fileName.split('/').pop()
+                                : img.fileName.includes('\\')
+                                  ? img.fileName.split('\\').pop()
+                                  : img.fileName;
+                              const imagePath = `/api/images/chat-exports/${actualFileName}`;
+                              images.push({ url: imagePath, fileName: img.fileName, index: idx });
                             } else if (img.url) {
-                              const finalUrl = img.url.startsWith('http') ? img.url : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${img.url}`;
-                              images.push({ url: finalUrl, fileName: img.fileName, index: idx + 2000 });
+                              images.push({ url: normalizeImageUrl(img.url), fileName: img.fileName, index: idx });
+                            } else if (img.path) {
+                              images.push({ url: normalizeImageUrl(img.path), fileName: img.fileName, index: idx });
+                            }
+                          }
+                        });
+                      }
+                      // フォールバック: savedImages
+                      else if (Array.isArray(item?.savedImages) && item.savedImages.length > 0) {
+                        item.savedImages.forEach((img: any, idx: number) => {
+                          if (typeof img === 'string' && !img.startsWith('data:image/')) {
+                            images.push({ url: normalizeImageUrl(img), index: idx });
+                          } else if (img && typeof img === 'object') {
+                            if (img.fileName) {
+                              const actualFileName = img.fileName.includes('/')
+                                ? img.fileName.split('/').pop()
+                                : img.fileName.includes('\\')
+                                  ? img.fileName.split('\\').pop()
+                                  : img.fileName;
+                              const imagePath = `/api/images/chat-exports/${actualFileName}`;
+                              images.push({ url: imagePath, fileName: img.fileName, index: idx });
+                            } else if (img.url) {
+                              images.push({ url: normalizeImageUrl(img.url), fileName: img.fileName, index: idx });
+                            } else if (img.path) {
+                              images.push({ url: normalizeImageUrl(img.path), fileName: img.fileName, index: idx });
+                            }
+                          }
+                        });
+                      }
+                      // フォールバック: images
+                      else if (Array.isArray(item?.images) && item.images.length > 0) {
+                        item.images.forEach((img: any, idx: number) => {
+                          if (typeof img === 'string') {
+                            images.push({ url: normalizeImageUrl(img), index: idx });
+                          } else if (img && typeof img === 'object') {
+                            const url = img.url || img.path || img.fileName;
+                            if (url && !url.startsWith('data:image/')) {
+                              images.push({ url: normalizeImageUrl(url), fileName: img.fileName, index: idx });
                             }
                           }
                         });
                       }
 
+                      // 重複削除（URLとfileNameの両方で判定）
                       const uniqueImages: Array<{ url: string; fileName?: string; index: number }> = [];
-                      const seenUrls = new Set<string>();
+                      const seenKeys = new Set<string>();
                       images.forEach(img => {
-                        if (!seenUrls.has(img.url)) {
-                          seenUrls.add(img.url);
+                        const key = img.fileName || img.url;
+                        if (!seenKeys.has(key)) {
+                          seenKeys.add(key);
                           uniqueImages.push(img);
                         }
                       });
@@ -2098,16 +2205,16 @@ export default function HistoryPage() {
                     if (imageList.length > 0) {
                       return (
                         <div className="grid grid-cols-3 gap-4">
-                          {imageList.map((image) => {
-                            // 一意なキーを生成（fileName優先、なければurl）
-                            const imageKey = image.fileName || image.url || `img-${Math.random()}`;
+                          {imageList.map((image, mapIndex) => {
+                            // 一意なキーを生成（fileName + index の組み合わせ）
+                            const imageKey = `${image.fileName || 'img'}-${image.index}-${mapIndex}`;
 
                             return (
                               <div key={imageKey} className="relative group">
                                 <img
                                   src={image.url}
                                   alt={image.fileName || '故障画像'}
-                                  className="w-full h-auto max-h-48 object-contain border border-gray-300 rounded-md shadow-sm"
+                                  className="w-full h-auto max-h-48 object-contain rounded-md"
                                   onError={(e) => {
                                     console.error(`🖼️ 画像読み込みエラー (編集画面):`, image.url);
                                     (e.target as HTMLImageElement).style.display = 'none';

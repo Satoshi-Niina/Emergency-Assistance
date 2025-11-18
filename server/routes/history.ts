@@ -343,7 +343,7 @@ router.post('/save', async (_req, res) => {
 
 /**
  * PUT /api/history/update-item/:chatId
- * 履歴アイテムを更新
+ * 履歴アイテムを更新（DB + JSONファイル）
  */
 router.put('/update-item/:chatId', async (req, res) => {
   try {
@@ -354,9 +354,67 @@ router.put('/update-item/:chatId', async (req, res) => {
       chatId,
       updatedBy,
       hasUpdatedData: !!updatedData,
+      savedImagesCount: updatedData?.savedImages?.length || 0,
     });
 
-    // knowledge-base/exports フォルダ内のJSONファイルを検索
+    // まずDBを更新
+    try {
+      const existingRecord = await db
+        .select()
+        .from(faultHistory)
+        .where(eq(faultHistory.id, chatId))
+        .limit(1);
+
+      if (existingRecord.length > 0) {
+        // 既存のjsonDataを取得
+        const currentJsonData = typeof existingRecord[0].jsonData === 'string'
+          ? JSON.parse(existingRecord[0].jsonData)
+          : existingRecord[0].jsonData || {};
+
+        // 新しいjsonDataを構築（savedImagesを含む）
+        const newJsonData = {
+          ...currentJsonData,
+          ...updatedData,
+          savedImages: updatedData.savedImages || currentJsonData.savedImages || [],
+          images: updatedData.images || updatedData.savedImages || currentJsonData.images || [],
+          lastModified: new Date().toISOString(),
+          updatedBy: updatedBy || 'user',
+        };
+
+        // DBを更新
+        await db
+          .update(faultHistory)
+          .set({
+            title: updatedData.title || existingRecord[0].title,
+            description: updatedData.problemDescription || existingRecord[0].description,
+            machineType: updatedData.machineType || existingRecord[0].machineType,
+            machineNumber: updatedData.machineNumber || existingRecord[0].machineNumber,
+            jsonData: JSON.stringify(newJsonData),
+            updatedAt: new Date(),
+          })
+          .where(eq(faultHistory.id, chatId));
+
+        console.log('✅ DB更新完了:', {
+          chatId,
+          savedImagesCount: newJsonData.savedImages.length,
+        });
+
+        // レスポンスにはDB更新後のデータを返す
+        return res.json({
+          success: true,
+          message: '履歴アイテムを更新しました',
+          updatedData: newJsonData,
+          data: {
+            chatId,
+            updatedAt: new Date().toISOString(),
+          },
+        });
+      }
+    } catch (dbError) {
+      console.warn('⚠️ DB更新スキップ（レコードが見つからない可能性）:', dbError);
+    }
+
+    // JSONファイルの更新（後方互換性のため）
     const exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
 
     if (!fs.existsSync(exportsDir)) {
@@ -374,7 +432,7 @@ router.put('/update-item/:chatId', async (req, res) => {
     if (!targetFile) {
       return res.status(404).json({
         error: '対象のJSONファイルが見つかりません',
-        availableFiles: jsonFiles.slice(0, 5), // 最初の5ファイルを表示
+        availableFiles: jsonFiles.slice(0, 5),
       });
     }
 
@@ -395,7 +453,7 @@ router.put('/update-item/:chatId', async (req, res) => {
     // 更新されたJSONファイルを保存
     fs.writeFileSync(filePath, JSON.stringify(updatedJsonData, null, 2));
 
-    console.log('✅ 履歴アイテム更新完了:', {
+    console.log('✅ JSONファイル更新完了:', {
       chatId,
       fileName: targetFile,
       updatedFields: Object.keys(updatedData || {}),
@@ -404,6 +462,7 @@ router.put('/update-item/:chatId', async (req, res) => {
     res.json({
       success: true,
       message: '履歴アイテムを更新しました',
+      updatedData: updatedJsonData,
       data: {
         chatId,
         fileName: targetFile,
@@ -1296,11 +1355,11 @@ router.put('/update-item/:id', async (_req, res) => {
             file.split('_').some(part => part === normalizedId),
             // 短縮IDと比較
             id.length > 8 &&
-              (data.chatId?.startsWith(id.substring(0, 8)) ||
-                data.id?.startsWith(id.substring(0, 8))),
+            (data.chatId?.startsWith(id.substring(0, 8)) ||
+              data.id?.startsWith(id.substring(0, 8))),
             normalizedId.length > 8 &&
-              (data.chatId?.startsWith(normalizedId.substring(0, 8)) ||
-                data.id?.startsWith(normalizedId.substring(0, 8))),
+            (data.chatId?.startsWith(normalizedId.substring(0, 8)) ||
+              data.id?.startsWith(normalizedId.substring(0, 8))),
           ];
 
           if (matches.some(Boolean)) {

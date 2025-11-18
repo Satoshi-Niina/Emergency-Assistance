@@ -68,7 +68,7 @@ app.use(helmet({ contentSecurityPolicy: false })); // 必要に応じてCSPを�
 app.use(compression());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'tiny' : 'dev'));
 
-// 強化されたCORS設定 - Azure Static Web Apps対応
+// 簡素化されたCORS設定 - Azure Static Web Apps対応
 const allowedOrigins = [
   FRONTEND_URL,
   STATIC_WEB_APP_URL,
@@ -81,97 +81,36 @@ const allowedOrigins = [
 
 console.log('✅ CORS Allowed Origins:', allowedOrigins);
 
-// 動的オリジン許可関数
+// オリジン許可判定関数（シンプル版）
+const isOriginAllowed = (origin) => {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+  if (origin.includes('azurestaticapps.net')) return true;
+  if (origin.includes('localhost') || origin.includes('127.0.0.1')) return true;
+  return false;
+};
+
+// CORS ミドルウェア設定
 const corsOptions = {
   origin: (origin, callback) => {
-    // リクエストにオリジンがない場合（同じドメインからの直接アクセスなど）
-    if (!origin) {
-      return callback(null, true);
+    if (isOriginAllowed(origin)) {
+      callback(null, true);
+    } else {
+      console.warn('❌ CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'), false);
     }
-
-    // 許可されたオリジンに含まれている場合
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    // Azure Static Web Apps ドメインの場合（ワイルドカード対応）
-    if (origin.includes('azurestaticapps.net')) {
-      console.log('🌐 Azure Static Web Apps origin allowed:', origin);
-      return callback(null, true);
-    }
-
-    // localhost の場合
-    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-      console.log('🏠 Localhost origin allowed:', origin);
-      return callback(null, true);
-    }
-
-    console.warn('❌ CORS blocked origin:', origin);
-    return callback(new Error('Not allowed by CORS'), false);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control'],
   exposedHeaders: ['Set-Cookie'],
-  preflightContinue: false,
   optionsSuccessStatus: 204
 };
 
-// アプリケーションレベルのCORS処理（Azure App Service含む全環境で有効）
-console.log('🔧 Initializing application-level CORS...');
-
-// グローバルCORSミドルウェア（全てのリクエストに適用）- 最優先で設定
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-
-  // オリジンの許可チェック
-  let originAllowed = false;
-
-  if (!origin) {
-    originAllowed = true;
-  } else if (allowedOrigins.includes(origin)) {
-    originAllowed = true;
-  } else if (origin.includes('azurestaticapps.net')) {
-    originAllowed = true;
-  } else if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-    originAllowed = true;
-  }
-
-  // CORS ヘッダーを常に設定
-  if (origin) {
-    if (originAllowed) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires, Cookie');
-      res.setHeader('Access-Control-Max-Age', '86400');
-      res.setHeader('Access-Control-Expose-Headers', 'Set-Cookie');
-    }
-  } else {
-    // オリジンがない場合（同一オリジン）は全て許可
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires, Cookie');
-  }
-
-  // OPTIONSリクエストの処理（preflightリクエスト）
-  if (req.method === 'OPTIONS') {
-    console.log('🔍 OPTIONS (preflight) request from:', origin || 'no-origin');
-    if (originAllowed || !origin) {
-      console.log('✅ OPTIONS request approved for origin:', origin || 'no-origin');
-      return res.status(204).end();
-    } else {
-      console.warn('❌ OPTIONS request denied for origin:', origin);
-      return res.status(403).json({ error: 'CORS not allowed' });
-    }
-  }
-
-  next();
-});
-
-// CORS ミドルウェア（バックアップとして）
+// シンプルなCORS処理
+console.log('🔧 Initializing CORS middleware...');
 app.use(cors(corsOptions));
-console.log('✅ Application-level CORS initialized');
+console.log('✅ CORS middleware initialized');
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));

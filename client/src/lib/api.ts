@@ -1,4 +1,4 @@
-// 統一APIクライアント - シンプル版
+// 統一APIクライアント - シンプル版（改善版）
 // ローカル開発・本番環境対応
 
 // 環境判定
@@ -22,25 +22,40 @@ const getApiBaseUrl = (): string => {
     return '';
 };
 
-// API URL構築（シンプル版）
+// API URL構築（改善版 - パス重複を防止）
 // 実行時に毎回getApiBaseUrl()を呼び出して、最新の設定を取得
 export const buildApiUrl = (path: string): string => {
-    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    // パスの正規化（先頭の/を確保）
+    let cleanPath = path.startsWith('/') ? path : `/${path}`;
+
+    // /api/auth/login のような形式の場合、/api プレフィックスを除去
+    if (cleanPath.startsWith('/api/')) {
+        cleanPath = cleanPath.substring(4); // '/api' を除去
+    }
+
     const apiBaseUrl = getApiBaseUrl(); // 実行時に毎回取得
 
     if (apiBaseUrl) {
         // 絶対URLが設定されている場合
-        // API_BASE_URLに既に/apiが含まれている場合は追加しない
-        if (apiBaseUrl.includes('/api')) {
-            // 既に/apiが含まれている場合は、そのまま使用
-            return `${apiBaseUrl}${cleanPath}`;
+        const normalizedBaseUrl = apiBaseUrl.replace(/\/+$/, ''); // 末尾のスラッシュを除去
+
+        // ベースURLが既に /api で終わっているかチェック
+        if (normalizedBaseUrl.endsWith('/api')) {
+            // ベースURLが /api で終わっている場合、そのままパスを追加
+            const finalUrl = `${normalizedBaseUrl}${cleanPath}`;
+            console.log(`🔗 API URL (base has /api): ${path} -> ${finalUrl}`);
+            return finalUrl;
         } else {
-            // /apiが含まれていない場合は追加
-            return `${apiBaseUrl}/api${cleanPath}`;
+            // /api を追加してパスを結合
+            const finalUrl = `${normalizedBaseUrl}/api${cleanPath}`;
+            console.log(`🔗 API URL (add /api): ${path} -> ${finalUrl}`);
+            return finalUrl;
         }
     } else {
         // 開発環境: 相対パス（統合サーバーが処理）
-        return `/api${cleanPath}`;
+        const finalUrl = `/api${cleanPath}`;
+        console.log(`🔗 API URL (relative): ${path} -> ${finalUrl}`);
+        return finalUrl;
     }
 };
 

@@ -42,11 +42,37 @@ export const getImageSrc = (data: any): string | null => {
       for (const x of Object.values(v)) stack.push(x);
     }
   }
-  // 2) savedImages
+
+  // 2) jsonData.savedImages を優先的にチェック
+  const jsonDataImages = data?.jsonData?.savedImages;
+  if (Array.isArray(jsonDataImages) && jsonDataImages.length > 0) {
+    const first = jsonDataImages[0];
+    if (first?.fileName) {
+      const actualFileName = first.fileName.includes('/')
+        ? first.fileName.split('/').pop()
+        : first.fileName.includes('\\')
+          ? first.fileName.split('\\').pop()
+          : first.fileName;
+      return `/api/images/chat-exports/${actualFileName}`;
+    }
+    if (first?.url) return toAbsUrl(first.url);
+    if (first?.path) return toAbsUrl(first.path);
+  }
+
+  // 3) savedImages（フォールバック）
   const si = data?.savedImages?.[0];
+  if (si?.fileName) {
+    const actualFileName = si.fileName.includes('/')
+      ? si.fileName.split('/').pop()
+      : si.fileName.includes('\\')
+        ? si.fileName.split('\\').pop()
+        : si.fileName;
+    return `/api/images/chat-exports/${actualFileName}`;
+  }
   const s2 = toAbsUrl(si?.url || si?.path);
   if (s2) return s2;
-  // 3) imagePath
+
+  // 4) imagePath
   const ip = data?.imagePath;
   const s3 = Array.isArray(ip) ? toAbsUrl(ip[0]) : toAbsUrl(ip);
   return s3 || null;
@@ -374,17 +400,41 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({
     const fromDataUrl = dig(data);
     if (fromDataUrl) return fromDataUrl;
 
-    // 2) savedImages（配列の {url|path} を優先）
+    // 2) jsonData.savedImages を優先的にチェック
+    const jsonDataImages = data?.jsonData?.savedImages;
+    if (Array.isArray(jsonDataImages) && jsonDataImages.length > 0) {
+      const first = jsonDataImages[0];
+      if (first?.fileName) {
+        const actualFileName = first.fileName.includes('/')
+          ? first.fileName.split('/').pop()
+          : first.fileName.includes('\\')
+            ? first.fileName.split('\\').pop()
+            : first.fileName;
+        return `/api/images/chat-exports/${actualFileName}`;
+      }
+      if (first?.url) return toAbsUrl(first.url);
+      if (first?.path) return toAbsUrl(first.path);
+    }
+
+    // 3) savedImages（配列の {url|path} を優先）
     const saved = data?.savedImages;
     if (Array.isArray(saved) && saved.length > 0) {
       const first = saved.find(
         (s: any) => typeof s?.url === 'string' || typeof s?.path === 'string'
       );
+      if (first?.fileName) {
+        const actualFileName = first.fileName.includes('/')
+          ? first.fileName.split('/').pop()
+          : first.fileName.includes('\\')
+            ? first.fileName.split('\\').pop()
+            : first.fileName;
+        return `/api/images/chat-exports/${actualFileName}`;
+      }
       if (first?.url) return toAbsUrl(first.url);
       if (first?.path) return toAbsUrl(first.path);
     }
 
-    // 3) imagePath（文字列 or 配列）
+    // 4) imagePath（文字列 or 配列）
     if (typeof data?.imagePath === 'string') return toAbsUrl(data.imagePath);
     if (Array.isArray(data?.imagePath) && data.imagePath.length > 0) {
       const firstPath = data.imagePath.find(
@@ -422,8 +472,8 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({
             table { width: 100%; border-collapse: collapse; table-layout: fixed; }
             th, td { border: 1px solid #ccc; padding: 4px; vertical-align: top; }
           }
-          img.thumb { width: 32px; height: 32px; object-fit: cover; border: 1px solid #ddd; border-radius: 4px; }
-          .report-img { max-width: 100%; height: auto; }
+          img.thumb { width: 32px; height: 32px; object-fit: cover; border-radius: 4px; }
+          .report-img { max-width: 100%; height: auto; border: none; }
         </style>
       </head>
       <body>
@@ -532,8 +582,8 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({
 
 チャット履歴:
 ${(data.conversationHistory || data.chatData?.messages || [])
-  .map((msg: any) => `${msg.isAiResponse ? 'AI' : 'ユーザー'}: ${msg.content}`)
-  .join('\n')}
+        .map((msg: any) => `${msg.isAiResponse ? 'AI' : 'ユーザー'}: ${msg.content}`)
+        .join('\n')}
     `;
 
     const blob = new Blob([reportContent], {

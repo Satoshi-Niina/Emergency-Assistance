@@ -45,8 +45,8 @@ const extractPptxText = async (
     const slidesDir = path.join(extractDir, 'ppt', 'slides');
     const slideFiles = fs.existsSync(slidesDir)
       ? fs
-          .readdirSync(slidesDir)
-          .filter(file => file.startsWith('slide') && file.endsWith('.xml'))
+        .readdirSync(slidesDir)
+        .filter(file => file.startsWith('slide') && file.endsWith('.xml'))
       : [];
 
     let extractedText = '';
@@ -229,6 +229,10 @@ function cleanupTempDirectory(dirPath) {
 }
 // 一時ディレクトリのクリーンアップ（知識ベースディレクトリとuploadsディレクトリ）
 async function cleanupTempDirectories() {
+  let removedFiles = 0;
+  let removedSize = 0;
+  let errors = 0;
+
   // 知識ベースディレクトリ
   const rootDir: any = path.join(__dirname, '../../');
   const knowledgeBaseDir: any = path.join(process.cwd(), 'knowledge-base');
@@ -242,6 +246,7 @@ async function cleanupTempDirectories() {
     path.join(uploadsDir, 'temp'),
     path.join(publicUploadsDir, 'temp'),
   ];
+
   // 一時ディレクトリの処理
   for (const dirPath of tempDirs) {
     if (!fs.existsSync(dirPath)) continue;
@@ -249,32 +254,54 @@ async function cleanupTempDirectories() {
       const files: any = fs.readdirSync(dirPath);
       for (const file of files) {
         const filePath: any = path.join(dirPath, file);
-        const stat: any = fs.statSync(filePath);
-        if (stat.isDirectory()) {
-          // ディレクトリの場合は再帰的に処理
-          await verifyAndCleanupDirectory(filePath);
-        } else {
-          // ファイルの場合は検証して削除
-          await verifyAndCleanupFile(filePath, path.basename(dirPath));
+        try {
+          const stat: any = fs.statSync(filePath);
+          const fileSize = stat.size;
+
+          if (stat.isDirectory()) {
+            // ディレクトリの場合は再帰的に処理
+            await verifyAndCleanupDirectory(filePath);
+          } else {
+            // ファイルの場合は検証して削除
+            await verifyAndCleanupFile(filePath, path.basename(dirPath));
+          }
+
+          // 削除成功をカウント
+          removedFiles++;
+          removedSize += fileSize;
+        } catch (error) {
+          errors++;
+          console.error(`ファイル削除エラー: ${filePath}`, error);
         }
       }
       console.log(`一時ディレクトリをクリーンアップしました: ${dirPath}`);
     } catch (error) {
+      errors++;
       console.error(
         `一時ディレクトリのクリーンアップ中にエラーが発生しました: ${dirPath}`,
         error
       );
     }
   }
+
   // knowledge-baseに移動済みのファイルをuploadsとpublic/uploadsから削除
   try {
-    await cleanupRedundantFiles();
+    const redundantResult = await cleanupRedundantFiles();
+    removedFiles += redundantResult.removed;
+    errors += redundantResult.errors;
   } catch (error) {
+    errors++;
     console.error(
       '重複ファイルのクリーンアップ中にエラーが発生しました:',
       error
     );
   }
+
+  return {
+    removedFiles,
+    removedSize,
+    errors
+  };
 }
 // 画像ファイルのハッシュ値を計算する関数（内容の一致を検出するため）
 async function calculateImageHash(filePath) {
@@ -1516,6 +1543,7 @@ router.post('/backup-logs', async (_req, res) => {
       success: true,
       message: 'ログファイルのバックアップが完了しました',
       backupPath: result.backupPath,
+      backupFileName: result.backupPath, // ファイル名
       fileCount: result.fileCount,
       totalSize: result.totalSize,
     });
@@ -1528,21 +1556,86 @@ router.post('/backup-logs', async (_req, res) => {
     });
   }
 });
+
+/**
+ * バックアップファイルをダウンロードするエンドポイント
+ */
+router.get('/download-backup/:filename', async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const projectRoot = path.join(__dirname, '../../');
+    const backupPath = path.join(projectRoot, 'logs', 'backups', filename);
+
+    console.log('📥 バックアップダウンロード要求:', filename);
+
+    // ファイルが存在するか確認
+    if (!fs.existsSync(backupPath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'バックアップファイルが見つかりません',
+      });
+    }
+
+    // セキュリティチェック: パストラバーサル攻撃を防ぐ
+    const normalizedPath = path.normalize(backupPath);
+    const backupsDir = path.join(projectRoot, 'logs', 'backups');
+    if (!normalizedPath.startsWith(backupsDir)) {
+      return res.status(403).json({
+        success: false,
+        error: '不正なファイルパスです',
+      });
+    }
+
+    // ファイルをダウンロード
+    res.download(backupPath, filename, (err) => {
+      if (err) {
+        console.error('❌ ダウンロードエラー:', err);
+        if (!res.headersSent) {
+          res.status(500).json({
+            success: false,
+            error: 'ダウンロード中にエラーが発生しました',
+          });
+        }
+      } else {
+        console.log('✅ ダウンロード完了:', filename);
+      }
+    });
+  } catch (error) {
+    console.error('❌ ダウンロードエラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ダウンロード処理中にエラーが発生しました',
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
 /**
  * uploads内のファイルをクリーンアップするエンドポイント
  * knowledge-baseに存在しないファイルは削除されない
  */
 router.post('/cleanup-uploads', async (_req, res) => {
   try {
+    console.log('🧹 一時ファイルクリーンアップ開始');
+
     // クリーンアップ処理を実行
-    await cleanupTempDirectories();
+    const result = await cleanupTempDirectories();
+
+    console.log('✅ 一時ファイルクリーンアップ完了:', result);
+
     return res.json({
       success: true,
-      message: 'uploadsディレクトリのクリーンアップを実行しました',
+      message: '一時ファイルのクリーンアップを実行しました',
+      details: {
+        removedFiles: result.removedFiles,
+        removedSize: result.removedSize,
+        errors: result.errors,
+        sizeInMB: (result.removedSize / 1024 / 1024).toFixed(2)
+      }
     });
   } catch (error) {
-    console.error('クリーンアップエラー:', error);
+    console.error('❌ クリーンアップエラー:', error);
     return res.status(500).json({
+      success: false,
       error: 'クリーンアップ処理中にエラーが発生しました',
       details: error instanceof Error ? error.message : String(error),
     });

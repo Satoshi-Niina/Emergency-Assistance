@@ -144,26 +144,41 @@ export default function SettingsPage() {
 
   const handleCleanupUploads = async () => {
     try {
+      toast({
+        title: 'クリーンアップ開始',
+        description: '一時ファイルのクリーンアップを開始しています...',
+      });
+
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/tech-support/cleanup-uploads`,
+        `${API_BASE_URL}/tech-support/cleanup-uploads`,
         {
           method: 'POST',
+          credentials: 'include',
         }
       );
 
       if (!response.ok) {
-        throw new Error('クリーンアップに失敗しました');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'クリーンアップに失敗しました');
       }
 
       const result = await response.json();
-      toast({
-        title: 'クリーンアップ完了',
-        description: `アップロードファイルをクリーンアップしました`,
-      });
+
+      if (result.success) {
+        const details = result.details;
+        const fileSize = details?.sizeInMB || '0';
+        toast({
+          title: 'クリーンアップ完了',
+          description: `${details?.removedFiles || 0}件のファイルを削除しました (${fileSize} MB)`,
+        });
+      } else {
+        throw new Error(result.error || 'クリーンアップに失敗しました');
+      }
     } catch (error) {
+      console.error('クリーンアップエラー:', error);
       toast({
         title: 'エラー',
-        description: 'クリーンアップに失敗しました',
+        description: error instanceof Error ? error.message : 'クリーンアップに失敗しました',
         variant: 'destructive',
       });
     }
@@ -177,9 +192,10 @@ export default function SettingsPage() {
       });
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/tech-support/backup-logs`,
+        `${API_BASE_URL}/tech-support/backup-logs`,
         {
           method: 'POST',
+          credentials: 'include',
         }
       );
 
@@ -196,10 +212,20 @@ export default function SettingsPage() {
         const fileSize = result.totalSize
           ? (result.totalSize / 1024 / 1024).toFixed(2)
           : '0';
+
+        // バックアップ完了通知
         toast({
           title: 'バックアップ完了',
-          description: `${result.fileCount}件のログファイルをバックアップしました (${fileSize} MB)`,
+          description: `${result.fileCount}件のログファイルをバックアップしました (${fileSize} MB)。通知のダウンロードボタンをクリックしてください。`,
         });
+
+        // 自動的にダウンロードを開始
+        if (result.backupFileName) {
+          setTimeout(() => {
+            const downloadUrl = `${API_BASE_URL}/tech-support/download-backup/${result.backupFileName}`;
+            window.open(downloadUrl, '_blank');
+          }, 1000);
+        }
       } else {
         throw new Error(result.message || 'バックアップに失敗しました');
       }
@@ -350,23 +376,53 @@ export default function SettingsPage() {
                   </div>
 
                   <div className='grid grid-cols-1 gap-3'>
-                    <Button
-                      onClick={handleCleanupUploads}
-                      variant='destructive'
-                      className='w-full'
-                    >
-                      <Trash2 className='mr-2 h-4 w-4' />
-                      一時ファイルを削除
-                    </Button>
+                    {/* 一時ファイル削除 */}
+                    <div className='bg-blue-50 border border-blue-200 rounded-lg p-3'>
+                      <div className='flex items-start justify-between mb-2'>
+                        <div className='flex-1'>
+                          <div className='flex items-center mb-1'>
+                            <Info className='h-4 w-4 text-blue-600 mr-2' />
+                            <p className='font-medium text-blue-900 text-sm'>一時ファイルとは？</p>
+                          </div>
+                          <p className='text-xs text-blue-700 mb-2'>
+                            ファイルアップロード時に作成される一時的なファイルです。
+                            処理完了後も残っている場合があり、ストレージ容量を圧迫します。
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={handleCleanupUploads}
+                        variant='destructive'
+                        className='w-full'
+                      >
+                        <Trash2 className='mr-2 h-4 w-4' />
+                        一時ファイルを削除
+                      </Button>
+                    </div>
 
-                    <Button
-                      onClick={handleBackupLogs}
-                      variant='outline'
-                      className='w-full'
-                    >
-                      <FileType className='mr-2 h-4 w-4' />
-                      ログファイルバックアップ
-                    </Button>
+                    {/* ログバックアップ */}
+                    <div className='bg-amber-50 border border-amber-200 rounded-lg p-3'>
+                      <div className='flex items-start justify-between mb-2'>
+                        <div className='flex-1'>
+                          <div className='flex items-center mb-1'>
+                            <Info className='h-4 w-4 text-amber-600 mr-2' />
+                            <p className='font-medium text-amber-900 text-sm'>ログファイルバックアップ</p>
+                          </div>
+                          <p className='text-xs text-amber-700 mb-2'>
+                            システムログファイルをZIP形式でアーカイブします。
+                            バックアップ後、ダウンロードボタンからローカルに保存できます。
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={handleBackupLogs}
+                        variant='outline'
+                        className='w-full border-amber-300 text-amber-700 hover:bg-amber-100'
+                      >
+                        <FileType className='mr-2 h-4 w-4' />
+                        ログファイルバックアップ
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>

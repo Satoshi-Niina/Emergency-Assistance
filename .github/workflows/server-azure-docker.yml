@@ -105,7 +105,7 @@ jobs:
         az webapp stop \
           --name ${{ env.WEBAPP_NAME }} \
           --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
-        
+
         echo "⏳ Waiting for complete shutdown..."
         sleep 30
         echo "✅ App Service stopped"
@@ -167,7 +167,7 @@ jobs:
         az webapp restart \
           --name ${{ env.WEBAPP_NAME }} \
           --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
-        
+
         echo "✅ Restart command sent"
 
     - name: Wait for deployment to stabilize
