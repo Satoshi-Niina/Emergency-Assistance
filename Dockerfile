@@ -1,4 +1,4 @@
-# Multi-stage build for production deployment (forced rebuild)
+# Multi-stage build for production deployment (forced rebuild v2)
 FROM node:20-alpine AS base
 
 # Install dependencies only when needed
