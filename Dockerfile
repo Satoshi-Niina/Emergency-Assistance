@@ -44,6 +44,10 @@ RUN echo "=== Builder Stage: Checking copied files ===" && \
 # Build client
 RUN cd client && npm run build
 
+# Remove node_modules from server directory in builder stage
+# (we'll copy production dependencies from deps stage later)
+RUN rm -rf /app/server/node_modules
+
 # Production image
 FROM base AS runner
 WORKDIR /app
@@ -63,16 +67,10 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/shared ./shared
 
 # Copy server files - CRITICAL: server source files must be copied
-COPY --from=builder /app/server/*.mjs ./server/
-COPY --from=builder /app/server/*.js ./server/
-COPY --from=builder /app/server/package*.json ./server/
-COPY --from=builder /app/server/routes ./server/routes
-COPY --from=builder /app/server/middleware ./server/middleware
-COPY --from=builder /app/server/utils ./server/utils
-COPY --from=builder /app/server/services ./server/services
-COPY --from=builder /app/server/scripts ./server/scripts
+# First copy from builder (without node_modules)
+COPY --from=builder /app/server ./server
 
-# Copy node_modules for server
+# Then overwrite node_modules with production dependencies from deps stage
 COPY --from=deps /app/server/node_modules ./server/node_modules
 
 # Copy client dist
