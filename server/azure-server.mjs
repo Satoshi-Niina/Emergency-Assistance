@@ -657,14 +657,20 @@ app.get('/api/_diag/env', (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   const origin = req.headers.origin;
   console.log('🔐 Login request from origin:', origin);
+  console.log('🔐 Request headers:', JSON.stringify(req.headers, null, 2));
+  console.log('🔐 Request body:', JSON.stringify(req.body, null, 2));
 
   try {
     const { username, password } = req.body || {};
 
     console.log('[auth/login] Login attempt:', {
       username,
+      hasPassword: !!password,
+      passwordLength: password ? password.length : 0,
       origin: origin,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      dbPoolStatus: !!dbPool,
+      sqliteDbStatus: !!sqliteDb
     });
 
     // 入力検証
@@ -697,15 +703,22 @@ app.post('/api/auth/login', async (req, res) => {
 
       console.log('[auth/login] ユーザー検索結果:', {
         found: result.rows.length > 0,
-        userCount: result.rows.length
+        userCount: result.rows.length,
+        query: 'SELECT ... FROM users WHERE username = $1',
+        searchUsername: username
       });
 
       if (result.rows.length === 0) {
-        console.log('[auth/login] ユーザーが見つかりません');
+        console.error('[auth/login] ❌ ユーザーが見つかりません');
+        console.error('[auth/login] データベースに管理者ユーザーが作成されていない可能性があります');
+        console.error('[auth/login] 解決方法: scripts/seed-admin-user.sql を実行してください');
         return res.status(401).json({
           success: false,
-          error: 'invalid_credentials',
-          message: 'ユーザー名またはパスワードが正しくありません'
+          error: 'USER_NOT_FOUND',
+          message: 'ユーザー名またはパスワードが正しくありません',
+          debug: process.env.NODE_ENV !== 'production' ? {
+            hint: 'データベースにユーザーが存在しません。seed-admin-user.sqlを実行してください。'
+          } : undefined
         });
       }
 
@@ -718,15 +731,24 @@ app.post('/api/auth/login', async (req, res) => {
 
       // パスワード比較（bcryptjs）
       console.log('[auth/login] パスワード比較開始');
+      console.log('[auth/login] 入力パスワード長:', password.length);
+      console.log('[auth/login] DB保存ハッシュ長:', foundUser.password.length);
+      console.log('[auth/login] ハッシュプレフィックス:', foundUser.password.substring(0, 7));
+
       const isPasswordValid = await bcrypt.compare(password, foundUser.password);
       console.log('[auth/login] パスワード比較結果:', { isValid: isPasswordValid });
 
       if (!isPasswordValid) {
-        console.log('[auth/login] パスワードが一致しません');
+        console.error('[auth/login] ❌ パスワードが一致しません');
+        console.error('[auth/login] 入力されたパスワードとDBのハッシュが一致しません');
+        console.error('[auth/login] ローカルと本番でパスワードが異なる可能性があります');
         return res.status(401).json({
           success: false,
-          error: 'invalid_credentials',
-          message: 'ユーザー名またはパスワードが正しくありません'
+          error: 'INVALID_PASSWORD',
+          message: 'ユーザー名またはパスワードが正しくありません',
+          debug: process.env.NODE_ENV !== 'production' ? {
+            hint: 'パスワードが一致しません。正しいパスワードで再試行してください。'
+          } : undefined
         });
       }
 

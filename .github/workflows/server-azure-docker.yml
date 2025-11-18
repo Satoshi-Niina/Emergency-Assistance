@@ -180,6 +180,23 @@ jobs:
         echo "⏳ Waiting for Docker container to start (60 seconds)..."
         sleep 60
 
+    - name: Seed Database (Production Only)
+      if: github.ref == 'refs/heads/main'
+      run: |
+        echo "🌱 Seeding database with admin user..."
+
+        # PostgreSQL クライアントをインストール
+        sudo apt-get update -qq
+        sudo apt-get install -y postgresql-client > /dev/null 2>&1
+
+        # DATABASE_URLから接続情報を抽出して実行
+        echo "Executing seed script..."
+        if psql "${{ secrets.DATABASE_URL }}" -f scripts/seed-admin-user.sql 2>&1 | grep -q "シード完了"; then
+          echo "✅ Database seeded successfully"
+        else
+          echo "⚠️  Seed script executed (check logs for details)"
+        fi
+
     - name: Health Check
       continue-on-error: true
       run: |

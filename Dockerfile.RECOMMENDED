@@ -1,0 +1,98 @@
+# ==============================================================================
+# Multi-stage Docker build for Emergency Assistance (Production-optimized)
+# ==============================================================================
+
+# Base image with Node.js 20 on Alpine Linux (minimal size)
+FROM node:20-alpine AS base
+
+# ==============================================================================
+# Stage 1: Install production dependencies
+# ==============================================================================
+FROM base AS deps
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install ONLY production dependencies (no devDependencies)
+RUN npm ci --only=production --no-audit --no-fund && npm cache clean --force
+
+# ==============================================================================
+# Stage 2: Build client assets
+# ==============================================================================
+FROM base AS builder
+WORKDIR /app
+
+# Copy all source files (needed for build verification and client build)
+COPY . .
+
+# Verify critical files exist BEFORE proceeding
+RUN echo "🔍 Verifying server files..." && \
+    test -f /app/server/azure-server.mjs || (echo "❌ azure-server.mjs NOT FOUND" && exit 1) && \
+    echo "✅ azure-server.mjs found"
+
+# Install client dependencies and build (if client exists)
+RUN if [ -d "client" ]; then \
+    cd client && \
+    npm ci --no-audit --no-fund && \
+    npm run build && \
+    echo "✅ Client built successfully"; \
+    else \
+    echo "⚠️  Client directory not found, skipping build"; \
+    fi
+
+# ==============================================================================
+# Stage 3: Production runtime image
+# ==============================================================================
+FROM base AS runner
+WORKDIR /app
+
+# Install dumb-init for proper signal handling (Node.js best practice)
+RUN apk add --no-cache dumb-init curl
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Copy production dependencies from deps stage
+COPY --from=deps --chown=nodejs:nodejs /app/node_modules ./node_modules
+
+# Copy server directory with all source code
+COPY --from=builder --chown=nodejs:nodejs /app/server ./server
+
+# Copy shared directory
+COPY --from=builder --chown=nodejs:nodejs /app/shared ./shared
+
+# Copy built client assets
+COPY --from=builder --chown=nodejs:nodejs /app/client/dist ./client/dist
+
+# Copy root package.json
+COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
+
+# Copy data directories (knowledge-base, data)
+COPY --from=builder --chown=nodejs:nodejs /app/knowledge-base ./knowledge-base
+COPY --from=builder --chown=nodejs:nodejs /app/data ./data
+
+# Final verification that server file exists
+RUN test -f /app/server/azure-server.mjs || (echo "❌ FATAL: azure-server.mjs missing in final image" && exit 1)
+
+# Switch to non-root user
+USER nodejs
+
+# Expose port 8080 (Azure App Service expects this)
+EXPOSE 8080
+
+# Environment defaults
+ENV NODE_ENV=production \
+    PORT=8080 \
+    NODE_OPTIONS="--max-old-space-size=512"
+
+# Health check (simple HTTP GET to /health endpoint)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:8080/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start the server with explicit error logging
+CMD ["node", "--trace-warnings", "--unhandled-rejections=strict", "server/azure-server.mjs"]
