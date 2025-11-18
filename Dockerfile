@@ -76,6 +76,10 @@ COPY --from=deps /app/server/node_modules ./server/node_modules
 # Copy client dist
 COPY --from=builder /app/client/dist ./client/dist
 
+# Create necessary directories with proper permissions
+# Note: knowledge-base is stored in Azure Blob Storage, not in the container
+RUN mkdir -p /tmp/uploads
+
 # Verify server files are copied - enhanced check
 RUN echo "=== Verifying production image ===" && \
     ls -la /app/ && \
@@ -83,12 +87,13 @@ RUN echo "=== Verifying production image ===" && \
     ls -la /app/server/ && \
     echo "=== Checking critical files ===" && \
     test -f /app/server/azure-server.mjs && echo "✅ azure-server.mjs found" || (echo "❌ azure-server.mjs NOT found!" && exit 1) && \
-    test -f /app/server/app.js && echo "✅ app.js found" || (echo "❌ app.js NOT found!" && exit 1)
+    test -f /app/server/app.js && echo "✅ app.js found" || (echo "❌ app.js NOT found!" && exit 1) && \
+    echo "=== File permissions ===" && \
+    ls -la /app/server/azure-server.mjs && \
+    ls -la /app/server/app.js
 
-# Create necessary directories with proper permissions
-# Note: knowledge-base is stored in Azure Blob Storage, not in the container
-RUN mkdir -p /tmp/uploads && \
-    chown -R expressjs:nodejs /app /tmp/uploads
+# Set proper ownership AFTER all files are copied and verified
+RUN chown -R expressjs:nodejs /app /tmp/uploads
 
 USER expressjs
 
