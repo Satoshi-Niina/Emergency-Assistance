@@ -154,16 +154,24 @@ jobs:
 
         echo "✅ Environment variables configured"
 
-    - name: Deploy to Azure Web App (Docker)
-      uses: azure/webapps-deploy@v2
-      with:
-        app-name: ${{ env.WEBAPP_NAME }}
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-        images: ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-
-    - name: Force restart App Service (Clear Cache)
+    - name: Deploy Docker Image to Azure Web App
       run: |
-        echo "🔄 Force restarting App Service to ensure new image is loaded..."
+        echo "📦 Deploying Docker image to Azure Web App..."
+
+        # DockerイメージをApp Serviceに紐付け (再度実行して確実に反映)
+        az webapp config container set \
+          --name ${{ env.WEBAPP_NAME }} \
+          --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+          --docker-custom-image-name ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+          --docker-registry-server-url https://${{ secrets.ACR_LOGIN_SERVER }} \
+          --docker-registry-server-user ${{ secrets.ACR_USERNAME }} \
+          --docker-registry-server-password ${{ secrets.ACR_PASSWORD }}
+
+        echo "✅ Docker image deployment configured"
+
+    - name: Force restart App Service (Pull New Image)
+      run: |
+        echo "🔄 Force restarting App Service to pull and start new Docker image..."
         az webapp restart \
           --name ${{ env.WEBAPP_NAME }} \
           --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
