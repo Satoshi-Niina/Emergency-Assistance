@@ -58,8 +58,8 @@ jobs:
           echo "STATIC_WEB_APP_URL=https://witty-river-012f39e00-staging.azurestaticapps.net" >> $GITHUB_ENV
           echo "✅ Environment: staging"
         fi
-        echo "🔗 Backend: ${APP_URL}"
-        echo "🔗 Frontend: ${STATIC_WEB_APP_URL}"
+        echo "🔗 Backend: $APP_URL"
+        echo "🔗 Frontend: $STATIC_WEB_APP_URL"
 
     - name: Validate Required Secrets
       run: |
@@ -67,7 +67,7 @@ jobs:
 
         # Azure Container Registry
         if [ -z "${{ secrets.ACR_LOGIN_SERVER }}" ] || [ -z "${{ secrets.ACR_USERNAME }}" ] || [ -z "${{ secrets.ACR_PASSWORD }}" ]; then
-          echo "❌ Azure Container Registry secrets (ACR_LOGIN_SERVER, ACR_USERNAME, ACR_PASSWORD) are missing"
+          echo "❌ Azure Container Registry secrets are missing"
           exit 1
         fi
 
@@ -101,7 +101,9 @@ jobs:
         context: .
         file: ./Dockerfile
         push: true
-        no-cache: true
+        no-cache: false
+        cache-from: type=registry,ref=${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.ENVIRONMENT }}-cache
+        cache-to: type=registry,ref=${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.ENVIRONMENT }}-cache,mode=max
         tags: |
           ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.ENVIRONMENT }}-latest
@@ -130,7 +132,7 @@ jobs:
             OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
             FRONTEND_URL="${{ env.STATIC_WEB_APP_URL }}" \
             STATIC_WEB_APP_URL="${{ env.STATIC_WEB_APP_URL }}" \
-            ALLOWED_ORIGINS="${{ env.STATIC_WEB_APP_URL }},http://localhost:5173,http://localhost:8080" \
+            CORS_ALLOW_ORIGINS="${{ env.STATIC_WEB_APP_URL }},http://localhost:5173,http://localhost:8080" \
             AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
             AZURE_STORAGE_CONTAINER_NAME="${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}" \
             STORAGE_MODE=hybrid \
@@ -157,20 +159,29 @@ jobs:
 
         echo "✅ Docker container configured"
 
+        # Clear appCommandLine to use Dockerfile's CMD
+        echo "🔧 Clearing appCommandLine to use Dockerfile CMD..."
+        az webapp config set \
+          --name ${{ env.WEBAPP_NAME }} \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --generic-configurations '{"appCommandLine":""}'
+
+        echo "✅ appCommandLine cleared - Dockerfile CMD will be used"
+
     - name: Restart App Service
       run: |
-        echo "🔄 Restarting App Service to pull and start new Docker image..."
+        echo "🔄 Restarting App Service to pull new Docker image..."
 
         az webapp restart \
           --name ${{ env.WEBAPP_NAME }} \
           --resource-group ${{ env.RESOURCE_GROUP }}
 
-        echo "✅ App Service restarted"
+        echo "✅ App Service restart initiated"
 
     - name: Wait for Container Startup
       run: |
-        echo "⏳ Waiting for Docker container to start (120 seconds)..."
-        sleep 120
+        echo "⏳ Waiting for Docker container to start (60 seconds)..."
+        sleep 60
 
     - name: Health Check
       continue-on-error: true
@@ -178,25 +189,32 @@ jobs:
         echo "🏥 Verifying deployment health..."
 
         MAX_RETRIES=10
-        RETRY_INTERVAL=15
+        RETRY_INTERVAL=10
 
         for attempt in $(seq 1 $MAX_RETRIES); do
           echo "🔍 Health check attempt $attempt/$MAX_RETRIES..."
 
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "${{ env.APP_URL }}/health" || echo "000")
+          # シンプルな /health エンドポイントをチェック
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${{ env.APP_URL }}/health" || echo "000")
 
           if [ "$HTTP_CODE" = "200" ]; then
             echo "✅ Health check passed (HTTP $HTTP_CODE)"
+
+            # 詳細なヘルスチェックも実行
+            echo "📊 Fetching detailed health info..."
+            curl -s "${{ env.APP_URL }}/api/health/detailed" | head -n 20
+
             echo "🎉 Deployment successful and server is responding"
             exit 0
           fi
 
-          echo "⏳ Server not ready yet (HTTP $HTTP_CODE), retrying..."
+          echo "⏳ Server not ready yet (HTTP $HTTP_CODE), retrying in ${RETRY_INTERVAL}s..."
           [ $attempt -lt $MAX_RETRIES ] && sleep $RETRY_INTERVAL
         done
 
         echo "⚠️ Health check timeout after $MAX_RETRIES attempts"
         echo "📋 Check logs: az webapp log tail --name ${{ env.WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}"
+        exit 1
 
     - name: Deployment Summary
       if: always()
@@ -216,15 +234,27 @@ jobs:
         if [ "${{ job.status }}" = "success" ]; then
           echo "### ✅ Deployment Successful" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
-          echo "1. 🌐 Open frontend: ${{ env.STATIC_WEB_APP_URL }}" >> $GITHUB_STEP_SUMMARY
-          echo "2. 🔍 Test API: ${{ env.APP_URL }}/api/health" >> $GITHUB_STEP_SUMMARY
-          echo "3. 📊 View logs: \`az webapp log tail --name ${{ env.WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Verification Commands:**" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "# Health check" >> $GITHUB_STEP_SUMMARY
+          echo "curl ${{ env.APP_URL }}/health" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Detailed health" >> $GITHUB_STEP_SUMMARY
+          echo "curl ${{ env.APP_URL }}/api/health/detailed | jq" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# CORS test from frontend" >> $GITHUB_STEP_SUMMARY
+          echo 'curl -i -X OPTIONS ${{ env.APP_URL }}/api/auth/login \' >> $GITHUB_STEP_SUMMARY
+          echo '  -H "Origin: ${{ env.STATIC_WEB_APP_URL }}" \' >> $GITHUB_STEP_SUMMARY
+          echo '  -H "Access-Control-Request-Method: POST"' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# View logs" >> $GITHUB_STEP_SUMMARY
+          echo "az webapp log tail --name ${{ env.WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
         else
           echo "### ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Troubleshooting:**" >> $GITHUB_STEP_SUMMARY
-          echo "- Check workflow logs above for errors" >> $GITHUB_STEP_SUMMARY
-          echo "- Verify Azure credentials and secrets" >> $GITHUB_STEP_SUMMARY
-          echo "- Check App Service logs: \`az webapp log tail --name ${{ env.WEBAPP_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "1. Check workflow logs above" >> $GITHUB_STEP_SUMMARY
+          echo "2. View container logs: \`az webapp log tail --name ${{ env.WEBAPP_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "3. Check App Service status: \`az webapp show --name ${{ env.WEBAPP_NAME }} --query state\`" >> $GITHUB_STEP_SUMMARY
         fi
