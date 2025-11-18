@@ -112,6 +112,9 @@ console.log('🔧 Initializing CORS middleware...');
 app.use(cors(corsOptions));
 console.log('✅ CORS middleware initialized');
 
+// 追加のCORS対応 - Preflightリクエストを確実に処理
+app.options('*', cors(corsOptions));
+
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));
 
