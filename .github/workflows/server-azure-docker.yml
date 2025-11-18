@@ -64,25 +64,25 @@ jobs:
     - name: Validate Required Secrets
       run: |
         echo "🔍 Validating deployment secrets..."
-        
+
         # Azure Container Registry
         if [ -z "${{ secrets.ACR_LOGIN_SERVER }}" ] || [ -z "${{ secrets.ACR_USERNAME }}" ] || [ -z "${{ secrets.ACR_PASSWORD }}" ]; then
           echo "❌ Azure Container Registry secrets (ACR_LOGIN_SERVER, ACR_USERNAME, ACR_PASSWORD) are missing"
           exit 1
         fi
-        
+
         # Azure Resource Group
         if [ -z "${{ env.RESOURCE_GROUP }}" ]; then
           echo "❌ AZURE_RESOURCE_GROUP secret is missing"
           exit 1
         fi
-        
+
         # Application secrets
         if [ -z "${{ secrets.DATABASE_URL }}" ]; then
           echo "❌ DATABASE_URL secret is missing"
           exit 1
         fi
-        
+
         echo "✅ All required secrets validated"
 
     - name: Set up Docker Buildx
@@ -116,7 +116,7 @@ jobs:
     - name: Configure App Service Environment Variables
       run: |
         echo "🔧 Configuring App Service environment variables..."
-        
+
         az webapp config appsettings set \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --name ${{ env.WEBAPP_NAME }} \
@@ -146,7 +146,7 @@ jobs:
     - name: Deploy Docker Container to App Service
       run: |
         echo "🐳 Deploying Docker container to Azure App Service..."
-        
+
         az webapp config container set \
           --name ${{ env.WEBAPP_NAME }} \
           --resource-group ${{ env.RESOURCE_GROUP }} \
@@ -160,7 +160,7 @@ jobs:
     - name: Restart App Service
       run: |
         echo "🔄 Restarting App Service to pull and start new Docker image..."
-        
+
         az webapp restart \
           --name ${{ env.WEBAPP_NAME }} \
           --resource-group ${{ env.RESOURCE_GROUP }}
@@ -176,25 +176,25 @@ jobs:
       continue-on-error: true
       run: |
         echo "🏥 Verifying deployment health..."
-        
+
         MAX_RETRIES=10
         RETRY_INTERVAL=15
-        
+
         for attempt in $(seq 1 $MAX_RETRIES); do
           echo "🔍 Health check attempt $attempt/$MAX_RETRIES..."
-          
+
           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "${{ env.APP_URL }}/health" || echo "000")
-          
+
           if [ "$HTTP_CODE" = "200" ]; then
             echo "✅ Health check passed (HTTP $HTTP_CODE)"
             echo "🎉 Deployment successful and server is responding"
             exit 0
           fi
-          
+
           echo "⏳ Server not ready yet (HTTP $HTTP_CODE), retrying..."
           [ $attempt -lt $MAX_RETRIES ] && sleep $RETRY_INTERVAL
         done
-        
+
         echo "⚠️ Health check timeout after $MAX_RETRIES attempts"
         echo "📋 Check logs: az webapp log tail --name ${{ env.WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}"
 
@@ -212,7 +212,7 @@ jobs:
         echo "| Frontend URL | ${{ env.STATIC_WEB_APP_URL }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        
+
         if [ "${{ job.status }}" = "success" ]; then
           echo "### ✅ Deployment Successful" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
