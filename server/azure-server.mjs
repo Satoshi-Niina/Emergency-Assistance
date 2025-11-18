@@ -40,6 +40,7 @@ import bcrypt from 'bcryptjs';
 import session from 'express-session';
 import fs from 'fs';
 import Database from 'better-sqlite3';
+import OpenAI from 'openai';
 
 // ==== まず環境値（ログより前に宣言）=====
 // Azure Static Web Apps のデフォルトURL
@@ -140,6 +141,19 @@ const isOpenAIAvailable = OPENAI_API_KEY &&
 
 if (!isOpenAIAvailable) {
   console.warn('⚠️ OpenAI API key not configured - GPT features will use fallback responses');
+} else {
+  console.log('✅ OpenAI API key configured and available');
+}
+
+// OpenAIクライアント初期化
+let openaiClient = null;
+if (isOpenAIAvailable) {
+  try {
+    openaiClient = new OpenAI({ apiKey: OPENAI_API_KEY });
+    console.log('✅ OpenAI client initialized successfully');
+  } catch (error) {
+    console.error('❌ OpenAI client initialization failed:', error);
+  }
 }
 
 // バージョン情報（デプロイ確認用）
@@ -299,16 +313,38 @@ function initializeDatabase() {
     dbPool = new Pool({
       connectionString: databaseUrl,
       ssl: sslConfig,
-      max: 3, // 接続数をさらに減らす
-      idleTimeoutMillis: 5000, // アイドルタイムアウトを短く
-      connectionTimeoutMillis: 60000, // 接続タイムアウトを長く
-      query_timeout: 60000, // クエリタイムアウトを長く
-      statement_timeout: 60000, // ステートメントタイムアウトを長く
+      max: 10, // 接続数を増やす
+      min: 2, // 最小接続数を維持
+      idleTimeoutMillis: 30000, // アイドルタイムアウト30秒
+      connectionTimeoutMillis: 10000, // 接続タイムアウト10秒
+      query_timeout: 30000, // クエリタイムアウト30秒
+      statement_timeout: 30000, // ステートメントタイムアウト30秒
       keepAlive: true, // Keep-aliveを有効化
-      keepAliveInitialDelayMillis: 0, // Keep-alive初期遅延
+      keepAliveInitialDelayMillis: 10000, // Keep-alive初期遅延10秒
+      allowExitOnIdle: false, // プロセス終了を防ぐ
     });
 
     console.log('✅ Database pool initialized for Azure production');
+
+    // 接続プールをウォームアップ（複数接続を事前作成）
+    console.log('🔥 Warming up database connection pool...');
+    const warmupPromises = [];
+    for (let i = 0; i < 2; i++) {
+      warmupPromises.push(
+        dbPool.connect()
+          .then(client => {
+            console.log(`✅ Warmup connection ${i + 1} established`);
+            client.release();
+          })
+          .catch(err => {
+            console.error(`❌ Warmup connection ${i + 1} failed:`, err.message);
+          })
+      );
+    }
+
+    Promise.all(warmupPromises)
+      .then(() => console.log('✅ Connection pool warmup completed'))
+      .catch(() => console.warn('⚠️ Some warmup connections failed'));
 
     // データベース接続テスト
     dbPool.connect()
@@ -363,7 +399,7 @@ function initializeDatabase() {
 }
 
 // ユニバーサルデータベースクエリヘルパー
-async function dbQuery(sql, params = []) {
+async function dbQuery(sql, params = [], retries = 3) {
   if (sqliteDb) {
     // SQLite: 同期的にクエリを実行
     try {
@@ -384,14 +420,44 @@ async function dbQuery(sql, params = []) {
       throw error;
     }
   } else if (dbPool) {
-    // PostgreSQL: 非同期クエリ
-    const client = await dbPool.connect();
-    try {
-      const result = await client.query(sql, params);
-      return result;
-    } finally {
-      client.release();
+    // PostgreSQL: 非同期クエリ（リトライロジック付き）
+    let lastError;
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      let client;
+      try {
+        // タイムアウト付きで接続取得
+        const connectPromise = dbPool.connect();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Connection timeout')), 5000)
+        );
+
+        client = await Promise.race([connectPromise, timeoutPromise]);
+
+        // クエリ実行
+        const result = await client.query(sql, params);
+        return result;
+      } catch (error) {
+        lastError = error;
+        console.error(`❌ Database query attempt ${attempt}/${retries} failed:`, error.message);
+
+        // 接続エラーの場合はリトライ
+        if (attempt < retries && (error.message.includes('timeout') || error.message.includes('connect'))) {
+          console.log(`🔄 Retrying in ${attempt * 500}ms...`);
+          await new Promise(resolve => setTimeout(resolve, attempt * 500));
+          continue;
+        }
+        throw error;
+      } finally {
+        if (client) {
+          try {
+            client.release();
+          } catch (releaseError) {
+            console.error('❌ Error releasing client:', releaseError.message);
+          }
+        }
+      }
     }
+    throw lastError;
   } else {
     throw new Error('No database connection available');
   }
@@ -932,112 +998,179 @@ app.get('/api/troubleshooting/:id', (req, res) => {
   });
 });
 
-// 履歴詳細取得API（ハイブリッドモード対応 - JSONファイルから直接取得）
+// 履歴詳細取得API（BLOBストレージ優先 - 本番環境対応）
 app.get('/api/history/:id', async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`📋 履歴アイテム取得リクエスト: ${id}`);
 
-    const projectRoot = path.resolve(__dirname, '..');
-    const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
+    // BLOBストレージから取得を試行（本番環境優先）
+    const blobServiceClient = getBlobServiceClient();
+    if (blobServiceClient) {
+      try {
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        const prefix = norm('exports/');
 
-    if (!fs.existsSync(exportsDir)) {
-      return res.status(404).json({
-        error: 'not_found',
-        message: 'エクスポートディレクトリが見つかりません'
-      });
-    }
+        console.log(`🔍 BLOBストレージから検索: prefix=${prefix}, id=${id}`);
 
-    // IDに一致するJSONファイルを検索
-    const files = fs.readdirSync(exportsDir);
-    let foundFile = null;
-    let foundData = null;
+        for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+          if (!blob.name.endsWith('.json') || blob.name.includes('.backup.')) continue;
 
-    for (const file of files) {
-      if (!file.endsWith('.json') || file.includes('.backup.')) continue;
+          const fileName = blob.name.split('/').pop();
+          const fileNameWithoutExt = fileName.replace('.json', '');
+          const uuidMatch = fileNameWithoutExt.match(/_([a-f0-9-]{36})_/);
+          const fileId = uuidMatch ? uuidMatch[1] : fileNameWithoutExt;
 
-      const fileName = file.replace('.json', '');
-      const uuidMatch = fileName.match(/_([a-f0-9-]{36})_/);
-      const fileId = uuidMatch ? uuidMatch[1] : fileName;
+          if (fileId === id || fileNameWithoutExt === id || fileName.includes(id)) {
+            console.log(`✅ BLOBで見つかりました: ${blob.name}`);
 
-      if (fileId === id || fileName === id || file.includes(id)) {
-        try {
-          const filePath = path.join(exportsDir, file);
-          const content = fs.readFileSync(filePath, { encoding: 'utf8' });
-          foundData = JSON.parse(content);
-          foundFile = file;
-          break;
-        } catch (error) {
-          console.error(`ファイル読み込みエラー: ${file}`, error);
+            const blockBlobClient = containerClient.getBlockBlobClient(blob.name);
+            const downloadResponse = await blockBlobClient.download();
+
+            const chunks = [];
+            for await (const chunk of downloadResponse.readableStreamBody) {
+              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            }
+            const content = Buffer.concat(chunks).toString('utf-8').replace(/^\uFEFF/, '');
+            const foundData = JSON.parse(content);
+            const foundFile = fileName;
+
+            // 以降の処理は同じ
+            const savedImages = foundData.savedImages || foundData.images || [];
+            console.log('🖼️ 取得した画像データ:', {
+              id,
+              fileName: foundFile,
+              savedImagesLength: savedImages.length
+            });
+
+            const convertedItem = {
+              id: id,
+              type: 'fault_history',
+              fileName: foundFile,
+              chatId: foundData.chatId || id,
+              userId: foundData.userId || '',
+              exportType: foundData.exportType || 'blob_stored',
+              exportTimestamp: foundData.createdAt || new Date().toISOString(),
+              messageCount: foundData.metadata?.total_messages || 0,
+              machineType: foundData.machineType || '',
+              machineNumber: foundData.machineNumber || '',
+              machineInfo: {
+                selectedMachineType: '',
+                selectedMachineNumber: '',
+                machineTypeName: foundData.machineType || '',
+                machineNumber: foundData.machineNumber || '',
+              },
+              title: foundData.title || '',
+              incidentTitle: foundData.title || '',
+              problemDescription: foundData.problemDescription || foundData.description || '',
+              extractedComponents: foundData.extractedComponents || [],
+              extractedSymptoms: foundData.extractedSymptoms || [],
+              possibleModels: foundData.possibleModels || [],
+              conversationHistory: foundData.conversationHistory || foundData.conversation_history || [],
+              metadata: foundData.metadata || {},
+              savedImages: savedImages,
+              images: savedImages,
+              fileSize: Buffer.byteLength(content),
+              lastModified: foundData.lastModified || foundData.updateHistory?.[0]?.timestamp || foundData.createdAt,
+              createdAt: foundData.createdAt,
+              jsonData: {
+                ...foundData,
+                savedImages: savedImages,
+              },
+              source: 'blob_storage'
+            };
+
+            console.log(`✅ 履歴アイテム取得完了(BLOB): ${id}`);
+            return res.json(convertedItem);
+          }
         }
+
+        console.log(`❌ BLOBで見つかりませんでした: ${id}`);
+      } catch (blobError) {
+        console.error('❌ BLOBストレージエラー:', blobError);
       }
     }
 
-    if (!foundData) {
-      console.log(`❌ 履歴が見つかりません: ${id}`);
-      return res.status(404).json({
-        error: 'not_found',
-        message: '指定された履歴が見つかりません'
-      });
-    }
+    // フォールバック: ローカルファイルシステム（開発環境のみ）
+    const projectRoot = path.resolve(__dirname, '..');
+    const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
 
-    // 画像データをJSONから取得（savedImages優先）
-    const savedImages = foundData.savedImages || foundData.images || [];
-    console.log('🖼️ 取得した画像データ:', {
-      id,
-      fileName: foundFile,
-      savedImagesLength: savedImages.length,
-      savedImages: savedImages
+    if (fs.existsSync(exportsDir)) {
+      const files = fs.readdirSync(exportsDir);
+      let foundFile = null;
+      let foundData = null;
+
+      for (const file of files) {
+        if (!file.endsWith('.json') || file.includes('.backup.')) continue;
+
+        const fileName = file.replace('.json', '');
+        const uuidMatch = fileName.match(/_([a-f0-9-]{36})_/);
+        const fileId = uuidMatch ? uuidMatch[1] : fileName;
+
+        if (fileId === id || fileName === id || file.includes(id)) {
+          try {
+            const filePath = path.join(exportsDir, file);
+            const content = fs.readFileSync(filePath, { encoding: 'utf8' });
+            foundData = JSON.parse(content);
+            foundFile = file;
+            break;
+          } catch (error) {
+            console.error(`ファイル読み込みエラー: ${file}`, error);
+          }
+        }
+      }
+
+      if (foundData) {
+        console.log(`✅ ローカルファイルで見つかりました: ${foundFile}`);
+
+        const savedImages = foundData.savedImages || foundData.images || [];
+        const convertedItem = {
+          id: id,
+          type: 'fault_history',
+          fileName: foundFile,
+          chatId: foundData.chatId || id,
+          userId: foundData.userId || '',
+          exportType: foundData.exportType || 'file_stored',
+          exportTimestamp: foundData.createdAt || new Date().toISOString(),
+          messageCount: foundData.metadata?.total_messages || 0,
+          machineType: foundData.machineType || '',
+          machineNumber: foundData.machineNumber || '',
+          machineInfo: {
+            selectedMachineType: '',
+            selectedMachineNumber: '',
+            machineTypeName: foundData.machineType || '',
+            machineNumber: foundData.machineNumber || '',
+          },
+          title: foundData.title || '',
+          incidentTitle: foundData.title || '',
+          problemDescription: foundData.problemDescription || foundData.description || '',
+          extractedComponents: foundData.extractedComponents || [],
+          extractedSymptoms: foundData.extractedSymptoms || [],
+          possibleModels: foundData.possibleModels || [],
+          conversationHistory: foundData.conversationHistory || foundData.conversation_history || [],
+          metadata: foundData.metadata || {},
+          savedImages: savedImages,
+          images: savedImages,
+          fileSize: 0,
+          lastModified: foundData.lastModified || foundData.updateHistory?.[0]?.timestamp || foundData.createdAt,
+          createdAt: foundData.createdAt,
+          jsonData: {
+            ...foundData,
+            savedImages: savedImages,
+          },
+        };
+
+        console.log(`✅ 履歴アイテム取得完了: ${id} (画像: ${savedImages.length}件)`);
+        res.json(convertedItem);
+      } catch (error) {
+        console.error('❌ 履歴詳細取得エラー:', error);
+        res.status(500).json({
+          success: false,
+          error: '履歴の取得に失敗しました',
+          details: error.message
+        });
+      }
     });
-
-    // フロントエンドが期待する形式に変換
-    const convertedItem = {
-      id: id,
-      type: 'fault_history',
-      fileName: foundFile,
-      chatId: foundData.chatId || id,
-      userId: foundData.userId || '',
-      exportType: foundData.exportType || 'file_stored',
-      exportTimestamp: foundData.createdAt || new Date().toISOString(),
-      messageCount: foundData.metadata?.total_messages || 0,
-      machineType: foundData.machineType || '',
-      machineNumber: foundData.machineNumber || '',
-      machineInfo: {
-        selectedMachineType: '',
-        selectedMachineNumber: '',
-        machineTypeName: foundData.machineType || '',
-        machineNumber: foundData.machineNumber || '',
-      },
-      title: foundData.title || '',
-      incidentTitle: foundData.title || '',
-      problemDescription: foundData.problemDescription || foundData.description || '',
-      extractedComponents: foundData.extractedComponents || [],
-      extractedSymptoms: foundData.extractedSymptoms || [],
-      possibleModels: foundData.possibleModels || [],
-      conversationHistory: foundData.conversationHistory || foundData.conversation_history || [],
-      metadata: foundData.metadata || {},
-      savedImages: savedImages,
-      images: savedImages,
-      fileSize: 0,
-      lastModified: foundData.lastModified || foundData.updateHistory?.[0]?.timestamp || foundData.createdAt,
-      createdAt: foundData.createdAt,
-      jsonData: {
-        ...foundData,
-        savedImages: savedImages,
-      },
-    };
-
-    console.log(`✅ 履歴アイテム取得完了: ${id} (画像: ${savedImages.length}件)`);
-    res.json(convertedItem);
-  } catch (error) {
-    console.error('❌ 履歴詳細取得エラー:', error);
-    res.status(500).json({
-      success: false,
-      error: '履歴の取得に失敗しました',
-      details: error.message
-    });
-  }
-});
 
 // 16. 履歴API（機種・機械番号データ）
 app.get('/api/history/machine-data', async (req, res) => {
@@ -1520,6 +1653,22 @@ app.delete('/api/machines/machine-types/:id', async (req, res) => {
     });
   } catch (error) {
     console.error('[api/machines] 機種削除エラー:', error);
+
+    // 外部キー制約エラーの判定
+    const isForeignKeyError = error.code === '23503' ||
+      error.message.includes('foreign key') ||
+      error.message.includes('violates foreign key constraint');
+
+    if (isForeignKeyError) {
+      return res.status(409).json({
+        success: false,
+        error: 'この機種に紐づく機械番号が存在するため削除できません',
+        details: '先に紐づいている機械番号を削除してください',
+        errorCode: 'FOREIGN_KEY_CONSTRAINT',
+        timestamp: new Date().toISOString()
+      });
+    }
+
     res.status(500).json({
       success: false,
       error: '機種の削除に失敗しました',
@@ -1783,6 +1932,22 @@ app.delete('/api/machines/:id', async (req, res) => {
     });
   } catch (error) {
     console.error('[api/machines] 機械番号削除エラー:', error);
+
+    // 外部キー制約エラーの判定
+    const isForeignKeyError = error.code === '23503' ||
+      error.message.includes('foreign key') ||
+      error.message.includes('violates foreign key constraint');
+
+    if (isForeignKeyError) {
+      return res.status(409).json({
+        success: false,
+        error: 'この機械番号に紐づくデータが存在するため削除できません',
+        details: '先に関連データを削除してください',
+        errorCode: 'FOREIGN_KEY_CONSTRAINT',
+        timestamp: new Date().toISOString()
+      });
+    }
+
     res.status(500).json({
       success: false,
       error: '機械番号の削除に失敗しました',
@@ -2386,6 +2551,102 @@ app.post('/api/chat-history', (req, res) => {
   });
 });
 
+// チャットエクスポートAPI（BLOBストレージに保存）
+app.post('/api/chat/export', async (req, res) => {
+  try {
+    const exportData = req.body;
+    console.log('[api/chat/export] エクスポートリクエスト:', {
+      chatId: exportData.chatId,
+      title: exportData.title,
+      hasImages: !!exportData.savedImages
+    });
+
+    // ファイル名を生成
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const chatId = exportData.chatId || `chat-${Date.now()}`;
+    const titleSlug = (exportData.title || 'untitled').replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '_').substring(0, 50);
+    const filename = `${titleSlug}_${chatId}_${timestamp}.json`;
+
+    // メタデータを追加
+    const dataToSave = {
+      ...exportData,
+      exportTimestamp: new Date().toISOString(),
+      exportType: 'blob_stored',
+      version: '1.0'
+    };
+
+    // BLOBストレージに保存
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      // フォールバック: ローカルファイルシステム（開発環境のみ）
+      const projectRoot = path.resolve(__dirname, '..');
+      const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
+
+      if (!fs.existsSync(exportsDir)) {
+        fs.mkdirSync(exportsDir, { recursive: true });
+      }
+
+      const filePath = path.join(exportsDir, filename);
+      fs.writeFileSync(filePath, JSON.stringify(dataToSave, null, 2), 'utf8');
+
+      console.log(`✅ ローカルファイルに保存: ${filename}`);
+      return res.json({
+        success: true,
+        filename: filename,
+        filePath: filePath,
+        storage: 'local_file',
+        chatId: chatId,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    try {
+      const containerClient = blobServiceClient.getContainerClient(containerName);
+      const blobName = norm(`exports/${filename}`);
+      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+      const jsonContent = JSON.stringify(dataToSave, null, 2);
+      await blockBlobClient.upload(
+        jsonContent,
+        Buffer.byteLength(jsonContent),
+        {
+          blobHTTPHeaders: {
+            blobContentType: 'application/json; charset=utf-8'
+          },
+          metadata: {
+            chatId: chatId,
+            title: exportData.title || 'untitled',
+            exportDate: new Date().toISOString()
+          }
+        }
+      );
+
+      console.log(`✅ BLOBストレージに保存: ${blobName}`);
+
+      res.json({
+        success: true,
+        filename: filename,
+        blobName: blobName,
+        storage: 'blob_storage',
+        chatId: chatId,
+        url: blockBlobClient.url,
+        timestamp: new Date().toISOString()
+      });
+    } catch (blobError) {
+      console.error('[api/chat/export] BLOBストレージエラー:', blobError);
+      throw blobError;
+    }
+  } catch (error) {
+    console.error('[api/chat/export] エクスポートエラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'チャットのエクスポートに失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // 履歴データ取得API
 app.get('/api/history', async (req, res) => {
   try {
@@ -2447,6 +2708,190 @@ app.get('/api/history', async (req, res) => {
     res.status(500).json({
       success: false,
       error: '履歴データの取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 履歴ファイル一覧取得API（BLOBストレージ優先）
+app.get('/api/history/export-list', async (req, res) => {
+  try {
+    console.log('[api/history/export-list] 履歴ファイル一覧取得リクエスト');
+
+    const items = [];
+
+    // BLOBストレージから取得（本番環境優先）
+    const blobServiceClient = getBlobServiceClient();
+    if (blobServiceClient) {
+      try {
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        const prefix = norm('exports/');
+
+        console.log(`🔍 BLOBストレージから一覧取得: prefix=${prefix}`);
+
+        for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+          if (!blob.name.endsWith('.json') || blob.name.includes('.backup.')) continue;
+
+          const fileName = blob.name.split('/').pop();
+          const fileNameWithoutExt = fileName.replace('.json', '');
+          const uuidMatch = fileNameWithoutExt.match(/_([a-f0-9-]{36})_/);
+          const fileId = uuidMatch ? uuidMatch[1] : fileNameWithoutExt;
+
+          items.push({
+            id: fileId,
+            fileName: fileName,
+            blobName: blob.name,
+            lastModified: blob.properties.lastModified,
+            size: blob.properties.contentLength,
+            source: 'blob_storage'
+          });
+        }
+
+        console.log(`✅ BLOBから ${items.length} 件取得`);
+      } catch (blobError) {
+        console.error('❌ BLOBストレージエラー:', blobError);
+      }
+    }
+
+    // フォールバック: ローカルファイルシステム（開発環境のみ）
+    if (items.length === 0) {
+      const projectRoot = path.resolve(__dirname, '..');
+      const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
+
+      if (fs.existsSync(exportsDir)) {
+        try {
+          const files = fs.readdirSync(exportsDir);
+          for (const file of files) {
+            if (!file.endsWith('.json') || file.includes('.backup.')) continue;
+
+            const fileNameWithoutExt = file.replace('.json', '');
+            const uuidMatch = fileNameWithoutExt.match(/_([a-f0-9-]{36})_/);
+            const fileId = uuidMatch ? uuidMatch[1] : fileNameWithoutExt;
+
+            const filePath = path.join(exportsDir, file);
+            const stats = fs.statSync(filePath);
+
+            items.push({
+              id: fileId,
+              fileName: file,
+              lastModified: stats.mtime,
+              size: stats.size,
+              source: 'local_file'
+            });
+          }
+
+          console.log(`✅ ローカルから ${items.length} 件取得`);
+        } catch (error) {
+          console.error('[api/history/export-list] ローカルファイル読み込みエラー:', error);
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      data: items,
+      total: items.length,
+      source: items.length > 0 ? items[0].source : 'none',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/history/export-list] エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '履歴ファイル一覧の取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 履歴ファイル一覧取得API（BLOBストレージ優先）
+app.get('/api/history/export-list', async (req, res) => {
+  try {
+    console.log('[api/history/export-list] 履歴ファイル一覧取得リクエスト');
+
+    const items = [];
+
+    // BLOBストレージから取得（本番環境優先）
+    const blobServiceClient = getBlobServiceClient();
+    if (blobServiceClient) {
+      try {
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        const prefix = norm('exports/');
+
+        console.log(`🔍 BLOBストレージから一覧取得: prefix=${prefix}`);
+
+        for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+          if (!blob.name.endsWith('.json') || blob.name.includes('.backup.')) continue;
+
+          const fileName = blob.name.split('/').pop();
+          const fileNameWithoutExt = fileName.replace('.json', '');
+          const uuidMatch = fileNameWithoutExt.match(/_([a-f0-9-]{36})_/);
+          const fileId = uuidMatch ? uuidMatch[1] : fileNameWithoutExt;
+
+          items.push({
+            id: fileId,
+            fileName: fileName,
+            blobName: blob.name,
+            lastModified: blob.properties.lastModified,
+            size: blob.properties.contentLength,
+            source: 'blob_storage'
+          });
+        }
+
+        console.log(`✅ BLOBから ${items.length} 件取得`);
+      } catch (blobError) {
+        console.error('❌ BLOBストレージエラー:', blobError);
+      }
+    }
+
+    // フォールバック: ローカルファイルシステム（開発環境のみ）
+    if (items.length === 0) {
+      const projectRoot = path.resolve(__dirname, '..');
+      const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
+
+      if (fs.existsSync(exportsDir)) {
+        try {
+          const files = fs.readdirSync(exportsDir);
+          for (const file of files) {
+            if (!file.endsWith('.json') || file.includes('.backup.')) continue;
+
+            const fileNameWithoutExt = file.replace('.json', '');
+            const uuidMatch = fileNameWithoutExt.match(/_([a-f0-9-]{36})_/);
+            const fileId = uuidMatch ? uuidMatch[1] : fileNameWithoutExt;
+
+            const filePath = path.join(exportsDir, file);
+            const stats = fs.statSync(filePath);
+
+            items.push({
+              id: fileId,
+              fileName: file,
+              lastModified: stats.mtime,
+              size: stats.size,
+              source: 'local_file'
+            });
+          }
+
+          console.log(`✅ ローカルから ${items.length} 件取得`);
+        } catch (error) {
+          console.error('[api/history/export-list] ローカルファイル読み込みエラー:', error);
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      data: items,
+      total: items.length,
+      source: items.length > 0 ? items[0].source : 'none',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/history/export-list] エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '履歴ファイル一覧の取得に失敗しました',
       details: error.message,
       timestamp: new Date().toISOString()
     });
@@ -2843,41 +3288,67 @@ app.post('/api/chatgpt', async (req, res) => {
       });
     }
 
-    // OpenAI APIを使用した実際の処理 - 一時的に無効化（EISDIR回避）
+    // OpenAI APIを使用した実際の処理
     try {
-      // const { processOpenAIRequest } = await import('./lib/openai.ts');
-      // const response = await processOpenAIRequest(text, useOnlyKnowledgeBase);
+      if (!openaiClient) {
+        throw new Error('OpenAI client not initialized');
+      }
 
-      // 一時的なフォールバック応答
-      const response = `申し訳ございませんが、現在AIアシスタント機能は一時的に利用できません。お困りの件について、以下の基本的な緊急時対応手順をご参考ください：
+      console.log('[api/chatgpt] Sending request to OpenAI...');
 
-1. 緊急事態の場合は、まず119番（消防・救急）または110番（警察）に連絡してください。
-2. 安全な場所に避難してください。
-3. 必要に応じて、近くの避難所や安全な建物に移動してください。
+      // システムプロンプトを構築
+      const systemPrompt = `あなたは鉄道車両の保守・点検を支援するAIアシスタントです。
+ユーザーからの質問に対して、専門的かつ分かりやすく回答してください。
+安全性を最優先に考え、緊急時には適切な対応手順を提示してください。`;
 
-システムの復旧をお待ちください。`;
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: text }
+      ];
+
+      const completion = await openaiClient.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 1000
+      });
+
+      const response = completion.choices[0]?.message?.content || '応答を生成できませんでした。';
+
+      console.log('[api/chatgpt] OpenAI response received:', {
+        responseLength: response.length,
+        tokensUsed: completion.usage?.total_tokens
+      });
 
       res.json({
         success: true,
         response: response,
-        message: 'フォールバック応答を返しました（AIサービス一時無効）',
+        message: 'GPT応答を取得しました',
         details: {
-          inputText: text || 'no text provided',
+          inputText: text?.substring(0, 100) + '...',
           useOnlyKnowledgeBase: useOnlyKnowledgeBase,
           environment: 'azure-production',
-          model: 'gpt-3.5-turbo'
+          model: 'gpt-3.5-turbo',
+          tokensUsed: completion.usage?.total_tokens || 0
         },
         timestamp: new Date().toISOString()
       });
-    } catch (importError) {
-      console.error('[api/chatgpt] Import error:', importError);
+    } catch (apiError) {
+      console.error('[api/chatgpt] OpenAI API error:', apiError);
+
+      // エラーの詳細をログ出力
+      if (apiError.response) {
+        console.error('API Error Response:', apiError.response.status, apiError.response.data);
+      }
+
       res.json({
-        success: true,
-        response: 'AI支援機能は現在利用できません。しばらくしてから再度お試しください。',
-        message: 'OpenAI ライブラリの読み込みに失敗しました',
+        success: false,
+        response: 'AI応答の生成中にエラーが発生しました。しばらくしてから再度お試しください。',
+        message: 'OpenAI API呼び出しエラー',
         details: {
           environment: 'azure-production',
-          error: 'library_import_failed'
+          error: apiError.message,
+          errorType: apiError.type || 'unknown'
         },
         timestamp: new Date().toISOString()
       });
