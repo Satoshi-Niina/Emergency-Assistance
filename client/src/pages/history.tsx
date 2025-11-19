@@ -1638,45 +1638,18 @@ export default function HistoryPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={async () => {
-                                // 編集開始時にサーバーから最新データを取得
-                                try {
-                                  let itemId = item.id || item.chatId;
-                                  if (!itemId) {
-                                    alert('アイテムIDが見つかりません');
-                                    return;
-                                  }
+                              onClick={() => {
+                                // 既に読み込まれている一覧データから該当アイテムを使用
+                                console.log('📝 編集開始:', item);
+                                console.log('📝 item.machineType:', item.machineType);
+                                console.log('📝 item.machineNumber:', item.machineNumber);
+                                console.log('📝 item.jsonData:', item.jsonData);
 
-                                  // export_プレフィックスがある場合は除去
-                                  if (itemId.startsWith('export_')) {
-                                    itemId = itemId.replace('export_', '');
-                                    if (itemId.endsWith('.json')) {
-                                      itemId = itemId.replace('.json', '');
-                                    }
-                                    const parts = itemId.split('_');
-                                    if (parts.length >= 2 && parts[1].match(/^[a-f0-9-]+$/)) {
-                                      itemId = parts[1];
-                                    }
-                                  }
-
-                                  // サーバーから最新データを取得
-                                  const response = await fetch(`/api/history/${itemId}`);
-                                  if (!response.ok) {
-                                    throw new Error('履歴データの取得に失敗しました');
-                                  }
-
-                                  const latestItem = await response.json();
-                                  console.log('📥 編集用に取得した最新データ:', latestItem);
-
-                                  // 元のデータをディープコピーで保存
-                                  const originalItem = JSON.parse(JSON.stringify(latestItem));
-                                  setEditingItem(latestItem);
-                                  setOriginalEditingItem(originalItem);
-                                  setShowEditDialog(true);
-                                } catch (error) {
-                                  console.error('編集データ取得エラー:', error);
-                                  alert('最新データの取得に失敗しました');
-                                }
+                                // 元のデータをディープコピーで保存
+                                const originalItem = JSON.parse(JSON.stringify(item));
+                                setEditingItem(item);
+                                setOriginalEditingItem(originalItem);
+                                setShowEditDialog(true);
                               }}
                               className="px-3 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                               style={{ height: '42px' }}

@@ -2805,6 +2805,10 @@ app.get('/api/history', async (req, res) => {
       });
     }
 
+    // PostgreSQLとSQLiteで異なるプレースホルダーを使用
+    const isPostgres = !!dbPool;
+    let paramIndex = 1;
+
     // 履歴データを取得
     let query = `
       SELECT
@@ -2821,16 +2825,16 @@ app.get('/api/history', async (req, res) => {
     let params = [];
 
     if (machineType) {
-      query += ` AND h.machine_type = ?`;
+      query += ` AND h.machine_type = ${isPostgres ? `$${paramIndex++}` : '?'}`;
       params.push(machineType);
     }
 
     if (machineNumber) {
-      query += ` AND h.machine_number = ?`;
+      query += ` AND h.machine_number = ${isPostgres ? `$${paramIndex++}` : '?'}`;
       params.push(machineNumber);
     }
 
-    query += ` ORDER BY h.created_at DESC LIMIT ? OFFSET ?`;
+    query += ` ORDER BY h.created_at DESC LIMIT ${isPostgres ? `$${paramIndex++}` : '?'} OFFSET ${isPostgres ? `$${paramIndex++}` : '?'}`;
     params.push(parseInt(limit), parseInt(offset));
 
     const result = await dbQuery(query, params);
@@ -3549,10 +3553,146 @@ app.get('/api/_diag/status', (req, res) => {
     success: true,
     status: 'healthy',
     environment: 'azure-production',
-    apiEndpoints: 29,
+    apiEndpoints: 31,
     timestamp: new Date().toISOString(),
-    message: '全29個のAPIエンドポイントが正常に動作しています'
+    message: '全31個のAPIエンドポイントが正常に動作しています'
   });
+});
+
+// 30. フロー生成エンドポイント
+app.post('/api/emergency-flow/generate', async (req, res) => {
+  try {
+    const { keyword } = req.body;
+
+    if (!keyword || typeof keyword !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'キーワードが必要です',
+      });
+    }
+
+    console.log(`🔄 フロー生成開始: キーワード=${keyword}`);
+
+    // OpenAIクライアントが利用可能かチェック
+    if (!openaiClient) {
+      return res.status(503).json({
+        success: false,
+        error: 'OpenAI APIが利用できません。',
+        details: 'OpenAI client not available',
+      });
+    }
+
+    // AI支援設定のデフォルト値
+    const toneInstruction = '親しみやすく、わかりやすい表現で説明してください。';
+
+    const completion = await openaiClient.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        {
+          role: 'system',
+          content: `あなたは鉄道保守用車（軌道モーターカー）の故障診断と応急処置の専門家です。
+以下の形式で一問一答形式の詳細な応急処置フローを生成してください：
+
+**必須フォーマット:**
+1. タイトル：[具体的な問題名]
+
+2. ステップ形式（一問一答）:
+   各ステップは1つの質問または1つの作業指示にしてください。
+
+   **通常ステップ（step）:**
+   手順1：[1つの具体的な質問または作業指示]
+   説明：[簡潔な説明と実施方法]
+
+   **条件分岐ステップ（decision）:**
+   条件分岐：[判断が必要な状況]
+   説明：[判断基準の説明]
+   選択肢1：[選択肢1の内容]
+   選択肢2：[選択肢2の内容]
+   選択肢3：[選択肢3の内容]
+   選択肢4：[選択肢4の内容]
+
+**重要な要求事項:**
+- ステップは細かく分ける（1ステップ=1つの質問または1つの作業）
+- 各ステップは簡潔に（50-100文字程度）
+- 判断や条件分岐が必要な箇所では必ず条件分岐ステップを作成
+- 安全確認は最初のステップに必ず含める
+${toneInstruction}`,
+        },
+        {
+          role: 'user',
+          content: `以下の故障状況に対する応急処置フローを一問一答形式で生成してください：${keyword}`,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 2000,
+    });
+
+    const generatedText = completion.choices[0]?.message?.content;
+    if (!generatedText) {
+      throw new Error('フロー生成に失敗しました');
+    }
+
+    console.log('✅ フロー生成成功');
+
+    res.json({
+      success: true,
+      data: {
+        flowText: generatedText,
+        keyword: keyword,
+        generatedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('❌ フロー生成エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'フロー生成に失敗しました',
+      details: error.message,
+    });
+  }
+});
+
+// 31. フロー一覧取得エンドポイント
+app.get('/api/emergency-flow/list', async (req, res) => {
+  try {
+    console.log('[api/emergency-flow/list] フロー一覧取得リクエスト');
+
+    const flows = [];
+    const blobServiceClient = getBlobServiceClient();
+
+    if (blobServiceClient) {
+      try {
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        const prefix = norm('emergency-flows/');
+
+        for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+          if (blob.name.endsWith('.json')) {
+            flows.push({
+              id: path.basename(blob.name, '.json'),
+              name: blob.name,
+              lastModified: blob.properties.lastModified,
+              size: blob.properties.contentLength,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('BLOB読み込みエラー:', error);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: flows,
+      total: flows.length,
+    });
+  } catch (error) {
+    console.error('❌ フロー一覧取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'フロー一覧の取得に失敗しました',
+      details: error.message,
+    });
+  }
 });
 
 // ===== 静的配信（Vite出力） & SPA =====
