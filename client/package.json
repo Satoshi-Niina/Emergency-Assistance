@@ -13,7 +13,7 @@
     "build": "vite build",
     "postbuild": "echo Build completed with timestamp: $(date)",
     "preview": "vite preview",
-    "clean": "rm -rf dist || rmdir /s /q dist"
+    "clean": "rimraf dist"
   },
   "dependencies": {
     "@hookform/resolvers": "^2.9.11",

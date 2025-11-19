@@ -1,4 +1,4 @@
-// 画像データベ�EスAPI用のユーチE��リチE��関数
+// 画像データベ�EスAPI用のユーティングーリティングー関数
 import React from 'react';
 
 // API設宁E- VITE_API_BASE_URLのみを使用
@@ -16,7 +16,7 @@ export interface ImageData {
   createdAt: string;
 }
 
-// 画像データをアチE�EローチE
+// 画像データをアティング�Eローティング
 export async function uploadImage(
   file: File,
   category?: string,
@@ -48,12 +48,12 @@ export async function uploadImage(
     } else {
       return {
         success: false,
-        error: result.error || 'アチE�Eロードに失敗しました',
+        error: result.error || 'アティング�Eロードに失敗しました',
       };
     }
   } catch (error) {
-    console.error('画像アチE�Eロードエラー:', error);
-    return { success: false, error: 'アチE�Eロード中にエラーが発生しました' };
+    console.error('画像アティング�Eロードエラー:', error);
+    return { success: false, error: 'アティング�Eロード中にエラーが発生しました' };
   }
 }
 
@@ -61,24 +61,24 @@ export async function uploadImage(
 import React, { useState, useEffect } from 'react';
 import { storage } from './api';
 
-// 画像データを取得！EAS URL使用�E�E
+// 画像データを取得！EAS URL使用�E�E
 export async function getImageUrl(imageId: string): Promise<string> {
   try {
-    // 画像パスを正規化�E�バチE��スラチE��ュをスラチE��ュに統一�E�E
+    // 画像パスを正規化�E�ティングEースティングEーュをスティングEーュに統一�E�E
     const normalizedPath = imageId.replace(/\\/g, '/');
-    
+
     // SAS URLを取征E
     const response = await storage.getImageUrl(normalizedPath);
     return response.url;
   } catch (error) {
     console.error('Failed to get image SAS URL:', error);
-    // フォールバック: 従来のAPIエンド�EインチE
+    // フォールバック: 従来のAPIエンド�Eインティング
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
     return `${API_BASE_URL}/api/images/${imageId}`;
   }
 }
 
-// カチE��リ別の画像一覧を取征E
+// カティングーリ別の画像一覧を取征E
 export async function getImagesByCategory(
   category: string
 ): Promise<ImageData[]> {
@@ -132,14 +132,14 @@ export async function deleteImage(imageId: string): Promise<boolean> {
   }
 }
 
-// ファイルをBase64エンコーチE
+// ファイルをBase64エンコーティング
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = () => {
       const result = reader.result as string;
-      // data:image/jpeg;base64, の部刁E��除去
+      // data:image/jpeg;base64, の部刁Eー除去
       const base64 = result.split(',')[1];
       resolve(base64);
     };
@@ -147,7 +147,7 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-// Reactコンポ�Eネント用の画像表示コンポ�Eネント！EAS URL対応！E
+// Reactコンポ�Eネント用の画像表示コンポ�Eネント！EAS URL対応！E
 export function DatabaseImage({
   imageId,
   alt,

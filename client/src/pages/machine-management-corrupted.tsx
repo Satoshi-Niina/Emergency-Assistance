@@ -184,10 +184,10 @@ export default function MachineManagementPage() {
       const machinesResult = await machinesResponse.json();
       console.log('機械APIレスポンス:', machinesResult);
       if (machinesResult.success) {
-        // APIレスポンス形式に対応！EachinesキーにチE�Eタが�EってぁE���E�E        const machinesData = machinesResult.machines || machinesResult.data || [];
-        console.log('機械チE�Eタ:', machinesData);
+        // APIレスポンス形式に対応！Eachinesキーにシューティングが�EってぁEー�E�E        const machinesData = machinesResult.machines || machinesResult.data || [];
+        console.log('機械シューティング:', machinesData);
 
-        // チE�Eタ形式を統一�E�Eachine_type_nameフィールドを追加�E�E        const formattedMachines = machinesData.map((machine: any) => ({
+        // シューティング形式を統一�E�Eachine_type_nameフィールドを追加�E�E        const formattedMachines = machinesData.map((machine: any) => ({
         id: machine.id,
           machine_number: machine.machine_number,
             machine_type_id: machine.machine_type_id,
@@ -197,11 +197,11 @@ export default function MachineManagementPage() {
       setMachines(formattedMachines);
     }
     } catch (error) {
-    console.error('チE�Eタ取得エラー:', error);
+    console.error('シューティング取得エラー:', error);
     setError(error instanceof Error ? error : new Error('Unknown error'));
     toast({
       title: 'エラー',
-      description: 'チE�Eタの取得に失敗しました',
+      description: 'シューティングの取得に失敗しました',
       variant: 'destructive',
     });
   } finally {
@@ -241,14 +241,14 @@ try {
     console.log('機種保存�E劁E', result);
     toast({
       title: editingType ? '機種を更新しました' : '機種を追加しました',
-      description: `${newTypeName} が正常に処琁E��れました`,
+      description: `${newTypeName} が正常に処琁Eーれました`,
     });
     setNewTypeName('');
     setEditingType(null);
     setIsTypeDialogOpen(false);
-    console.log('チE�Eタ再取得を開姁E..');
+    console.log('シューティング再取得を開姁E..');
     await fetchData();
-    console.log('チE�Eタ再取得完亁E);
+    console.log('シューティング再取得完亁E);
       } else {
     const errorText = await response.text();
     console.error('機種保存失敁E', response.status, errorText);
@@ -297,7 +297,7 @@ try {
       title: editingMachine
         ? '機械番号を更新しました'
         : '機械番号を追加しました',
-      description: `${newMachineNumber} が正常に処琁E��れました`,
+      description: `${newMachineNumber} が正常に処琁Eーれました`,
     });
     setNewMachineNumber('');
     setSelectedMachineType('');
@@ -321,7 +321,7 @@ try {
 const handleTypeDelete = async (typeId: string, typeName: string) => {
   if (
     !confirm(
-      `機種、E{typeName}」を削除してもよろしぁE��すか�E�\n関連する機械番号も削除されます。`
+      `機種、E{typeName}」を削除してもよろしぁEーすか�E�\n関連する機械番号も削除されます。`
     )
   )
     return;
@@ -367,7 +367,7 @@ const handleMachineDelete = async (
   machineId: string,
   machineNumber: string
 ) => {
-  if (!confirm(`機械番号、E{machineNumber}」を削除してもよろしぁE��すか�E�`))
+  if (!confirm(`機械番号、E{machineNumber}」を削除してもよろしぁEーすか�E�`))
     return;
 
   try {
@@ -406,7 +406,7 @@ const handleMachineDelete = async (
   }
 };
 
-// 編雁E��姁E  const handleEditType = (type: MachineType) => {
+// 編雁Eー姁E  const handleEditType = (type: MachineType) => {
 setEditingType(type);
 setNewTypeName(type.machine_type_name);
 setIsTypeDialogOpen(true);
@@ -419,7 +419,7 @@ const handleEditMachine = (machine: Machine) => {
   setIsMachineDialogOpen(true);
 };
 
-// ダイアログリセチE��
+// ダイアログリセティングー
 const resetTypeDialog = () => {
   setEditingType(null);
   setNewTypeName('');
@@ -456,7 +456,7 @@ return (
             <Wrench className='mr-2 h-6 w-6 text-indigo-500' />
             機種・機械番号管琁E            </h1>
           <p className='text-blue-400'>
-            機種と機械番号の一覧表示、追加、編雁E��削除ができまぁE            </p>
+            機種と機械番号の一覧表示、追加、編雁Eー削除ができまぁE            </p>
         </div>
         <Link to='/settings'>
           <Button
@@ -511,7 +511,7 @@ return (
                   </DialogTitle>
                   <DialogDescription>
                     {editingType
-                      ? '機種名を編雁E��てください'
+                      ? '機種名を編雁Eーてください'
                       : '新しい機種名を入力してください'}
                   </DialogDescription>
                 </DialogHeader>
@@ -542,7 +542,7 @@ return (
           <div className='max-h-96 overflow-y-auto'>
             {machineTypes.length === 0 ? (
               <div className='p-4 text-center text-gray-500'>
-                機種が登録されてぁE��せん
+                機種が登録されてぁEーせん
               </div>
             ) : (
               <div className='divide-y'>
@@ -619,7 +619,7 @@ return (
                   </DialogTitle>
                   <DialogDescription>
                     {editingMachine
-                      ? '機械番号を編雁E��てください'
+                      ? '機械番号を編雁Eーてください'
                       : '新しい機械番号を�E力してください'}
                   </DialogDescription>
                 </DialogHeader>
@@ -719,7 +719,7 @@ return (
                     >
                       {searchQuery || selectedTypeFilter !== 'all'
                         ? '検索条件に一致する機械番号が見つかりません'
-                        : '機械番号が登録されてぁE��せん'}
+                        : '機械番号が登録されてぁEーせん'}
                     </TableCell>
                   </TableRow>
                 ) : (

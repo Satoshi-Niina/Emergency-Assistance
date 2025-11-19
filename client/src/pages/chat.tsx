@@ -358,7 +358,7 @@ export default function ChatPage() {
         if (saved) {
           const parsed = JSON.parse(saved);
           setAiAssistSettings(parsed);
-          console.log('✁EAI支援設定をローカルストレージから読み込みました:', parsed);
+          console.log('✅ AI支援設定をローカルストレージから読み込みました:', parsed);
           return parsed;
         }
       }
@@ -388,7 +388,7 @@ export default function ChatPage() {
         try {
           const parsed = JSON.parse(e.newValue);
           setAiAssistSettings(parsed);
-          console.log('✁ElocalStorage変更を検知してAI支援設定を再読み込みしました:', parsed);
+          console.log('✅ localStorage変更を検知してAI支援設定を再読み込みしました:', parsed);
         } catch (error) {
           console.error('❌ AI支援設定の再読み込みエラー:', error);
         }
@@ -399,7 +399,7 @@ export default function ChatPage() {
     const handleCustomStorageChange = async () => {
       const loaded = await loadAiAssistSettings();
       if (loaded) {
-        console.log('✁EカスタムイベントでAI支援設定を再読み込みしました:', loaded);
+        console.log('✅ カスタムイベントでAI支援設定を再読み込みしました:', loaded);
         // 初期メッセージが既に表示されている場合は、最新の設定で更新
         if (aiSupportMode && initialPromptSentRef.current && loaded.initialPrompt) {
           // 最新の設定で初期メッセージを更新
@@ -449,8 +449,6 @@ export default function ChatPage() {
       const response = await fetch(apiUrl, {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
-          Pragma: 'no-cache',
-          Expires: '0',
         },
         credentials: 'include', // セッション維持のため
       });
@@ -462,11 +460,11 @@ export default function ChatPage() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('✁E機種一覧取得結果:', result);
+        console.log('✅ 機種一覧取得結果:', result);
         if (result.success) {
           // APIレスポンス形式に対応（machineTypesキーにデータが入っている）
           const typesData = result.machineTypes || result.data || [];
-          console.log('✁E機種一覧設定完亁E', typesData.length, '件');
+          console.log('✅ 機種一覧設定完了:', typesData.length, '件');
           console.log('✓ 機種データ:', typesData);
 
           // データ形式を統一（machine_type_nameフィールドに統一）
@@ -482,13 +480,13 @@ export default function ChatPage() {
             console.log('⚠️ 機種データが0件です');
           }
         } else {
-          console.error('❁E機種一覧取得�E功だがデータが無効:', result);
+          console.error('❌ 機種一覧取得成功だがデータが無効:', result);
           setMachineTypes([]);
           setFilteredMachineTypes([]);
         }
       } else {
         const errorText = await response.text();
-        console.error('❁E機種一覧取得エラー:', response.status, errorText);
+        console.error('❌ 機種一覧取得エラー:', response.status, errorText);
 
         if (response.status === 401) {
           console.log('🔐 認証エラーが発生しました。ログインが必要です');
@@ -534,13 +532,13 @@ export default function ChatPage() {
   // 機械番号入力のフィルタリング
   const filterMachines = (input: string) => {
     console.log(
-      '🔍 機械番号フィルタリング開姁E',
+      '🔍 機械番号フィルタリング開始',
       input,
       '機械数:',
       machines.length
     );
     if (!input.trim()) {
-      console.log('✁E入力が空のため全機械を表示:', machines.length, '件');
+      console.log('✅ 入力が空のため全機械を表示:', machines.length, '件');
       setFilteredMachines(machines);
       return;
     }
@@ -635,8 +633,6 @@ export default function ChatPage() {
         const response = await fetch(apiUrl, {
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
-            Pragma: 'no-cache',
-            Expires: '0',
           },
           credentials: 'include', // セッション維持のため
         });
@@ -741,7 +737,7 @@ export default function ChatPage() {
   useEffect(() => {
     selectedMachineTypeRef.current = selectedMachineType;
     if (selectedMachineType && selectedMachineNumber) {
-      // 両方入力された場合�E警告メチE��ージのrefをリセチE��
+      // 両方入力された場合�E警告メティングーージのrefをリセティングー
       lastWarningMessageRef.current = null;
     }
   }, [selectedMachineType]);
@@ -749,7 +745,7 @@ export default function ChatPage() {
   useEffect(() => {
     selectedMachineNumberRef.current = selectedMachineNumber;
     if (selectedMachineType && selectedMachineNumber) {
-      // 両方入力された場合�E警告メチE��ージのrefをリセチE��
+      // 両方入力された場合�E警告メティングーージのrefをリセティングー
       lastWarningMessageRef.current = null;
     }
   }, [selectedMachineNumber]);
@@ -764,74 +760,68 @@ export default function ChatPage() {
       try {
         initializeChat();
       } catch (error) {
-        console.error('❁EチャチE��ID初期化エラー:', error);
+        console.error('❌ チャットID初期化エラー:', error);
       }
     }
 
-    // 機種チE�Eタの取征E
+    // 機種データの取得
     fetchMachineTypes().catch(error => {
       console.error(
-        '❁E機種チE�Eタ取得でエラーが発生しましたが、チャチE��画面は表示されまぁE',
+        '❌ 機種データ取得でエラーが発生しましたが、チャット画面は表示されます',
         error
       );
     });
   }, [chatId, initializeChat, fetchMachineTypes]);
 
-  // AI支援モードをデフォルトで有効化（一度だけ実行）
-  useEffect(() => {
-    if (!aiSupportMode && !aiSupportInitializedRef.current) {
-      console.log('� AI支援モードをデフォルトで有効化');
-      aiSupportInitializedRef.current = true;
-      (async () => {
-        try {
-          // AI支援設定を読み込み�E�結果を征E���E�E
-          const loadedSettings = await loadAiAssistSettings();
+  // AI支援モードの自動開始を無効化（ボタン押下で手動開始に変更）
+  // useEffect(() => {
+  //   if (!aiSupportMode && !aiSupportInitializedRef.current) {
+  //     console.log('AI支援モードをデフォルトで有効化');
+  //     aiSupportInitializedRef.current = true;
+  //     (async () => {
+  //       try {
+  //         const loadedSettings = await loadAiAssistSettings();
+  //         setAiSupportMode(true);
+  //         setAiSupportStartTime(new Date());
+  //         setElapsedTime(0);
+  //         if (!initialPromptSentRef.current) {
+  //           initialPromptSentRef.current = true;
+  //           const initialPrompt = loadedSettings?.initialPrompt || aiAssistSettings.initialPrompt;
+  //           const aiSupportMessage = {
+  //             id: Date.now().toString(),
+  //             content: initialPrompt,
+  //             isAiResponse: true,
+  //             timestamp: new Date(),
+  //             type: 'ai_support',
+  //           };
+  //           setMessages((prev: any) => [...prev, aiSupportMessage]);
+  //           console.log('初期メッセージを表示:', initialPrompt);
+  //         }
+  //       } catch (error) {
+  //         console.error('AI支援モード自動開始エラー:', error);
+  //       }
+  //     })();
+  //   }
+  // }, [aiSupportMode, loadAiAssistSettings, aiAssistSettings, setMessages]);
 
-          // AI支援モードを開始
-          setAiSupportMode(true);
-          setAiSupportStartTime(new Date());
-          setElapsedTime(0);
-
-          // GPTの初期メッセージを表示（機種・機械番号のチェックはメッセージ送信時に行う）
-          if (!initialPromptSentRef.current) {
-            initialPromptSentRef.current = true;
-            // 読み込んだ設定のinitialPromptを使用、なければ現在の状態を使用
-            const initialPrompt = loadedSettings?.initialPrompt || aiAssistSettings.initialPrompt;
-            const aiSupportMessage = {
-              id: Date.now().toString(),
-              content: initialPrompt,
-              isAiResponse: true,
-              timestamp: new Date(),
-              type: 'ai_support',
-            };
-            setMessages((prev: any) => [...prev, aiSupportMessage]);
-            console.log('✁E初期メチE��ージを表示:', initialPrompt);
-          }
-        } catch (error) {
-          console.error('❁EAI支援モード�E動開始エラー:', error);
-        }
-      })();
-    }
-  }, [aiSupportMode, loadAiAssistSettings, aiAssistSettings, setMessages]);
-
-  // 機種・機械番号が両方入力された時に警告メチE��ージを削除�E�オプション�E�E
+  // 機種・機械番号が両方入力された時に警告メティングーージを削除�E�オプション�E�E
   useEffect(() => {
     if (aiSupportMode && selectedMachineType && selectedMachineNumber && machineInfoMessageSentRef.current) {
-      // 機種・機械番号が�E力されたら、警告メチE��ージはそ�Eまま残す�E�削除しなぁE��E
-      console.log('✁E機種・機械番号が�E力されました');
+      // 機種・機械番号が�E力されたら、警告メティングーージはそ�Eまま残す�E�削除しなぁEーE
+      console.log('✅ 機種・機械番号が入力されました');
     }
   }, [aiSupportMode, selectedMachineType, selectedMachineNumber]);
 
-  // 機種チE�Eタの状態変更を監視してフィルタリングを更新
+  // 機種シューティングの状態変更を監視してフィルタリングを更新
   useEffect(() => {
-    console.log('📊 機種チE�Eタ状態更新:', {
+    console.log('📊 機種シューティング状態更新:', {
       machineTypesCount: machineTypes.length,
       selectedMachineType,
       machineTypeInput,
       isLoadingMachineTypes,
     });
 
-    // 機種チE�Eタが更新されたら、現在の入力に基づぁE��フィルタリングを更新
+    // 機種シューティングが更新されたら、現在の入力に基づぁEーフィルタリングを更新
     if (machineTypes.length > 0) {
       filterMachineTypes(machineTypeInput);
     }
@@ -847,23 +837,23 @@ export default function ChatPage() {
 
   // machineTypeInputの値の変更を詳細に監要E
   useEffect(() => {
-    console.log('🔍 machineTypeInput値変更検�E:', {
+    console.log('🔍 machineTypeInput値変更検索:', {
       currentValue: machineTypeInput,
       length: machineTypeInput.length,
       timestamp: new Date().toISOString(),
     });
   }, [machineTypeInput]);
 
-  // 機械番号チE�Eタの状態変更を監視してフィルタリングを更新
+  // 機械番号シューティングの状態変更を監視してフィルタリングを更新
   useEffect(() => {
-    console.log('📊 機械番号チE�Eタ状態更新:', {
+    console.log('📊 機械番号シューティング状態更新:', {
       machinesCount: machines.length,
       selectedMachineNumber,
       machineNumberInput,
       isLoadingMachines,
     });
 
-    // 機械番号チE�Eタが更新されたら、現在の入力に基づぁE��フィルタリングを更新
+    // 機械番号シューティングが更新されたら、現在の入力に基づぁEーフィルタリングを更新
     if (machines.length > 0) {
       filterMachines(machineNumberInput);
     }
@@ -877,7 +867,7 @@ export default function ChatPage() {
     });
   }, [machineNumberInput, selectedMachineNumber]);
 
-  // 追加: Q&Aモード�E初期化（動皁E��問生成シスチE��に変更済み�E�E
+  // 追加: Q&Aモード�E初期化（動皁Eー問生成システィングーに変更済み�E�E
 
   // AI支援時間表示とエスカレーション機�EのためのuseEffect
   useEffect(() => {
@@ -889,11 +879,11 @@ export default function ChatPage() {
         const elapsed = Math.floor((now.getTime() - aiSupportStartTime.getTime()) / 1000);
         setElapsedTime(elapsed);
 
-        // エスカレーション時間をチェチE���E�カスタム設定対応！E
+        // エスカレーション時間をチェティングー�E�カスタム設定対応！E
         const elapsedMinutes = Math.floor(elapsed / 60);
         if (aiAssistSettings.enableEmergencyContact &&
           elapsedMinutes >= aiAssistSettings.escalationTime &&
-          elapsedMinutes % 5 === 0) { // 5刁E��とに通知
+          elapsedMinutes % 5 === 0) { // 5刁Eーとに通知
 
           const escalationMessage = {
             id: Date.now().toString(),
@@ -915,19 +905,24 @@ export default function ChatPage() {
     };
   }, [aiSupportMode, aiSupportStartTime, aiAssistSettings]);
 
-  // AI支援開始（カスタマイズ対応版�E�E
+  // AI支援開始（カスタマイズ対応版）
   const handleStartAiSupport = async () => {
     try {
-      // AI支援設定を読み込み�E�結果を征E���E�E
+      // AI支援設定を読み込み
       const loadedSettings = await loadAiAssistSettings();
 
-      // AI支援モードを開姁E
+      // AI支援モードを開始
       setAiSupportMode(true);
       setAiSupportStartTime(new Date());
       setElapsedTime(0);
 
-      // カスタマイズされた�E期メチE��ージを送信
-      // 読み込んだ設定�EinitialPromptを使用�E�なければ現在の状態を使用�E�E
+      // 初期化フラグをリセット
+      aiSupportInitializedRef.current = false;
+      initialPromptSentRef.current = false;
+      machineInfoMessageSentRef.current = false;
+      lastWarningMessageRef.current = null;
+
+      // カスタマイズされた初期メッセージを送信
       const initialPrompt = loadedSettings?.initialPrompt || aiAssistSettings.initialPrompt;
       const aiSupportMessage = {
         id: Date.now().toString(),
@@ -967,12 +962,18 @@ export default function ChatPage() {
 
     setMessages(prev => [...prev, aiSupportEndMessage]);
 
-    // AI支援モードを終亁E
+    // AI支援モードを終了
     setAiSupportMode(false);
     setAiSupportStartTime(null);
     setElapsedTime(0);
     setEmergencyStep(0);
     setProblemType('');
+
+    // 初期化フラグをリセット
+    aiSupportInitializedRef.current = false;
+    initialPromptSentRef.current = false;
+    machineInfoMessageSentRef.current = false;
+    lastWarningMessageRef.current = null;
 
     toast({
       title: '支援終了',
@@ -1017,14 +1018,14 @@ export default function ChatPage() {
         },
       });
 
-      // より詳細な条件チェチE��
+      // より詳細な条件チェティングー
       const hasValidChatId = !!chatId;
       const hasMessages = messages.length > 0;
       const hasValidMessages = messages.some(
         msg => msg.content && msg.content.trim()
       );
 
-      console.log('🔍 送信条件チェチE��:', {
+      console.log('🔍 送信条件チェティングー:', {
         hasValidChatId,
         hasMessages,
         hasValidMessages,
@@ -1066,11 +1067,11 @@ export default function ChatPage() {
         return;
       }
 
-      // チャチE��冁E��をJSON形式で整形
+      // チャティングー冁EーをJSON形式で整形
       const chatData = {
         chatId: chatId,
         timestamp: new Date().toISOString(),
-        // 機種と機械番号の惁E��を追加
+        // 機種と機械番号の惁Eーを追加
         machineInfo: {
           selectedMachineType: selectedMachineType,
           selectedMachineNumber: selectedMachineNumber,
@@ -1093,7 +1094,7 @@ export default function ChatPage() {
         })),
       };
 
-      console.log('📤 送信チE�Eタ:', {
+      console.log('📤 送信シューティング:', {
         chatId: chatData.chatId,
         messageCount: chatData.messages.length,
         machineInfo: chatData.machineInfo,
@@ -1106,15 +1107,15 @@ export default function ChatPage() {
       // 環境に応じてエンドポイントを選択
       const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost';
       const endpoint = isDevelopment
-        ? `/chats/${chatId}/send-test`  // 開発環墁E��はチE��ト用エンド�EインチE
-        : `/chats/${chatId}/send`;      // 本番環墁E��は本番用エンド�EインチE
+        ? `/chats/${chatId}/send-test`  // 開発環墁Eーはティングート用エンド�Eインティング
+        : `/chats/${chatId}/send`;      // 本番環墁Eーは本番用エンド�Eインティング
 
       const apiUrl = buildApiUrl(endpoint);
 
       console.log('🌐 送信URL:', apiUrl);
       console.log('🏗�E�E開発環墁E', isDevelopment);
       console.log('🏠 ホスト名:', window.location.hostname);
-      console.log('🔧 環墁E��数:', {
+      console.log('🔧 環墁Eー数:', {
         NODE_ENV: import.meta.env.MODE,
         DEV: import.meta.env.DEV,
         PROD: import.meta.env.PROD,
@@ -1143,7 +1144,7 @@ export default function ChatPage() {
       if (response.ok) {
         const result = await response.json();
 
-        // 機種と機械番号の惁E��を含む送信成功メチE��ージ
+        // 機種と機械番号の惁Eーを含む送信成功メティングーージ
         const machineInfoText =
           selectedMachineType && selectedMachineNumber
             ? ` (機種: ${machineTypeInput}, 機械番号: ${machineNumberInput})`
@@ -1172,19 +1173,19 @@ export default function ChatPage() {
           }, 2000);
         }
 
-        // 送信完亁E��にチャチE��をクリア
+        // 送信完亁Eーにチャティングーをクリア
         await clearChatHistory();
 
-        // 機種と機械番号の選択状態�EみリセチE���E�選択肢チE�Eタは保持�E�E
+        // 機種と機械番号の選択状態�Eみリセティングー�E�選択肢シューティングは保持�E�E
         setSelectedMachineType('');
         selectedMachineTypeRef.current = '';
         setSelectedMachineNumber('');
         selectedMachineNumberRef.current = '';
         setMachineTypeInput('');
         setMachineNumberInput('');
-        // 選択肢チE�Eタは保持するため、filteredMachineTypes と filteredMachines はクリアしなぁE
-        // setFilteredMachineTypes([]); // コメントアウチE
-        // setFilteredMachines([]);     // コメントアウチE
+        // 選択肢シューティングは保持するため、filteredMachineTypes と filteredMachines はクリアしなぁE
+        // setFilteredMachineTypes([]); // コメントアウティング
+        // setFilteredMachines([]);     // コメントアウティング
 
         // 機械番号は機種選択後に再取得されるため、一旦クリア
         setMachines([]);
@@ -1196,7 +1197,7 @@ export default function ChatPage() {
           description: '送信後にチャット履歴をクリアしました',
         });
 
-        console.log('🧹 チャチE��状態をリセチE��しました');
+        console.log('🧹 チャティングー状態をリセティングーしました');
       } else {
         // エラーレスポンスの詳細を取征E
         let errorMessage = `送信失敁E ${response.status} ${response.statusText}`;
@@ -1206,12 +1207,12 @@ export default function ChatPage() {
           const errorData = await response.json();
           errorMessage = errorData.error || errorData.message || errorMessage;
           errorDetails = errorData.details || errorData.error || '';
-          console.error('❁Eサーバ�Eエラーレスポンス:', errorData);
+          console.error('❌ サーバーエラーレスポンス:', errorData);
         } catch (parseError) {
           console.warn('⚠�E�Eエラーレスポンスの解析に失敁E', parseError);
         }
 
-        // より詳細なエラーメチE��ージを構篁E
+        // より詳細なエラーメティングーージを構篁E
         const fullErrorMessage = errorDetails
           ? `${errorMessage}\n詳細: ${errorDetails}`
           : errorMessage;
@@ -1243,7 +1244,7 @@ export default function ChatPage() {
     const file = event.target.files?.[0];
     if (file) {
       try {
-        // importChat関数は現在実裁E��れてぁE��ぁE��め、簡易的な実裁E
+        // importChat関数は現在実裁EーれてぁEーぁEーめ、簡易的な実裁E
         const text = await file.text();
         const importedData = JSON.parse(text);
 
@@ -1293,8 +1294,6 @@ export default function ChatPage() {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-          Pragma: 'no-cache',
-          Expires: 'Thu, 01 Jan 1970 00:00:00 GMT',
           'X-Requested-With': 'XMLHttpRequest',
         },
       });
@@ -1311,9 +1310,9 @@ export default function ChatPage() {
           setFilteredGuides(guides);
           console.log('✁E応急処置ガイド取得�E劁E', guides.length + '件');
 
-          // チE��チE��用�E�各ガイド�E詳細をログ出劁E
+          // ティングーティングー用�E�各ガイド�E詳細をログ出劁E
           guides.forEach((guide: any, index: number) => {
-            console.log(`📋 ガイチE${index + 1}:`, {
+            console.log(`📋 ガイティング${index + 1}:`, {
               id: guide.id,
               title: guide.title,
               fileName: guide.fileName,
@@ -1327,7 +1326,7 @@ export default function ChatPage() {
         }
       } else {
         const errorText = await response.text();
-        console.error('❁EAPI エラー:', errorText);
+        console.error('❌ API エラー:', errorText);
         throw new Error(
           `Failed to fetch emergency guides: ${response.status} - ${errorText}`
         );
@@ -1336,7 +1335,7 @@ export default function ChatPage() {
       console.error('ガイド一覧の取得に失敁E', error);
       toast({
         title: 'エラー',
-        description: '応急処置チE�Eタの取得に失敗しました',
+        description: '応急処置シューティングの取得に失敗しました',
         variant: 'destructive',
       });
       setAvailableGuides([]);
@@ -1381,27 +1380,27 @@ export default function ChatPage() {
       setFilteredGuides(searchResults);
       console.log(`🔍 検索結果: "${query}" -> ${searchResults.length}件`);
     } catch (error) {
-      console.error('検索処琁E��ラー:', error);
+      console.error('検索処琁Eーラー:', error);
       setFilteredGuides(availableGuides);
     }
   };
 
-  // キーワード�EタンクリチE��時�E処琁E
+  // キーワード�Eタンクリティングー時�E処琁E
   const handleKeywordClick = (keyword: string) => {
     handleSearch(keyword);
   };
 
-  // カメラボタンのクリチE��処琁E
+  // カメラボタンのクリティングー処琁E
   const handleCameraClick = () => {
-    console.log('📸 カメラボタンがクリチE��されました');
+    console.log('📸 カメラボタンがクリティングーされました');
     // カメラモーダルを開くイベントを発火
     window.dispatchEvent(new CustomEvent('open-camera'));
 
-    // チE��チE��用: イベントが正しく発火されたかを確誁E
+    // ティングーティングー用: イベントが正しく発火されたかを確誁E
     console.log('📸 open-camera イベントを発火しました');
   };
 
-  // トラブルシューチE��ングQA開姁E
+  // トラブルシューティングQA開始
   const startTroubleshootingQA = async (problemDescription: string) => {
     try {
       setTroubleshootingMode(true);
@@ -1410,7 +1409,7 @@ export default function ChatPage() {
         answers: [],
       });
 
-      // 統一API設定を使用してトラブルシューチE��ングQA APIを呼び出ぁE
+      // 統一API設定を使用してトラブルシューティングQA APIを呼び出ぁE
       const { buildApiUrl } = await import('../lib/api');
       const apiUrl = buildApiUrl('/troubleshooting-qa/start');
 
@@ -1436,27 +1435,27 @@ export default function ChatPage() {
           reasoning: qaResponse.reasoning,
         }));
 
-        // 初期質問をメチE��ージとして追加
+        // 初期質問をメティングーージとして追加
         sendMessage(qaResponse.question, [], true);
       } else {
-        throw new Error('トラブルシューチE��ングQAの開始に失敗しました');
+        throw new Error('トラブルシューティングQAの開始に失敗しました');
       }
     } catch (error) {
-      console.error('❁EトラブルシューチE��ングQA開始エラー:', error);
+      console.error('❌ トラブルシューティングQA開始エラー:', error);
       toast({
         title: 'エラー',
-        description: 'トラブルシューチE��ングQAの開始に失敗しました',
+        description: 'トラブルシューティングQAの開始に失敗しました',
         variant: 'destructive',
       });
     }
   };
 
-  // トラブルシューチE��ングQA回答�E琁E
+  // トラブルシューティングQA回答�E琁E
   const handleTroubleshootingAnswer = async (answer: string) => {
     if (!troubleshootingSession) return;
 
     try {
-      // 回答をセチE��ョンに追加
+      // 回答をセティングーョンに追加
       const updatedSession = {
         ...troubleshootingSession,
         answers: [
@@ -1470,10 +1469,10 @@ export default function ChatPage() {
       };
       setTroubleshootingSession(updatedSession);
 
-      // 回答をメチE��ージとして追加
+      // 回答をメティングーージとして追加
       sendMessage(answer, [], false);
 
-      // 統一API設定を使用してトラブルシューチE��ングQA APIを呼び出ぁE
+      // 統一API設定を使用してトラブルシューティングQA APIを呼び出ぁE
       const { buildApiUrl } = await import('../lib/api');
       const apiUrl = buildApiUrl('/troubleshooting-qa/answer');
 
@@ -1523,48 +1522,48 @@ export default function ChatPage() {
           sendMessage(qaResponse.question, [], true);
         }
       } else {
-        throw new Error('回答�E処琁E��失敗しました');
+        throw new Error('回答�E処琁Eー失敗しました');
       }
     } catch (error) {
-      console.error('❁EトラブルシューチE��ングQA回答�E琁E��ラー:', error);
+      console.error('❁EトラブルシューティングQA回答�E琁Eーラー:', error);
       toast({
         title: 'エラー',
-        description: '回答�E処琁E��失敗しました',
+        description: '回答�E処琁Eー失敗しました',
         variant: 'destructive',
       });
     }
   };
 
-  // AI支援メチE��ージ処琁E��EPT応答を使用�E�E
+  // AI支援メティングーージ処琁EーEPT応答を使用�E�E
   const handleAiSupportMessage = async (content: string, media: any[] = []) => {
     try {
-      // 機種・機械番号の入力チェチE���E�空斁E���E、null、undefinedをチェチE���E�E
-      // refとstateの両方を確認して最新の状態を取得（どちらかが有効な値を持ってぁE��かを確認！E
+      // 機種・機械番号の入力チェティングー�E�空斁Eー�E、null、undefinedをチェティングー�E�E
+      // refとstateの両方を確認して最新の状態を取得（どちらかが有効な値を持ってぁEーかを確認！E
       // 最新の状態を確実に取得するため、refを優先し、なければstateを使用
-      // 機械番号につぁE��は、selectedMachineNumber�E�ED�E�また�EmachineNumberInput�E�表示値�E��Eどちらかがあれ�EOK
+      // 機械番号につぁEーは、selectedMachineNumber�E�ED�E�また�EmachineNumberInput�E�表示値�EーEどちらかがあれ�EOK
       // stateを優先的に確認し、なければ入力値を確認
 
-      // refとstateの両方を確認し、どちらかが有効な値を持ってぁE��かを確誁E
+      // refとstateの両方を確認し、どちらかが有効な値を持ってぁEーかを確誁E
       // refが優先、なければstateを使用
-      // 機種は、selectedMachineType�E�ED�E�また�EmachineTypeInput�E�表示値�E��Eどちらかがあれ�EOK
+      // 機種は、selectedMachineType�E�ED�E�また�EmachineTypeInput�E�表示値�EーEどちらかがあれ�EOK
       const currentMachineType = (selectedMachineType && selectedMachineType.trim() !== '' && selectedMachineType !== 'null' && selectedMachineType !== 'undefined')
         ? selectedMachineType
-          : (machineTypeInput && machineTypeInput.trim() !== '')
-            ? machineTypeInput.trim()
-            : '';
+        : (machineTypeInput && machineTypeInput.trim() !== '')
+          ? machineTypeInput.trim()
+          : '';
 
-      // 機械番号は、selectedMachineNumber�E�ED�E�また�EmachineNumberInput�E�表示値�E��Eどちらかがあれ�EOK
+      // 機械番号は、selectedMachineNumber�E�ED�E�また�EmachineNumberInput�E�表示値�EーEどちらかがあれ�EOK
       const currentMachineNumber = (selectedMachineNumber && selectedMachineNumber.trim() !== '' && selectedMachineNumber !== 'null' && selectedMachineNumber !== 'undefined')
         ? selectedMachineNumber
-          : (machineNumberInput && machineNumberInput.trim() !== '')
-            ? machineNumberInput.trim()
-            : '';
+        : (machineNumberInput && machineNumberInput.trim() !== '')
+          ? machineNumberInput.trim()
+          : '';
 
-      // 最終的な判定（空斁E���EでなぁE��とを確認！E
+      // 最終的な判定（空斁Eー�EでなぁEーとを確認！E
       const hasMachineType = currentMachineType !== '';
       const hasMachineNumber = currentMachineNumber !== '';
 
-      console.log('🔍 機種・機械番号チェチE��:', {
+      console.log('🔍 機種・機械番号チェティングー:', {
         selectedMachineType,
         selectedMachineNumber,
         machineTypeInput,
@@ -1575,7 +1574,7 @@ export default function ChatPage() {
         hasMachineNumber
       });
 
-      // ユーザーメチE��ージを�Eに追加�E�常に表示する�E�E
+      // ユーザーメティングーージを�Eに追加�E�常に表示する�E�E
       const userMessage = {
         id: Date.now().toString(),
         content: content,
@@ -1585,7 +1584,7 @@ export default function ChatPage() {
         media: media,
       };
 
-      // メチE��ージを追加し、最新の状態を取征E
+      // メティングーージを追加し、最新の状態を取征E
       let updatedMessages: any[] = [];
       setMessages(prev => {
         updatedMessages = [...prev, userMessage];
@@ -1598,7 +1597,7 @@ export default function ChatPage() {
         const warningContent = '機種及び機械番号を選択入力してください';
         const currentTime = Date.now();
 
-        // 前回の警告メチE��ージから5秒以上経過してぁE��場合�Eみ表示
+        // 前回の警告メティングーージから5秒以上経過してぁEー場合�Eみ表示
         const lastWarningTime = lastWarningMessageRef.current
           ? parseInt(lastWarningMessageRef.current)
           : 0;
@@ -1650,7 +1649,7 @@ export default function ChatPage() {
       setMessages(prev => [...prev, aiMessage]);
 
     } catch (error) {
-      console.error('AI支援メチE��ージ処琁E��ラー:', error);
+      console.error('AI支援メティングーージ処琁Eーラー:', error);
 
       // エラー時のフォールバック応答
       const errorMessage = {
@@ -1677,12 +1676,12 @@ export default function ChatPage() {
       // カスタム設定から�E質問を取征E
       const customQuestion = getCustomQuestion(userInput, emergencyStep);
       if (customQuestion) {
-        // スチE��プ�E更新
+        // スティングープ�E更新
         updateEmergencyStep(userInput, customQuestion);
         return applyConversationStyle(customQuestion);
       }
 
-      // フォールバック: 基本皁E��質問を返す
+      // フォールバック: 基本皁Eー質問を返す
       const fallbackQuestions = [
         aiAssistSettings.questionFlow.step1,
         aiAssistSettings.questionFlow.step2,
@@ -1693,7 +1692,7 @@ export default function ChatPage() {
 
       const fallbackQuestion = fallbackQuestions[emergencyStep % fallbackQuestions.length];
 
-      // スチE��プ�E更新
+      // スティングープ�E更新
       updateEmergencyStep(userInput, fallbackQuestion);
 
       return applyConversationStyle(fallbackQuestion);
@@ -1706,7 +1705,7 @@ export default function ChatPage() {
   const getCustomQuestion = (userInput: string, step: number): string | null => {
     const lowerInput = userInput.toLowerCase();
 
-    // スチE��プに応じてカスタム質問を返す
+    // スティングープに応じてカスタム質問を返す
     switch (step) {
       case 0:
         return aiAssistSettings.questionFlow.step1;
@@ -1814,7 +1813,7 @@ export default function ChatPage() {
     ]; return defaultQuestions[step % defaultQuestions.length];
   };
 
-  // 応急処置スチE��プ�E更新
+  // 応急処置スティングープ�E更新
   const updateEmergencyStep = (userInput: string, aiResponse: string) => {
     const lowerInput = userInput.toLowerCase();
     const lowerResponse = aiResponse.toLowerCase();
@@ -1839,7 +1838,7 @@ export default function ChatPage() {
       }
     }
 
-    // ユーザーの回答に基づくスチE��プ進行（より確実に�E�E
+    // ユーザーの回答に基づくスティングープ進行（より確実に�E�E
     console.log('🔄 Processing user input for step progression:', lowerInput);
 
     // 完了・困難・退避の場合のリセット
@@ -1851,7 +1850,7 @@ export default function ChatPage() {
       return;
     }
 
-    // そ�E他�E場合�E確実にスチE��プを進める
+    // そ�E他�E場合�E確実にスティングープを進める
     console.log('🔄 Advancing step from', emergencyStep, 'to', emergencyStep + 1);
     setEmergencyStep(prev => prev + 1);
   };
@@ -1870,22 +1869,22 @@ export default function ChatPage() {
   const generateCompletionMessage = (flow: DiagnosticFlow): string => {
     return `🎉 **診断完亁E*
 
-お疲れ様でした�E�問題�E解決が完亁E��ました、E
+お疲れ様でした�E�問題�E解決が完亁Eーました、E
 
 **診断サマリー:**
 - 問顁E ${flow.problemDescription}
 - 機種: ${flow.machineType}
 - 対応時閁E ${flow.availableTime}刁E
-- 実行スチE��プ数: ${flow.stepHistory.length}
+- 実行スティングープ数: ${flow.stepHistory.length}
 
 何か他にお困り�Eことがあれ�E、いつでもお声がけください�E�`;
   };
 
-  // 緊急連絡メチE��ージの生�E
+  // 緊急連絡メティングーージの生�E
   const generateEmergencyContactMessage = (): string => {
-    return `🚨 **緊急連絡が忁E��E*
+    return `🚨 **緊急連絡が忁EーE*
 
-現在の状況では、専門家による対応が忁E��です、E
+現在の状況では、専門家による対応が忁Eーです、E
 
 **技術支援センター:**
 📞 0123-456-789
@@ -1895,7 +1894,7 @@ export default function ChatPage() {
 - 実行した�E置
 - 現在の状況E
 
-安�Eを最優先に、専門家の持E��に従ってください。`;
+安�Eを最優先に、専門家の持Eーに従ってください。`;
   };
 
   // AI支援応答生成（時間制限と救援要請機�E付き�E�E
@@ -2035,7 +2034,7 @@ export default function ChatPage() {
       cleanResponse = cleanResponse.substring(0, 100);
     }
 
-    // 硬ぁE��現をフレンドリーに変更
+    // 硬ぁEー現をフレンドリーに変更
     const friendlyReplacements = [
       { from: /確認してください/g, to: '確認してみてくださいね' },
       { from: /してください/g, to: 'してみてください' },
@@ -2070,11 +2069,11 @@ export default function ChatPage() {
     return 'normal';
   };
 
-  // メチE��ージ送信処琁E��拡張
+  // メティングーージ送信処琁Eー拡張
   const handleSendMessage = async (content: string, media: any[] = []) => {
     if (!content.trim() && media.length === 0) return;
 
-    // トラブルシューチE��ングモード�E場合�E特別な処琁E
+    // トラブルシューティングモード�E場合�E特別な処琁E
     if (troubleshootingMode && troubleshootingSession) {
       await handleTroubleshootingAnswer(content);
       return;
@@ -2086,14 +2085,14 @@ export default function ChatPage() {
       return;
     }
 
-    // 通常のメチE��ージ送信処琁E
+    // 通常のメティングーージ送信処琁E
     sendMessage(content, media, false);
   };
 
-  // トラブルシューチE��ングQA開始�Eタンの追加
+  // トラブルシューティングQA開始�Eタンの追加
   const handleStartTroubleshooting = () => {
     const problemDescription = prompt(
-      '発生した事象を教えてください�E�例：エンジンが止まった、ブレーキが効かなぁE��ど�E�E'
+      '発生した事象を教えてください�E�例：エンジンが止まった、ブレーキが効かなぁEーど�E�E'
     );
     if (problemDescription && problemDescription.trim()) {
       startTroubleshootingQA(problemDescription.trim());
@@ -2108,21 +2107,21 @@ export default function ChatPage() {
       setTroubleshootingSession(null);
       setAiSupportMode(false);
 
-      // 機種・機械番号の選択状態�Eみクリア�E�選択肢チE�Eタは保持�E�E
+      // 機種・機械番号の選択状態�Eみクリア�E�選択肢シューティングは保持�E�E
       setSelectedMachineType('');
       selectedMachineTypeRef.current = '';
       setSelectedMachineNumber('');
       selectedMachineNumberRef.current = '';
       setMachineTypeInput('');
       setMachineNumberInput('');
-      // 機種の選択肢チE�Eタは保持�E�ユーザーが�E選択できるように�E�E
+      // 機種の選択肢シューティングは保持�E�ユーザーが�E選択できるように�E�E
       // setFilteredMachineTypes([]); // 削除�E�機種の選択肢は保持
 
       // 機械番号は機種選択後に再取得されるため、クリア
       setMachines([]);
       setFilteredMachines([]);
 
-      // AI支援モード�E初期化フラグもリセチE��
+      // AI支援モード�E初期化フラグもリセティングー
       aiSupportInitializedRef.current = false;
       machineInfoMessageSentRef.current = false;
       initialPromptSentRef.current = false;
@@ -2146,7 +2145,7 @@ export default function ChatPage() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showImagePreview, setShowImagePreview] = useState(false);
 
-  // AI支援の質問生成！EPTとの一問一答チャチE���E�E
+  // AI支援の質問生成！EPTとの一問一答チャティングー�E�E
   const generateEmergencyQuestion = async (
     context: string,
     previousAnswers: string[]
@@ -2160,10 +2159,10 @@ export default function ChatPage() {
         };
       }
 
-      // 前�E回答に基づぁE��次の質問を生�E
+      // 前�E回答に基づぁEー次の質問を生�E
       if (previousAnswers.length === 0) {
         return {
-          question: '具体的な痁E��を教えてください',
+          question: '具体的な痁Eーを教えてください',
           options: [],
         };
       } else if (previousAnswers.length === 1) {
@@ -2254,7 +2253,7 @@ export default function ChatPage() {
   // エクスポ�Eト機�E
   const handleExportChat = async () => {
     try {
-      // チャチE��履歴をエクスポ�EチE
+      // チャティングー履歴をエクスポ�Eティング
       const chatData = messages.map(msg => ({
         role: msg.role,
         content: msg.content,
@@ -2273,9 +2272,9 @@ export default function ChatPage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      console.log('✁EチャチE��履歴をエクスポ�Eトしました');
+      console.log('✅ チャット履歴をエクスポートしました');
     } catch (error) {
-      console.error('❁Eエクスポ�Eトエラー:', error);
+      console.error('❌ エクスポートエラー:', error);
     }
   };
 
@@ -2330,7 +2329,7 @@ export default function ChatPage() {
                           }
                         }}
                         onBlur={e => {
-                          // ドロチE�Eダウン冁E�EクリチE��の場合�E閉じなぁE
+                          // ドロティング�Eダウン冁E�Eクリティングーの場合�E閉じなぁE
                           const relatedTarget = e.relatedTarget as HTMLElement;
                           if (
                             relatedTarget &&
@@ -2338,7 +2337,7 @@ export default function ChatPage() {
                           ) {
                             return;
                           }
-                          // 少し遁E��させてクリチE��イベントが処琁E��れるのを征E��
+                          // 少し遁Eーさせてクリティングーイベントが処琁Eーれるのを征Eー
                           setTimeout(() => {
                             setShowMachineTypeSuggestions(false);
                           }, 150);
@@ -2397,7 +2396,7 @@ export default function ChatPage() {
                       {machineTypeInput.trim()
                         ? '該当する機種が見つかりません'
                         : machineTypes.length === 0
-                          ? '機種チE�Eタを読み込み中...'
+                          ? '機種シューティングを読み込み中...'
                           : '機種を�E力してください'}
                     </div>
                   )}
@@ -2545,13 +2544,13 @@ export default function ChatPage() {
             size='lg'
             onClick={handleEmergencyGuide}
             disabled={isLoadingGuides}
-            className='bg-blue-50 text-blue-600 hover:bg-blue-100 border-4 border-blue-600 px-8 py-3 text-lg font-bold'
+            className='bg-yellow-400 border-yellow-600 text-yellow-900 hover:bg-yellow-500 border-4 px-8 py-3 text-xl font-bold'
           >
-            <Activity className='w-6 h-6 mr-3' />
+            <Activity className='w-7 h-7 mr-3' />
             応急復旧マニュアル
           </Button>
 
-          {/* 4斁E���Eのスペ�Eス */}
+          {/* 4斁Eー�Eのスペ�Eス */}
           <div className='w-16'></div>
 
           {/* カメラボタン */}
@@ -2565,7 +2564,31 @@ export default function ChatPage() {
             カメラ
           </Button>
 
-          {/* 時間表示�E�EI支援モードが有効な時�Eみ表示�E�E*/}
+          {/* AI支援開始/終了ボタン - カメラの右側に配置 */}
+          <Button
+            variant='outline'
+            size='lg'
+            onClick={aiSupportMode ? handleAiSupportExit : handleStartAiSupport}
+            disabled={isLoading}
+            className={`px-8 py-3 text-xl font-bold border-4 ${aiSupportMode
+              ? 'bg-orange-50 border-orange-600 text-orange-700 hover:bg-orange-100'
+              : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-600'
+              }`}
+          >
+            {aiSupportMode ? (
+              <>
+                <X className='w-7 h-7 mr-3' />
+                支援終了
+              </>
+            ) : (
+              <>
+                <Brain className='w-7 h-7 mr-3' />
+                AI支援開始
+              </>
+            )}
+          </Button>
+
+          {/* 時間表示 - AI支援モードが有効な時のみ表示 */}
           {aiSupportMode && (
             <div className={`px-4 py-2 rounded-lg border text-sm font-medium ${getTimeWarningLevel(elapsedTime) === 'critical'
               ? 'bg-red-100 text-red-800 border-red-200'
@@ -2577,7 +2600,7 @@ export default function ChatPage() {
                 <span>⏰</span>
                 <span>{formatElapsedTime(elapsedTime)}</span>
                 {getTimeWarningLevel(elapsedTime) === 'warning' && (
-                  <span className='text-xs'>(あと5刁E</span>
+                  <span className='text-xs'>(あと5分)</span>
                 )}
                 {getTimeWarningLevel(elapsedTime) === 'critical' && (
                   <span className='text-xs'>(救援要請推奨)</span>
@@ -2585,25 +2608,6 @@ export default function ChatPage() {
               </div>
             </div>
           )}
-
-          {/* 支援終了ボタン、常に表示 */}
-          <Button
-            variant='outline'
-            size='lg'
-            onClick={handleAiSupportExit}
-            disabled={!aiSupportMode || isLoading}
-            className={`px-8 py-3 text-base font-semibold mr-6 ${!aiSupportMode
-              ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
-              : getTimeWarningLevel(elapsedTime) === 'critical'
-                ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
-                : getTimeWarningLevel(elapsedTime) === 'warning'
-                  ? 'bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100'
-                  : 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100'
-              }`}
-          >
-            <X className='w-6 h-6 mr-3' />
-            支援終了
-          </Button>
         </div>
 
         {/* 右側のアクションボタン */}
@@ -2631,16 +2635,16 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* メインコンチE��チE��リア */}
+      {/* メインコンティングーティングーリア */}
       {interactiveDiagnosisMode ? (
-        /* インタラクチE��ブ診断モーチE*/
+        /* インタラクティングーブ診断モーティング*/
         <div className='flex-1'>
           <InteractiveDiagnosisChat />
         </div>
       ) : (
-        /* 通常チャチE��モーチE*/
+        /* 通常チャティングーモーティング*/
         <>
-          {/* メチE��ージ表示エリア */}
+          {/* メティングーージ表示エリア */}
           <div className='flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth'>
             {messages.map(message => (
               <div
@@ -2652,7 +2656,7 @@ export default function ChatPage() {
                     troubleshootingMode &&
                     troubleshootingSession?.currentQuestion ===
                     message.content ? (
-                    // トラブルシューチE��ングQAバブル
+                    // トラブルシューティングQAバブル
                     <TroubleshootingQABubble
                       question={message.content}
                       options={troubleshootingSession?.currentOptions || []}
@@ -2694,7 +2698,7 @@ export default function ChatPage() {
             <div ref={messagesEndRef} className='h-4' />
           </div>
 
-          {/* メチE��ージ入力エリア�E�通常チャチE��モード！E*/}
+          {/* メティングーージ入力エリア�E�通常チャティングーモード！E*/}
           <div className='border-t bg-white p-4'>
             <MessageInput
               onSendMessage={handleSendMessage}

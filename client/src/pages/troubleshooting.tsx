@@ -352,7 +352,7 @@ export default function TroubleshootingPage() {
         <div>
           <h1 className='text-2xl sm:text-3xl font-bold text-gray-800 flex items-center gap-3'>
             <Workflow className='w-8 h-8 text-blue-600' />
-            応急処置データ管理
+            応急復旧データ管理
           </h1>
           <p className='text-gray-500 mt-1'>
             フローの新規作成、および既存フローの編集を行います

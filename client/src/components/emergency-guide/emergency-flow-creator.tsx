@@ -147,18 +147,18 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
             ')'
         );
 
-        // 🧹 キャデ��ュクリア��古い��ータの完�削除��
+        // 🧹 キャデーュクリアー古いーータの完�削除ー
         if (forceRefresh && 'caches' in window) {
           try {
             const cacheNames = await caches.keys();
             await Promise.all(cacheNames.map(name => caches.delete(name)));
-            console.log('🧹 全キャデ��ュ��古い��ータ含む��クリア完了);
+            console.log('🧹 全キャデーュー古いーータ含むークリア完了);
           } catch (cacherror) {
-            console.warn('⚠��キャデ��ュクリアエラー:', cacherror);
+            console.warn('⚠ーキャデーュクリアエラー:', cacherror);
           }
         }
 
-        // キャデ��ュバスターパラメータを追加
+        // キャデーュバスターパラメータを追加
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2, 15);
 
@@ -207,7 +207,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
               ? data
               : [];
         console.log(
-          '全フローデ�タを表示: ' + flows.length + '件��フィルタリング無効��
+          '全フローデ�タを表示: ' + flows.length + '件ーフィルタリング無効ー
         );
         console.log('フローデ�タ詳細:', flows);
         setFlowList(flows);
@@ -324,7 +324,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       // フロー一覧を更新
       await fetchFlowList(true);
 
-      // 編集��ブに刁��替ぁ
+      // 編集ーブに刁ー替ぁ
       setActiveTab('edit');
     } catch (error) {
       console.error('アデ�ロードエラー:', error);
@@ -343,32 +343,32 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
     }
   };
 
-  // フロー編集��のデ�タ読み込み
+  // フロー編集ーのデ�タ読み込み
   const loadFlowFordit = async (flowId: string) => {
     try {
-      console.log('🔄 フロー編集��ータ読み込み開始', flowId);
+      console.log('🔄 フロー編集ーータ読み込み開始', flowId);
 
-      // 🎯 フロー一覧からファイル情報��を取得
+      // 🎯 フロー一覧からファイル情報ーを取得
       const targetFlow = flowList.find(flow => flow.id === flowId);
       if (!targetFlow) {
         throw new Error('フローが見つかりません: ' + flowId);
       }
 
-      console.log('📋 対象フロー情報��:', targetFlow);
+      console.log('📋 対象フロー情報ー:', targetFlow);
 
-      // 🎯 ファイルパスを確実に設定！roubleshootingデ��レクトリ限定！
+      // 🎯 ファイルパスを確実に設定！roubleshootingデーレクトリ限定！
       const fileName = targetFlow.fileName.endsWith('.json')
         ? targetFlow.fileName
         : flowId + '.json';
       const filePath = 'knowledge-base/troubleshooting/' + fileName;
       setSelectedFilePath(filePath);
-      console.log('📁 編集��象ファイルパス設定', filePath);
+      console.log('📁 編集ー象ファイルパス設定', filePath);
 
-      // 🚫 ブラウザキャデ��ュを強制クリア
+      // 🚫 ブラウザキャデーュを強制クリア
       if ('caches' in window) {
         const cacheNames = await caches.keys();
         await Promise.all(cacheNames.map(name => caches.delete(name)));
-        console.log('🧹 ブラウザキャデ��ュクリア完了);
+        console.log('🧹 ブラウザキャデーュクリア完了);
       }
 
       // 🎯 統一されたAPIエンド�イントで直接取得
@@ -415,9 +415,9 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
         responseData.success && responseData.data
           ? responseData.data
           : responseData;
-      console.log('🔍 処理��象デ�タ:', data);
+      console.log('🔍 処理ー象デ�タ:', data);
 
-      // 🎯 デ��デ��: APIレスポンスの詳細確認
+      // 🎯 デーデー: APIレスポンスの詳細確認
       console.log('🔍 APIレスポンス詳細:', {
         responseData: responseData,
         data: data,
@@ -430,16 +430,16 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
         dataKeys: Object.keys(data),
       });
 
-      // 🎯 フロー一覧のデ�タ構造をエデ��ター用に変換��lides/steps統一��
+      // 🎯 フロー一覧のデ�タ構造をエデーター用に変換ーlides/steps統一ー
       const sourceSteps = data.steps || data.slides || [];
-      console.log('📋 ソーススデ��デ', sourceSteps);
+      console.log('📋 ソーススデーデ', sourceSteps);
 
       // デ�タが空の場合�処理
       if (!sourceSteps || sourceSteps.length === 0) {
-        console.warn('⚠��フローデ�タにスデ��プが含まれてぁ��せん');
+        console.warn('⚠ーフローデ�タにスデープが含まれてぁーせん');
         toast({
           title: 'デ�タ警告,
-          description: 'フローデ�タにスデ��プが含まれてぁ��せん',
+          description: 'フローデ�タにスデープが含まれてぁーせん',
           variant: 'destructive',
         });
       }
@@ -450,15 +450,15 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
         description: data.description || '',
         triggerKeywords: data.trigger || data.triggerKeywords || [],
         steps: sourceSteps.map((step, index) => {
-          console.log(`🔧 スデ��プ[${index}]処理��開始`, step);
+          console.log(`🔧 スデープ[${index}]処理ー開始`, step);
 
-          // 画像情報の処理��改善
+          // 画像情報の処理ー改善
           let processedImages = [];
 
           // 新しい 'images' 配�が存在する場合
           if (step.images && Array.isArray(step.images)) {
             console.log(
-              `📸 スデ��プ[${index}]で新しいimages形式を検�:`,
+              `📸 スデープ[${index}]で新しいimages形式を検�:`,
               step.images
             );
             processedImages = step.images
@@ -468,9 +468,9 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
                 fileName: img.fileName,
               }));
           }
-          // 古い��式�画像情報がある場合、新しい形式に変換
+          // 古いー式�画像情報がある場合、新しい形式に変換
           else if (step.imageUrl && step.imageFileName) {
-            console.log(`🔧 スデ��プ[${index}]を古い��式から変換:`, {
+            console.log(`🔧 スデープ[${index}]を古いー式から変換:`, {
               imageUrl: step.imageUrl,
               imageFileName: step.imageFileName,
             });
@@ -481,9 +481,9 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
               },
             ];
           }
-          // 古い��式�imageUrlのみの場合
+          // 古いー式�imageUrlのみの場合
           else if (step.imageUrl) {
-            console.log(`🔧 スデ��プ[${index}]をimageUrlのみから変換:`, {
+            console.log(`🔧 スデープ[${index}]をimageUrlのみから変換:`, {
               imageUrl: step.imageUrl,
             });
             const fileName = step.imageUrl.split('/').pop() || 'unknown.jpg';
@@ -500,7 +500,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
             // description と message の同期
             description: step.description || step.message || '',
             message: step.message || step.description || '',
-            // 画像情報を確実に設定（空配�をデフォルトに��
+            // 画像情報を確実に設定（空配�をデフォルトにー
             images: processedImages || [],
             // 古い�ププロパティを削除
             imageUrl: undefined,
@@ -515,15 +515,15 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
             })),
           };
 
-          console.log(`✅スデ��プ[${index}]処理��完了`, processedStep);
+          console.log(`✅スデープ[${index}]処理ー完了`, processedStep);
           return processedStep;
         }),
         updatedAt: data.createdAt || data.updatedAt || new Date().toISOString(),
       };
 
-      console.log('🎯 最終的なエデ��ターデ�タ:', editorData);
+      console.log('🎯 最終的なエデーターデ�タ:', editorData);
 
-      // デ�タ整合性の厳密��ェデ��
+      // デ�タ整合性の厳密ーェデー
       console.log('取得したフローデ�タ:', {
         requestedId: flowId,
         retrievedId: editorData.id,
@@ -539,17 +539,17 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
         dataSource: 'emergency-flow-api',
       });
 
-      // スデ��プ数不一致の警告（任意�スデ��プ数を許可��
+      // スデープ数不一致の警告（任意�スデープ数を許可ー
       if (editorData.steps?.length === 0) {
-        console.warn('スデ��プデータが存在しません');
+        console.warn('スデープデータが存在しません');
         toast({
           title: 'デ�タ警告,
-          description: 'フローデ�タにスデ��プが含まれてぁ��せん',
+          description: 'フローデ�タにスデープが含まれてぁーせん',
           variant: 'destructive',
         });
       }
 
-      // 🎯 編集��面の状態を更新
+      // 🎯 編集ー面の状態を更新
       console.log('🔄 状態更新開始);
       setCurrentFlowData(editorData);
       setSelectedFlowFordit(flowId);
@@ -559,15 +559,15 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
         currentFlowData: editorData,
       });
 
-      // 強制的��再レンダリングをトリガー
+      // 強制的ー再レンダリングをトリガー
       setTimeout(() => {
         console.log('🔄 強制再レンダリング実行);
         setCurrentFlowData({ ...editorData });
       }, 100);
 
-      console.log('✅フロー編集��ータ読み込み完了);
+      console.log('✅フロー編集ーータ読み込み完了);
     } catch (error) {
-      console.error('❌フロー編集��ータ読み込みエラー:', error);
+      console.error('❌フロー編集ーータ読み込みエラー:', error);
       toast({
         title: 'エラー',
         description: `フローデ�タの読み込みに失敗しました: ${error instanceof Error ? error.message : ''}`,
@@ -576,13 +576,13 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
     }
   };
 
-  // フロー削除 - 物理��ァイル削除とフロー一覧からの完�除去
+  // フロー削除 - 物理ーァイル削除とフロー一覧からの完�除去
   const deleteFlow = async (flowId: string) => {
     setIsDeleting(true);
     try {
-      console.log('🗑��フロー削除開始 ' + flowId);
+      console.log('🗑ーフロー削除開始 ' + flowId);
 
-      // 削除対象のフロー情報��を取得
+      // 削除対象のフロー情報ーを取得
       const targetFlow = flowList.find(flow => flow.id === flowId);
       if (!targetFlow) {
         throw new Error('削除対象のフローが見つかりません');
@@ -620,7 +620,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
           console.log('❌削除エラーデ�タ:', errorData);
           errorMessage = errorData.error || errorData.details || errorMessage;
         } catch (parseError) {
-          console.warn('⚠��エラーレスポンスの解析に失敗', parserror);
+          console.warn('⚠ーエラーレスポンスの解析に失敗', parserror);
         }
         throw new Error(errorMessage);
       }
@@ -628,20 +628,20 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       const result = await response.json();
       console.log('✅削除レスポンス:', result);
 
-      // 成功メデ��ージを表示
+      // 成功メデーージを表示
       toast({
         title: '削除完了,
         description: `、{targetFlow.title}」が正常に削除されました`,
       });
 
-      // 削除されたアイテム��が現在編集��の場合�クリア
+      // 削除されたアイテムーが現在編集ーの場合�クリア
       if (selectedFlowFordit === flowId) {
         setSelectedFlowFordit(null);
         setCurrentFlowData(null);
         setSelectedFilePath(null);
       }
 
-      // フロー一覧から削除されたアイテム��を即座に除去
+      // フロー一覧から削除されたアイテムーを即座に除去
       setFlowList(prevList => {
         const filteredList = prevList.filter(flow => flow.id !== flowId);
         console.log(
@@ -658,7 +658,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       console.log('🔄 フロー一覧を�取得中...');
       await fetchFlowList(true);
 
-      // 他�コンポ�ネントに削除完了��通知
+      // 他�コンポ�ネントに削除完了ー通知
       if (typeof window !== 'undefined') {
         window.dispatchvent(
           new Customvent('flowDeleted', {
@@ -694,7 +694,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
 
       // 画像URLの存在確認
       const stepsWithImages = savedData.steps.map(step => {
-        console.log('🔍 スデ��プ画像�理��開始', {
+        console.log('🔍 スデープ画像�理ー開始', {
           stepId: step.id,
           stepTitle: step.title,
           originalImages: step.images,
@@ -706,7 +706,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
         const images = step.images
           ?.filter(img => img && img.url && img.url.trim() !== '')
           .map(img => {
-            console.log('🖼��画像�理', {
+            console.log('🖼ー画像�理', {
               originalImg: img,
               url: img.url,
               fileName: img.fileName,
@@ -714,13 +714,13 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
               fileNameValid: img.fileName && img.fileName.trim() !== '',
             });
 
-            // 画像URLが有効でない��合�スキデ�
+            // 画像URLが有効でないー合�スキデ�
             if (!img.url || img.url.trim() === '') {
               console.log('❌無効な画像URLをスキデ�:', img);
               return null;
             }
 
-            // ファイル名が無い��合�URLから抽出
+            // ファイル名が無いー合�URLから抽出
             let fileName = img.fileName;
             if (!fileName || fileName.trim() === '') {
               // URLからファイル名を抽出
@@ -764,7 +764,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
           images: images || [], // 確実に空配�を設定
         };
 
-        console.log('🔍 処理���スデ��デ', {
+        console.log('🔍 処理ー�スデーデ', {
           stepId: processedStep.id,
           stepTitle: processedStep.title,
           finalImages: processedStep.images,
@@ -840,7 +840,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
         }))
       });
 
-      // 成功メデ��ージを表示
+      // 成功メデーージを表示
       toast({
         title: '保存完了,
         description: 'フローが正常に保存されました',
@@ -956,7 +956,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       ? initialData.triggerKeywords
       : [];
 
-    // currentFlowDataが存在する場合�それを使用、そぁ��なければslidesを使用
+    // currentFlowDataが存在する場合�それを使用、そぁーなければslidesを使用
     const dataToSave = currentFlowData || {
       id: validId,
       title,
@@ -985,7 +985,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
     onSave(dataToSave);
   };
 
-  // 画像追加時�自動保存（ファイル一覧に戻らない��
+  // 画像追加時�自動保存（ファイル一覧に戻らないー
   const handleAutoSave = async () => {
     try {
       // idがUUID形式でなければ新規発衁
@@ -1000,7 +1000,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
         ? initialData.triggerKeywords
         : [];
 
-      // currentFlowDataが存在する場合�それを使用、そぁ��なければslidesを使用
+      // currentFlowDataが存在する場合�それを使用、そぁーなければslidesを使用
       const dataToSave = currentFlowData || {
         id: validId,
         title,
@@ -1010,7 +1010,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
         updatedAt: new Date().toISOString(),
       };
 
-      // 統一された保存�理��使用して自動保孁
+      // 統一された保存�理ー使用して自動保孁
       const { saveFlowData } = await import('../../lib/flow-save-manager');
       const result = await saveFlowData(dataToSave);
 
@@ -1026,16 +1026,16 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
 
   const handleImageUpload = async (stepId: string, file: File) => {
     try {
-      // ファイルサイズチェック����0MB��
+      // ファイルサイズチェックーー0MBー
       const maxSize = 10 * 1024 * 1024; // 10MB
       if (file.size > maxSize) {
         alert(`ファイル "${file.name}" のサイズが大きすぎます、0MB以下�ファイルを選択してください。`);
         return;
       }
 
-      console.log('🖼��画像アデ�ロード開始', { stepId, fileName: file.name, fileSize: file.size });
+      console.log('🖼ー画像アデ�ロード開始', { stepId, fileName: file.name, fileSize: file.size });
 
-      // 重褁��ェデ��: 同じファイル名�画像が既に存在するかチェック��
+      // 重褁ーェデー: 同じファイル名�画像が既に存在するかチェックー
       if (currentFlowData) {
         const stepToUpdate = currentFlowData.steps.find(
           step => step.id === stepId
@@ -1046,13 +1046,13 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
             .find(
               img =>
                 img.fileName === file.name ||
-                img.fileName === file.name.replace(/\.[^/.]+$/, '') // 拡張子を除ぁ��比輁
+                img.fileName === file.name.replace(/\.[^/.]+$/, '') // 拡張子を除ぁー比輁
             );
 
           if (existingImage) {
             const confirmReplace = window.confirm(
               `同じファイル名�画僁"${file.name}" が既に存在します、n` +
-                `既存�画像を置き換えますか��`
+                `既存�画像を置き換えますかー`
             );
 
             if (!confirmReplace) {
@@ -1099,7 +1099,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       const result = await response.json();
 
       if (result.success && currentFlowData) {
-        // imageFileNameが返されてぁ��ぁ��合�fileNameを使用
+        // imageFileNameが返されてぁーぁー合�fileNameを使用
         const imageFileName = result.imageFileName || result.fileName;
 
         const newImage = {
@@ -1107,15 +1107,15 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
           fileName: imageFileName,
         };
 
-        // 重褁��像�場合�通知
+        // 重褁ー像�場合�通知
         if (result.isDuplicate) {
           console.log(
-            '🔄 重褁��像を検�、既存ファイルを使用:',
+            '🔄 重褁ー像を検�、既存ファイルを使用:',
             result.fileName
           );
         }
 
-        // 該当するスデ��プ�images配�を更新
+        // 該当するスデープ�images配�を更新
         const updatedSteps = currentFlowData.steps.map(step => {
           if (step.id === stepId) {
             const currentImages = (step.images || []).filter(img => img && img.url && img.url.trim() !== '');
@@ -1135,11 +1135,11 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
           steps: updatedSteps,
         });
 
-        // 自動保存を実行（ファイル一覧に戻らない��
+        // 自動保存を実行（ファイル一覧に戻らないー
         handleAutoSave();
 
         const message = result.isDuplicate
-          ? `重褁��像を検�しました。既存�画僁"${result.fileName}" を使用します。`
+          ? `重褁ー像を検�しました。既存�画僁"${result.fileName}" を使用します。`
           : '画像が正常にアデ�ロードされました';
 
         toast({
@@ -1173,7 +1173,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
     const imageToRemove = step.images[imageIndex];
 
     const confirmDelete = window.confirm(
-      `画僁"${imageToRemove.fileName}" を削除しますか��\nサーバ�からファイルが削除され、この操作�允��戻せません。`
+      `画僁"${imageToRemove.fileName}" を削除しますかー\nサーバ�からファイルが削除され、この操作�允ー戻せません。`
     );
 
     if (confirmDelete) {
@@ -1238,7 +1238,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
               );
               setSlides(updatedSlides);
             }}
-            placeholder='スライド�冁��を�劁
+            placeholder='スライド�冁ーを�劁
             className='text-base-2x h-12'
           />
           <div className='flex items-center gap-3'>
@@ -1268,7 +1268,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
           </div>
         </div>
 
-        {/* 画像表示部刁��改善*/}
+        {/* 画像表示部刁ー改善*/}
         {currentFlowData &&
           (() => {
             const step = currentFlowData.steps.find(s => s.id === slide.id);
@@ -1379,7 +1379,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
                 新規フロー作�
               </CardTitle>
               <CardDescription>
-                フローエデ��ターを使用して新しい応急処置フローを作�しまぁ
+                フローエデーターを使用して新しい応急処置フローを作�しまぁ
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1396,7 +1396,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
                 ファイルアデ�ローデ
               </CardTitle>
               <CardDescription>
-                既存�フローファイル��SON形式）をアデ�ロードしまぁ
+                既存�フローファイルーSON形式）をアデ�ロードしまぁ
               </CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
@@ -1476,14 +1476,14 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
               <CardHeader>
                 <CardTitle>フロー一覧</CardTitle>
                 <CardDescription>
-                  編集��るフローを選択してください ({flowList.length}件)
+                  編集ーるフローを選択してください ({flowList.length}件)
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {/* デ��デ��情報��表示 */}
+                {/* デーデー情報ー表示 */}
                 <div className='p-3 bg-yellow-50 border border-yellow-200 rounded mb-4'>
                   <h4 className='text-sm font-medium text-yellow-800 mb-2'>
-                    デ��デ��情報��
+                    デーデー情報ー
                   </h4>
                   <div className='text-xs text-yellow-700 space-y-1'>
                     <p>フロー一覧数: {flowList.length}</p>
@@ -1528,7 +1528,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
                             className='flex-1'
                             onClick={() => {
                               console.log(
-                                '🖱��フロー選抁',
+                                '🖱ーフロー選抁',
                                 flow.id,
                                 flow.title
                               );
@@ -1569,7 +1569,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
               </CardContent>
             </Card>
 
-            {/* フロー編集��リア */}
+            {/* フロー編集ーリア */}
             <Card>
               <CardHeader>
                 <CardTitle>フロー編集/CardTitle>
@@ -1593,7 +1593,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
                       timestamp: Date.now(),
                     })}
 
-                    {/* デ��デ��情報��表示 */}
+                    {/* デーデー情報ー表示 */}
                     <div className='p-3 bg-blue-50 border border-blue-200 rounded mb-4'>
                       <h4 className='text-sm font-medium text-blue-800 mb-2'>
                         デ�タ確認
@@ -1602,7 +1602,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
                         <p>選択されたフローID: {selectedFlowFordit}</p>
                         <p>フローデ�タID: {currentFlowData.id}</p>
                         <p>フロータイトル: {currentFlowData.title}</p>
-                        <p>スデ��プ数: {currentFlowData.steps?.length || 0}</p>
+                        <p>スデープ数: {currentFlowData.steps?.length || 0}</p>
                         <p>ファイルパス: {selectedFilePath}</p>
                       </div>
                     </div>
@@ -1619,9 +1619,9 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
                 ) : (
                   <div className='text-center py-8'>
                     <p className='text-gray-500'>
-                      編集��るフローを選択してください
+                      編集ーるフローを選択してください
                     </p>
-                    {console.log('📝 フロー編集��面の状態', {
+                    {console.log('📝 フロー編集ー面の状態', {
                       selectedFlowFordit,
                       hasCurrentFlowData: !!currentFlowData,
                       currentFlowDataId: currentFlowData?.id,
@@ -1640,7 +1640,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>フローを削除しますか��/AlertDialogTitle>
+            <AlertDialogTitle>フローを削除しますかー/AlertDialogTitle>
             <AlertDialogDescription>
               {'、 +
                 flowToDelete?.title +

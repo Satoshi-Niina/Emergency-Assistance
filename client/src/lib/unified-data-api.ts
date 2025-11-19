@@ -1,6 +1,6 @@
 import { api } from './api';
 
-// チE�Eタベ�Eスとローカルフォルダを統合的に扱ぁEPI関数群
+// シューティングベ�Eスとローカルフォルダを統合的に扱ぁEPI関数群
 
 export interface DatabaseOverview {
   success: boolean;
@@ -112,12 +112,12 @@ export interface BackupResult {
   message: string;
 }
 
-// チE�Eタベ�Eス総括惁E��取征E
+// シューティングベ�Eス総括惁Eー取征E
 export const getDatabaseOverview = async (): Promise<DatabaseOverview> => {
   return await api.get<DatabaseOverview>('/unified-data/db-overview');
 };
 
-// ローカルフォルダ総括惁E��取征E
+// ローカルフォルダ総括惁Eー取征E
 export const getFolderOverview = async (): Promise<FolderOverview> => {
   return await api.get<FolderOverview>('/unified-data/folder-overview');
 };
@@ -137,24 +137,24 @@ export const searchUnifiedData = async (
   });
 };
 
-// チE�Eタベ�Eススキーマ情報取征E
+// シューティングベ�Eススキーマ情報取征E
 export const getDatabaseSchema = async (): Promise<DatabaseSchema> => {
   return await api.get<DatabaseSchema>('/unified-data/db-schema');
 };
 
-// チE�Eタベ�EスバックアチE�E実衁E
+// シューティングベ�EスバックティングE�E実衁E
 export const createDatabaseBackup = async (): Promise<BackupResult> => {
   return await api.post<BackupResult>('/unified-data/backup');
 };
 
-// シスチE��健全性チェチE��
+// システィングー健全性チティングEー
 export const getSystemHealthCheck = async (): Promise<HealthCheck> => {
   return await api.get<HealthCheck>('/unified-data/health-check');
 };
 
-// 使ぁE��すい褁E��関数
+// 使ぁEーすい褁Eー関数
 
-// 全体�E状況確認！EB + フォルダ + ヘルスチェチE���E�E
+// 全体�E状況確認！EB + フォルダ + ヘルスチェティングー�E�E
 export const getSystemOverview = async () => {
   try {
     const [dbOverview, folderOverview, healthCheck] = await Promise.all([
@@ -176,12 +176,12 @@ export const getSystemOverview = async () => {
       },
     };
   } catch (error) {
-    console.error('シスチE��総括惁E��取得エラー:', error);
+    console.error('システィングー総括惁Eー取得エラー:', error);
     throw error;
   }
 };
 
-// チE�Eタ保存�E状況確誁E
+// シューティング保存�E状況確誁E
 export const checkDataIntegrity = async () => {
   try {
     const [dbSchema, healthCheck] = await Promise.all([
@@ -189,23 +189,23 @@ export const checkDataIntegrity = async () => {
       getSystemHealthCheck(),
     ]);
 
-    // チE�Eタ整合性チェチE��
+    // シューティング整合性チェティングー
     const integrityIssues = [];
-    
-    // チE�Eタベ�EスチE�Eブルの存在確誁E
+
+    // シューティングベ�EティングE�Eブルの存在確誁E
     const requiredTables = [
-      'users', 'support_history', 'base_documents', 
+      'users', 'support_history', 'base_documents',
       'history_items', 'machines', 'machine_types'
     ];
-    
+
     for (const tableName of requiredTables) {
       const tableExists = dbSchema.tables.some(table => table.name === tableName);
       if (!tableExists) {
-        integrityIssues.push(`忁E��テーブル ${tableName} が存在しません`);
+        integrityIssues.push(`忁Eーテーブル ${tableName} が存在しません`);
       }
     }
 
-    // ヘルスチェチE��でエラーがあるか確誁E
+    // ヘルスチェティングーでエラーがあるか確誁E
     const healthErrors = healthCheck.checks.filter(check => check.status === 'ERROR');
     integrityIssues.push(...healthErrors.map(error => error.message));
 
@@ -218,14 +218,14 @@ export const checkDataIntegrity = async () => {
         isHealthy: integrityIssues.length === 0,
         issues: integrityIssues,
         recommendations: integrityIssues.length > 0 ? [
-          'チE�Eタベ�Eスの接続設定を確認してください',
-          '忁E��なチE��レクトリが存在するか確認してください',
-          'シスチE��の健全性チェチE��の詳細を確認してください'
+          'シューティングベ�Eスの接続設定を確認してください',
+          '忁EーティングEーレクトリが存在するか確認してください',
+          'システィングーの健全性チティングEーの詳細を確認してください'
         ] : []
       }
     };
   } catch (error) {
-    console.error('チE�Eタ整合性チェチE��エラー:', error);
+    console.error('シューティング整合性チェティングーエラー:', error);
     throw error;
   }
 };

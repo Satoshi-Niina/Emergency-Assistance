@@ -6,10 +6,13 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "dev": "cross-env NODE_ENV=development node server/azure-server.mjs",
-    "dev:legacy": "node server/unified-hot-reload-server.js",
-    "start": "npm run dev",
-    "build": "npm --prefix client run build",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cross-env NODE_ENV=development PORT=8080 node server/unified-hot-reload-server.js",
+    "dev:client": "npm --prefix client run vite-only",
+    "start": "cross-env NODE_ENV=production node server/unified-hot-reload-server.js",
+    "start:prod": "cross-env NODE_ENV=production node server/unified-hot-reload-server.js",
+    "build": "echo No build needed - source code is deployed directly",
+    "build:client": "npm --prefix client run build",
     "prebuild": "echo 🔨 Building client for production deployment...",
     "postbuild": "echo ✅ Client build completed. Ready for deployment!",
     "deploy-check": "node scripts/check-build-before-push.js",
@@ -25,8 +28,13 @@
     "docker:logs:dev": "docker-compose -f docker-compose.dev.yml logs -f"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^5.1.1",
+    "autoprefixer": "^10.4.22",
     "concurrently": "^8.2.2",
-    "cross-env": "^7.0.3"
+    "cross-env": "^7.0.3",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.17",
+    "vite": "^5.4.21"
   },
   "keywords": [
     "emergency",

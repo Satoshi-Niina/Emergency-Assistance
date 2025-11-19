@@ -845,7 +845,34 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
       console.log('エクスポート開始:', chatId);
       setIsExporting(true);
 
-      const data = await apiRequest(`/api/chats/${chatId}/export`, { method: 'POST' });
+      // エクスポートデータを準備
+      const exportData = {
+        title: messages.find(m => !m.isAiResponse)?.content?.substring(0, 50) || `チャット履歴 ${new Date().toISOString().split('T')[0]}`,
+        messages: messages.map(msg => ({
+          id: msg.id,
+          content: msg.content,
+          isAiResponse: msg.isAiResponse,
+          timestamp: msg.timestamp,
+          media: msg.media || [],
+        })),
+        savedImages: messages
+          .filter(msg => msg.media && msg.media.length > 0)
+          .flatMap(msg =>
+            msg.media.map((media: any) => ({
+              messageId: msg.id,
+              fileName: media.fileName || media.url?.split('/').pop() || '',
+              url: media.url || '',
+            }))
+          ),
+      };
+
+      const data = await apiRequest(`/api/chats/${chatId}/export`, {
+        method: 'POST',
+        body: JSON.stringify(exportData),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
       console.log('エクスポート成功:', data);
 
@@ -873,7 +900,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
     } finally {
       setIsExporting(false);
     }
-  }, [chatId, toast]);
+  }, [chatId, messages, toast]);
 
   // 外部システム連携用に形式化されたデータをエクスポートする
   const exportFormattedData = useCallback(async () => {

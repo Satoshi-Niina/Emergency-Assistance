@@ -1,6 +1,6 @@
 import { apiRequest } from '../api';
 
-// 敁E��履歴の型定義
+// 敁Eー履歴の型定義
 export interface FaultHistoryItem {
   id: string;
   title: string;
@@ -68,23 +68,23 @@ export interface FaultHistoryStats {
 }
 
 /**
- * 敁E��履歴を保孁E
+ * 敁Eー履歴を保孁E
  */
 export const saveFaultHistory = async (
   data: FaultHistoryCreateData
 ): Promise<{ id: string; imagePaths?: string[]; imageCount: number }> => {
   const formData = new FormData();
-  
+
   formData.append('jsonData', JSON.stringify(data.jsonData));
-  
+
   if (data.title) {
     formData.append('title', data.title);
   }
-  
+
   if (data.description) {
     formData.append('description', data.description);
   }
-  
+
   formData.append('extractImages', data.extractImages !== false ? 'true' : 'false');
 
   const response = await apiRequest('/fault-history', {
@@ -93,7 +93,7 @@ export const saveFaultHistory = async (
   });
 
   if (!response.success) {
-    throw new Error(response.error || '敁E��履歴の保存に失敗しました');
+    throw new Error(response.error || '敁Eー履歴の保存に失敗しました');
   }
 
   return {
@@ -104,13 +104,13 @@ export const saveFaultHistory = async (
 };
 
 /**
- * 敁E��履歴一覧を取征E
+ * 敁Eー履歴一覧を取征E
  */
 export const fetchFaultHistoryList = async (
   filters: FaultHistorySearchFilters = {}
 ): Promise<FaultHistoryListResponse> => {
   const params = new URLSearchParams();
-  
+
   if (filters.limit) params.append('limit', filters.limit.toString());
   if (filters.offset) params.append('offset', filters.offset.toString());
   if (filters.machineType) params.append('machineType', filters.machineType);
@@ -122,27 +122,27 @@ export const fetchFaultHistoryList = async (
   const response = await apiRequest(`/fault-history?${params.toString()}`);
 
   if (!response.success) {
-    throw new Error(response.error || '敁E��履歴の取得に失敗しました');
+    throw new Error(response.error || '敁Eー履歴の取得に失敗しました');
   }
 
   return response;
 };
 
 /**
- * 敁E��履歴詳細を取征E
+ * 敁Eー履歴詳細を取征E
  */
 export const fetchFaultHistoryDetail = async (id: string): Promise<FaultHistoryItem> => {
   const response = await apiRequest(`/fault-history/${id}`);
 
   if (!response.success) {
-    throw new Error(response.error || '敁E��履歴の取得に失敗しました');
+    throw new Error(response.error || '敁Eー履歴の取得に失敗しました');
   }
 
   return response.data;
 };
 
 /**
- * 敁E��履歴統計を取征E
+ * 敁Eー履歴統計を取征E
  */
 export const fetchFaultHistoryStats = async (): Promise<FaultHistoryStats> => {
   const response = await apiRequest('/fault-history/stats');
@@ -155,7 +155,7 @@ export const fetchFaultHistoryStats = async (): Promise<FaultHistoryStats> => {
 };
 
 /**
- * 既存�EexportsチE��レクトリからチE�Eタベ�Eスに移衁E
+ * 既存�EexportティングEーレクトリかティングE�Eタベ�Eスに移衁E
  */
 export const importFromExports = async (force = false): Promise<{
   imported: number;
@@ -181,18 +181,18 @@ export const importFromExports = async (force = false): Promise<{
 };
 
 /**
- * 敁E��履歴画像�EURLを生戁E
+ * 敁Eー履歴画像�EURLを生戁E
  */
 export const getFaultHistoryImageUrl = (filename: string): string => {
-  const baseUrl = import.meta.env.DEV 
+  const baseUrl = import.meta.env.DEV
     ? 'http://localhost:8080'
     : import.meta.env.VITE_API_BASE_URL || window.location.origin;
-  
+
   return `${baseUrl}/api/fault-history/images/${filename}`;
 };
 
 /**
- * チャチE��エクスポ�Eトデータから敁E��履歴を�E動保孁E
+ * チャティングーエクスポ�Eトデータから敁Eー履歴を�E動保孁E
  */
 export const saveFromChatExport = async (
   exportData: any,
@@ -201,16 +201,16 @@ export const saveFromChatExport = async (
     description?: string;
   } = {}
 ): Promise<{ id: string; imagePaths?: string[]; imageCount: number }> => {
-  // エクスポ�Eトデータから基本惁E��を抽出
-  const title = options.title || 
-    exportData.title || 
+  // エクスポ�Eトデータから基本惁Eーを抽出
+  const title = options.title ||
+    exportData.title ||
     exportData.metadata?.title ||
-    '敁E��対応履歴';
-  
-  const description = options.description || 
+    '敁Eー対応履歴';
+
+  const description = options.description ||
     exportData.description ||
     exportData.metadata?.description ||
-    `チャチE��エクスポ�Eトから�E動保孁E ${new Date().toLocaleString()}`;
+    `チャティングーエクスポ�Eトから�E動保孁E ${new Date().toLocaleString()}`;
 
   return await saveFaultHistory({
     jsonData: exportData,
@@ -221,7 +221,7 @@ export const saveFromChatExport = async (
 };
 
 /**
- * 敁E��履歴を削除�E�忁E��に応じて実裁E��E
+ * 敁Eー履歴を削除�E�忁Eーに応じて実裁EーE
  */
 export const deleteFaultHistory = async (id: string): Promise<void> => {
   const response = await apiRequest(`/fault-history/${id}`, {
@@ -229,6 +229,6 @@ export const deleteFaultHistory = async (id: string): Promise<void> => {
   });
 
   if (!response.success) {
-    throw new Error(response.error || '敁E��履歴の削除に失敗しました');
+    throw new Error(response.error || '敁Eー履歴の削除に失敗しました');
   }
 };

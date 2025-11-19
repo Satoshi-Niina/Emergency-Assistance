@@ -1,10 +1,10 @@
-# バックアチE�E・一時�EキャチE��ュ・不要データ
+# バックアティング�E・一時�Eキャティングーュ・不要データ
 knowledge-base/backups/
 knowledge-base/temp/
 logs-temp/
 cache/
 dist.zip
-# クリーンアチE�E対象ファイル
+# クリーンアティング�E対象ファイル
 *.log
 *.tmp
 *.temp
@@ -55,7 +55,7 @@ out/
 .parcel-cache/
 .vite/
 .turbo/
-# サーバ�EのSQLマイグレーションファイルを除外（忁E��に応じてコメントアウト！E# server/migrations/*.sql
+# サーバ�EのSQLマイグレーションファイルを除外（忁Eーに応じてコメントアウト！E# server/migrations/*.sql
 .swc/
 .cache/
 .eslintcache/

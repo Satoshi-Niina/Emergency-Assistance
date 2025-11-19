@@ -159,15 +159,15 @@ const HistoryPage: React.FC = () => {
   const [selectedReportData, setSelectedReportData] = useState<any>(null);
   const [selectedFileName, setSelectedFileName] = useState<string>('');
 
-  // 機械敁E��報告書の状慁E  const [showMachineFailureReport, setShowMachineFailureReport] = useState(false);
+  // 機械敁Eー報告書の状慁E  const [showMachineFailureReport, setShowMachineFailureReport] = useState(false);
   const [machineFailureReportData, setMachineFailureReportData] = useState<any>(null);
 
-  // 機種・機械番号マスターチE�Eタ�E�編雁EI用 - PostgreSQLから�E�E  const [machineData, setMachineData] = useState<MachineData>({
+  // 機種・機械番号マスターシューティング�E�編雁EI用 - PostgreSQLから�E�E  const [machineData, setMachineData] = useState<MachineData>({
     machineTypes: [],
     machines: [],
   });
 
-  // 履歴検索フィルター用チE�Eタ�E�保存されたJSONファイルから�E�E  const [searchFilterData, setSearchFilterData] = useState<{
+  // 履歴検索フィルター用シューティング�E�保存されたJSONファイルから�E�E  const [searchFilterData, setSearchFilterData] = useState<{
     machineTypes: string[];
     machineNumbers: string[];
   }>({
@@ -178,10 +178,10 @@ const HistoryPage: React.FC = () => {
   const [searchFilterLoading, setSearchFilterLoading] = useState(false);
   const lastApiCallRef = useRef<number>(0);
   const isInitialLoadedRef = useRef<boolean>(false);
-  // 要紁E��自動生成済みかどぁE��を追跡するRef
+  // 要紁Eー自動生成済みかどぁEーを追跡するRef
   const autoSummaryGenerated = useRef<Set<string>>(new Set());
 
-  // アイチE��選択ハンドラー
+  // アイティングー選択ハンドラー
   const handleItemSelect = (itemId: string, isSelected: boolean) => {
     setSelectedItems(prev => {
       const newSet = new Set(prev);
@@ -194,9 +194,9 @@ const HistoryPage: React.FC = () => {
     });
   };
 
-  // JSONチE�Eタを正規化する関数
+  // JSONシューティングを正規化する関数
   const normalizeJsonData = (item: SupportHistoryItem): SupportHistoryItem => {
-    console.log('正規化前�EアイチE��:', item);
+    console.log('正規化前�Eアイティングー:', item);
 
     if (!item.jsonData) {
       console.log('jsonDataが存在しません');
@@ -217,18 +217,18 @@ const HistoryPage: React.FC = () => {
       machineType: item.machineType || item.jsonData.machineType || '',
       machineNumber: item.machineNumber || item.jsonData.machineNumber || '',
       jsonData: {
-        ...item.jsonData, // 既存�EjsonDataをすべて含める�E�EhatDataも含む�E�E        // 忁E��なフィールドを確実に含める
+        ...item.jsonData, // 既存�EjsonDataをすべて含める�E�EhatDataも含む�E�E        // 忁Eーなフィールドを確実に含める
         // 事象タイトル: JSONのtitleから優先的に取得、ファイル名からも抽出
         title: item.jsonData?.title || (() => {
-          // まずitem.titleをチェチE���E�ESONがルートレベルにある場合！E          if (item.title) {
+          // まずitem.titleをチェティングー�E�ESONがルートレベルにある場合！E          if (item.title) {
             return item.title;
           }
-        // ファイル名から日本語部刁E��けを抽出�E�例：エンジンが�Eく始動しない_0a9f4736-82fa... -> エンジンが�Eく始動しなぁE��E        if (item.fileName) {
+        // ファイル名から日本語部刁Eーけを抽出�E�例：エンジンが�Eく始動しない_0a9f4736-82fa... -> エンジンが�Eく始動しなぁEーE        if (item.fileName) {
           // 最初�E「_」までが日本語部刁E          const firstUnderscoreIndex = item.fileName.indexOf('_');
           if (firstUnderscoreIndex > 0) {
             return item.fileName.substring(0, firstUnderscoreIndex);
           }
-          // 「_」がなぁE��合�E、拡張子を除ぁE��全体を返す�E�日本語�Eみの場合！E          const withoutExtension = item.fileName.replace(/\.json$/, '');
+          // 「_」がなぁEー合�E、拡張子を除ぁEー全体を返す�E�日本語�Eみの場合！E          const withoutExtension = item.fileName.replace(/\.json$/, '');
           return withoutExtension;
         }
         return '';
@@ -250,7 +250,7 @@ const HistoryPage: React.FC = () => {
     };
 
     // chatDataが存在する場合�E追加処琁E    if (item.jsonData.chatData || normalizedItem.jsonData.chatData) {
-      console.log('chatData形式を検�E');
+      console.log('chatData形式を検索');
       const chatData = item.jsonData.chatData || normalizedItem.jsonData.chatData;
 
       // machineInfoからmachineTypeとmachineNumberを取征E      const machineTypeName = chatData.machineInfo?.machineTypeName || '';
@@ -268,11 +268,11 @@ const HistoryPage: React.FC = () => {
         machineNumber || normalizedItem.jsonData.machineNumber;
     }
 
-    console.log('正規化後�EアイチE��:', normalizedItem);
+    console.log('正規化後�Eアイティングー:', normalizedItem);
     return normalizedItem;
   };
 
-  // JSONの冁E��から発生事象から処置までの要紁E��生�Eする関数
+  // JSONの冁Eーから発生事象から処置までの要紁Eー生�Eする関数
   const generateSummaryFromJson = useCallback((jsonData: any): string => {
     try {
       const parts: string[] = [];
@@ -288,7 +288,7 @@ const HistoryPage: React.FC = () => {
       const chatData = jsonData?.chatData || jsonData;
       const chatMessages = chatData?.messages || [];
 
-      // conversationHistoryからチE��ストメチE��ージを抽出�E�画像�E除外！E      const conversationTexts: string[] = [];
+      // conversationHistoryからティングーストメティングーージを抽出�E�画像�E除外！E      const conversationTexts: string[] = [];
       if (Array.isArray(conversationHistory)) {
         conversationHistory.forEach((msg: any) => {
           if (msg && typeof msg === 'object') {
@@ -300,7 +300,7 @@ const HistoryPage: React.FC = () => {
         });
       }
 
-      // chatData.messagesからユーザーメチE��ージを抽出�E�画像�E除外！E      const userMessages: string[] = [];
+      // chatData.messagesからユーザーメティングーージを抽出�E�画像�E除外！E      const userMessages: string[] = [];
       if (Array.isArray(chatMessages)) {
         chatMessages.forEach((msg: any) => {
           if (msg && typeof msg === 'object' && !msg.isAiResponse) {
@@ -327,47 +327,47 @@ const HistoryPage: React.FC = () => {
         parts.push(`【発生事象の詳細、E{eventDetails.join(' ')}`);
       }
 
-      // 3. 影響コンポ�EネンチE      const components = jsonData?.extractedComponents || [];
+      // 3. 影響コンポ�Eネンティング      const components = jsonData?.extractedComponents || [];
       if (components.length > 0) {
         parts.push(`【影響コンポ�Eネント、E{components.join(', ')}`);
       }
 
-      // 4. 痁E��
+      // 4. 痁Eー
       const symptoms = jsonData?.extractedSymptoms || [];
       if (symptoms.length > 0) {
         parts.push(`【症状、E{symptoms.join(', ')}`);
       }
 
-      // 5. 処置冁E���E�Enswer�E�E      const answer = jsonData?.answer || '';
+      // 5. 処置冁Eー�E�Enswer�E�E      const answer = jsonData?.answer || '';
       if (answer) {
-        parts.push(`【�E置冁E��、E{answer}`);
+        parts.push(`【�E置冁Eー、E{answer}`);
       }
 
-      // 要紁E��生�EできなぁE��合�E空斁E��を返す
+      // 要紁Eー生�EできなぁEー合�E空斁Eーを返す
       if (parts.length === 0) {
         return '';
       }
 
       return parts.join('\n\n');
     } catch (error) {
-      console.error('要紁E��成エラー:', error);
+      console.error('要紁Eー成エラー:', error);
       return '';
     }
   }, []);
 
-  // 編雁E��面が開かれた時にGPT要紁E��自動生成（一度だけ実行！E  useEffect(() => {
+  // 編雁Eー面が開かれた時にGPT要紁Eー自動生成（一度だけ実行！E  useEffect(() => {
     if (showEditDialog && editingItem && editingItem.id) {
-      // 既にこ�EアイチE��の要紁E��生�E済みの場合�EスキチE�E
+      // 既にこ�Eアイティングーの要紁Eー生�E済みの場合�Eスキティング�E
       if (autoSummaryGenerated.current.has(editingItem.id)) {
         return;
       }
 
-      // 編雁E��面を開ぁE��ら、既存�E説明があってめEPT要紁E��自動生成して上書ぁE      autoSummaryGenerated.current.add(editingItem.id);
+      // 編雁Eー面を開ぁEーら、既存�E説明があってめEPT要紁Eー自動生成して上書ぁE      autoSummaryGenerated.current.add(editingItem.id);
 
-      // GPT要紁E��非同期で生�E
+      // GPT要紁Eー非同期で生�E
       (async () => {
         try {
-          // JSONチE�Eタに要紁E��忁E��なチE�EタがあるかチェチE��
+          // JSONシューティングに要紁Eー忁Eーなシューティングがあるかチェティングー
           const chatData = editingItem.jsonData?.chatData || editingItem.jsonData;
           const hasDataForSummary =
             editingItem.jsonData?.title ||
@@ -377,17 +377,17 @@ const HistoryPage: React.FC = () => {
             editingItem.jsonData?.answer;
 
           if (!hasDataForSummary) {
-            console.log('⚠�E�E要紁E��忁E��なチE�Eタがありません、EPT要紁E��スキチE�Eします、E);
+            console.log('⚠�E�E要紁Eー忁Eーなシューティングがありません、EPT要紁Eースキティング�Eします、E);
             return;
           }
 
-          console.log('📝 編雁E��面を開ぁE��際にGPT要紁E��自動生成中...');
+          console.log('📝 編雁Eー面を開ぁEー際にGPT要紁Eー自動生成中...');
 
-          // chatData.messagesからユーザーメチE��ージを抽出してGPT要紁E��使用
+          // chatData.messagesからユーザーメティングーージを抽出してGPT要紁Eー使用
           const chatDataForSummary = editingItem.jsonData?.chatData || editingItem.jsonData;
           let summaryJsonData = { ...editingItem.jsonData };
 
-          // chatData.messagesが存在する場合�E、それを優先してGPT要紁E��使用
+          // chatData.messagesが存在する場合�E、それを優先してGPT要紁Eー使用
           if (chatDataForSummary?.messages && Array.isArray(chatDataForSummary.messages)) {
             const userMessages = chatDataForSummary.messages
               .filter((msg: any) => !msg.isAiResponse && msg.content && !msg.content.startsWith('data:image/') && !msg.content.startsWith('/api/images/'))
@@ -402,13 +402,13 @@ const HistoryPage: React.FC = () => {
                   messages: chatDataForSummary.messages,
                 },
               };
-              console.log('🔍 GPT要紁E��使用するユーザーメチE��ージ数:', userMessages.length);
+              console.log('🔍 GPT要紁Eー使用するユーザーメティングーージ数:', userMessages.length);
             }
           }
 
           const gptSummary = await summarizeWithGPT(summaryJsonData);
           if (gptSummary) {
-            console.log('✁EGPT要紁E��成完亁E', gptSummary.substring(0, 100) + '...');
+            console.log('✁EGPT要紁Eー成完亁E', gptSummary.substring(0, 100) + '...');
             setEditingItem({
               ...editingItem,
               jsonData: {
@@ -419,20 +419,20 @@ const HistoryPage: React.FC = () => {
             });
           }
         } catch (error: any) {
-          // 400エラー�E�要紁E��る�E容がなぁE���E静かに処琁E��てフォールバック
-          const isNoContentError = error?.message?.includes('要紁E��る�E容がありません') ||
+          // 400エラー�E�要紁Eーる�E容がなぁEー�E静かに処琁Eーてフォールバック
+          const isNoContentError = error?.message?.includes('要紁Eーる�E容がありません') ||
                                    error?.message?.includes('400');
 
           if (!isNoContentError) {
             console.error('❁EGPT要紁E�E動生成エラー:', error);
           } else {
-            console.log('⚠�E�E要紁E��忁E��なチE�Eタが不足してぁE��す。簡易要紁E��使用します、E);
+            console.log('⚠�E�E要紁Eー忁Eーなシューティングが不足してぁEーす。簡易要紁Eー使用します、E);
           }
 
-          // GPT要紁E��失敗した場合�E簡易要紁E��フォールバック
+          // GPT要紁Eー失敗した場合�E簡易要紁Eーフォールバック
           const fallbackSummary = generateSummaryFromJson(editingItem.jsonData);
           if (fallbackSummary) {
-            console.log('📝 簡易要紁E��フォールバックとして生�E:', fallbackSummary);
+            console.log('📝 簡易要紁Eーフォールバックとして生�E:', fallbackSummary);
             setEditingItem({
               ...editingItem,
               jsonData: {
@@ -447,14 +447,14 @@ const HistoryPage: React.FC = () => {
     }
   }, [showEditDialog, editingItem?.id]);
 
-  // 履歴チE�Eタ更新のメチE��ージリスナ�E
+  // 履歴シューティング更新のメティングーージリスナ�E
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data && event.data.type === 'UPDATE_HISTORY_ITEM') {
         const updatedData = event.data.data;
-        console.log('履歴チE�Eタ更新メチE��ージを受信:', updatedData);
+        console.log('履歴シューティング更新メティングーージを受信:', updatedData);
 
-        // 履歴一覧表の該当アイチE��を更新
+        // 履歴一覧表の該当アイティングーを更新
         setHistoryItems(prevItems =>
           prevItems.map(item =>
             item.id === updatedData.id || item.chatId === updatedData.chatId
@@ -463,7 +463,7 @@ const HistoryPage: React.FC = () => {
           )
         );
 
-        // フィルタリングされたアイチE��も更新
+        // フィルタリングされたアイティングーも更新
         setFilteredItems(prevItems =>
           prevItems.map(item =>
             item.id === updatedData.id || item.chatId === updatedData.chatId
@@ -472,7 +472,7 @@ const HistoryPage: React.FC = () => {
           )
         );
 
-        // 選択中のアイチE��も更新
+        // 選択中のアイティングーも更新
         if (
           selectedItem &&
           (selectedItem.id === updatedData.id ||
@@ -492,33 +492,33 @@ const HistoryPage: React.FC = () => {
     console.log('🔍 machineData状態変化:', machineData);
   }, [machineData]);
 
-  // チE�Eタ取得（サーバ�EAPIから取得！E- こ�E処琁E�E初期ロードに統合済み
+  // シューティング取得（サーバ�EAPIから取得！E- こ�E処琁E�E初期ロードに統合済み
 
-  // 機種・機械番号マスターチE�Eタ取征E  const fetchMachineDataFromAPI = async () => {
+  // 機種・機械番号マスターシューティング取征E  const fetchMachineDataFromAPI = async () => {
     try {
       setMachineDataLoading(true);
 
-      // 機種・機械番号チE�Eタを専用APIから取征E      console.log('🔍 機種・機械番号チE�Eタ取得開姁E);
+      // 機種・機械番号シューティングを専用APIから取征E      console.log('🔍 機種・機械番号シューティング取得開姁E);
       const { buildApiUrl } = await import('../lib/api');
       const response = await fetch(buildApiUrl('/machines/machine-types'));
       console.log('🔍 APIレスポンス:', response.status, response.statusText);
       const data = await response.json();
-      console.log('🔍 APIレスポンスチE�Eタ:', data);
+      console.log('🔍 APIレスポンスシューティング:', data);
 
       if (data.success && data.data) {
-        // 機種一覧を構築（重褁E��去�E�E        const machineTypeSet = new Set<string>();
+        // 機種一覧を構築（重褁Eー去�E�E        const machineTypeSet = new Set<string>();
         const machineTypes: Array<{ id: string; machineTypeName: string }> = [];
 
-        // 機械番号一覧を構築（重褁E��去�E�E        const machineSet = new Set<string>();
+        // 機械番号一覧を構築（重褁Eー去�E�E        const machineSet = new Set<string>();
         const machines: Array<{
           id: string;
           machineNumber: string;
           machineTypeName: string;
         }> = [];
 
-        console.log('🔍 機種・機械番号チE�Eタは専用APIから取得されまぁE);
+        console.log('🔍 機種・機械番号シューティングは専用APIから取得されまぁE);
 
-        // 機種チE�Eタを�E琁E        data.data.forEach((type: any) => {
+        // 機種シューティングを�E琁E        data.data.forEach((type: any) => {
           if (type.machine_type_name && !machineTypeSet.has(type.machine_type_name)) {
             machineTypeSet.add(type.machine_type_name);
             machineTypes.push({
@@ -532,7 +532,7 @@ const HistoryPage: React.FC = () => {
           machineTypes: machineTypes,
           machines: [], // 機械番号は別途取征E        };
 
-        console.log('🔍 機種・機械番号チE�Eタ取得結果:', result);
+        console.log('🔍 機種・機械番号シューティング取得結果:', result);
         console.log('🔍 機種数:', result.machineTypes.length);
         console.log('🔍 機械番号数:', result.machines.length);
         console.log(
@@ -548,7 +548,7 @@ const HistoryPage: React.FC = () => {
         console.log('🔍 setMachineData呼び出し完亁E);
       } else {
         console.log(
-          '⚠�E�E機種・機械番号チE�Eタが正しく取得できませんでした:',
+          '⚠�E�E機種・機械番号シューティングが正しく取得できませんでした:',
           data
         );
         console.log('⚠�E�Edata.success:', data.success);
@@ -557,17 +557,17 @@ const HistoryPage: React.FC = () => {
         setMachineData({ machineTypes: [], machines: [] });
       }
     } catch (error) {
-      console.error('機種・機械番号チE�Eタの取得に失敗しました:', error);
+      console.error('機種・機械番号シューティングの取得に失敗しました:', error);
       setMachineData({ machineTypes: [], machines: [] });
     } finally {
       setMachineDataLoading(false);
     }
   };
 
-  // 履歴検索フィルター用チE�Eタ�E�エクスポ�EチESONから取得！E  const fetchSearchFilterData = async () => {
+  // 履歴検索フィルター用シューティング�E�エクスポ�EティングSONから取得！E  const fetchSearchFilterData = async () => {
     try {
       setSearchFilterLoading(true);
-      console.log('🔍 エクスポ�EチESONからフィルターチE�Eタ取得開姁E);
+      console.log('🔍 エクスポ�EティングSONからフィルターシューティング取得開姁E);
 
       const response = await fetch('/api/history/exports/filter-data');
       if (response.ok) {
@@ -577,20 +577,20 @@ const HistoryPage: React.FC = () => {
             machineTypes: data.machineTypes || [],
             machineNumbers: data.machineNumbers || [],
           });
-          console.log('🔍 フィルターチE�Eタ取得完亁E', {
+          console.log('🔍 フィルターシューティング取得完亁E', {
             machineTypes: data.machineTypes?.length || 0,
             machineNumbers: data.machineNumbers?.length || 0,
           });
         } else {
-          console.warn('⚠�E�EフィルターチE�Eタ取得失敁E', data);
+          console.warn('⚠�E�Eフィルターシューティング取得失敁E', data);
           setSearchFilterData({ machineTypes: [], machineNumbers: [] });
         }
       } else {
-        console.error('⚠�E�EフィルターチE�Eタ取得エラー:', response.statusText);
+        console.error('⚠�E�Eフィルターシューティング取得エラー:', response.statusText);
         setSearchFilterData({ machineTypes: [], machineNumbers: [] });
       }
     } catch (error) {
-      console.error('履歴検索フィルターチE�Eタ取得エラー:', error);
+      console.error('履歴検索フィルターシューティング取得エラー:', error);
       setSearchFilterData({ machineTypes: [], machineNumbers: [] });
     } finally {
       setSearchFilterLoading(false);
@@ -601,7 +601,7 @@ const HistoryPage: React.FC = () => {
     try {
       setLoading(true);
 
-      // レート制限チェチE��
+      // レート制限チェティングー
       const now = Date.now();
       if (lastApiCallRef.current && now - lastApiCallRef.current < 1000) {
         console.log('🔍 APIリクエスト制限中...');
@@ -629,10 +629,10 @@ const HistoryPage: React.FC = () => {
 
       const { buildApiUrl } = await import('../lib/api');
       const requestUrl = buildApiUrl('/history');
-      console.log('🔍 APIリクエスチERL:', requestUrl);
+      console.log('🔍 APIリクエスティングRL:', requestUrl);
 
       const response = await fetch(requestUrl);
-      console.log('🔍 レスポンススチE�Eタス:', response.status, response.statusText);
+      console.log('🔍 レスポンススシューティングス:', response.status, response.statusText);
 
       const data = await response.json();
 
@@ -646,25 +646,25 @@ const HistoryPage: React.FC = () => {
         total: data.total
       });
 
-      // チE��チE��用にローカルストレージにも保孁E      localStorage.setItem('debug_api_response', JSON.stringify(data, null, 2));
+      // ティングーティングー用にローカルストレージにも保孁E      localStorage.setItem('debug_api_response', JSON.stringify(data, null, 2));
 
       if (Array.isArray(data)) {
         console.log('🔍 取得件数:', data.length);
 
-        // エクスポ�EトファイルチE�Eタの確誁E        data.forEach((item: any, index: number) => {
-          console.log(`🔍 アイチE�� ${index + 1}:`, {
+        // エクスポ�Eトファイルシューティングの確誁E        data.forEach((item: any, index: number) => {
+          console.log(`🔍 アイティングー ${index + 1}:`, {
             fileName: item.fileName,
             title: item.title,
             chatId: item.chatId,
           });
         });
 
-               // エクスポ�Eトファイルを履歴アイチE��として変換
+               // エクスポ�Eトファイルを履歴アイティングーとして変換
                const updatedItems = data.map((file: any) => {
                  // titleはサーバ�Eから返されたも�Eを使用
                  const displayTitle = file.title || 'タイトルなぁE;
 
-                 // JSONチE�Eタから詳細惁E��を取征E                 const content = file.content || {};
+                 // JSONシューティングから詳細惁Eーを取征E                 const content = file.content || {};
                  // サーバ�E側で抽出済みの値を優先使用、なければJSONから抽出
                  const machineType =
                    file.machineType ||
@@ -698,7 +698,7 @@ const HistoryPage: React.FC = () => {
                      machineNumber: machineNumber
                    },
                    jsonData: {
-                     ...content, // 完�EなJSONチE�Eタを含める
+                     ...content, // 完�EなJSONシューティングを含める
                      title: displayTitle,
                      problemDescription: problemDescription,
                      machineType: machineType,
@@ -713,7 +713,7 @@ const HistoryPage: React.FC = () => {
                    },
                  };
 
-          console.log('変換されたアイチE��:', {
+          console.log('変換されたアイティングー:', {
             fileName: convertedItem.fileName,
             machineType: convertedItem.machineType,
             machineNumber: convertedItem.machineNumber,
@@ -733,7 +733,7 @@ const HistoryPage: React.FC = () => {
         const { loadHistoryFromDB } = await import('../components/db-history-loader');
         const dbHistoryItems = await loadHistoryFromDB();
 
-        // DB専用チE�Eタを統合（従来のupdatedItemsは無視してDB優先！E        const allItems = dbHistoryItems;
+        // DB専用シューティングを統合（従来のupdatedItemsは無視してDB優先！E        const allItems = dbHistoryItems;
 
         setHistoryItems(allItems);
         setFilteredItems(allItems);
@@ -745,9 +745,9 @@ const HistoryPage: React.FC = () => {
           totalPages: Math.ceil(allItems.length / 20)
         });
       } else {
-        console.log('🔍 チE�Eタ取得�E功せぁE', data);
+        console.log('🔍 シューティング取得�E功せぁE', data);
 
-        // サーバ�EからのチE�EタがなぁE��合でめEB専用履歴取得を実衁E        const { loadHistoryFromDB } = await import('../components/db-history-loader');
+        // サーバ�EからのシューティングがなぁEー合でめEB専用履歴取得を実衁E        const { loadHistoryFromDB } = await import('../components/db-history-loader');
         const dbHistoryItems = await loadHistoryFromDB();
 
         if (dbHistoryItems.length > 0) {
@@ -762,7 +762,7 @@ const HistoryPage: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('履歴チE�Eタの取得に失敗しました:', error);
+      console.error('履歴シューティングの取得に失敗しました:', error);
       console.error('エラー詳細:', {
         message: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined
@@ -796,13 +796,13 @@ const HistoryPage: React.FC = () => {
     if (!isInitialLoadedRef.current) {
       isInitialLoadedRef.current = true;
       fetchHistoryData(1);
-      // fetchMachineDataFromAPI(); // 機種チE�Eタは編雁E��に忁E��に応じて取征E    }
+      // fetchMachineDataFromAPI(); // 機種シューティングは編雁Eーに忁Eーに応じて取征E    }
   }, []); // 初期ロード時のみ実衁E
-  // 履歴チE�Eタが変更された時にフィルターチE�Eタを更新
-  // 初期ロード時にエクスポ�EチESONからフィルターチE�Eタを取征E  useEffect(() => {
-    fetchSearchFilterData(); // エクスポ�EチESONからフィルターチE�Eタを取征E  }, []); // 初回のみ実衁E
+  // 履歴シューティングが変更された時にフィルターシューティングを更新
+  // 初期ロード時にエクスポ�EティングSONからフィルターシューティングを取征E  useEffect(() => {
+    fetchSearchFilterData(); // エクスポ�EティングSONからフィルターシューティングを取征E  }, []); // 初回のみ実衁E
   // フィルター変更時�E処琁E  useEffect(() => {
-    // キーワード検索がある場合�EスキチE�E�E�検索ボタンで手動実行！E    if (filters.searchText && filters.searchText.trim()) {
+    // キーワード検索がある場合�Eスキティング�E�E�検索ボタンで手動実行！E    if (filters.searchText && filters.searchText.trim()) {
       return;
     }
 
@@ -817,8 +817,8 @@ const HistoryPage: React.FC = () => {
       [key]: value,
     }));
 
-    // 編雁E��イアログが開ぁE��ぁE��場合�E、編雁E��のアイチE��にも反映する
-    // 期征E��れる動佁E フィルタで機種/機械番号を選択すると、すでに編雁E��のフォームに即座に反映されめE    try {
+    // 編雁Eーイアログが開ぁEーぁEー場合�E、編雁Eーのアイティングーにも反映する
+    // 期征Eーれる動佁E フィルタで機種/機械番号を選択すると、すでに編雁Eーのフォームに即座に反映されめE    try {
       if (editingItem) {
         if (key === 'machineType' || key === 'machineNumber') {
           setEditingItem(prev =>
@@ -829,14 +829,14 @@ const HistoryPage: React.FC = () => {
       }
     } catch (syncError) {
       console.warn(
-        'フィルターから編雁E��イチE��への同期に失敗しました:',
+        'フィルターから編雁Eーイティングーへの同期に失敗しました:',
         syncError
       );
     }
   };
 
   const handleSearch = useCallback(async () => {
-    // キーワード検索がある場合、エクスポ�EチESONから検索
+    // キーワード検索がある場合、エクスポ�EティングSONから検索
     if (filters.searchText && filters.searchText.trim()) {
       try {
         setLoading(true);
@@ -850,8 +850,8 @@ const HistoryPage: React.FC = () => {
           console.log('🔍 検索結果:', { success: data.success, total: data.total, keyword: data.keyword });
 
           if (data.success && data.data) {
-            // エクスポ�EチESONから検索した結果を取征E            let results = data.data;
-            console.log('🔍 検索結果アイチE��数:', results.length);
+            // エクスポ�EティングSONから検索した結果を取征E            let results = data.data;
+            console.log('🔍 検索結果アイティングー数:', results.length);
 
             // 機種フィルターを適用
             if (filters.machineType) {
@@ -892,7 +892,7 @@ const HistoryPage: React.FC = () => {
         setLoading(false);
       }
     } else {
-      // キーワード検索がなぁE��合�E通常のフィルタリングを使用
+      // キーワード検索がなぁEー合�E通常のフィルタリングを使用
       fetchHistoryData(1);
     }
   }, [filters.searchText, filters.machineType, filters.machineNumber, filters.searchDate]);
@@ -923,7 +923,7 @@ const HistoryPage: React.FC = () => {
     }
   };
 
-  // 選択チェチE��機�E
+  // 選択チェティングー機�E
   const handleSelectItem = (id: string) => {
     setSelectedItems(prev => {
       const newSet = new Set(prev);
@@ -1142,9 +1142,9 @@ const HistoryPage: React.FC = () => {
   };
 
   const handleGenerateReport = async () => {
-    // 既にレポ�Eト生成中の場合�E処琁E��停止
+    // 既にレポ�Eト生成中の場合�E処琁Eー停止
     if (reportLoading) {
-      console.log('レポ�Eト生成中です。�E琁E��停止します、E);
+      console.log('レポ�Eト生成中です。�E琁Eー停止します、E);
       return;
     }
 
@@ -1152,7 +1152,7 @@ const HistoryPage: React.FC = () => {
       console.log('=== レポ�Eト生成開姁E===');
       setReportLoading(true);
 
-      // 選択されたアイチE��のみを対象とする
+      // 選択されたアイティングーのみを対象とする
       // 全件を対象とする
       const targetItems = filteredItems;
 
@@ -1161,15 +1161,15 @@ const HistoryPage: React.FC = () => {
         targetItemsCount: targetItems.length,
       });
 
-      // 対象アイチE��がなぁE��合�E処琁E��停止
+      // 対象アイティングーがなぁEー合�E処琁Eー停止
       if (targetItems.length === 0) {
-        alert('対象アイチE��がありません、E);
+        alert('対象アイティングーがありません、E);
         setReportLoading(false);
         return;
       }
 
-      // 吁E��イチE��のチE�Eタ構造を確誁E      targetItems.forEach((item, index) => {
-        console.log(`アイチE��${index + 1}のチE�Eタ構造:`, {
+      // 吁Eーイティングーのシューティング構造を確誁E      targetItems.forEach((item, index) => {
+        console.log(`アイティングー${index + 1}のシューティング構造:`, {
           id: item.id,
           fileName: item.fileName,
           hasJsonData: !!item.jsonData,
@@ -1180,7 +1180,7 @@ const HistoryPage: React.FC = () => {
         });
       });
 
-      // 選択されたアイチE��からJSONチE�Eタを�E析してレポ�Eトデータを生戁E      const allTitles: string[] = [];
+      // 選択されたアイティングーからJSONシューティングを�E析してレポ�Eトデータを生戁E      const allTitles: string[] = [];
       const allComponents: string[] = [];
       const allSymptoms: string[] = [];
       const allModels: string[] = [];
@@ -1188,9 +1188,9 @@ const HistoryPage: React.FC = () => {
       targetItems.forEach(item => {
         const jsonData = item?.jsonData ?? item?.data ?? {};
 
-        // 事象タイトルを抽出�E�ファイル名から優先的に取得、次にJSONチE�Eタから�E�E        let title = null;
+        // 事象タイトルを抽出�E�ファイル名から優先的に取得、次にJSONシューティングから�E�E        let title = null;
 
-        // まずファイル名から事象冁E��を抽出
+        // まずファイル名から事象冁Eーを抽出
         if (item.fileName) {
           const fileNameParts = item.fileName.split('_');
           if (fileNameParts.length > 1) {
@@ -1198,10 +1198,10 @@ const HistoryPage: React.FC = () => {
           }
         }
 
-        // ファイル名から取得できなぁE��合�E、JSONチE�Eタから取征E        if (!title) {
+        // ファイル名から取得できなぁEー合�E、JSONシューティングから取征E        if (!title) {
           title = jsonData?.title;
           if (!title && jsonData?.chatData?.messages) {
-            // 従来フォーマット�E場合、ユーザーメチE��ージから事象を抽出
+            // 従来フォーマット�E場合、ユーザーメティングーージから事象を抽出
             const userMessages = jsonData?.chatData?.messages?.filter(
               (msg: any) => !msg.isAiResponse
             );
@@ -1228,15 +1228,15 @@ const HistoryPage: React.FC = () => {
         models: allModels,
       });
 
-      // 吁E��イチE��ごとに個別のレポ�Eトを生�E
+      // 吁Eーイティングーごとに個別のレポ�Eトを生�E
       const reportDataArray = targetItems.map((item, index) => {
-        console.log(`レポ�EチE{index + 1}の生�E開姁E`, item.fileName);
+        console.log(`レポ�Eティング{index + 1}の生�E開姁E`, item.fileName);
 
         const jsonData = item?.jsonData ?? item?.data ?? {};
 
-        // 事象タイトルを抽出�E�ファイル名から優先的に取得、次にJSONチE�Eタから�E�E        let title = '事象なぁE;
+        // 事象タイトルを抽出�E�ファイル名から優先的に取得、次にJSONシューティングから�E�E        let title = '事象なぁE;
 
-        // まずファイル名から事象冁E��を抽出
+        // まずファイル名から事象冁Eーを抽出
         if (item.fileName) {
           const fileNameParts = item.fileName.split('_');
           if (fileNameParts.length > 1) {
@@ -1244,10 +1244,10 @@ const HistoryPage: React.FC = () => {
           }
         }
 
-        // ファイル名から取得できなぁE��合�E、JSONチE�Eタから取征E        if (title === '事象なぁE) {
+        // ファイル名から取得できなぁEー合�E、JSONシューティングから取征E        if (title === '事象なぁE) {
           title = jsonData?.title;
           if (!title && jsonData?.chatData?.messages) {
-            // 従来フォーマット�E場合、ユーザーメチE��ージから事象を抽出
+            // 従来フォーマット�E場合、ユーザーメティングーージから事象を抽出
             const userMessages = jsonData?.chatData?.messages?.filter(
               (msg: any) => !msg.isAiResponse
             );
@@ -1271,16 +1271,16 @@ const HistoryPage: React.FC = () => {
           item.machineNumber ||
           '';
 
-        console.log(`レポ�EチE{index + 1}の基本惁E��:`, {
+        console.log(`レポ�Eティング{index + 1}の基本惁Eー:`, {
           title,
           machineType,
           machineNumber,
         });
 
-        // 画像データを収雁E��優先頁E��付き�E�E        const images = [];
+        // 画像データを収雁Eー優先頁Eー付き�E�E        const images = [];
 
         try {
-          // 優先頁E��E: savedImagesから画像を取得（最優先！E          if (jsonData?.savedImages && Array.isArray(jsonData.savedImages) && jsonData.savedImages.length > 0) {
+          // 優先頁EーE: savedImagesから画像を取得（最優先！E          if (jsonData?.savedImages && Array.isArray(jsonData.savedImages) && jsonData.savedImages.length > 0) {
             console.log(
               'handleGenerateReport: savedImagesから画像を取征E',
               jsonData.savedImages.length
@@ -1291,15 +1291,15 @@ const HistoryPage: React.FC = () => {
                 images.push({
                   id: `saved-${index}`,
                   url: imageUrl,
-                  fileName: typeof img === 'object' ? img.fileName || `敁E��画像_${index + 1}` : `敁E��画像_${index + 1}`,
-                  description: '機械敁E��箁E��の写真',
+                  fileName: typeof img === 'object' ? img.fileName || `敁Eー画像_${index + 1}` : `敁Eー画像_${index + 1}`,
+                  description: '機械敁Eー箁Eーの写真',
                   source: 'savedImages',
                 });
               }
             });
           }
 
-          // 優先頁E��E: conversationHistoryから画像URLを取征E          if (jsonData?.conversationHistory?.length > 0) {
+          // 優先頁EーE: conversationHistoryから画像URLを取征E          if (jsonData?.conversationHistory?.length > 0) {
             console.log(
               'handleGenerateReport: conversationHistoryから画像URLを検索中...',
               jsonData.conversationHistory.length
@@ -1319,15 +1319,15 @@ const HistoryPage: React.FC = () => {
                 images.push({
                   id: `conv-${index}`,
                   url: msg.content,
-                  fileName: `敁E��画像_${images.length + 1}`,
-                  description: '機械敁E��箁E��の写真',
+                  fileName: `敁Eー画像_${images.length + 1}`,
+                  description: '機械敁Eー箁Eーの写真',
                   source: 'conversationHistory',
                 });
               }
             });
           }
 
-          // 優先頁E��E: originalChatData.messagesから画像URLを取征E          if (jsonData?.originalChatData?.messages?.length > 0) {
+          // 優先頁EーE: originalChatData.messagesから画像URLを取征E          if (jsonData?.originalChatData?.messages?.length > 0) {
             console.log(
               'handleGenerateReport: originalChatData.messagesから画像URLを検索中...',
               jsonData.originalChatData.messages.length
@@ -1347,15 +1347,15 @@ const HistoryPage: React.FC = () => {
                 images.push({
                   id: `orig-${index}`,
                   url: msg.content,
-                  fileName: `敁E��画像_${images.length + 1}`,
-                  description: '機械敁E��箁E��の写真',
+                  fileName: `敁Eー画像_${images.length + 1}`,
+                  description: '機械敁Eー箁Eーの写真',
                   source: 'originalChatData',
                 });
               }
             });
           }
 
-          // 優先頁E��E: chatData.messagesから画像URLを取征E          if (jsonData?.chatData?.messages?.length > 0) {
+          // 優先頁EーE: chatData.messagesから画像URLを取征E          if (jsonData?.chatData?.messages?.length > 0) {
             console.log(
               'handleGenerateReport: chatData.messagesから画像URLを検索中...',
               jsonData.chatData.messages.length
@@ -1375,8 +1375,8 @@ const HistoryPage: React.FC = () => {
                 images.push({
                   id: `chat-${index}`,
                   url: msg.content,
-                  fileName: `敁E��画像_${images.length + 1}`,
-                  description: '機械敁E��箁E��の写真',
+                  fileName: `敁Eー画像_${images.length + 1}`,
+                  description: '機械敁Eー箁Eーの写真',
                   source: 'chatData',
                 });
               }
@@ -1384,7 +1384,7 @@ const HistoryPage: React.FC = () => {
           }
 
 
-          // 優先頁E��E: 再帰皁E��JSONチE�Eタ冁E�E画像URLを検索�E�Ease64は除外！E          const findImagesRecursively = (
+          // 優先頁EーE: 再帰皁EーJSONシューティング冁E�E画像URLを検索�E�Ease64は除外！E          const findImagesRecursively = (
             obj: any,
             path: string = ''
           ): string[] => {
@@ -1426,14 +1426,14 @@ const HistoryPage: React.FC = () => {
               images.push({
                 id: `recursive-${index}`,
                 url: imgUrl,
-                fileName: `敁E��画像_${images.length + 1}`,
-                description: '機械敁E��箁E��の写真',
+                fileName: `敁Eー画像_${images.length + 1}`,
+                description: '機械敁Eー箁Eーの写真',
                 source: 'recursive',
               });
             }
           });
 
-          // 優先頁E��E: imagePathフィールド（最終フォールバック�E�E          if (
+          // 優先頁EーE: imagePathフィールド（最終フォールバック�E�E          if (
             jsonData?.imagePath &&
             typeof jsonData.imagePath === 'string' &&
             !images.some(img => img.url === jsonData.imagePath)
@@ -1442,16 +1442,16 @@ const HistoryPage: React.FC = () => {
             images.push({
               id: 'imagePath',
               url: jsonData.imagePath,
-              fileName: '敁E��画僁E,
-              description: '機械敁E��箁E��の写真',
+              fileName: '敁Eー画僁E,
+              description: '機械敁Eー箁Eーの写真',
               source: 'imagePath',
             });
           }
         } catch (imageError) {
-          console.error('画像データ処琁E��にエラーが発生しました:', imageError);
-          // 画像�E琁E��ラーが発生してもレポ�Eト生成�E続衁E        }
+          console.error('画像データ処琁Eーにエラーが発生しました:', imageError);
+          // 画像�E琁Eーラーが発生してもレポ�Eト生成�E続衁E        }
 
-        console.log(`レポ�EチE{index + 1}の画像数:`, images.length, '极E);
+        console.log(`レポ�Eティング{index + 1}の画像数:`, images.length, '极E);
 
         const reportData = {
           reportId: `R${Date.now().toString().slice(-5)}-${index + 1}`,
@@ -1461,13 +1461,13 @@ const HistoryPage: React.FC = () => {
           failureCode: 'FC01',
           description: title,
           status: '報告完亁E,
-          engineer: 'シスチE��管琁E��E,
-          notes: `事象タイトル: ${title}\n機種: ${machineType}\n機械番号: ${machineNumber}\n作�E日晁E ${new Date(item.createdAt).toLocaleString('ja-JP')}\n影響コンポ�EネンチE ${jsonData?.extractedComponents?.join(', ') || 'なぁE}\n痁E��: ${jsonData?.extractedSymptoms?.join(', ') || 'なぁE}\n可能性のある機種: ${jsonData?.possibleModels?.join(', ') || 'なぁE}`,
+          engineer: 'システィングー管琁EーE,
+          notes: `事象タイトル: ${title}\n機種: ${machineType}\n機械番号: ${machineNumber}\n作�E日晁E ${new Date(item.createdAt).toLocaleString('ja-JP')}\n影響コンポ�Eネンティング ${jsonData?.extractedComponents?.join(', ') || 'なぁE}\n痁Eー: ${jsonData?.extractedSymptoms?.join(', ') || 'なぁE}\n可能性のある機種: ${jsonData?.possibleModels?.join(', ') || 'なぁE}`,
           repairRequestDate: new Date().toISOString().split('T')[0],
           repairSchedule: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
             .toISOString()
             .split('T')[0],
-          repairLocation: '工場冁E��琁E��ペ�Eス',
+          repairLocation: '工場冁Eー琁Eーペ�Eス',
           images: images.length > 0 ? images : undefined,
           chatHistory:
             jsonData?.conversationHistory ||
@@ -1475,7 +1475,7 @@ const HistoryPage: React.FC = () => {
             undefined,
         };
 
-        console.log(`レポ�EチE{index + 1}の生�E完亁E`, {
+        console.log(`レポ�Eティング{index + 1}の生�E完亁E`, {
           reportId: reportData.reportId,
           description: reportData.description,
           images: reportData.images?.length || 0,
@@ -1487,7 +1487,7 @@ const HistoryPage: React.FC = () => {
       console.log('=== レポ�Eトデータ生�E完亁E===');
       console.log('レポ�Eト�E列�E長ぁE', reportDataArray.length);
       console.log(
-        '吁E��ポ�Eト�E詳細:',
+        '吁Eーポ�Eト�E詳細:',
         reportDataArray.map((report, index) => ({
           index,
           reportId: report.reportId,
@@ -1506,7 +1506,7 @@ const HistoryPage: React.FC = () => {
 
       // 成功通知
       alert(
-        `レポ�Eトが正常に生�Eされました、En対象アイチE��: ${targetItems.length}件 (選択済み)\n${targetItems.length > 1 ? '褁E��ペ�Eジで表示されます、E : ''}`
+        `レポ�Eトが正常に生�Eされました、En対象アイティングー: ${targetItems.length}件 (選択済み)\n${targetItems.length > 1 ? '褁Eーペ�Eジで表示されます、E : ''}`
       );
 
       console.log('=== レポ�Eト生成完亁E===');
@@ -1514,17 +1514,17 @@ const HistoryPage: React.FC = () => {
       console.error('=== レポ�Eト生成エラー ===');
       console.error('エラー詳細:', error);
       console.error(
-        'エラースタチE��:',
-        error instanceof Error ? error.stack : 'スタチE��トレースなぁE
+        'エラースタティングー:',
+        error instanceof Error ? error.stack : 'スタティングートレースなぁE
       );
       alert(
         'レポ�Eト生成中にエラーが発生しました: ' +
           (error instanceof Error ? error.message : 'Unknown error')
       );
     } finally {
-      // エラーが発生しても確実にローチE��ング状態をリセチE��
+      // エラーが発生しても確実にローティングーング状態をリセティングー
       setReportLoading(false);
-      console.log('レポ�Eト生成状態をリセチE��完亁E);
+      console.log('レポ�Eト生成状態をリセティングー完亁E);
     }
   };
 
@@ -1534,12 +1534,12 @@ const HistoryPage: React.FC = () => {
         `/api/history/file?name=${encodeURIComponent(fileName)}`
       );
       if (!response.ok) {
-        throw new Error('チャチE��エクスポ�Eトファイルの取得に失敗しました');
+        throw new Error('チャティングーエクスポ�Eトファイルの取得に失敗しました');
       }
 
       const data = await response.json();
 
-      // 新しいフォーマット�EチE�Eタを確認して、E��刁E��形式に変換
+      // 新しいフォーマット�Eシューティングを確認して、Eー刁Eー形式に変換
       const reportData = {
         ...data,
         // 新しいフォーマット�Eフィールドを追加
@@ -1578,7 +1578,7 @@ const HistoryPage: React.FC = () => {
     setShowReport(false);
     setSelectedReportData(null);
     setSelectedFileName('');
-    // レポ�Eト生成�E状態もリセチE��
+    // レポ�Eト生成�E状態もリセティングー
     setReportLoading(false);
   };
 
@@ -1605,26 +1605,26 @@ const HistoryPage: React.FC = () => {
 
 
 
-  // 履歴アイチE��の編雁E��ータをサーバ�Eに保孁E  const handleSaveEditedItem = async (editedItem: SupportHistoryItem) => {
+  // 履歴アイティングーの編雁Eーータをサーバ�Eに保孁E  const handleSaveEditedItem = async (editedItem: SupportHistoryItem) => {
     try {
-      console.log('編雁E��れた履歴アイチE��を保孁E', editedItem);
-      console.log('編雁E��れた履歴アイチE��のID:', editedItem.id);
-      console.log('編雁E��れた履歴アイチE��のJSONチE�Eタ:', editedItem.jsonData);
+      console.log('編雁Eーれた履歴アイティングーを保孁E', editedItem);
+      console.log('編雁Eーれた履歴アイティングーのID:', editedItem.id);
+      console.log('編雁Eーれた履歴アイティングーのJSONシューティング:', editedItem.jsonData);
 
-      // IDの確認と準備�E�Export_プレフィチE��スを除去�E�E      let itemId = editedItem.id || editedItem.chatId;
+      // IDの確認と準備�E�Export_プレフィティングースを除去�E�E      let itemId = editedItem.id || editedItem.chatId;
       if (!itemId) {
-        alert('アイチE��IDが見つかりません。保存できません、E);
+        alert('アイティングーIDが見つかりません。保存できません、E);
         return;
       }
 
-      // export_プレフィチE��スがある場合�E除去
+      // export_プレフィティングースがある場合�E除去
       if (itemId.startsWith('export_')) {
         itemId = itemId.replace('export_', '');
         // ファイル名�E場合�E拡張子も除去
         if (itemId.endsWith('.json')) {
           itemId = itemId.replace('.json', '');
         }
-        // ファイル名からchatIdを抽出�E�Eで区刁E��れた2番目の部刁E��E        const parts = itemId.split('_');
+        // ファイル名からchatIdを抽出�E�Eで区刁Eーれた2番目の部刁EーE        const parts = itemId.split('_');
         if (parts.length >= 2 && parts[1].match(/^[a-f0-9-]+$/)) {
           itemId = parts[1];
         }
@@ -1637,10 +1637,10 @@ const HistoryPage: React.FC = () => {
         editedItem.id || editedItem.chatId
       );
 
-      // 更新チE�Eタの準備�E�変更されたフィールド�Eみを送信�E�E      // 既存�EチE�Eタは保持し、変更された部刁E��けを更新
+      // 更新シューティングの準備�E�変更されたフィールド�Eみを送信�E�E      // 既存�Eシューティングは保持し、変更された部刁Eーけを更新
       const updatePayload = {
         updatedData: {
-          // JSONチE�Eタの主要フィールド�Eみ更新�E�既存�EチE�Eタは保持�E�E          ...(editedItem.jsonData?.title && { title: editedItem.jsonData.title }),
+          // JSONシューティングの主要フィールド�Eみ更新�E�既存�Eシューティングは保持�E�E          ...(editedItem.jsonData?.title && { title: editedItem.jsonData.title }),
           ...(editedItem.jsonData?.problemDescription && { problemDescription: editedItem.jsonData.problemDescription }),
           ...(editedItem.jsonData?.answer && { answer: editedItem.jsonData.answer }),
           ...(editedItem.jsonData?.machineType && { machineType: editedItem.jsonData.machineType }),
@@ -1651,7 +1651,7 @@ const HistoryPage: React.FC = () => {
           ...(editedItem.jsonData?.remarks && { remarks: editedItem.jsonData.remarks }),
           // 画像情報を更新
           ...(editedItem.jsonData?.savedImages && { savedImages: editedItem.jsonData.savedImages }),
-          // 基本惁E��も更新�E�ルートレベル�E�E          ...(editedItem.machineType && { machineType: editedItem.machineType }),
+          // 基本惁Eーも更新�E�ルートレベル�E�E          ...(editedItem.machineType && { machineType: editedItem.machineType }),
           ...(editedItem.machineNumber && { machineNumber: editedItem.machineNumber }),
           ...(editedItem.jsonData?.title && { title: editedItem.jsonData.title }),
           lastModified: new Date().toISOString(),
@@ -1659,7 +1659,7 @@ const HistoryPage: React.FC = () => {
         updatedBy: 'user',
       };
 
-      console.log('送信するペイローチE', updatePayload);
+      console.log('送信するペイローティング', updatePayload);
 
       // サーバ�Eに更新リクエストを送信
       const response = await fetch(`/api/history/update-item/${itemId}`, {
@@ -1698,16 +1698,16 @@ const HistoryPage: React.FC = () => {
         console.log('ローカルストレージ更新:', savedKey);
       }
 
-      // 履歴リスト�E該当アイチE��を更新�E�EavedImagesの頁E��も保持�E�E      const updatedItem = {
+      // 履歴リスト�E該当アイティングーを更新�E�EavedImagesの頁Eーも保持�E�E      const updatedItem = {
         ...editedItem,
         jsonData: editedItem.jsonData,
         lastModified: new Date().toISOString(),
-        // 基本惁E��も更新
+        // 基本惁Eーも更新
         machineType: editedItem.jsonData?.machineType || editedItem.machineType,
         machineNumber: editedItem.jsonData?.machineNumber || editedItem.machineNumber,
         title: editedItem.jsonData?.title || editedItem.title,
         incidentTitle: editedItem.jsonData?.title || editedItem.incidentTitle,
-        // savedImagesを直接設定（一覧表で正しく表示されるよぁE���E�E        savedImages: editedItem.jsonData?.savedImages || [],
+        // savedImagesを直接設定（一覧表で正しく表示されるよぁEー�E�E        savedImages: editedItem.jsonData?.savedImages || [],
       };
 
       setHistoryItems(prevItems =>
@@ -1729,11 +1729,11 @@ const HistoryPage: React.FC = () => {
       // 成功通知
       alert('履歴が正常に更新され、�Eのファイルに上書き保存されました、E);
 
-      // 編雁E��イアログを閉じる
+      // 編雁Eーイアログを閉じる
       setShowEditDialog(false);
       setEditingItem(null);
 
-      // 履歴リスト�E再読み込みは行わなぁE��既に更新済み�E�E      console.log('履歴更新完亁E- リスト�E読み込みをスキチE�E');
+      // 履歴リスト�E再読み込みは行わなぁEー既に更新済み�E�E      console.log('履歴更新完亁E- リスト�E読み込みをスキティング�E');
     } catch (error) {
       console.error('履歴保存エラー:', error);
       const errorMessage =
@@ -1760,18 +1760,18 @@ const HistoryPage: React.FC = () => {
     }
   };
 
-  // 機械敁E��報告書のHTML生�E関数
+  // 機械敁Eー報告書のHTML生�E関数
   const generateMachineFailureReportHTML = (reportData: any): string => {
-    // JSONチE�Eタを安�Eにエスケープする関数�E�強化版�E�E    const safeJsonStringify = (obj: any): string => {
+    // JSONシューティングを安�Eにエスケープする関数�E�強化版�E�E    const safeJsonStringify = (obj: any): string => {
       try {
         let jsonStr = JSON.stringify(obj);
-        // HTMLとJavaScriptで問題になる文字を徹底的にエスケーチE        jsonStr = jsonStr
-          .replace(/\\/g, '\\\\') // バックスラチE��ュを最初にエスケーチE          .replace(/"/g, '\\"') // ダブルクォーチE          .replace(/'/g, "\\'") // シングルクォーチE          .replace(/</g, '\\u003c') // <
+        // HTMLとJavaScriptで問題になる文字を徹底的にエスケーティング        jsonStr = jsonStr
+          .replace(/\\/g, '\\\\') // バックスラティングーュを最初にエスケーティング          .replace(/"/g, '\\"') // ダブルクォーティング          .replace(/'/g, "\\'") // シングルクォーティング          .replace(/</g, '\\u003c') // <
           .replace(/>/g, '\\u003e') // >
           .replace(/&/g, '\\u0026') // &
-          .replace(/\//g, '\\/') // スラチE��ュ
-          .replace(/:/g, '\\u003a') // コロン�E�重要E��E          .replace(/\r/g, '\\r') // キャリチE��リターン
-          .replace(/\n/g, '\\n') // 改衁E          .replace(/\t/g, '\\t') // タチE          .replace(/\f/g, '\\f') // フォームフィーチE          .replace(/\b/g, '\\b') // バックスペ�Eス
+          .replace(/\//g, '\\/') // スラティングーュ
+          .replace(/:/g, '\\u003a') // コロン�E�重要EーE          .replace(/\r/g, '\\r') // キャリティングーリターン
+          .replace(/\n/g, '\\n') // 改衁E          .replace(/\t/g, '\\t') // タティング          .replace(/\f/g, '\\f') // フォームフィーティング          .replace(/\b/g, '\\b') // バックスペ�Eス
           .replace(/\u2028/g, '\\u2028') // ラインセパレータ
           .replace(/\u2029/g, '\\u2029'); // パラグラフセパレータ
 
@@ -1786,7 +1786,7 @@ const HistoryPage: React.FC = () => {
         return '{}';
       }
     };
-    // 画像を収集�E�ERL形式�Eみ、base64は使用しなぁE��E    const collectImages = (
+    // 画像を収集�E�ERL形式�Eみ、base64は使用しなぁEーE    const collectImages = (
       data: any
     ): Array<{
       id: string;
@@ -1794,7 +1794,7 @@ const HistoryPage: React.FC = () => {
       fileName: string;
       description?: string;
     }> => {
-      console.log('🖼�E�E画像収雁E��姁E- reportData:', data);
+      console.log('🖼�E�E画像収雁Eー姁E- reportData:', data);
       console.log('🖼�E�EreportData keys:', Object.keys(data || {}));
 
       const images: Array<{
@@ -1805,7 +1805,7 @@ const HistoryPage: React.FC = () => {
       }> = [];
       const imageUrls = new Set<string>();
 
-      // 優先頁E��E: savedImagesから画像を取得（最優先！E      if (data?.savedImages && Array.isArray(data.savedImages) && data.savedImages.length > 0) {
+      // 優先頁EーE: savedImagesから画像を取得（最優先！E      if (data?.savedImages && Array.isArray(data.savedImages) && data.savedImages.length > 0) {
         console.log('🖼�E�EsavedImagesから画像を取征E', data.savedImages.length);
         data.savedImages.forEach((img: any, index: number) => {
           const imageUrl = typeof img === 'string' ? img : (img.url || img.path || img.fileName);
@@ -1814,14 +1814,14 @@ const HistoryPage: React.FC = () => {
             images.push({
               id: `saved-${index}`,
               url: imageUrl,
-              fileName: typeof img === 'object' ? img.fileName || `敁E��画像_${index + 1}` : `敁E��画像_${index + 1}`,
-              description: '敁E��箁E��画像！EavedImages�E�E,
+              fileName: typeof img === 'object' ? img.fileName || `敁Eー画像_${index + 1}` : `敁Eー画像_${index + 1}`,
+              description: '敁Eー箁Eー画像！EavedImages�E�E,
             });
           }
         });
       }
 
-      // 優先頁E��E: chatData.messages から画像URLを探ぁE      if (data?.chatData?.messages && Array.isArray(data.chatData.messages)) {
+      // 優先頁EーE: chatData.messages から画像URLを探ぁE      if (data?.chatData?.messages && Array.isArray(data.chatData.messages)) {
         console.log('🖼�E�EchatData.messagesをスキャン中...');
         data.chatData.messages.forEach((message: any, messageIndex: number) => {
           if (
@@ -1834,8 +1834,8 @@ const HistoryPage: React.FC = () => {
               images.push({
                 id: `chatdata-${messageIndex}`,
                 url: message.content,
-                fileName: `敁E��画僁E{images.length + 1}`,
-                description: '敁E��箁E��画像！EhatData.messages�E�E,
+                fileName: `敁Eー画僁E{images.length + 1}`,
+                description: '敁Eー箁Eー画像！EhatData.messages�E�E,
               });
               console.log(
                 '🖼�E�E画像URL見つかりました�E�EhatData.messages�E�E',
@@ -1846,7 +1846,7 @@ const HistoryPage: React.FC = () => {
         });
       }
 
-      // 優先頁E��E: conversationHistory から画像URLを探ぁE      if (
+      // 優先頁EーE: conversationHistory から画像URLを探ぁE      if (
         data?.conversationHistory &&
         Array.isArray(data.conversationHistory)
       ) {
@@ -1863,8 +1863,8 @@ const HistoryPage: React.FC = () => {
                 images.push({
                   id: `conversation-${messageIndex}`,
                   url: message.content,
-                  fileName: `敁E��画僁E{images.length + 1}`,
-                  description: '敁E��箁E��画像！EonversationHistory�E�E,
+                  fileName: `敁Eー画僁E{images.length + 1}`,
+                  description: '敁Eー箁Eー画像！EonversationHistory�E�E,
                 });
                 console.log(
                   '🖼�E�E画像URL見つかりました�E�EonversationHistory�E�E',
@@ -1876,7 +1876,7 @@ const HistoryPage: React.FC = () => {
         );
       }
 
-      // 優先頁E��E: originalChatData.messages から画像URLを探ぁE      if (
+      // 優先頁EーE: originalChatData.messages から画像URLを探ぁE      if (
         data?.originalChatData?.messages &&
         Array.isArray(data.originalChatData.messages)
       ) {
@@ -1893,8 +1893,8 @@ const HistoryPage: React.FC = () => {
                 images.push({
                   id: `original-${messageIndex}`,
                   url: message.content,
-                  fileName: `敁E��画僁E{images.length + 1}`,
-                  description: '敁E��箁E��画像！EriginalChatData�E�E,
+                  fileName: `敁Eー画僁E{images.length + 1}`,
+                  description: '敁Eー箁Eー画像！EriginalChatData�E�E,
                 });
                 console.log(
                   '🖼�E�E画像URL見つかりました�E�EriginalChatData�E�E',
@@ -1906,7 +1906,7 @@ const HistoryPage: React.FC = () => {
         );
       }
 
-      // 優先頁E��E: messages から画像URLを探ぁE      if (data?.messages && Array.isArray(data.messages)) {
+      // 優先頁EーE: messages から画像URLを探ぁE      if (data?.messages && Array.isArray(data.messages)) {
         console.log('🖼�E�Emessagesをスキャン中...');
         data.messages.forEach((message: any, messageIndex: number) => {
           if (
@@ -1919,8 +1919,8 @@ const HistoryPage: React.FC = () => {
               images.push({
                 id: `messages-${messageIndex}`,
                 url: message.content,
-                fileName: `敁E��画僁E{images.length + 1}`,
-                description: '敁E��箁E��画像！Eessages�E�E,
+                fileName: `敁Eー画僁E{images.length + 1}`,
+                description: '敁Eー箁Eー画像！Eessages�E�E,
               });
               console.log(
                 '🖼�E�E画像URL見つかりました�E�Eessages�E�E',
@@ -1952,15 +1952,15 @@ const HistoryPage: React.FC = () => {
             images.push({
               id: `saved-${index}`,
               url: imageUrl,
-              fileName: typeof img === 'object' ? (img.fileName || `敁E��画僁E{images.length + 1}`) : `敁E��画僁E{images.length + 1}`,
-              description: '敁E��箁E��画像！EavedImages�E�E,
+              fileName: typeof img === 'object' ? (img.fileName || `敁Eー画僁E{images.length + 1}`) : `敁Eー画僁E{images.length + 1}`,
+              description: '敁Eー箁Eー画像！EavedImages�E�E,
             });
             console.log('🖼�E�EsavedImagesから画像を取征E', images.length);
           }
         });
       }
 
-      console.log('🖼�E�E画像収雁E��果�E��E種類！E', images.length + '件の画僁E);
+      console.log('🖼�E�E画像収雁Eー果�EーE種類！E', images.length + '件の画僁E);
       images.forEach((img, index) => {
         console.log(
           '🖼�E�E画像[' + index + ']:',
@@ -1977,7 +1977,7 @@ const HistoryPage: React.FC = () => {
     const imageSection =
       collectedImages && collectedImages.length > 0
         ? `             <div class="image-section">
-               <h3>敁E��箁E��画僁E/h3>
+               <h3>敁Eー箁Eー画僁E/h3>
                <div class="image-grid">
                  ${collectedImages
                    .map(
@@ -1985,7 +1985,7 @@ const HistoryPage: React.FC = () => {
                    <div class="image-item">
                      <img class="report-img"
                           src="${image.url}"
-                          alt="敁E��画僁E{index + 1}" />
+                          alt="敁Eー画僁E{index + 1}" />
                    </div>
                  `
                    )
@@ -1999,7 +1999,7 @@ const HistoryPage: React.FC = () => {
       <html>
       <head>
         <meta charset="utf-8">
-        <title>機械敁E��報告書</title>
+        <title>機械敁Eー報告書</title>
         <style>
           @page {
             size: A4 portrait;
@@ -2022,7 +2022,7 @@ const HistoryPage: React.FC = () => {
             overflow-x: hidden;
           }
 
-          /* 印刷時�Eみ斁E��サイズをさらに縮小してA4一枚に収めめE*/
+          /* 印刷時�Eみ斁Eーサイズをさらに縮小してA4一枚に収めめE*/
           @media print {
             body {
               font-size: 10pt;
@@ -2127,7 +2127,7 @@ const HistoryPage: React.FC = () => {
             margin-bottom: 8px;
           }
 
-          /* 編雁E��ード時のヘッダー統一 */
+          /* 編雁Eーード時のヘッダー統一 */
           .edit-mode .header h1 {
             font-size: 27pt;
             font-weight: bold;
@@ -2142,7 +2142,7 @@ const HistoryPage: React.FC = () => {
             margin-bottom: 8px;
           }
 
-          /* 編雁E��ード時のセクション見�Eし統一 */
+          /* 編雁Eーード時のセクション見�Eし統一 */
           .edit-mode .section h2 {
             font-size: 20pt;
             font-weight: bold;
@@ -2167,7 +2167,7 @@ const HistoryPage: React.FC = () => {
             color: #000;
           }
 
-          /* 編雁E��ード時のヘッダー日付統一 */
+          /* 編雁Eーード時のヘッダー日付統一 */
           .edit-mode .header p {
             font-size: 18pt;
             color: #000;
@@ -2335,7 +2335,7 @@ const HistoryPage: React.FC = () => {
             font-size: 18pt;
           }
 
-          /* 編雁E��ード時の斁E��サイズを機械敁E��報告書UIに合わせる */
+          /* 編雁Eーード時の斁Eーサイズを機械敁Eー報告書UIに合わせる */
           .edit-mode .editable {
             font-size: 18pt;
           }
@@ -2356,7 +2356,7 @@ const HistoryPage: React.FC = () => {
             font-size: 18pt;
           }
 
-          /* 編雁E��ード時の表示刁E��替ぁE- 確実に動作するよぁE��強匁E*/
+          /* 編雁Eーード時の表示刁Eー替ぁE- 確実に動作するよぁEー強匁E*/
           .edit-mode .readonly {
             display: none !important;
             visibility: hidden !important;
@@ -2375,7 +2375,7 @@ const HistoryPage: React.FC = () => {
             font-family: inherit !important;
           }
 
-          /* チE��ォルトで編雁E��素を確実に非表示 */
+          /* ティングーォルトで編雁Eー素を確実に非表示 */
           .editable {
             display: none !important;
             visibility: hidden !important;
@@ -2396,7 +2396,7 @@ const HistoryPage: React.FC = () => {
             color: #000;
           }
 
-          /* 編雁E��ード時の入力フィールドスタイル統一 */
+          /* 編雁Eーード時の入力フィールドスタイル統一 */
           .edit-mode input,
           .edit-mode textarea {
             font-size: 18pt;
@@ -2419,7 +2419,7 @@ const HistoryPage: React.FC = () => {
             body { margin: 0; }
           }
 
-          /* 編雁E��ード用スタイル */
+          /* 編雁Eーード用スタイル */
           .readonly {
             display: inline;
           }
@@ -2491,7 +2491,7 @@ const HistoryPage: React.FC = () => {
 
         <div class="container">
           <div class="header">
-            <h1>機械敁E��報告書</h1>
+            <h1>機械敁Eー報告書</h1>
             <p>印刷日晁E ${new Date().toLocaleString('ja-JP')}</p>
           </div>
 
@@ -2527,10 +2527,10 @@ const HistoryPage: React.FC = () => {
           </div>
 
           <div class="section">
-            <h2>敁E��詳細</h2>
+            <h2>敁Eー詳細</h2>
             <div class="info-grid">
               <div class="info-item">
-                <strong>スチE�Eタス</strong>
+                <strong>スシューティングス</strong>
                 <span class="readonly">${reportData.status || '-'}</span>
                 <input class="editable" value="${reportData.status || ''}" />
               </div>
@@ -2587,7 +2587,7 @@ const HistoryPage: React.FC = () => {
           </div>
 
           <div class="footer">
-            <p>© 2025 機械敁E��報告書. All rights reserved.</p>
+            <p>© 2025 機械敁Eー報告書. All rights reserved.</p>
           </div>
         </div>
 
@@ -2595,7 +2595,7 @@ const HistoryPage: React.FC = () => {
           let isEditMode = false;
           let originalData = {};
 
-          // チE�Eタを安�Eに設定する関数
+          // シューティングを安�Eに設定する関数
           function setOriginalData(data) {
             try {
               originalData = data;
@@ -2609,13 +2609,13 @@ const HistoryPage: React.FC = () => {
           // レポ�Eトデータを設定（グローバル変数から読み取り�E�E          try {
             if (window.reportData) {
               setOriginalData(window.reportData);
-              console.log('🔧 チE�Eタをグローバル変数から正常に読み込みました');
+              console.log('🔧 シューティングをグローバル変数から正常に読み込みました');
             } else {
               console.error('🔧 グローバル変数window.reportDataが見つかりません');
               setOriginalData({});
             }
           } catch (e) {
-            console.error('🔧 グローバル変数からのチE�Eタ読み込みに失敁E', e);
+            console.error('🔧 グローバル変数からのシューティング読み込みに失敁E', e);
             setOriginalData({});
           }
 
@@ -2628,13 +2628,13 @@ const HistoryPage: React.FC = () => {
             console.log('🔧 Initial CSS classes:', document.body.classList.toString());
             console.log('🔧 originalData:', originalData);
 
-            // 初期状態では編雁E��ードをオフにする
+            // 初期状態では編雁Eーードをオフにする
             isEditMode = false;
             document.body.classList.remove('edit-mode');
 
             // ボタンイベント�E設宁E            setupButtonEvents();
 
-            // 褁E��回実行して確実に設宁E            setTimeout(() => {
+            // 褁Eー回実行して確実に設宁E            setTimeout(() => {
               setupButtonEvents();
             }, 100);
 
@@ -2647,7 +2647,7 @@ const HistoryPage: React.FC = () => {
           function setupButtonEvents() {
             console.log('🔧 setupButtonEvents called');
 
-            // DOM要素の確実な取得�Eため少し征E��E            setTimeout(() => {
+            // DOM要素の確実な取得�Eため少し征EーE            setTimeout(() => {
               const editBtn = document.getElementById('edit-btn');
               const saveBtn = document.getElementById('save-btn');
               const cancelBtn = document.getElementById('cancel-btn');
@@ -2675,7 +2675,7 @@ const HistoryPage: React.FC = () => {
                     toggleEditMode();
                   } catch (error) {
                     console.error('🔧 Error in toggleEditMode:', error);
-                    alert('編雁E��ード�E刁E��替えでエラーが発生しました: ' + error.message);
+                    alert('編雁Eーード�E刁Eー替えでエラーが発生しました: ' + error.message);
                   }
                 });
 
@@ -2727,7 +2727,7 @@ const HistoryPage: React.FC = () => {
               }
 
               console.log('🔧 Button event setup complete');
-            }, 200); // DOM要素が確実に存在するまで征E��E          }          function toggleEditMode() {
+            }, 200); // DOM要素が確実に存在するまで征EーE          }          function toggleEditMode() {
             console.log('🔧 toggleEditMode called, current isEditMode:', isEditMode);
             console.log('🔧 Current document body classList before toggle:', document.body.classList.toString());
 
@@ -2771,11 +2771,11 @@ const HistoryPage: React.FC = () => {
                 console.log('🔧 Save button shown');
               }
 
-              // 編雁E��ードクラスを追加
+              // 編雁Eーードクラスを追加
               document.body.classList.add('edit-mode');
               console.log('🔧 Added edit-mode class, classList:', document.body.classList.toString());
 
-              // 要素の表示を確実に刁E��替ぁE              const readonlyElements = document.querySelectorAll('.readonly');
+              // 要素の表示を確実に刁Eー替ぁE              const readonlyElements = document.querySelectorAll('.readonly');
               const editableElements = document.querySelectorAll('.editable');
 
               console.log('🔧 Found elements for toggle:', {
@@ -2792,7 +2792,7 @@ const HistoryPage: React.FC = () => {
               editableElements.forEach((el, index) => {
                 el.style.display = 'block !important';
                 el.style.visibility = 'visible';
-                // 入力フィールド�E背景色を変更して編雁E��であることを�E確にする
+                // 入力フィールド�E背景色を変更して編雁Eーであることを�E確にする
                 if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
                   el.style.backgroundColor = '#ffffcc';
                   el.style.border = '2px solid #007bff';
@@ -2802,7 +2802,7 @@ const HistoryPage: React.FC = () => {
                 console.log('🔧 Shown editable element', index, 'tag:', el.tagName);
               });
 
-              // 編雁E��ード時に入力フィールド�E値を設宁E              setupEditFields();
+              // 編雁Eーード時に入力フィールド�E値を設宁E              setupEditFields();
 
               console.log('🔧 Edit mode setup complete');
             } else {
@@ -2822,11 +2822,11 @@ const HistoryPage: React.FC = () => {
                 console.log('🔧 Save button hidden');
               }
 
-              // 編雁E��ードクラスを削除
+              // 編雁Eーードクラスを削除
               document.body.classList.remove('edit-mode');
               console.log('🔧 Removed edit-mode class, classList:', document.body.classList.toString());
 
-              // 要素の表示を確実に刁E��替ぁE              const readonlyElements = document.querySelectorAll('.readonly');
+              // 要素の表示を確実に刁Eー替ぁE              const readonlyElements = document.querySelectorAll('.readonly');
               const editableElements = document.querySelectorAll('.editable');
 
               readonlyElements.forEach((el, index) => {
@@ -2849,11 +2849,11 @@ const HistoryPage: React.FC = () => {
                 console.log('🔧 Save button hidden');
               }
 
-              // 編雁E��ードクラスを削除
+              // 編雁Eーードクラスを削除
               document.body.classList.remove('edit-mode');
               console.log('🔧 Removed edit-mode class, classList:', document.body.classList.toString());
 
-              // 要素の表示を強制皁E��刁E��替ぁE              readonlyElements.forEach((el, index) => {
+              // 要素の表示を強制皁Eー刁Eー替ぁE              readonlyElements.forEach((el, index) => {
                 el.style.display = 'inline';
                 el.style.visibility = 'visible';
                 console.log('🔧 Shown readonly element', index);
@@ -2883,7 +2883,7 @@ const HistoryPage: React.FC = () => {
 
           function setupEditFields() {
             console.log('🔧 setupEditFields called');
-            // 吁E�E力フィールドに適刁E��値を設宁E            const inputs = document.querySelectorAll('input.editable');
+            // 吁E�E力フィールドに適刁Eー値を設宁E            const inputs = document.querySelectorAll('input.editable');
             const textareas = document.querySelectorAll('textarea.editable');
 
             console.log('🔧 Found inputs:', inputs.length, 'textareas:', textareas.length);
@@ -2908,7 +2908,7 @@ const HistoryPage: React.FC = () => {
               if (index === 9) input.value = originalData.repairLocation || '';
             });
 
-            // チE��ストエリアの値を設宁E            textareas.forEach((textarea, index) => {
+            // ティングーストエリアの値を設宁E            textareas.forEach((textarea, index) => {
               if (index === 0) {
                 textarea.value = originalData.problemDescription || originalData.description || originalData.incidentTitle || originalData.title || '';
               }
@@ -2923,20 +2923,20 @@ const HistoryPage: React.FC = () => {
           }
 
           async function saveReport() {
-            console.log('保存�E琁E��姁E);
+            console.log('保存�E琁Eー姁E);
             console.log('originalData:', originalData);
             console.log('originalData.id:', originalData.id);
             console.log('originalData.chatId:', originalData.chatId);
             console.log('originalData.reportId:', originalData.reportId);
             console.log('originalData.fileName:', originalData.fileName);
 
-            // 編雁E��れたチE�Eタを収雁E            const updatedData = { ...originalData };
+            // 編雁Eーれたシューティングを収雁E            const updatedData = { ...originalData };
 
             // 吁E�E力フィールドから値を取征E            const inputs = document.querySelectorAll('input.editable');
             const textareas = document.querySelectorAll('textarea.editable');
 
             console.log('入力フィールド数:', inputs.length);
-            console.log('チE��ストエリア数:', textareas.length);
+            console.log('ティングーストエリア数:', textareas.length);
 
             // 入力フィールド�E値を取征E            inputs.forEach((input, index) => {
               if (index === 0) updatedData.reportId = input.value;
@@ -2951,7 +2951,7 @@ const HistoryPage: React.FC = () => {
               if (index === 9) updatedData.repairLocation = input.value;
             });
 
-            // チE��ストエリアの値を取征E            textareas.forEach((textarea, index) => {
+            // ティングーストエリアの値を取征E            textareas.forEach((textarea, index) => {
               if (index === 0) {
                 updatedData.problemDescription = textarea.value;
               }
@@ -2965,9 +2965,9 @@ const HistoryPage: React.FC = () => {
 
             // ローカルストレージに保孁E            localStorage.setItem('savedMachineFailureReport_' + updatedData.id, JSON.stringify(updatedData));
 
-            // 履歴チE�Eタを更新�E�親ウィンドウの履歴一覧表を更新�E�E            try {
+            // 履歴シューティングを更新�E�親ウィンドウの履歴一覧表を更新�E�E            try {
               if (window.opener && !window.opener.closed) {
-                // 親ウィンドウの履歴チE�Eタを更新
+                // 親ウィンドウの履歴シューティングを更新
                 window.opener.postMessage({
                   type: 'UPDATE_HISTORY_ITEM',
                   data: updatedData
@@ -2986,21 +2986,21 @@ const HistoryPage: React.FC = () => {
               console.warn('親ウィンドウへの通知に失敁E', error);
             }
 
-            // 允E�EチE�Eタを更新
+            // 允E�Eシューティングを更新
             originalData = updatedData;
 
             // UIを更新
             updateUIAfterSave(updatedData);
 
-            // 編雁E��ードを終亁E            toggleEditMode();
+            // 編雁Eーードを終亁E            toggleEditMode();
 
-            // 成功メチE��ージを表示
-            alert('レポ�Eトが保存されました。履歴アイチE��も更新されます、E);
+            // 成功メティングーージを表示
+            alert('レポ�Eトが保存されました。履歴アイティングーも更新されます、E);
 
             // サーバ�Eへの保存も試衁E            try {
               await saveToJsonFile(updatedData);
             } catch (error) {
-              console.warn('サーバ�Eへの保存�E失敗しましたが、ローカルには保存されてぁE��ぁE', error);
+              console.warn('サーバ�Eへの保存�E失敗しましたが、ローカルには保存されてぁEーぁE', error);
             }
           }
 
@@ -3010,7 +3010,7 @@ const HistoryPage: React.FC = () => {
 
               // 正しいIDを取征E              let targetId = originalData.id || originalData.chatId || originalData.reportId;
 
-              // IDが取得できなぁE��合�E、ファイル名からUUIDを抽出
+              // IDが取得できなぁEー合�E、ファイル名からUUIDを抽出
               if (!targetId && originalData.fileName) {
                 console.log('ファイル名からUUID抽出を試衁E', originalData.fileName);
 
@@ -3020,11 +3020,11 @@ const HistoryPage: React.FC = () => {
                   targetId = fileNameMatch[1];
                   console.log('標準UUIDから抽出したID:', targetId);
                 } else {
-                  // UUIDパターン2: アンダースコア区刁E��のUUID
+                  // UUIDパターン2: アンダースコア区刁EーのUUID
                   fileNameMatch = originalData.fileName.match(/_([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/);
                   if (fileNameMatch) {
                     targetId = fileNameMatch[1];
-                    console.log('アンダースコア区刁E��UUIDから抽出したID:', targetId);
+                    console.log('アンダースコア区刁EーUUIDから抽出したID:', targetId);
                   }
                 }
               }
@@ -3036,15 +3036,15 @@ const HistoryPage: React.FC = () => {
 
               console.log('保存対象ID:', targetId);
 
-              // 更新チE�Eタの準備
+              // 更新シューティングの準備
               const updatePayload = {
                 updatedData: updatedData,
                 updatedBy: 'user'
               };
 
-              console.log('送信するペイローチE', updatePayload);
+              console.log('送信するペイローティング', updatePayload);
 
-              // サーバ�EAPIを呼び出して履歴アイチE��を更新
+              // サーバ�EAPIを呼び出して履歴アイティングーを更新
               const response = await fetch('/api/history/update-item/' + targetId, {
                 method: 'PUT',
                 headers: {
@@ -3060,7 +3060,7 @@ const HistoryPage: React.FC = () => {
                 const result = await response.json();
                 console.log('履歴ファイルが正常に更新されました:', result);
 
-                // 成功メチE��ージを表示
+                // 成功メティングーージを表示
                 alert('レポ�Eトが允E�Eファイルに正常に上書き保存されました、E);
 
                 return result;
@@ -3092,16 +3092,16 @@ const HistoryPage: React.FC = () => {
               if (response.ok) {
                 try {
                   const result = await response.json();
-                  console.log('履歴アイチE��が正常に更新されました:', result);
+                  console.log('履歴アイティングーが正常に更新されました:', result);
 
                   // 保存�E功後�E処琁E                  updateUIAfterSave(updatedData);
 
-                  // 成功メチE��ージを表示
-                  alert('履歴アイチE��が正常に更新されました、E);
+                  // 成功メティングーージを表示
+                  alert('履歴アイティングーが正常に更新されました、E);
                 } catch (parseError) {
-                  console.warn('レスポンスの解析に失敗しましたが、保存�E成功してぁE��ぁE', parseError);
+                  console.warn('レスポンスの解析に失敗しましたが、保存�E成功してぁEーぁE', parseError);
                   updateUIAfterSave(updatedData);
-                  alert('履歴アイチE��が更新されました、E);
+                  alert('履歴アイティングーが更新されました、E);
                 }
               } else {
                 let errorMessage = 'サーバ�Eエラー';
@@ -3127,12 +3127,12 @@ const HistoryPage: React.FC = () => {
                   errorMessage = 'HTTP ' + response.status + ': ' + response.statusText;
                 }
 
-                console.error('履歴アイチE��の更新に失敗しました:', errorMessage);
-                alert('履歴アイチE��の更新に失敗しました: ' + errorMessage);
+                console.error('履歴アイティングーの更新に失敗しました:', errorMessage);
+                alert('履歴アイティングーの更新に失敗しました: ' + errorMessage);
               }
             } catch (error) {
               console.error('保存エラー:', error);
-              console.error('エラースタチE��:', error.stack);
+              console.error('エラースタティングー:', error.stack);
               alert('保存中にエラーが発生しました: ' + error.message);
             }
           }
@@ -3171,7 +3171,7 @@ const HistoryPage: React.FC = () => {
               readonlyElements[4].textContent = updatedData.location || '-';
             }
 
-            // スチE�Eタス
+            // スシューティングス
             if (readonlyElements[5]) {
               readonlyElements[5].textContent = updatedData.status || '-';
             }
@@ -3210,7 +3210,7 @@ const HistoryPage: React.FC = () => {
   };
 
   // 画像取得�E共通関数�E�EB画像レコード優先版�E�E  function pickFirstImage(data: any): string | null {
-    console.log('🖼�E�EpickFirstImage - チE�Eタ刁E��:', {
+    console.log('🖼�E�EpickFirstImage - シューティング刁Eー:', {
       hasImages: !!data?.images,
       imagesLength: data?.images?.length || 0,
       hasSavedImages: !!data?.savedImages,
@@ -3232,7 +3232,7 @@ const HistoryPage: React.FC = () => {
     }
 
     // 3) savedImages から URL を取得！EB画像レコード優先！E    // まず、ルートレベルのsavedImagesを確誁E    let savedImagesArray = data?.savedImages;
-    // 次に、jsonData.savedImagesを確認（編雁E��に更新される可能性がある！E    if (!savedImagesArray || savedImagesArray.length === 0) {
+    // 次に、jsonData.savedImagesを確認（編雁Eーに更新される可能性がある！E    if (!savedImagesArray || savedImagesArray.length === 0) {
       savedImagesArray = data?.jsonData?.savedImages;
     }
 
@@ -3241,7 +3241,7 @@ const HistoryPage: React.FC = () => {
       console.log('🖼�E�EpickFirstImage - savedImages[0]:', firstImage);
 
       if (typeof firstImage === 'string') {
-        // base64チE�EタではなぁE��合�Eみ返す
+        // base64シューティングではなぁEー合�Eみ返す
         if (!firstImage.startsWith('data:image/')) {
           return firstImage.startsWith('http') ? firstImage : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${firstImage}`;
         }
@@ -3292,12 +3292,12 @@ const HistoryPage: React.FC = () => {
       const historyId = data.id || data.chatId;
       console.log('🖼�E�EpickFirstImage - 履歴IDから画像を推測:', historyId);
 
-      // 褁E��のファイル名パターンを試衁E      const possibleFilenames = [
+      // 褁Eーのファイル名パターンを試衁E      const possibleFilenames = [
         `${historyId}_3_0.jpeg`,  // 新しい形弁E        `${historyId}_2_0.jpeg`,
         `${historyId}_1_0.jpeg`,
         `${historyId}_0_0.jpeg`,
         `${historyId}.jpg`,       // シンプル形弁E        `${historyId}.jpeg`,
-        `chat_image_${historyId}_*.jpg`  // 古ぁE��式（ワイルドカード�E後で処琁E��E      ];
+        `chat_image_${historyId}_*.jpg`  // 古ぁEー式（ワイルドカード�E後で処琁EーE      ];
 
       // 実際のファイル存在確認�Eサーバ�E側で行うため、最初�Eパターンを返す
       const imagePath = `/api/images/chat-exports/${possibleFilenames[0]}`;
@@ -3366,11 +3366,11 @@ const HistoryPage: React.FC = () => {
       <html>
       <head>
         <meta charset="utf-8">
-        <title>敁E��一覧印刷</title>
+        <title>敁Eー一覧印刷</title>
         ${PRINT_STYLES}
       </head>
       <body>
-        <h1>敁E��一覧</h1>
+        <h1>敁Eー一覧</h1>
         <table>
           <thead>
             <tr>
@@ -3378,7 +3378,7 @@ const HistoryPage: React.FC = () => {
               <th>機種</th>
               <th>機械番号</th>
               <th>日仁E/th>
-              <th>スチE�Eタス</th>
+              <th>スシューティングス</th>
               <th>画僁E/th>
             </tr>
           </thead>
@@ -3445,13 +3445,13 @@ const HistoryPage: React.FC = () => {
       </head>
       <body>
         <div class="header">
-          <h1>敁E��履歴一覧</h1>
+          <h1>敁Eー履歴一覧</h1>
           <p>印刷日晁E ${new Date().toLocaleString('ja-JP')}</p>
           <p>対象件数: ${targetItems.length}件${selectedItems.size > 0 ? ' (選択された履歴)' : ''}</p>
         </div>
 
         <div class="summary">
-          <strong>印刷対象:</strong> ${selectedItems.size > 0 ? '選択された履歴' : '敁E��履歴一覧'}<br>
+          <strong>印刷対象:</strong> ${selectedItems.size > 0 ? '選択された履歴' : '敁Eー履歴一覧'}<br>
           <strong>印刷日晁E</strong> ${new Date().toLocaleString('ja-JP')}<br>
           <strong>対象件数:</strong> ${targetItems.length}件
         </div>
@@ -3499,7 +3499,7 @@ const HistoryPage: React.FC = () => {
                   <td>${incidentTitle}</td>
                   <td>${problemDescription}</td>
                   <td>${formatDate(item.createdAt)}</td>
-                  <td class="image-cell">${imageUrl ? `<img class="thumb" src="${imageUrl}" alt="敁E��画僁E onerror="this.style.display='none'; this.nextSibling.style.display='inline';" /><span style="display:none; color: #999; font-size: 10px;">画像読み込みエラー</span>` : 'なぁE}</td>
+                  <td class="image-cell">${imageUrl ? `<img class="thumb" src="${imageUrl}" alt="敁Eー画僁E onerror="this.style.display='none'; this.nextSibling.style.display='inline';" /><span style="display:none; color: #999; font-size: 10px;">画像読み込みエラー</span>` : 'なぁE}</td>
                 </tr>
               `;
               })
@@ -3526,9 +3526,9 @@ const HistoryPage: React.FC = () => {
   const handlePrintReport = (item: SupportHistoryItem) => {
     console.log('🖨�E�E印刷レポ�Eト開姁E', item);
 
-    // 編雁E��面が開ぁE��ぁE��場合�E、編雁E��面のチE�Eタを優先的に使用
+    // 編雁Eー面が開ぁEーぁEー場合�E、編雁Eー面のシューティングを優先的に使用
     const sourceItem = showEditDialog && editingItem && editingItem.id === item.id ? editingItem : item;
-    console.log('🔍 印刷チE�Eタソース:', {
+    console.log('🔍 印刷シューティングソース:', {
       fromEditDialog: showEditDialog && editingItem && editingItem.id === item.id,
       editingItemTitle: editingItem?.jsonData?.title,
       itemTitle: item.jsonData?.title,
@@ -3537,7 +3537,7 @@ const HistoryPage: React.FC = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       console.error('❁E印刷ウィンドウを開けませんでした');
-      alert('印刷ウィンドウを開けませんでした。�EチE�EアチE�EブロチE��を無効にしてください、E);
+      alert('印刷ウィンドウを開けませんでした。�Eティング�Eアティング�Eブロティングーを無効にしてください、E);
       return;
     }
     console.log('✁E印刷ウィンドウを開きました');
@@ -3547,28 +3547,28 @@ const HistoryPage: React.FC = () => {
       try {
         jsonData = JSON.parse(jsonData);
       } catch (e) {
-        console.error('JSONチE�Eタのパ�Eスに失敁E', e);
+        console.error('JSONシューティングのパ�Eスに失敁E', e);
         jsonData = {};
       }
     }
 
-    // 事象タイトルを取得（編雁E��面のロジチE��と同じ�E�E    // 編雁E��面では: editingItem.jsonData.title を直接使用、なければファイル名から抽出
+    // 事象タイトルを取得（編雁Eー面のロジティングーと同じ�E�E    // 編雁Eー面では: editingItem.jsonData.title を直接使用、なければファイル名から抽出
     let incidentTitle = sourceItem.jsonData?.title || sourceItem.jsonData?.question || '';
 
-    // 編雁E��面と同じロジチE��でファイル名から抽出
+    // 編雁Eー面と同じロジティングーでファイル名から抽出
     if (!incidentTitle || incidentTitle.trim() === '') {
       if (sourceItem.fileName) {
         const firstUnderscoreIndex = sourceItem.fileName.indexOf('_');
         if (firstUnderscoreIndex > 0) {
           incidentTitle = sourceItem.fileName.substring(0, firstUnderscoreIndex);
         } else {
-          // 「_」がなぁE��合�E、拡張子を除ぁE��全体を返す
+          // 「_」がなぁEー合�E、拡張子を除ぁEー全体を返す
           incidentTitle = sourceItem.fileName.replace(/\.json$/, '');
         }
       }
     }
 
-    // 最終的に取得できなぁE��合�E、chatData.messagesから抽出
+    // 最終的に取得できなぁEー合�E、chatData.messagesから抽出
     if ((!incidentTitle || incidentTitle.trim() === '') && jsonData?.chatData?.messages) {
       const userMessages = jsonData.chatData.messages.filter(
         (msg: any) => !msg.isAiResponse && msg.content && !msg.content.startsWith('data:image/') && !msg.content.startsWith('/api/images/')
@@ -3578,11 +3578,11 @@ const HistoryPage: React.FC = () => {
       }
     }
 
-    // チE��チE��用ログ�E�詳細版！E    console.log('🔍 印刷用事象タイトル�E�詳細�E�E', {
+    // ティングーティングー用ログ�E�詳細版！E    console.log('🔍 印刷用事象タイトル�E�詳細�E�E', {
       '最終的なincidentTitle': incidentTitle,
       'incidentTitleの垁E: typeof incidentTitle,
       'incidentTitleの長ぁE: incidentTitle?.length,
-      '編雁E��面から取征E: showEditDialog && editingItem && editingItem.id === item.id,
+      '編雁Eー面から取征E: showEditDialog && editingItem && editingItem.id === item.id,
       'sourceItem.jsonData.title': sourceItem.jsonData?.title,
       'sourceItem.jsonData.question': sourceItem.jsonData?.question,
       'jsonData.title': jsonData?.title,
@@ -3592,10 +3592,10 @@ const HistoryPage: React.FC = () => {
       'sourceItem.jsonData全佁E: JSON.stringify(sourceItem.jsonData || {}, null, 2).substring(0, 500),
     });
 
-    // 事象説明を抽出�E�編雁E��面から優先的に取得！E    // 優先頁E��E 編雁E��面のjsonData.problemDescription > 編雁E��面のjsonData.answer > 通常のjsonData > chatData.messages
+    // 事象説明を抽出�E�編雁Eー面から優先的に取得！E    // 優先頁EーE 編雁Eー面のjsonData.problemDescription > 編雁Eー面のjsonData.answer > 通常のjsonData > chatData.messages
     let problemDescription = '';
 
-    // 1. 編雁E��面から直接取得（最優先！E    if (sourceItem.jsonData?.problemDescription && sourceItem.jsonData.problemDescription.trim() !== '') {
+    // 1. 編雁Eー面から直接取得（最優先！E    if (sourceItem.jsonData?.problemDescription && sourceItem.jsonData.problemDescription.trim() !== '') {
       problemDescription = sourceItem.jsonData.problemDescription;
     } else if (sourceItem.jsonData?.answer && sourceItem.jsonData.answer.trim() !== '') {
       problemDescription = sourceItem.jsonData.answer;
@@ -3605,7 +3605,7 @@ const HistoryPage: React.FC = () => {
       problemDescription = jsonData.answer;
     }
 
-    // 2. 事象説明がなぁE��合�E、chatData.messagesからユーザーメチE��ージを抽出
+    // 2. 事象説明がなぁEー合�E、chatData.messagesからユーザーメティングーージを抽出
     if (!problemDescription && jsonData?.chatData?.messages) {
       const userMessages = jsonData.chatData.messages
         .filter((msg: any) => !msg.isAiResponse && msg.content && !msg.content.startsWith('data:image/') && !msg.content.startsWith('/api/images/'))
@@ -3620,7 +3620,7 @@ const HistoryPage: React.FC = () => {
       problemDescription = '説明なぁE;
     }
 
-    // 機種と機械番号を抽出�E�編雁E��面から優先的に取得！E    const machineType =
+    // 機種と機械番号を抽出�E�編雁Eー面から優先的に取得！E    const machineType =
       sourceItem.machineInfo?.machineTypeName ||
       sourceItem.jsonData?.machineType ||
       jsonData?.machineType ||
@@ -3643,19 +3643,19 @@ const HistoryPage: React.FC = () => {
     const extractedSymptoms = jsonData?.extractedSymptoms || [];
     const possibleModels = jsonData?.possibleModels || [];
 
-    // 場所を取得（編雁E��面から優先的に取得！E    const location =
+    // 場所を取得（編雁Eー面から優先的に取得！E    const location =
       sourceItem.jsonData?.location ||
       jsonData?.location ||
       '○○緁E;
 
-    // チE��チE��用ログ
-    console.log('🔍 印刷用チE�Eタ:', {
+    // ティングーティングー用ログ
+    console.log('🔍 印刷用シューティング:', {
       incidentTitle,
       location,
       problemDescription: problemDescription.substring(0, 50) + '...',
     });
 
-    // 画像URLを取得（優先頁E��付き�E�E    let imageUrl = '';
+    // 画像URLを取得（優先頁Eー付き�E�E    let imageUrl = '';
     let imageFileName = '';
 
     console.log('個別レポ�Eト印刷用画像読み込み処琁E', {
@@ -3669,7 +3669,7 @@ const HistoryPage: React.FC = () => {
       imagePath: item.imagePath,
     });
 
-    // 優先頁E��E: savedImagesから画像を取得（最優先！E    if (
+    // 優先頁EーE: savedImagesから画像を取得（最優先！E    if (
       jsonData?.savedImages &&
       Array.isArray(jsonData.savedImages) &&
       jsonData.savedImages.length > 0
@@ -3678,14 +3678,14 @@ const HistoryPage: React.FC = () => {
       const imgUrl = typeof firstImage === 'string' ? firstImage : (firstImage.url || firstImage.path || firstImage.fileName);
       if (imgUrl && !imgUrl.startsWith('data:image/')) {
         imageUrl = imgUrl;
-        imageFileName = typeof firstImage === 'object' ? firstImage.fileName || `敁E��画像_${item.id}` : `敁E��画像_${item.id}`;
+        imageFileName = typeof firstImage === 'object' ? firstImage.fileName || `敁Eー画像_${item.id}` : `敁Eー画像_${item.id}`;
         console.log(
           '個別レポ�Eト印刷用: savedImagesから画像を取得（最優先！E
         );
       }
     }
 
-    // 優先頁E��E: conversationHistoryから画像URLを取征E    if (
+    // 優先頁EーE: conversationHistoryから画像URLを取征E    if (
       !imageUrl &&
       jsonData?.conversationHistory &&
       jsonData.conversationHistory.length > 0
@@ -3695,54 +3695,54 @@ const HistoryPage: React.FC = () => {
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
-        imageFileName = `敁E��画像_${item.id}`;
+        imageFileName = `敁Eー画像_${item.id}`;
         console.log(
-          '個別レポ�Eト印刷用: conversationHistoryから画像URLを取得（優先頁E��E�E�E
+          '個別レポ�Eト印刷用: conversationHistoryから画像URLを取得（優先頁EーE�E�E
         );
       }
     }
 
-    // 優先頁E��E: originalChatData.messagesから画像URLを取征E    if (!imageUrl && jsonData?.originalChatData?.messages) {
+    // 優先頁EーE: originalChatData.messagesから画像URLを取征E    if (!imageUrl && jsonData?.originalChatData?.messages) {
       const imageMessage = jsonData.originalChatData.messages.find(
         (msg: any) => msg.content && (msg.content.startsWith('/api/images/') || msg.content.startsWith('http'))
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
-        imageFileName = `敁E��画像_${item.id}`;
+        imageFileName = `敁Eー画像_${item.id}`;
         console.log(
-          '個別レポ�Eト印刷用: originalChatDataから画像URLを取得（優先頁E��E�E�E
+          '個別レポ�Eト印刷用: originalChatDataから画像URLを取得（優先頁EーE�E�E
         );
       }
     }
 
-    // 優先頁E��E: chatData.messagesから画像URLを取征E    if (!imageUrl && jsonData?.chatData?.messages) {
+    // 優先頁EーE: chatData.messagesから画像URLを取征E    if (!imageUrl && jsonData?.chatData?.messages) {
       const imageMessage = jsonData.chatData.messages.find(
         (msg: any) => msg.content && (msg.content.startsWith('/api/images/') || msg.content.startsWith('http'))
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
-        imageFileName = `敁E��画像_${item.id}`;
+        imageFileName = `敁Eー画像_${item.id}`;
         console.log(
-          '個別レポ�Eト印刷用: chatDataから画像URLを取得（優先頁E��E�E�E
+          '個別レポ�Eト印刷用: chatDataから画像URLを取得（優先頁EーE�E�E
         );
       }
     }
 
-    // 優先頁E��E: 直接のmessagesフィールドから画像URLを検索
+    // 優先頁EーE: 直接のmessagesフィールドから画像URLを検索
     if (!imageUrl && jsonData?.messages && Array.isArray(jsonData.messages)) {
       const imageMessage = jsonData.messages.find(
         (msg: any) => msg.content && (msg.content.startsWith('/api/images/') || msg.content.startsWith('http'))
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
-        imageFileName = `敁E��画像_${item.id}`;
+        imageFileName = `敁Eー画像_${item.id}`;
         console.log(
-          '個別レポ�Eト印刷用: messagesフィールドから画像URLを取得（優先頁E��E�E�E
+          '個別レポ�Eト印刷用: messagesフィールドから画像URLを取得（優先頁EーE�E�E
         );
       }
     }
 
-    // 優先頁E��E: savedImagesから画像を取得（サーバ�E上�Eファイル�E�E    if (!imageUrl && jsonData?.savedImages && jsonData.savedImages.length > 0) {
+    // 優先頁EーE: savedImagesから画像を取得（サーバ�E上�Eファイル�E�E    if (!imageUrl && jsonData?.savedImages && jsonData.savedImages.length > 0) {
       const savedImage = jsonData.savedImages[0];
 
       // fileNameがある場合�E、それを優先してURLを生戁E      if (savedImage.fileName) {
@@ -3751,7 +3751,7 @@ const HistoryPage: React.FC = () => {
         baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
         imageUrl = `${baseUrl}${imagePath}`;
         imageFileName = savedImage.fileName;
-        console.log('個別レポ�Eト印刷用: savedImagesからfileName取得（優先頁E��E�E�E', imageUrl);
+        console.log('個別レポ�Eト印刷用: savedImagesからfileName取得（優先頁EーE�E�E', imageUrl);
       } else if (savedImage.url) {
         // urlがある場吁E        if (savedImage.url.startsWith('http')) {
           imageUrl = savedImage.url;
@@ -3760,8 +3760,8 @@ const HistoryPage: React.FC = () => {
           baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
           imageUrl = `${baseUrl}${savedImage.url}`;
         }
-        imageFileName = savedImage.fileName || `敁E��画像_${item.id}`;
-        console.log('個別レポ�Eト印刷用: savedImagesからurl取得（優先頁E��E�E�E', imageUrl);
+        imageFileName = savedImage.fileName || `敁Eー画像_${item.id}`;
+        console.log('個別レポ�Eト印刷用: savedImagesからurl取得（優先頁EーE�E�E', imageUrl);
       } else if (savedImage.path) {
         // pathがある場吁E        if (savedImage.path.startsWith('http')) {
           imageUrl = savedImage.path;
@@ -3771,44 +3771,44 @@ const HistoryPage: React.FC = () => {
           const imagePath = savedImage.path.startsWith('/') ? savedImage.path : `/api/images/chat-exports/${savedImage.path}`;
           imageUrl = `${baseUrl}${imagePath}`;
         }
-        imageFileName = savedImage.fileName || `敁E��画像_${item.id}`;
-        console.log('個別レポ�Eト印刷用: savedImagesからpath取得（優先頁E��E�E�E', imageUrl);
+        imageFileName = savedImage.fileName || `敁Eー画像_${item.id}`;
+        console.log('個別レポ�Eト印刷用: savedImagesからpath取得（優先頁EーE�E�E', imageUrl);
       }
 
       if (!imageUrl) {
-        console.log('個別レポ�Eト印刷用: savedImagesから画像を取得（優先頁E��E�E�E- URL生�E失敁E);
+        console.log('個別レポ�Eト印刷用: savedImagesから画像を取得（優先頁EーE�E�E- URL生�E失敁E);
       }
     }
 
-    // 優先頁E��E: originalChatData.messagesからBase64画像を取征E    if (!imageUrl && jsonData?.originalChatData?.messages) {
+    // 優先頁EーE: originalChatData.messagesからBase64画像を取征E    if (!imageUrl && jsonData?.originalChatData?.messages) {
       const imageMessage = jsonData.originalChatData.messages.find(
         (msg: any) => msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
-        imageFileName = `敁E��画像_${item.id}`;
+        imageFileName = `敁Eー画像_${item.id}`;
         console.log(
-          '個別レポ�Eト印刷用: originalChatDataからBase64画像を取得（優先頁E��E�E�E
+          '個別レポ�Eト印刷用: originalChatDataからBase64画像を取得（優先頁EーE�E�E
         );
       }
     }
 
-    // 優先頁E��E: 従来フォーマット�EchatData.messagesからBase64画像を取征E    if (!imageUrl && jsonData?.chatData?.messages) {
+    // 優先頁EーE: 従来フォーマット�EchatData.messagesからBase64画像を取征E    if (!imageUrl && jsonData?.chatData?.messages) {
       const imageMessage = jsonData.chatData.messages.find(
         (msg: any) => msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
-        imageFileName = `敁E��画像_${item.id}`;
+        imageFileName = `敁Eー画像_${item.id}`;
         console.log(
-          '個別レポ�Eト印刷用: chatDataからBase64画像を取得（優先頁E��E�E�E
+          '個別レポ�Eト印刷用: chatDataからBase64画像を取得（優先頁EーE�E�E
         );
       }
     }
 
-    // 優先頁E��E: そ�E他�E可能性のあるフィールドから画像を検索
+    // 優先頁EーE: そ�E他�E可能性のあるフィールドから画像を検索
     if (!imageUrl) {
-      // 画像データが含まれる可能性のあるフィールドを再帰皁E��検索
+      // 画像データが含まれる可能性のあるフィールドを再帰皁Eー検索
       const findImagesRecursively = (obj: any, path: string = ''): any[] => {
         const foundImages = [];
         if (obj && typeof obj === 'object') {
@@ -3836,18 +3836,18 @@ const HistoryPage: React.FC = () => {
       const recursiveImages = findImagesRecursively(jsonData);
       if (recursiveImages.length > 0) {
         imageUrl = recursiveImages[0].content;
-        imageFileName = `敁E��画像_${item.id}`;
-        console.log('個別レポ�Eト印刷用: 再帰皁E��索で画像を取得（優先頁E��E�E�E);
+        imageFileName = `敁Eー画像_${item.id}`;
+        console.log('個別レポ�Eト印刷用: 再帰皁Eー索で画像を取得（優先頁EーE�E�E);
       }
     }
 
-    // 優先頁E��E: 従来のimagePathフィールド（最終フォールバック�E�E    if (!imageUrl && item.imagePath) {
+    // 優先頁EーE: 従来のimagePathフィールド（最終フォールバック�E�E    if (!imageUrl && item.imagePath) {
       if (item.imagePath.startsWith('http')) {
         imageUrl = item.imagePath;
       } else if (item.imagePath.startsWith('/')) {
         // /で始まる場吁E        let baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
         baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
-        // パスが既に/apiで始まってぁE��場合�Eそ�Eまま使用、そぁE��なければ/apiを追加
+        // パスが既に/apiで始まってぁEー場合�Eそ�Eまま使用、そぁEーなければ/apiを追加
         const path = item.imagePath.startsWith('/api') ? item.imagePath : `/api${item.imagePath}`;
         imageUrl = `${baseUrl}${path}`;
       } else {
@@ -3856,7 +3856,7 @@ const HistoryPage: React.FC = () => {
         baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
         imageUrl = `${baseUrl}${imagePath}`;
       }
-      imageFileName = `敁E��画像_${item.id}`;
+      imageFileName = `敁Eー画像_${item.id}`;
       console.log(
         '個別レポ�Eト印刷用: imagePathから画像を取得（最終フォールバック�E�E
       );
@@ -3873,7 +3873,7 @@ const HistoryPage: React.FC = () => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>機械敁E��報告書 - 印刷</title>
+        <title>機械敁Eー報告書 - 印刷</title>
         <style>
           body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
           .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
@@ -3936,7 +3936,7 @@ const HistoryPage: React.FC = () => {
       </head>
       <body>
         <div class="header">
-                      <h1>機械敁E��報告書</h1>
+                      <h1>機械敁Eー報告書</h1>
           <p>印刷日晁E ${new Date().toLocaleString('ja-JP')}</p>
         </div>
 
@@ -3967,10 +3967,10 @@ const HistoryPage: React.FC = () => {
         </div>
 
         <div class="section">
-          <h2>敁E��詳細</h2>
+          <h2>敁Eー詳細</h2>
           <div class="info-grid">
             <div class="info-item">
-              <strong>スチE�Eタス</strong>
+              <strong>スシューティングス</strong>
               ${String(incidentTitle || '').trim() || '-'}
             </div>
             <div class="info-item">
@@ -3992,11 +3992,11 @@ const HistoryPage: React.FC = () => {
           imageUrl
             ? `
         <div class="section">
-          <h2>敁E��箁E��画僁E/h2>
+          <h2>敁Eー箁Eー画僁E/h2>
           <div class="image-section">
-            <p>機械敁E��箁E��の画僁E/p>
-            <img src="${imageUrl}" alt="敁E��箁E��画僁E />
-            <p style="font-size: 12px; color: #666;">上記�E敁E��箁E��の写真です、E/p>
+            <p>機械敁Eー箁Eーの画僁E/p>
+            <img src="${imageUrl}" alt="敁Eー箁Eー画僁E />
+            <p style="font-size: 12px; color: #666;">上記�E敁Eー箁Eーの写真です、E/p>
           </div>
         </div>
         `
@@ -4026,7 +4026,7 @@ const HistoryPage: React.FC = () => {
 
         <div class="section">
           <p style="text-align: center; color: #666; font-size: 12px;">
-            © 2025 機械敁E��報告書. All rights reserved.
+            © 2025 機械敁Eー報告書. All rights reserved.
           </p>
         </div>
 
@@ -4038,10 +4038,10 @@ const HistoryPage: React.FC = () => {
       </html>
     `;
 
-    console.log('🖨�E�EHTMLコンチE��チE�E長ぁE', reportContent.length);
-    console.log('🖨�E�EHTMLコンチE��チE�E先頭100斁E��E', reportContent.substring(0, 100));
+    console.log('🖨�E�EHTMLコンティングーティング�E長ぁE', reportContent.length);
+    console.log('🖨�E�EHTMLコンティングーティング�E先頭100斁EーE', reportContent.substring(0, 100));
 
-    // HTMLコンチE��チE��書き込み
+    // HTMLコンティングーティングー書き込み
     try {
       printWindow.document.write(reportContent);
       printWindow.document.close();
@@ -4064,10 +4064,10 @@ const HistoryPage: React.FC = () => {
 
     // 追加の確誁E 書き込まれたHTMLを確誁E    setTimeout(() => {
       console.log('🖨�E�E書き込まれたHTMLの長ぁE', printWindow.document.documentElement.innerHTML.length);
-      console.log('🖨�E�E書き込まれたHTMLの先頭100斁E��E', printWindow.document.documentElement.innerHTML.substring(0, 100));
+      console.log('🖨�E�E書き込まれたHTMLの先頭100斁EーE', printWindow.document.documentElement.innerHTML.substring(0, 100));
     }, 100);
 
-    console.log('✁E印刷レポ�EチETMLを書き込みました');
+    console.log('✁E印刷レポ�EティングTMLを書き込みました');
 
     // 印刷ウィンドウが読み込まれた後に印刷ダイアログを表示
     printWindow.onload = () => {
@@ -4090,21 +4090,21 @@ const HistoryPage: React.FC = () => {
     }, 2000);
   };
 
-  // ローチE��ング状態�E表示
+  // ローティングーング状態�E表示
   if (loading) {
     return (
       <div className='p-6'>
         <div className='flex items-center justify-center h-64'>
           <div className='text-center'>
             <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4'></div>
-            <p className='text-gray-600'>履歴チE�Eタを読み込み中...</p>
+            <p className='text-gray-600'>履歴シューティングを読み込み中...</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // メインコンチE��チE�E表示
+  // メインコンティングーティング�E表示
   return (
     <div className='p-6 max-w-7xl mx-auto'>
       <div className='mb-6'>
@@ -4123,11 +4123,11 @@ const HistoryPage: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4'>
-            {/* チE��スト検索 */}
+            {/* ティングースト検索 */}
             <div className='lg:col-span-2'>
               <div className='space-y-2'>
                 <Input
-                  placeholder='タイトル、機種、事業所、応急処置冁E��、キーワードなどで検索...'
+                  placeholder='タイトル、機種、事業所、応急処置冁Eー、キーワードなどで検索...'
                   value={filters.searchText}
                   onChange={e =>
                     handleFilterChange('searchText', e.target.value)
@@ -4141,7 +4141,7 @@ const HistoryPage: React.FC = () => {
                 />
                 <p className='text-xs text-gray-500'>
                   ※
-                  褁E��のキーワードをスペ�Eス区刁E��で入力すると、すべてのキーワードを含む履歴を検索しまぁE                </p>
+                  褁Eーのキーワードをスペ�Eス区刁Eーで入力すると、すべてのキーワードを含む履歴を検索しまぁE                </p>
               </div>
             </div>
 
@@ -4158,7 +4158,7 @@ const HistoryPage: React.FC = () => {
                   className='w-full'
                 />
                 <p className='text-xs text-gray-500'>
-                  ※ 持E��した日付�E履歴を検索しまぁE                </p>
+                  ※ 持Eーした日付�E履歴を検索しまぁE                </p>
               </div>
             </div>
 
@@ -4192,13 +4192,13 @@ const HistoryPage: React.FC = () => {
                       ))
                     ) : (
                       <SelectItem value='no-data' disabled>
-                        チE�Eタがありません
+                        シューティングがありません
                       </SelectItem>
                     )}
                   </SelectContent>
                 </Select>
                 <p className='text-xs text-gray-500'>
-                  ※ JSONファイルから機種を取得してぁE��ぁE                  {searchFilterData.machineTypes &&
+                  ※ JSONファイルから機種を取得してぁEーぁE                  {searchFilterData.machineTypes &&
                     ` (${searchFilterData.machineTypes.length}件)`}
                 </p>
               </div>
@@ -4234,13 +4234,13 @@ const HistoryPage: React.FC = () => {
                       ))
                     ) : (
                       <SelectItem value='no-data' disabled>
-                        チE�Eタがありません
+                        シューティングがありません
                       </SelectItem>
                     )}
                   </SelectContent>
                 </Select>
                 <p className='text-xs text-gray-500'>
-                  ※ JSONファイルから機械番号を取得してぁE��ぁE                  {searchFilterData.machineNumbers &&
+                  ※ JSONファイルから機械番号を取得してぁEーぁE                  {searchFilterData.machineNumbers &&
                     ` (${searchFilterData.machineNumbers.length}件)`}
                 </p>
               </div>
@@ -4265,7 +4265,7 @@ const HistoryPage: React.FC = () => {
           <CardTitle className='flex items-center justify-between'>
             <div className='flex items-center gap-2'>
               <FileText className='h-5 w-5' />
-              敁E��履歴一覧 ({filteredItems.length}件)
+              敁Eー履歴一覧 ({filteredItems.length}件)
             </div>
             <div className='flex items-center gap-2'>
               {fileLoading && (
@@ -4281,12 +4281,12 @@ const HistoryPage: React.FC = () => {
           {filteredItems.length === 0 ? (
             <div className='text-center py-8'>
               <FileText className='h-12 w-12 text-gray-400 mx-auto mb-4' />
-              <p className='text-gray-600'>履歴チE�Eタがありません</p>
+              <p className='text-gray-600'>履歴シューティングがありません</p>
             </div>
           ) : (
-            // チE�Eブル形式表示
+            // ティング�Eブル形式表示
             <div className='space-y-4'>
-              {/* チE�Eブル */}
+              {/* ティング�Eブル */}
               <div className='overflow-x-auto'>
                 <table className='w-full border-collapse border border-gray-300'>
                   <thead>
@@ -4309,7 +4309,7 @@ const HistoryPage: React.FC = () => {
                         機械番号
                       </th>
                       <th className='border border-gray-300 px-3 py-2 text-left text-sm font-medium'>
-                        事象冁E��
+                        事象冁Eー
                       </th>
                       <th className='border border-gray-300 px-3 py-2 text-left text-sm font-medium'>
                         作�E日晁E                      </th>
@@ -4321,41 +4321,41 @@ const HistoryPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {/* 履歴アイチE��を表示 */}
+                    {/* 履歴アイティングーを表示 */}
                     {filteredItems.map(item => {
-                      // 新しいフォーマット�EチE�Eタ構造に合わせて表示
+                      // 新しいフォーマット�Eシューティング構造に合わせて表示
                       const jsonData = item.jsonData;
 
-                      // タイトルを優先的にJSONチE�Eタのtitleフィールドから取征E                      let incidentTitle = jsonData?.title || '';
+                      // タイトルを優先的にJSONシューティングのtitleフィールドから取征E                      let incidentTitle = jsonData?.title || '';
 
-                      // titleがなぁE��合�E、ファイル名から事象冁E��を抽出
+                      // titleがなぁEー合�E、ファイル名から事象冁Eーを抽出
                       if (!incidentTitle && item.fileName) {
                         const fileNameParts = item.fileName.split('_');
                         if (fileNameParts.length > 1) {
-                          // ファイル名�E最初�E部刁E��事象冁E��
+                          // ファイル名�E最初�E部刁Eー事象冁Eー
                           incidentTitle = fileNameParts[0];
                         }
                       }
 
-                      // まだタイトルが取得できなぁE��合�E、その他�Eフィールドから取征E                      if (!incidentTitle) {
+                      // まだタイトルが取得できなぁEー合�E、その他�Eフィールドから取征E                      if (!incidentTitle) {
                         incidentTitle = jsonData?.question || '事象なぁE;
                         if (incidentTitle === '事象なぁE && jsonData?.chatData?.messages) {
-                          // 従来フォーマット�E場合、ユーザーメチE��ージから事象を抽出
+                          // 従来フォーマット�E場合、ユーザーメティングーージから事象を抽出
                           const userMessages = jsonData.chatData.messages.filter(
                             (msg: any) => !msg.isAiResponse
                           );
                           if (userMessages.length > 0) {
-                            // 最初�EユーザーメチE��ージを事象として使用
+                            // 最初�Eユーザーメティングーージを事象として使用
                             incidentTitle = userMessages[0].content || '事象なぁE;
                           }
                         }
                       }
 
-                      // まだタイトルがなぁE��合�E、デフォルト値を設宁E                      if (!incidentTitle) {
+                      // まだタイトルがなぁEー合�E、デフォルト値を設宁E                      if (!incidentTitle) {
                         incidentTitle = '事象なぁE;
                       }
 
-                      // 機種と機械番号を抽出�E�EPIから返されるチE�Eタ構造に合わせる�E�E                      const machineType =
+                      // 機種と機械番号を抽出�E�EPIから返されるシューティング構造に合わせる�E�E                      const machineType =
                         jsonData?.machineType ||
                         jsonData?.chatData?.machineInfo?.machineTypeName ||
                         item.machineInfo?.machineTypeName ||
@@ -4400,7 +4400,7 @@ const HistoryPage: React.FC = () => {
                           </td>
                           <td className='border border-gray-300 px-3 py-2'>
                             {(() => {
-                              console.log('🖼�E�E画像表示処琁E��姁E', {
+                              console.log('🖼�E�E画像表示処琁Eー姁E', {
                                 itemId: item.id,
                                 itemTitle: item.title,
                                 hasImagePath: !!item.imagePath,
@@ -4418,7 +4418,7 @@ const HistoryPage: React.FC = () => {
                                     src={imageUrl}
                                     alt='画僁E
                                     className='w-12 h-12 object-cover rounded border cursor-pointer hover:scale-110 transition-transform'
-                                    title='敁E��画像（クリチE��で拡大�E�E
+                                    title='敁Eー画像（クリティングーで拡大�E�E
                                     onClick={() => {
                                       // 画像を拡大表示
                                       const imgWindow = window.open('', '_blank');
@@ -4427,7 +4427,7 @@ const HistoryPage: React.FC = () => {
                                           <html>
                                             <head><title>画像拡大表示</title></head>
                                             <body style="margin:0;padding:20px;text-align:center;background:#f0f0f0;">
-                                              <img src="${imageUrl}" style="max-width:90%;max-height:90vh;border:2px solid #333;box-shadow:0 4px 8px rgba(0,0,0,0.3);" alt="敁E��画僁E />
+                                              <img src="${imageUrl}" style="max-width:90%;max-height:90vh;border:2px solid #333;box-shadow:0 4px 8px rgba(0,0,0,0.3);" alt="敁Eー画僁E />
                                             </body>
                                           </html>
                                         `);
@@ -4455,7 +4455,7 @@ const HistoryPage: React.FC = () => {
                                 size='sm'
                                 onClick={() => {
                                   console.log(
-                                    '🔍 編雁E�EタンクリチE�� - 允E�EアイチE��:',
+                                    '🔍 編雁E�Eタンクリティングー - 允E�Eアイティングー:',
                                     item
                                   );
                                   console.log(
@@ -4474,7 +4474,7 @@ const HistoryPage: React.FC = () => {
                                   const normalizedItem =
                                     normalizeJsonData(item);
                                   console.log(
-                                    '🔍 正規化後�EアイチE��:',
+                                    '🔍 正規化後�Eアイティングー:',
                                     normalizedItem
                                   );
                                   console.log(
@@ -4490,7 +4490,7 @@ const HistoryPage: React.FC = () => {
                                     normalizedItem.jsonData?.title
                                   );
 
-                                  // chatData.messagesからユーザーメチE��ージを抽出�E�一時的に保存、GPT要紁E��使用するため�E�E                                  const chatData = normalizedItem.jsonData?.chatData || normalizedItem.jsonData;
+                                  // chatData.messagesからユーザーメティングーージを抽出�E�一時的に保存、GPT要紁Eー使用するため�E�E                                  const chatData = normalizedItem.jsonData?.chatData || normalizedItem.jsonData;
                                   let extractedUserMessages = '';
                                   if (chatData?.messages && Array.isArray(chatData.messages)) {
                                     const userMessages = chatData.messages
@@ -4499,7 +4499,7 @@ const HistoryPage: React.FC = () => {
                                       .join('\n');
                                     if (userMessages) {
                                       extractedUserMessages = userMessages;
-                                      // problemDescriptionがなぁE��合�Eみ設定！EPT要紁E�E前に一時的に表示�E�E                                      if (!normalizedItem.jsonData?.problemDescription || normalizedItem.jsonData.problemDescription === '') {
+                                      // problemDescriptionがなぁEー合�Eみ設定！EPT要紁E�E前に一時的に表示�E�E                                      if (!normalizedItem.jsonData?.problemDescription || normalizedItem.jsonData.problemDescription === '') {
                                         normalizedItem.jsonData.problemDescription = userMessages;
                                         normalizedItem.jsonData.answer = userMessages;
                                         console.log('🔍 chatData.messagesから事象説明を抽出:', userMessages);
@@ -4507,12 +4507,12 @@ const HistoryPage: React.FC = () => {
                                     }
                                   }
 
-                                  // 編雁E��面を開く際に簡易要紁E��生�E�E�EPT要紁E��生�Eされるまでの一時的な表示�E�E                                  if (!normalizedItem.jsonData?.problemDescription || normalizedItem.jsonData.problemDescription === '') {
+                                  // 編雁Eー面を開く際に簡易要紁Eー生�E�E�EPT要紁Eー生�Eされるまでの一時的な表示�E�E                                  if (!normalizedItem.jsonData?.problemDescription || normalizedItem.jsonData.problemDescription === '') {
                                     const autoSummary = generateSummaryFromJson(normalizedItem.jsonData);
                                     if (autoSummary) {
                                       normalizedItem.jsonData.problemDescription = autoSummary;
                                       normalizedItem.jsonData.answer = autoSummary;
-                                      console.log('🔍 自動要紁E��生�E:', autoSummary);
+                                      console.log('🔍 自動要紁Eー生�E:', autoSummary);
                                     }
                                   }
 
@@ -4520,7 +4520,7 @@ const HistoryPage: React.FC = () => {
                                   setShowEditDialog(true);
                                 }}
                                 className='flex items-center gap-1 text-xs'
-                                title='編雁E��面を開ぁE
+                                title='編雁Eー面を開ぁE
                               >
                                 <Settings className='h-3 w-3' />
                                 編雁E                              </Button>
@@ -4554,7 +4554,7 @@ const HistoryPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* エクスポ�Eト�E琁E��リア */}
+      {/* エクスポ�Eト�E琁Eーリア */}
       <div className='bg-white rounded-lg shadow p-6 mb-6'>
         <div className='flex items-center justify-between mb-4'>
           <h2 className='text-xl font-bold'>エクスポ�Eト�E琁E/h2>
@@ -4624,7 +4624,7 @@ const HistoryPage: React.FC = () => {
         {exportLoading && (
           <div className='flex items-center gap-2 text-blue-600'>
             <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600'></div>
-            エクスポ�Eト�E琁E��...
+            エクスポ�Eト�E琁Eー...
           </div>
         )}
       </div>
@@ -4685,7 +4685,7 @@ const HistoryPage: React.FC = () => {
                     onClick={() => {
                       const normalizedItem = normalizeJsonData(previewItem);
 
-                      // 編雁E��面を開く際に要紁E��自動生戁E                      const autoSummary = generateSummaryFromJson(normalizedItem.jsonData);
+                      // 編雁Eー面を開く際に要紁Eー自動生戁E                      const autoSummary = generateSummaryFromJson(normalizedItem.jsonData);
                       if (autoSummary && (!normalizedItem.jsonData?.problemDescription || normalizedItem.jsonData.problemDescription === '')) {
                         normalizedItem.jsonData.problemDescription = autoSummary;
                         normalizedItem.jsonData.answer = autoSummary;
@@ -4698,7 +4698,7 @@ const HistoryPage: React.FC = () => {
                     className='flex items-center gap-2'
                   >
                     <Settings className='h-4 w-4' />
-                    編雁E��移勁E                  </Button>
+                    編雁Eー移勁E                  </Button>
                   <Button
                     variant='ghost'
                     onClick={() => setShowPreviewDialog(false)}
@@ -4708,7 +4708,7 @@ const HistoryPage: React.FC = () => {
               </div>
 
               <div className='space-y-6'>
-                {/* レポ�Eト�EチE��ー */}
+                {/* レポ�Eト�Eティングーー */}
                 <div className='text-center border-b pb-4'>
                   <h1 className='text-2xl font-bold mb-2'>
                     応急処置サポ�Eト履歴
@@ -4718,10 +4718,10 @@ const HistoryPage: React.FC = () => {
                   </p>
                 </div>
 
-                {/* 基本惁E�� */}
+                {/* 基本惁Eー */}
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                   <div>
-                    <h3 className='text-lg font-semibold mb-3'>基本惁E��</h3>
+                    <h3 className='text-lg font-semibold mb-3'>基本惁Eー</h3>
                     <div className='space-y-2'>
                       <div className='flex items-center gap-2'>
                         <Settings className='h-4 w-4 text-gray-500' />
@@ -4764,9 +4764,9 @@ const HistoryPage: React.FC = () => {
                   )}
                 </div>
 
-                {/* 詳細惁E�� */}
+                {/* 詳細惁Eー */}
                 <div>
-                  <h3 className='text-lg font-semibold mb-3'>詳細惁E��</h3>
+                  <h3 className='text-lg font-semibold mb-3'>詳細惁Eー</h3>
                   <div className='bg-gray-50 p-4 rounded-md'>
                     <pre className='text-sm overflow-auto max-h-64'>
                       {JSON.stringify(previewItem.jsonData, null, 2)}
@@ -4779,7 +4779,7 @@ const HistoryPage: React.FC = () => {
         </div>
       )}
 
-      {/* 編雁E��イアログ */}
+      {/* 編雁Eーイアログ */}
       {showEditDialog && editingItem && (
         <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50'>
           <style dangerouslySetInnerHTML={{__html: `
@@ -4978,7 +4978,7 @@ const HistoryPage: React.FC = () => {
                 min-height: 65pt !important;
                 max-height: 78pt !important;
               }
-              /* 記事欁E�E調整可能�E�E4に収まらなぁE��合�E減らす！E*/
+              /* 記事欁E�E調整可能�E�E4に収まらなぁEー合�E減らす！E*/
               .print-content-wrapper .print-remarks-section textarea {
                 min-height: 60pt !important;
                 max-height: 90pt !important;
@@ -5003,7 +5003,7 @@ const HistoryPage: React.FC = () => {
                 color: #666 !important;
                 margin-left: auto !important;
               }
-              /* 記事欁E��行�E下線（細ぁE��線）を表示、外枠の線�E不要E*/
+              /* 記事欁Eー行�E下線（細ぁEー線）を表示、外枠の線�E不要E*/
               .print-content-wrapper .print-remarks-section {
                 position: relative !important;
               }
@@ -5015,7 +5015,7 @@ const HistoryPage: React.FC = () => {
                 max-height: 90pt !important;
                 line-height: 1.5em !important;
                 position: relative !important;
-                /* 破線パターンで吁E���E下に細線�E灰色破線を引く */
+                /* 破線パターンで吁Eー�E下に細線�E灰色破線を引く */
                 background-image:
                   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='1.5em'%3E%3Cline x1='0' y1='1.48em' x2='100%25' y2='1.48em' stroke='%23ccc' stroke-width='0.3' stroke-dasharray='2,2'/%3E%3C/svg%3E") !important;
                 background-repeat: repeat-y !important;
@@ -5158,7 +5158,7 @@ const HistoryPage: React.FC = () => {
                 margin-bottom: 4pt !important;
                 page-break-inside: avoid;
               }
-              /* 記事欁E��確実に表示 */
+              /* 記事欁Eー確実に表示 */
               .print-content-wrapper .bg-gray-50:last-of-type,
               .print-content-wrapper .bg-gray-50.print-remarks-section {
                 background: #f5f5f5 !important;
@@ -5173,7 +5173,7 @@ const HistoryPage: React.FC = () => {
           `}} />
           <div className='bg-white rounded-lg max-w-5xl w-full max-h-[95vh] overflow-auto print-content-wrapper'>
             <div className='p-6'>
-              {/* 機種・機械番号チE�Eタが読み込まれてぁE��ぁE��合�E再取征E*/}
+              {/* 機種・機械番号シューティングが読み込まれてぁEーぁEー合�E再取征E*/}
               {(() => {
                 if (
                   machineData.machineTypes.length === 0 &&
@@ -5182,7 +5182,7 @@ const HistoryPage: React.FC = () => {
                   fetchMachineDataFromAPI();
                 }
 
-                // チE��チE��: 編雁E��イアログが開かれた時の初期値をログ出劁E                console.log('編雁E��イアログ表示時�EeditingItem:', {
+                // ティングーティングー: 編雁Eーイアログが開かれた時の初期値をログ出劁E                console.log('編雁Eーイアログ表示時�EeditingItem:', {
                   machineType: editingItem.machineType,
                   machineNumber: editingItem.machineNumber,
                   fileName: editingItem.fileName,
@@ -5195,11 +5195,11 @@ const HistoryPage: React.FC = () => {
               })()}
 
               <div className='flex justify-between items-center mb-4'>
-                <h2 className='text-xl font-bold no-print'>機械敁E��惁E��編雁E/h2>
+                <h2 className='text-xl font-bold no-print'>機械敁Eー惁Eー編雁E/h2>
                 <div className='flex gap-2 no-print'>
                   <Button
                     onClick={() => {
-                      console.log('編雁E��ータを保存しまぁE', editingItem);
+                      console.log('編雁Eーータを保存しまぁE', editingItem);
                       handleSaveEditedItem(editingItem);
                     }}
                     className='flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white'
@@ -5208,8 +5208,8 @@ const HistoryPage: React.FC = () => {
                     保孁E                  </Button>
                   <Button
                     onClick={() => {
-                      console.log('🖨�E�E編雁E��面をそのまま印刷しまぁE);
-                      // 編雁E��面をそのまま印刷
+                      console.log('🖨�E�E編雁Eー面をそのまま印刷しまぁE);
+                      // 編雁Eー面をそのまま印刷
                       window.print();
                     }}
                     className='flex items-center gap-2'
@@ -5220,7 +5220,7 @@ const HistoryPage: React.FC = () => {
                   <Button
                     variant='outline'
                     onClick={() => {
-                      console.log('編雁E��キャンセルしまぁE);
+                      console.log('編雁EーキャンセルしまぁE);
                       setShowEditDialog(false);
                       setEditingItem(null);
                     }}
@@ -5233,15 +5233,15 @@ const HistoryPage: React.FC = () => {
               <div className='space-y-6 print-content'>
                 {/* 印刷時�Eタイトル�E�画面では非表示�E�E*/}
                 <div className='print-header no-print' style={{ display: 'none' }}>
-                  <h1>機械敁E��報告書</h1>
+                  <h1>機械敁Eー報告書</h1>
                   <p>印刷日晁E {new Date().toLocaleString('ja-JP')}</p>
                 </div>
 
-                {/* 基本惁E��編雁E*/}
+                {/* 基本惁Eー編雁E*/}
                 <div className='bg-gray-50 p-4 rounded-lg'>
                   <h3 className='text-lg font-semibold mb-3 flex items-center gap-2'>
                     <Settings className='h-5 w-5' />
-                    基本惁E��
+                    基本惁Eー
                   </h3>
                   <div className='grid grid-cols-1 md:grid-cols-3 gap-4 print-basic-info-grid'>
                     <div className='print-basic-info-item'>
@@ -5282,10 +5282,10 @@ const HistoryPage: React.FC = () => {
                                 {editingItem.machineType} (現在の値)
                               </SelectItem>
                             )}
-                            {/* マスターチE�Eタからの選択肢 */}
+                            {/* マスターシューティングからの選択肢 */}
                             {machineDataLoading ? (
                               <SelectItem value="loading" disabled>
-                                マスターチE�Eタ読み込み中...
+                                マスターシューティング読み込み中...
                               </SelectItem>
                             ) : (
                               machineData.machineTypes
@@ -5340,10 +5340,10 @@ const HistoryPage: React.FC = () => {
                                 {editingItem.machineNumber} (現在の値)
                               </SelectItem>
                             )}
-                            {/* マスターチE�Eタからの選択肢 */}
+                            {/* マスターシューティングからの選択肢 */}
                             {machineDataLoading ? (
                               <SelectItem value="loading" disabled>
-                                マスターチE�Eタ読み込み中...
+                                マスターシューティング読み込み中...
                               </SelectItem>
                             ) : (
                               machineData.machines
@@ -5401,16 +5401,16 @@ const HistoryPage: React.FC = () => {
                       <Input
                         value={
                           (() => {
-                            // ファイル名から日本語部刁E��けを抽出して表示
+                            // ファイル名から日本語部刁Eーけを抽出して表示
                             if (editingItem.fileName) {
                               const firstUnderscoreIndex = editingItem.fileName.indexOf('_');
                               if (firstUnderscoreIndex > 0) {
                                 return editingItem.fileName.substring(0, firstUnderscoreIndex);
                               }
-                              // 「_」がなぁE��合�E、拡張子を除ぁE��全体を返す
+                              // 「_」がなぁEー合�E、拡張子を除ぁEー全体を返す
                               return editingItem.fileName.replace(/\.json$/, '');
                             }
-                            // ファイル名がなぁE��合�EJSONのtitleを使用
+                            // ファイル名がなぁEー合�EJSONのtitleを使用
                             return editingItem.jsonData?.title ||
                               editingItem.jsonData?.question ||
                               '';
@@ -5429,7 +5429,7 @@ const HistoryPage: React.FC = () => {
                         }}
                         placeholder='事象タイトルを�E劁E
                       />
-                      {/* チE��チE��: 事象タイトルの値を確誁E*/}
+                      {/* ティングーティングー: 事象タイトルの値を確誁E*/}
                       {(() => {
                         const titleValue =
                           editingItem.jsonData?.title ||
@@ -5493,12 +5493,12 @@ const HistoryPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 敁E��個所の画像（修繕計画の上に移動！E*/}
+                {/* 敁Eー個所の画像（修繕計画の上に移動！E*/}
                 <div className='bg-purple-50 p-4 rounded-lg'>
                   <div className='flex items-center justify-between mb-3'>
                     <h3 className='text-lg font-semibold flex items-center gap-2'>
                       <Image className='h-5 w-5' />
-                      敁E��個所の画僁E                    </h3>
+                      敁Eー個所の画僁E                    </h3>
                     <input
                       type='file'
                       accept='image/*'
@@ -5523,7 +5523,7 @@ const HistoryPage: React.FC = () => {
 
                             if (!response.ok) {
                               const errorData = await response.json();
-                              throw new Error(errorData.error || '画像�EアチE�Eロードに失敗しました');
+                              throw new Error(errorData.error || '画像�Eアティング�Eロードに失敗しました');
                             }
 
                             const result = await response.json();
@@ -5532,14 +5532,14 @@ const HistoryPage: React.FC = () => {
                               url: result.imageUrl || result.url,
                             });
                           } catch (error) {
-                            console.error('画像アチE�Eロードエラー:', error);
-                            alert(`画像�EアチE�Eロードに失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                            console.error('画像アティング�Eロードエラー:', error);
+                            alert(`画像�Eアティング�Eロードに失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
                           }
                         }
 
                         if (newImages.length > 0) {
                           const currentSavedImages = editingItem.jsonData?.savedImages || [];
-                          // 新しく追加した画像を先頭に配置�E�一覧表で最初に表示されるよぁE���E�E                          setEditingItem({
+                          // 新しく追加した画像を先頭に配置�E�一覧表で最初に表示されるよぁEー�E�E                          setEditingItem({
                             ...editingItem,
                             jsonData: {
                               ...editingItem.jsonData,
@@ -5548,7 +5548,7 @@ const HistoryPage: React.FC = () => {
                           });
                         }
 
-                        // 入力フィールドをリセチE��
+                        // 入力フィールドをリセティングー
                         e.target.value = '';
                       }}
                     />
@@ -5565,7 +5565,7 @@ const HistoryPage: React.FC = () => {
                     </Button>
                   </div>
                   {(() => {
-                    // 褁E��の画像を取征E                    const getAllImages = (item: SupportHistoryItem): Array<{ url: string; fileName?: string; index: number }> => {
+                    // 褁Eーの画像を取征E                    const getAllImages = (item: SupportHistoryItem): Array<{ url: string; fileName?: string; index: number }> => {
                       const images: Array<{ url: string; fileName?: string; index: number }> = [];
 
                       // 1) savedImages から画像を取征E                      if (Array.isArray(item?.savedImages) && item.savedImages.length > 0) {
@@ -5621,7 +5621,7 @@ const HistoryPage: React.FC = () => {
                         });
                       }
 
-                      // 重褁E��除去�E�ERLベ�Eス�E�E                      const uniqueImages: Array<{ url: string; fileName?: string; index: number }> = [];
+                      // 重褁Eー除去�E�ERLベ�Eス�E�E                      const uniqueImages: Array<{ url: string; fileName?: string; index: number }> = [];
                       const seenUrls = new Set<string>();
                       images.forEach(img => {
                         if (!seenUrls.has(img.url)) {
@@ -5641,10 +5641,10 @@ const HistoryPage: React.FC = () => {
                             <div key={index} className='relative group'>
                               <img
                                 src={image.url}
-                                alt={`敁E��画僁E{index + 1}`}
+                                alt={`敁Eー画僁E{index + 1}`}
                                 className='w-full h-auto max-h-48 object-contain border border-gray-300 rounded-md shadow-sm'
                                 onError={(e) => {
-                                  console.error(`🖼�E�E画像読み込みエラー (編雁E��面):`, image.url);
+                                  console.error(`🖼�E�E画像読み込みエラー (編雁Eー面):`, image.url);
                                   (e.target as HTMLImageElement).style.display = 'none';
                                 }}
                               />
@@ -5733,12 +5733,12 @@ const HistoryPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 記事欁E��E00斁E��程度�E�E*/}
+                {/* 記事欁EーE00斁Eー程度�E�E*/}
                 <div className='bg-gray-50 p-4 rounded-lg print-remarks-section'>
                   <h3 className='text-lg font-semibold mb-3 flex items-center gap-2 print-remarks-header'>
                     <FileText className='h-5 w-5' />
                     <span>記事欁E/span>
-                    <span className='print-remarks-hint'>修繕に関する備老E��追加惁E��を記載してください�E�E00斁E��以冁E��E/span>
+                    <span className='print-remarks-hint'>修繕に関する備老Eー追加惁Eーを記載してください�E�E00斁Eー以冁EーE/span>
                   </h3>
                   <div>
                     <textarea
@@ -5759,7 +5759,7 @@ const HistoryPage: React.FC = () => {
                       maxLength={200}
                     />
                     <p className='text-xs text-gray-500 mt-1 no-print'>
-                      {editingItem.jsonData?.remarks?.length || 0}/200斁E��E                    </p>
+                      {editingItem.jsonData?.remarks?.length || 0}/200斁EーE                    </p>
                   </div>
                 </div>
 
@@ -5768,7 +5768,7 @@ const HistoryPage: React.FC = () => {
                   <Button
                     variant='outline'
                     onClick={() => {
-                      console.log('編雁E��キャンセルしまぁE);
+                      console.log('編雁EーキャンセルしまぁE);
                       setShowEditDialog(false);
                       setEditingItem(null);
                     }}
@@ -5777,7 +5777,7 @@ const HistoryPage: React.FC = () => {
                   </Button>
                   <Button
                     onClick={() => {
-                      console.log('編雁E��ータを保存しまぁE', editingItem);
+                      console.log('編雁Eーータを保存しまぁE', editingItem);
                       handleSaveEditedItem(editingItem);
                     }}
                     className='bg-green-600 hover:bg-green-700 text-white'
@@ -5828,7 +5828,7 @@ const HistoryPage: React.FC = () => {
         </div>
       )}
 
-      {/* チャチE��エクスポ�Eトレポ�Eト表示 */}
+      {/* チャティングーエクスポ�Eトレポ�Eト表示 */}
       {showReport && selectedReportData && (
         <ChatExportReport
           data={selectedReportData}
@@ -5836,7 +5836,7 @@ const HistoryPage: React.FC = () => {
           onClose={handleCloseReport}
           onSave={handleSaveReport}
           onPrint={reportData => {
-            console.log('チャチE��エクスポ�Eトレポ�Eトを印刷:', reportData);
+            console.log('チャティングーエクスポ�Eトレポ�Eトを印刷:', reportData);
             window.print();
           }}
         />

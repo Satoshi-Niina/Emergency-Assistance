@@ -249,8 +249,6 @@ export default function HistoryPage() {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-          'Pragma': 'no-cache',
-          'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
         },
       });
       console.log('🔍 レスポンスステータス:', response.status, response.statusText);

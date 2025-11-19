@@ -28,6 +28,7 @@ export const buildApiUrl = (path: string): string => {
     // パスの正規化（先頭の/を確保）
     let cleanPath = path.startsWith('/') ? path : `/${path}`;
 
+    // /api/ で始まっている場合は /api を除去
     // /api/auth/login のような形式の場合、/api プレフィックスを除去
     if (cleanPath.startsWith('/api/')) {
         cleanPath = cleanPath.substring(4); // '/api' を除去
@@ -52,9 +53,9 @@ export const buildApiUrl = (path: string): string => {
             return finalUrl;
         }
     } else {
-        // 開発環境: 相対パス（統合サーバーが処理）
+        // 開発環境: 相対パス（Viteプロキシが /api を http://localhost:8080 に転送）
         const finalUrl = `/api${cleanPath}`;
-        console.log(`🔗 API URL (relative): ${path} -> ${finalUrl}`);
+        console.log(`🔗 API URL (relative, via Vite proxy): ${path} -> ${finalUrl}`);
         return finalUrl;
     }
 };

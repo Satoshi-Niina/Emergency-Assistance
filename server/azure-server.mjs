@@ -6,10 +6,35 @@
 
 // 環境変数読み込み（ローカル開発のみ、本番では不要）
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
 if (!process.env.WEBSITE_SITE_NAME) {
   // Azure App Service以外（ローカル環境）でのみ.envを読み込む
-  dotenv.config();
-  console.log('📄 Local .env file loaded');
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+
+  // NODE_ENVに応じて適切な.envファイルを読み込む
+  const nodeEnv = process.env.NODE_ENV || 'development';
+  const envFile = nodeEnv === 'production' ? '.env.production' : '.env.development';
+  const envPath = path.join(__dirname, envFile);
+
+  // 指定されたenvファイルが存在するか確認
+  const fsModule = await import('fs');
+  if (fsModule.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+    console.log(`📄 Environment file loaded: ${envFile} (${nodeEnv} mode)`);
+    console.log(`📍 Path: ${envPath}`);
+  } else {
+    // フォールバック: .envファイルを試す
+    const fallbackPath = path.join(__dirname, '.env');
+    if (fsModule.existsSync(fallbackPath)) {
+      dotenv.config({ path: fallbackPath });
+      console.log(`⚠️ Fallback to .env file (${envFile} not found)`);
+    } else {
+      console.warn(`⚠️ No environment file found. Using system environment variables only.`);
+    }
+  }
 }
 
 // Azure App Service environment setup
@@ -28,8 +53,7 @@ console.log('   SCM_COMMIT_ID:', process.env.SCM_COMMIT_ID || 'not set');
 console.log('   WEBSITE_HOSTNAME:', process.env.WEBSITE_HOSTNAME || 'not set');
 
 import express from 'express';
-import path, { join } from 'path';
-import { fileURLToPath } from 'url';
+import { join } from 'path';
 import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
@@ -38,8 +62,9 @@ import { Pool } from 'pg';
 import { BlobServiceClient } from '@azure/storage-blob';
 import bcrypt from 'bcryptjs';
 import session from 'express-session';
-import fs from 'fs';
-import Database from 'better-sqlite3';
+import fs from 'fs/promises';
+import fsSync from 'fs';
+// SQLite削除 - PostgreSQLのみ使用
 import OpenAI from 'openai';
 import multer from 'multer';
 
@@ -52,9 +77,10 @@ const FRONTEND_URL =
   process.env.STATIC_WEB_APP_URL ||
   (process.env.NODE_ENV === 'production'
     ? DEFAULT_STATIC_WEB_APP_URL
-    : 'http://localhost:8080');
+    : 'http://localhost:5173');
 
-const STATIC_WEB_APP_URL = process.env.STATIC_WEB_APP_URL || process.env.FRONTEND_URL || DEFAULT_STATIC_WEB_APP_URL;
+const STATIC_WEB_APP_URL = process.env.STATIC_WEB_APP_URL || process.env.FRONTEND_URL ||
+  (process.env.NODE_ENV === 'production' ? DEFAULT_STATIC_WEB_APP_URL : 'http://localhost:5173');
 const HEALTH_TOKEN = process.env.HEALTH_TOKEN || ''; // 任意。設定時は /ready に x-health-token を要求
 const PORT = process.env.PORT || 3000;
 
@@ -116,6 +142,16 @@ console.log('✅ CORS middleware initialized');
 
 // 追加のCORS対応 - Preflightリクエストを確実に処理
 app.options('*', cors(corsOptions));
+
+// リクエストロギングミドルウェア（デバッグ用）
+if (process.env.NODE_ENV === 'development') {
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api/')) {
+      console.log(`📥 ${req.method} ${req.path}`);
+    }
+    next();
+  });
+}
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));
@@ -231,78 +267,11 @@ const norm = (p) =>
     .replace(/\/+/g, '/');
 
 // データベース接続プール
-let dbPool = null; // PostgreSQL (production)
-let sqliteDb = null; // SQLite (local development)
+let dbPool = null; // PostgreSQL
 
-// データベース接続初期化（改善版）
+// データベース接続初期化（PostgreSQLのみ）
 function initializeDatabase() {
-  // ローカル開発環境: SQLite を使用
-  const useSQLite = process.env.USE_SQLITE === 'true' || process.env.NODE_ENV === 'development';
-
-  if (useSQLite) {
-    console.log('🔗 Initializing SQLite database for local development...');
-    const dbPath = process.env.SQLITE_DB_PATH || path.join(__dirname, '..', 'knowledge-base', 'data', 'local.db');
-
-    try {
-      sqliteDb = new Database(dbPath);
-      console.log('✅ SQLite database opened:', dbPath);
-
-      // テーブル作成（存在しない場合）
-      sqliteDb.exec(`
-        CREATE TABLE IF NOT EXISTS users (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          username TEXT UNIQUE NOT NULL,
-          password TEXT NOT NULL,
-          display_name TEXT,
-          role TEXT DEFAULT 'user',
-          department TEXT,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS machine_types (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          machine_type_name TEXT UNIQUE NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS machines (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          machine_number TEXT NOT NULL,
-          machine_type_id INTEGER,
-          FOREIGN KEY (machine_type_id) REFERENCES machine_types(id)
-        );
-
-        CREATE TABLE IF NOT EXISTS chat_history (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          title TEXT,
-          machine_type TEXT,
-          machine_number TEXT,
-          content TEXT,
-          conversation_history TEXT,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          user_id INTEGER,
-          FOREIGN KEY (user_id) REFERENCES users(id)
-        );
-      `);
-
-      // デフォルト管理者ユーザーが存在しない場合は作成
-      const adminExists = sqliteDb.prepare('SELECT id FROM users WHERE username = ?').get('admin');
-      if (!adminExists) {
-        const hashedPassword = bcrypt.hashSync('admin', 10);
-        sqliteDb.prepare('INSERT INTO users (username, password, display_name, role, department) VALUES (?, ?, ?, ?, ?)').run(
-          'admin', hashedPassword, '管理者', 'admin', 'システム管理'
-        );
-        console.log('✅ Default admin user created (username: admin, password: admin)');
-      }
-
-      console.log('✅ SQLite database initialized successfully');
-      return true;
-    } catch (error) {
-      console.error('❌ SQLite initialization failed:', error);
-      return false;
-    }
-  }
-
-  // 本番環境: PostgreSQL を使用
+  // PostgreSQL接続文字列取得
   const databaseUrl = process.env.DATABASE_URL ||
     process.env.POSTGRES_URL ||
     process.env.AZURE_POSTGRESQL_CONNECTIONSTRING;
@@ -437,8 +406,7 @@ function initializeDatabase() {
             content TEXT,
             conversation_history TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            user_id INTEGER,
-            FOREIGN KEY (user_id) REFERENCES users(id)
+            user_id INTEGER
           );
 
           CREATE INDEX IF NOT EXISTS idx_chat_history_machine_type ON chat_history(machine_type);
@@ -473,28 +441,9 @@ function initializeDatabase() {
   }
 }
 
-// ユニバーサルデータベースクエリヘルパー
+// PostgreSQLデータベースクエリヘルパー
 async function dbQuery(sql, params = [], retries = 3) {
-  if (sqliteDb) {
-    // SQLite: 同期的にクエリを実行
-    try {
-      if (sql.trim().toUpperCase().startsWith('SELECT')) {
-        const stmt = sqliteDb.prepare(sql);
-        const rows = params.length > 0 ? stmt.all(...params) : stmt.all();
-        return { rows, rowCount: rows.length };
-      } else {
-        const stmt = sqliteDb.prepare(sql);
-        const info = params.length > 0 ? stmt.run(...params) : stmt.run();
-        return {
-          rows: info.lastInsertRowid ? [{ id: info.lastInsertRowid }] : [],
-          rowCount: info.changes
-        };
-      }
-    } catch (error) {
-      console.error('SQLite query error:', error);
-      throw error;
-    }
-  } else if (dbPool) {
+  if (dbPool) {
     // PostgreSQL: 非同期クエリ（リトライロジック付き）
     let lastError;
     for (let attempt = 1; attempt <= retries; attempt++) {
@@ -810,8 +759,7 @@ app.post('/api/auth/login', async (req, res) => {
       passwordLength: password ? password.length : 0,
       origin: origin,
       timestamp: new Date().toISOString(),
-      dbPoolStatus: !!dbPool,
-      sqliteDbStatus: !!sqliteDb
+      dbPoolStatus: !!dbPool
     });
 
     // 入力検証
@@ -824,7 +772,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     // データベース接続がない場合はエラー
-    if (!dbPool && !sqliteDb) {
+    if (!dbPool) {
       console.error('[auth/login] No database connection available');
       return res.status(500).json({
         success: false,
@@ -1170,8 +1118,8 @@ app.get('/api/history/:id', async (req, res) => {
     const projectRoot = path.resolve(__dirname, '..');
     const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
 
-    if (fs.existsSync(exportsDir)) {
-      const files = fs.readdirSync(exportsDir);
+    if (fsSync.existsSync(exportsDir)) {
+      const files = fsSync.readdirSync(exportsDir);
       let foundFile = null;
       let foundData = null;
 
@@ -1185,7 +1133,7 @@ app.get('/api/history/:id', async (req, res) => {
         if (fileId === id || fileName === id || file.includes(id)) {
           try {
             const filePath = path.join(exportsDir, file);
-            const content = fs.readFileSync(filePath, { encoding: 'utf8' });
+            const content = fsSync.readFileSync(filePath, { encoding: 'utf8' });
             foundData = JSON.parse(content);
             foundFile = file;
             break;
@@ -1342,7 +1290,7 @@ app.get('/api/users', async (req, res) => {
       timestamp: new Date().toISOString()
     });
 
-    if (!dbPool && !sqliteDb) {
+    if (!dbPool) {
       console.warn('⚠️ No database connection available');
       return res.json({
         success: true,
@@ -1774,7 +1722,7 @@ app.get('/api/machines', async (req, res) => {
       timestamp: new Date().toISOString()
     });
 
-    if (!dbPool && !sqliteDb) {
+    if (!dbPool) {
       console.warn('⚠️ No database connection available for machines API');
       return res.json({
         success: true,
@@ -2789,12 +2737,12 @@ app.post('/api/chat/export', async (req, res) => {
       const projectRoot = path.resolve(__dirname, '..');
       const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
 
-      if (!fs.existsSync(exportsDir)) {
-        fs.mkdirSync(exportsDir, { recursive: true });
+      if (!fsSync.existsSync(exportsDir)) {
+        fsSync.mkdirSync(exportsDir, { recursive: true });
       }
 
       const filePath = path.join(exportsDir, filename);
-      fs.writeFileSync(filePath, JSON.stringify(dataToSave, null, 2), 'utf8');
+      fsSync.writeFileSync(filePath, JSON.stringify(dataToSave, null, 2), 'utf8');
 
       console.log(`✅ ローカルファイルに保存: ${filename}`);
       return res.json({
@@ -2861,7 +2809,7 @@ app.get('/api/history', async (req, res) => {
 
     const { limit = 50, offset = 0, machineType, machineNumber } = req.query;
 
-    if (!dbPool && !sqliteDb) {
+    if (!dbPool) {
       return res.json({
         success: true,
         data: [],
@@ -2969,9 +2917,9 @@ app.get('/api/history/export-list', async (req, res) => {
       const projectRoot = path.resolve(__dirname, '..');
       const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
 
-      if (fs.existsSync(exportsDir)) {
+      if (fsSync.existsSync(exportsDir)) {
         try {
-          const files = fs.readdirSync(exportsDir);
+          const files = fsSync.readdirSync(exportsDir);
           for (const file of files) {
             if (!file.endsWith('.json') || file.includes('.backup.')) continue;
 
@@ -3482,6 +3430,205 @@ app.post('/api/chatgpt', async (req, res) => {
         environment: 'azure-production',
         error: error.name
       },
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// チャット送信API（テスト用 - 認証不要）
+app.post('/api/chats/:id/send-test', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { chatData, exportType } = req.body;
+
+    console.log('✅ /chats/:id/send-test エンドポイントに到達しました！');
+    console.log('🔍 テスト用チャット送信リクエスト受信:', {
+      method: req.method,
+      url: req.url,
+      originalUrl: req.originalUrl,
+      path: req.path,
+      baseUrl: req.baseUrl,
+      chatId: id,
+      exportType,
+      messageCount: chatData?.messages?.length || 0,
+      machineInfo: chatData?.machineInfo,
+    });
+
+    // チャットデータの検証
+    if (!chatData || !chatData.messages || !Array.isArray(chatData.messages)) {
+      return res.status(400).json({
+        error: 'Invalid chat data format',
+        details: 'chatData.messages must be an array',
+      });
+    }
+
+    // プロジェクトルートパス解決（ESM用）
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const projectRoot = path.resolve(__dirname, '..');
+    const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
+    console.log(`📁 エクスポート保存先ディレクトリ: ${exportsDir}`);
+
+    if (!fs.existsSync(exportsDir)) {
+      fs.mkdirSync(exportsDir, { recursive: true });
+      console.log('✅ exports フォルダを作成しました:', exportsDir);
+    }
+
+    // チャットデータをJSONファイルとして保存
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+    // ユーザーメッセージから事象情報を抽出してファイル名に使用
+    const userMessages = chatData.messages.filter((m) => !m.isAiResponse);
+    console.log('🔍 事象抽出 - ユーザーメッセージ:', userMessages);
+
+    const textMessages = userMessages
+      .map((m) => m.content)
+      .filter((content) => content && !content.trim().startsWith('data:image/'))
+      .join('\n')
+      .trim();
+    console.log('🔍 事象抽出 - テキストメッセージ:', textMessages);
+
+    let incidentTitle = '事象なし';
+    if (textMessages) {
+      incidentTitle = textMessages.split('\n')[0].trim();
+      console.log('🔍 事象抽出 - 抽出されたタイトル:', incidentTitle);
+    } else {
+      incidentTitle = '画像による故障報告';
+      console.log('🔍 事象抽出 - デフォルトタイトル使用:', incidentTitle);
+    }
+
+    // ファイル名用に事象内容をサニタイズ
+    const sanitizedTitle = incidentTitle
+      .replace(/[<>:"/\\|?*]/g, '')
+      .replace(/\s+/g, '_')
+      .substring(0, 50);
+
+    const fileName = `${sanitizedTitle}_${id}_${timestamp}.json`;
+    const filePath = path.join(exportsDir, fileName);
+
+    // 画像を個別ファイルとして保存
+    const imagesDir = path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
+    console.log(`📁 画像保存先ディレクトリ: ${imagesDir}`);
+
+    if (!fs.existsSync(imagesDir)) {
+      fs.mkdirSync(imagesDir, { recursive: true });
+      console.log('✅ 画像ディレクトリを作成:', imagesDir);
+    }
+
+    // チャットメッセージから画像を抽出してファイルとして保存
+    const savedImages = [];
+    const cleanedChatData = JSON.parse(JSON.stringify(chatData));
+
+    for (const message of cleanedChatData.messages) {
+      if (message.content && message.content.startsWith('data:image/')) {
+        try {
+          const base64Data = message.content.replace(/^data:image\/[a-z]+;base64,/, '');
+          const buffer = Buffer.from(base64Data, 'base64');
+
+          const imageTimestamp = Date.now();
+          const imageFileName = `chat_image_${id}_${imageTimestamp}.jpg`;
+          const imagePath = path.join(imagesDir, imageFileName);
+
+          // 画像を120pxにリサイズして保存
+          const sharp = (await import('sharp')).default;
+          const resizedBuffer = await sharp(buffer)
+            .resize(120, 120, {
+              fit: 'inside',
+              withoutEnlargement: true,
+            })
+            .jpeg({ quality: 85 })
+            .toBuffer();
+
+          const storageMode = process.env.STORAGE_MODE || 'local';
+          let imageSavedPath = '';
+          let imageBlobName = '';
+
+          if (storageMode === 'hybrid' || storageMode === 'blob' || storageMode === 'azure') {
+            const blobServiceClient = getBlobServiceClient();
+            if (blobServiceClient) {
+              const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
+              const containerClient = blobServiceClient.getContainerClient(containerName);
+              imageBlobName = `images/chat-exports/${imageFileName}`;
+              const blockBlobClient = containerClient.getBlockBlobClient(imageBlobName);
+
+              await blockBlobClient.upload(resizedBuffer, resizedBuffer.length, {
+                blobHTTPHeaders: {
+                  blobContentType: 'image/jpeg'
+                },
+                metadata: {
+                  chatId: id,
+                  uploadedAt: new Date().toISOString()
+                }
+              });
+
+              imageSavedPath = imageBlobName;
+              console.log(`✅ 画像ファイルを保存しました (BLOB): ${imageBlobName}`);
+            } else {
+              console.warn('⚠️ BLOBストレージが利用できないため、ローカルに保存します');
+              fs.writeFileSync(imagePath, resizedBuffer);
+              imageSavedPath = imagePath;
+            }
+          } else {
+            fs.writeFileSync(imagePath, resizedBuffer);
+            imageSavedPath = imagePath;
+            console.log('✅ 画像ファイルを保存しました（120pxにリサイズ）:', imagePath);
+          }
+
+          const imageUrl = storageMode === 'hybrid' || storageMode === 'blob' || storageMode === 'azure'
+            ? `/api/storage/image-url?name=images/chat-exports/${imageFileName}`
+            : `/api/images/chat-exports/${imageFileName}`;
+
+          message.content = imageUrl;
+
+          savedImages.push({
+            messageId: message.id,
+            fileName: imageFileName,
+            path: imageSavedPath,
+            url: imageUrl,
+            blobPath: `images/chat-exports/${imageFileName}`
+          });
+        } catch (imageError) {
+          console.warn('画像保存エラー:', imageError);
+          message.content = '[画像データ削除]';
+        }
+      }
+    }
+
+    // JSONデータを構築
+    const jsonData = {
+      chatId: id,
+      userId: 'test-user',
+      exportType: exportType || 'manual_send',
+      exportTimestamp: new Date().toISOString(),
+      title: incidentTitle,
+      chatData: cleanedChatData,
+      savedImages: savedImages,
+      images: savedImages,
+      lastModified: new Date().toISOString(),
+      jsonData: {
+        savedImages: savedImages
+      }
+    };
+
+    // JSONファイルとして保存
+    const jsonContent = JSON.stringify(jsonData, null, 2);
+    fs.writeFileSync(filePath, jsonContent, { encoding: 'utf8' });
+    console.log(`✅ チャットエクスポート成功: ${filePath}`);
+
+    res.json({
+      success: true,
+      message: 'チャット履歴をエクスポートしました',
+      filePath: filePath,
+      fileName: fileName,
+      savedImages: savedImages.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ チャット送信エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'チャット送信に失敗しました',
+      details: error.message,
       timestamp: new Date().toISOString()
     });
   }
@@ -4075,6 +4222,205 @@ app.get('/api/history/exports/:fileName', async (req, res) => {
   }
 });
 
+// 履歴削除API（ファイルベース・BLOBストレージ対応）
+app.delete('/api/history/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`🗑️ 履歴削除リクエスト: ${id}`);
+
+    const projectRoot = path.resolve(__dirname, '..');
+    const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
+    const imageDir = path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
+
+    let foundFile = null;
+    let jsonData = null;
+    let deletedFromBlob = false;
+    let deletedFromLocal = false;
+
+    // BLOBストレージから削除（本番環境優先）
+    const blobServiceClient = getBlobServiceClient();
+    if (blobServiceClient) {
+      try {
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        const prefix = norm('exports/');
+
+        for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+          if (!blob.name.endsWith('.json') || blob.name.includes('.backup.')) continue;
+
+          const fileName = blob.name.split('/').pop();
+          const fileNameWithoutExt = fileName.replace('.json', '');
+          const uuidMatch = fileNameWithoutExt.match(/_([a-f0-9-]{36})_/);
+          const fileId = uuidMatch ? uuidMatch[1] : fileNameWithoutExt;
+
+          if (fileId === id || fileNameWithoutExt === id) {
+            foundFile = fileName;
+            console.log(`✅ BLOBストレージでマッチするファイルを発見: ${foundFile}`);
+
+            // JSONファイルを読み込んで画像情報を取得
+            const blobClient = containerClient.getBlobClient(blob.name);
+            try {
+              const downloadResponse = await blobClient.download();
+              let content = '';
+              if (downloadResponse.readableStreamBody) {
+                for await (const chunk of downloadResponse.readableStreamBody) {
+                  content += chunk.toString();
+                }
+              }
+              jsonData = JSON.parse(content);
+              console.log(`📄 BLOBからJSONファイル読み込み成功: ${foundFile}`);
+            } catch (readError) {
+              console.warn(`⚠️ BLOBからJSONファイル読み込みエラー: ${foundFile}`, readError.message);
+            }
+
+            // BLOBストレージから削除
+            await blobClient.delete();
+            deletedFromBlob = true;
+            console.log(`🗑️ BLOBストレージから削除: ${blob.name}`);
+            break;
+          }
+        }
+      } catch (blobError) {
+        console.error('❌ BLOBストレージ削除エラー:', blobError);
+      }
+    }
+
+    // フォールバック: ローカルファイルシステム（開発環境）
+    if (!foundFile && fsSync.existsSync(exportsDir)) {
+      const files = fsSync.readdirSync(exportsDir);
+      const jsonFiles = files.filter(file =>
+        file.endsWith('.json') &&
+        !file.includes('index') &&
+        !file.includes('railway-maintenance-ai-prompt')
+      );
+
+      for (const file of jsonFiles) {
+        const fileName = file.replace('.json', '');
+        const uuidMatch = fileName.match(/_([a-f0-9-]{36})_/);
+        const fileId = uuidMatch ? uuidMatch[1] : fileName;
+
+        if (fileId === id || fileName === id) {
+          foundFile = file;
+          console.log(`✅ ローカルでマッチするファイルを発見: ${foundFile}`);
+
+          // JSONファイルを読み込んで画像情報を取得
+          try {
+            const filePath = path.join(exportsDir, foundFile);
+            const fileContent = fsSync.readFileSync(filePath, 'utf8');
+            jsonData = JSON.parse(fileContent);
+            console.log(`📄 ローカルからJSONファイル読み込み成功: ${foundFile}`);
+          } catch (readError) {
+            console.warn(`⚠️ ローカルからJSONファイル読み込みエラー: ${foundFile}`, readError.message);
+          }
+
+          // ローカルファイルを削除
+          const filePath = path.join(exportsDir, foundFile);
+          fsSync.unlinkSync(filePath);
+          deletedFromLocal = true;
+          console.log(`🗑️ ローカルファイル削除: ${foundFile}`);
+          break;
+        }
+      }
+    }
+
+    if (!foundFile) {
+      console.log(`❌ マッチするファイルが見つかりませんでした。検索ID: ${id}`);
+      return res.status(404).json({
+        success: false,
+        error: '履歴が見つかりません',
+        searchId: id,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // 画像ファイルを削除
+    const imagesToDelete = [];
+    if (jsonData && jsonData.savedImages && Array.isArray(jsonData.savedImages)) {
+      jsonData.savedImages.forEach((img) => {
+        if (typeof img === 'object' && img.fileName) {
+          imagesToDelete.push(img.fileName);
+        } else if (typeof img === 'string' && img.includes('/')) {
+          const fileName = img.split('/').pop();
+          if (fileName) {
+            imagesToDelete.push(fileName);
+          }
+        }
+      });
+      console.log(`📋 JSON内の画像ファイル数: ${imagesToDelete.length}`);
+    }
+
+    let deletedImagesCount = 0;
+
+    // BLOBストレージから画像を削除
+    if (blobServiceClient) {
+      try {
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        const imagePrefix = norm('images/chat-exports/');
+
+        for await (const blob of containerClient.listBlobsFlat({ prefix: imagePrefix })) {
+          const imageFileName = blob.name.split('/').pop();
+          if (imagesToDelete.includes(imageFileName) ||
+              (imageFileName.includes(id) && (imageFileName.endsWith('.jpg') || imageFileName.endsWith('.jpeg') || imageFileName.endsWith('.png')))) {
+            try {
+              const blobClient = containerClient.getBlobClient(blob.name);
+              await blobClient.delete();
+              deletedImagesCount++;
+              console.log(`🗑️ BLOBストレージから画像削除: ${imageFileName}`);
+            } catch (error) {
+              console.warn(`⚠️ BLOBストレージから画像削除エラー: ${imageFileName}`, error.message);
+            }
+          }
+        }
+      } catch (blobError) {
+        console.error('❌ BLOBストレージ画像削除エラー:', blobError);
+      }
+    }
+
+    // ローカルファイルシステムから画像を削除
+    if (fsSync.existsSync(imageDir)) {
+      const imageFiles = fsSync.readdirSync(imageDir);
+      const matchingImages = imageFiles.filter(imgFile => {
+        return imagesToDelete.includes(imgFile) ||
+          (imgFile.includes(id) && (imgFile.endsWith('.jpg') || imgFile.endsWith('.jpeg') || imgFile.endsWith('.png')));
+      });
+
+      matchingImages.forEach(imgFile => {
+        const imgPath = path.join(imageDir, imgFile);
+        try {
+          if (fsSync.existsSync(imgPath)) {
+            fsSync.unlinkSync(imgPath);
+            deletedImagesCount++;
+            console.log(`🗑️ ローカル画像ファイル削除: ${imgFile}`);
+          }
+        } catch (error) {
+          console.warn(`⚠️ ローカル画像ファイル削除エラー: ${imgFile}`, error.message);
+        }
+      });
+    }
+
+    console.log(`✅ 履歴削除完了: ${foundFile}, 画像${deletedImagesCount}件削除`);
+
+    res.json({
+      success: true,
+      message: '履歴を削除しました',
+      id: id,
+      fileName: foundFile,
+      deletedFromBlob: deletedFromBlob,
+      deletedFromLocal: deletedFromLocal,
+      deletedImages: deletedImagesCount,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ 履歴削除エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '履歴の削除に失敗しました',
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // 個別フローJSONファイル取得API
 app.get('/api/emergency-flow/:fileName', async (req, res) => {
   try {
@@ -4153,7 +4499,7 @@ const clientDistPaths = [
 let clientDistPath = null;
 for (const testPath of clientDistPaths) {
   const indexPath = join(testPath, 'index.html');
-  if (fs.existsSync(indexPath)) {
+  if (fsSync.existsSync(indexPath)) {
     clientDistPath = testPath;
     console.log('✅ Client files found at:', clientDistPath);
     break;
@@ -4163,22 +4509,28 @@ for (const testPath of clientDistPaths) {
 }
 
 if (!clientDistPath) {
-  console.error('❌ ERROR: Client dist directory not found in any expected location');
-  console.error('📋 Checked paths:', clientDistPaths);
-  console.error('🔍 Current working directory:', process.cwd());
-  console.error('📁 __dirname:', __dirname);
-  process.exit(1);
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('⚠️ Client dist directory not found - Running in API-only mode');
+    console.warn('📋 Expected to use Vite dev server at http://localhost:5173');
+    console.warn('🔧 To build client files, run: npm run build:client');
+  } else {
+    console.error('❌ ERROR: Client dist directory not found in any expected location');
+    console.error('📋 Checked paths:', clientDistPaths);
+    console.error('🔍 Current working directory:', process.cwd());
+    console.error('📁 __dirname:', __dirname);
+    process.exit(1);
+  }
+} else {
+  app.use(express.static(clientDistPath, {
+    maxAge: '7d', etag: true, lastModified: true, immutable: true
+  }));
+
+  // API以外は index.html へ（API定義の「後ろ」に置く）
+  app.get(/^(?!\/api).*/, (_req, res) => {
+    const indexPath = join(clientDistPath, 'index.html');
+    res.sendFile(indexPath);
+  });
 }
-
-app.use(express.static(clientDistPath, {
-  maxAge: '7d', etag: true, lastModified: true, immutable: true
-}));
-
-// API以外は index.html へ（API定義の「後ろ」に置く）
-app.get(/^(?!\/api).*/, (_req, res) => {
-  const indexPath = join(clientDistPath, 'index.html');
-  res.sendFile(indexPath);
-});
 
 // ===== エラーハンドラ（最後尾）=====
 app.use((err, req, res, _next) => {

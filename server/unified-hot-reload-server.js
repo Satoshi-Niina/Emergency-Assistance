@@ -21,6 +21,8 @@ import OpenAI from 'openai';
 import sharp from 'sharp';
 import crypto from 'crypto';
 import archiver from 'archiver';
+import { createProxyMiddleware } from 'http-proxy-middleware';
+import { BlobServiceClient } from '@azure/storage-blob';
 
 // UTF-8環境設定
 process.env.NODE_OPTIONS = '--max-old-space-size=4096';
@@ -30,6 +32,82 @@ process.stderr.setEncoding('utf8');
 // ESM __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// プロジェクトルートパス解決関数（環境変数対応）
+function resolveProjectRoot() {
+  // 環境変数が設定されている場合は最優先
+  if (process.env.KNOWLEDGE_BASE_PATH) {
+    const basePath = path.resolve(process.env.KNOWLEDGE_BASE_PATH);
+    if (fs.existsSync(basePath)) {
+      return basePath;
+    }
+  }
+
+  // 複数のパス候補を試行
+  const projectRoot = path.resolve(__dirname, '..');
+  const possiblePaths = [
+    projectRoot,
+    path.resolve(process.cwd()),
+    path.resolve(process.cwd(), '..'),
+    path.resolve(__dirname, '..', '..'),
+  ];
+
+  for (const testPath of possiblePaths) {
+    const knowledgeBasePath = path.join(testPath, 'knowledge-base');
+    if (fs.existsSync(knowledgeBasePath)) {
+      return testPath;
+    }
+  }
+
+  // フォールバック: __dirnameベース
+  return projectRoot;
+}
+
+// 知識ベースディレクトリパス解決関数
+function resolveKnowledgeBasePath(subPath = '') {
+  const projectRoot = resolveProjectRoot();
+  // projectRootが既にknowledge-baseを含む場合はそのまま使用、そうでなければ追加
+  let basePath;
+  if (projectRoot.endsWith('knowledge-base')) {
+    basePath = projectRoot;
+  } else {
+    basePath = path.join(projectRoot, 'knowledge-base');
+  }
+  return subPath ? path.join(basePath, subPath) : basePath;
+}
+
+// BLOBサービスクライアントの初期化（環境変数対応）
+function getBlobServiceClient() {
+  const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+  if (!connectionString) {
+    return null;
+  }
+  try {
+    return BlobServiceClient.fromConnectionString(connectionString);
+  } catch (error) {
+    console.error('❌ BLOB service client initialization failed:', error);
+    return null;
+  }
+}
+
+// 画像URL生成関数（環境変数対応：ローカル/本番切り替え）
+function getImageUrl(fileName, category = 'chat-exports') {
+  const storageMode = process.env.STORAGE_MODE || 'local';
+
+  // 本番環境（BLOBストレージ）の場合
+  if (storageMode === 'hybrid' || storageMode === 'blob' || storageMode === 'azure') {
+    // Azure StorageのSAS URLを生成するAPIエンドポイントを使用
+    // 実際のSAS URL生成はクライアント側で行う
+    const blobUrl = `/api/storage/image-url?name=images/${category}/${fileName}`;
+    console.log(`🔗 [BLOB] 画像URL生成: ${fileName} -> ${blobUrl} (STORAGE_MODE: ${storageMode})`);
+    return blobUrl;
+  }
+
+  // ローカル環境（ファイルシステム）の場合
+  const localUrl = `/api/images/${category}/${fileName}`;
+  console.log(`🔗 [LOCAL] 画像URL生成: ${fileName} -> ${localUrl} (STORAGE_MODE: ${storageMode})`);
+  return localUrl;
+}
 
 // 環境変数の読み込み
 // 開発環境では.env.developmentを優先、なければ.envを読み込む
@@ -348,12 +426,45 @@ function startViteServer() {
   });
 }
 
+// Viteプロキシの変数（サーバー起動後に設定）
+let viteProxy = null;
+
 // 環境に応じてViteサーバーを起動または静的ファイルを配信
 if (isDevelopment) {
   // 開発環境: Viteサーバーを起動
   startViteServer();
 
   // Vite開発サーバーへのプロキシ（WebSocket対応）
+  viteProxy = createProxyMiddleware({
+    target: `http://localhost:${CLIENT_PORT}`,
+    changeOrigin: true,
+    ws: true, // WebSocket対応
+    logLevel: 'warn',
+    onProxyReq: (proxyReq, req, res) => {
+      // プロキシリクエストのログ（必要に応じて）
+    },
+    onError: (err, req, res) => {
+      // Viteサーバーが起動していない場合のエラーハンドリング
+      if (!viteServer || !viteServerReady) {
+        if (res && !res.headersSent) {
+          res.status(503).send('Vite server is starting, please wait...');
+        }
+      } else {
+        console.error('Proxy error:', err);
+        if (res && !res.headersSent) {
+          res.status(503).send('Vite server not available');
+        }
+      }
+    },
+    onProxyRes: (proxyRes, req, res) => {
+      // CSPヘッダーを削除または調整（必要に応じて）
+      if (proxyRes.headers) {
+        proxyRes.headers['x-proxied-by'] = 'unified-server';
+      }
+    }
+  });
+
+  // APIルート以外をViteサーバーにプロキシ
   app.use('/', (req, res, next) => {
     // APIルートは除外
     if (req.path.startsWith('/api/')) {
@@ -365,34 +476,8 @@ if (isDevelopment) {
       return res.status(503).send('Vite server is starting, please wait...');
     }
 
-    // Viteサーバーへのプロキシ
-    const proxyUrl = `http://localhost:${CLIENT_PORT}${req.path}`;
-
-    fetch(proxyUrl)
-      .then(response => {
-        if (response.ok) {
-          response.text().then(text => {
-            // ヘッダーを安全に設定する
-            response.headers.forEach((value, key) => {
-              try {
-                // 特定のヘッダーのみを転送し、有効な値のみを設定
-                if (key.toLowerCase() === 'content-type' && value && typeof value === 'string') {
-                  res.set(key, value);
-                }
-              } catch (headerError) {
-                console.warn(`Header setting error for ${key}:`, headerError.message);
-              }
-            });
-            res.send(text);
-          });
-        } else {
-          res.status(response.status).send(response.statusText);
-        }
-      })
-      .catch(error => {
-        console.error('Proxy error:', error);
-        res.status(503).send('Vite server not available');
-      });
+    // プロキシを実行
+    viteProxy(req, res, next);
   });
 } else {
   // 本番環境: ビルド済み静的ファイルを配信
@@ -1000,6 +1085,7 @@ apiRouter.get('/machines/machine-types', async (req, res) => {
       return res.json({
         success: true,
         data: result.rows,
+        machineTypes: result.rows, // 後方互換性のため
         total: result.rows.length,
         timestamp: new Date().toISOString()
       });
@@ -1374,6 +1460,7 @@ apiRouter.get('/machines', async (req, res) => {
       return res.json({
         success: true,
         data: result.rows,
+        machines: result.rows, // 後方互換性のため
         total: result.rows.length,
         timestamp: new Date().toISOString()
       });
@@ -1912,45 +1999,12 @@ apiRouter.delete('/users/:id', async (req, res) => {
 apiRouter.get('/history/export-files', async (req, res) => {
   try {
     console.log('📂 エクスポートファイル一覧取得リクエスト受信');
-    const cwd = process.cwd();
-    console.log('📁 現在の作業ディレクトリ:', cwd);
 
-    // 複数のパス候補を試す
-    const projectRoot = path.resolve(__dirname, '..');
-    const possiblePaths = [
-      // 環境変数が設定されている場合
-      process.env.KNOWLEDGE_EXPORTS_DIR,
-      // プロジェクトルートから
-      path.join(projectRoot, 'knowledge-base', 'exports'),
-      // カレントディレクトリから
-      path.join(cwd, 'knowledge-base', 'exports'),
-      // サーバーディレクトリから起動されている場合
-      path.join(cwd, '..', 'knowledge-base', 'exports'),
-      // __dirnameから
-      path.join(__dirname, '..', 'knowledge-base', 'exports'),
-    ].filter(Boolean); // undefined/nullを除外
+    // 環境変数対応のパス解決
+    const exportsDir = resolveKnowledgeBasePath('exports');
 
-    console.log('🔍 パス候補:', possiblePaths);
-
-    let exportsDir = null;
-    for (const testPath of possiblePaths) {
-      if (!testPath) continue;
-      const normalizedPath = path.resolve(testPath);
-      console.log(`📂 試行パス: ${normalizedPath}, 存在: ${fs.existsSync(normalizedPath)}`);
-      if (fs.existsSync(normalizedPath)) {
-        const stats = fs.statSync(normalizedPath);
-        if (stats.isDirectory()) {
-          exportsDir = normalizedPath;
-          console.log('✅ 有効なディレクトリを発見:', exportsDir);
-          break;
-        } else {
-          console.warn(`⚠️ パスは存在するがディレクトリではありません: ${normalizedPath}`);
-        }
-      }
-    }
-
-    if (!exportsDir) {
-      console.error('❌ エクスポートディレクトリが見つかりません。試行したパス:', possiblePaths);
+    if (!fs.existsSync(exportsDir)) {
+      console.error('❌ エクスポートディレクトリが見つかりません:', exportsDir);
       return res.json([]);
     }
 
@@ -1999,8 +2053,58 @@ apiRouter.get('/history/export-files', async (req, res) => {
             data.machineInfo?.machineNumber ||
             '';
 
-          // jsonData.savedImagesを優先的に使用
-          const savedImages = data.jsonData?.savedImages || data.savedImages || [];
+          // 画像情報を複数のソースから取得（優先順位: jsonData.savedImages > savedImages > images）
+          const savedImagesFromJsonData = data.jsonData?.savedImages || [];
+          const savedImagesFromRoot = data.savedImages || [];
+          const imagesFromRoot = data.images || [];
+
+          // すべての画像ソースを統合（重複を除去）
+          const allImageSources = [
+            ...savedImagesFromJsonData,
+            ...savedImagesFromRoot,
+            ...imagesFromRoot
+          ];
+
+          // 重複を除去（fileNameで判定）
+          const uniqueImages = [];
+          const seenFileNames = new Set();
+          for (const img of allImageSources) {
+            let fileName = '';
+            if (typeof img === 'string') {
+              fileName = img.split('/').pop() || img;
+            } else if (img && typeof img === 'object') {
+              fileName = img.fileName || (img.url ? img.url.split('/').pop() : '');
+            }
+
+            if (fileName && !seenFileNames.has(fileName)) {
+              seenFileNames.add(fileName);
+              uniqueImages.push(img);
+            }
+          }
+
+          // savedImagesの画像URLを環境変数対応に変換
+          const processedSavedImages = uniqueImages.map(img => {
+            // 画像URLを環境変数対応に変換
+            if (typeof img === 'string') {
+              const fileName = img.split('/').pop() || img;
+              return {
+                fileName: fileName,
+                url: getImageUrl(fileName, 'chat-exports'),
+                path: fileName
+              };
+            } else if (img && typeof img === 'object') {
+              const fileName = img.fileName || (img.url ? img.url.split('/').pop() : '');
+              if (fileName) {
+                return {
+                  ...img,
+                  fileName: fileName,
+                  url: getImageUrl(fileName, 'chat-exports'),
+                  path: fileName
+                };
+              }
+            }
+            return img;
+          });
 
           const fileInfo = {
             fileName: file,
@@ -2016,12 +2120,12 @@ apiRouter.get('/history/export-files', async (req, res) => {
             exportTimestamp: data.exportTimestamp || data.createdAt || new Date().toISOString(),
             lastModified: stats.mtime.toISOString(),
             size: stats.size,
-            images: savedImages,
-            imageCount: savedImages.length,
-            hasImages: savedImages.length > 0,
+            images: processedSavedImages,
+            imageCount: processedSavedImages.length,
+            hasImages: processedSavedImages.length > 0,
             jsonData: {
               ...(data.jsonData || {}),
-              savedImages: savedImages,
+              savedImages: processedSavedImages,
             },
             content: data, // 完全なJSONデータも含める
           };
@@ -2055,10 +2159,13 @@ apiRouter.get('/history', async (req, res) => {
   try {
     console.log('📋 履歴一覧取得リクエスト（ファイルベース）');
 
-    const projectRoot = path.resolve(__dirname, '..');
-    const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
+    // 環境変数対応のパス解決
+    const exportsDir = resolveKnowledgeBasePath('exports');
+    console.log(`📁 エクスポートディレクトリ: ${exportsDir}`);
+    console.log(`📁 ディレクトリ存在確認: ${fs.existsSync(exportsDir)}`);
 
     if (!fs.existsSync(exportsDir)) {
+      console.warn(`⚠️ エクスポートディレクトリが存在しません: ${exportsDir}`);
       return res.json({
         success: true,
         data: [],
@@ -2069,11 +2176,16 @@ apiRouter.get('/history', async (req, res) => {
     }
 
     const files = fs.readdirSync(exportsDir);
+    console.log(`📋 ディレクトリ内の全ファイル数: ${files.length}`);
     const jsonFiles = files.filter(file =>
       file.endsWith('.json') &&
       !file.includes('index') &&
       !file.includes('railway-maintenance-ai-prompt')
     );
+    console.log(`📋 JSONファイル数: ${jsonFiles.length}`);
+    if (jsonFiles.length > 0) {
+      console.log(`📋 JSONファイル一覧（最初の5件）:`, jsonFiles.slice(0, 5));
+    }
 
     const { limit = 50, offset = 0 } = req.query;
     const startIndex = parseInt(offset);
@@ -2090,7 +2202,7 @@ apiRouter.get('/history', async (req, res) => {
         const uuidMatch = fileName.match(/_([a-f0-9-]{36})_/);
         const actualId = uuidMatch ? uuidMatch[1] : fileName;
 
-        const imageDir = path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
+        const imageDir = resolveKnowledgeBasePath('images/chat-exports');
         let hasImages = false;
         let imageCount = 0;
         const images = [];
@@ -2106,7 +2218,7 @@ apiRouter.get('/history', async (req, res) => {
             imageCount = matchingImages.length;
             images.push(...matchingImages.map(imgFile => ({
               fileName: imgFile,
-              url: `/api/images/chat-exports/${imgFile}`,
+              url: getImageUrl(imgFile, 'chat-exports'),
               path: imgFile
             })));
           }
@@ -2124,9 +2236,80 @@ apiRouter.get('/history', async (req, res) => {
           data.machineInfo?.machineNumber ||
           'Unknown';
 
-        // jsonData.savedImagesを優先的に使用
-        const savedImages = data.jsonData?.savedImages || data.savedImages || [];
-        const finalImages = savedImages.length > 0 ? savedImages : images;
+        // 画像情報を複数のソースから取得（優先順位: jsonData.savedImages > savedImages > images）
+        const savedImagesFromJsonData = data.jsonData?.savedImages || [];
+        const savedImagesFromRoot = data.savedImages || [];
+        const imagesFromRoot = data.images || [];
+
+        // すべての画像ソースを統合（重複を除去）
+        const allImageSources = [
+          ...savedImagesFromJsonData,
+          ...savedImagesFromRoot,
+          ...imagesFromRoot
+        ];
+
+        // 重複を除去（fileNameで判定）
+        const uniqueImages = [];
+        const seenFileNames = new Set();
+        for (const img of allImageSources) {
+          let fileName = '';
+          if (typeof img === 'string') {
+            fileName = img.split('/').pop() || img;
+          } else if (img && typeof img === 'object') {
+            fileName = img.fileName || (img.url ? img.url.split('/').pop() : '');
+          }
+
+          if (fileName && !seenFileNames.has(fileName)) {
+            seenFileNames.add(fileName);
+            uniqueImages.push(img);
+          }
+        }
+
+        // savedImagesの画像URLを環境変数対応に変換
+        const processedSavedImages = uniqueImages.map(img => {
+          // 画像URLを環境変数対応に変換
+          if (typeof img === 'string') {
+            const fileName = img.split('/').pop() || img;
+            return {
+              fileName: fileName,
+              url: getImageUrl(fileName, 'chat-exports'),
+              path: fileName
+            };
+          } else if (img && typeof img === 'object') {
+            const fileName = img.fileName || (img.url ? img.url.split('/').pop() : '');
+            if (fileName) {
+              // 画像ファイルの存在確認
+              const imagePath = path.join(imageDir, fileName);
+              const imageExists = fs.existsSync(imagePath);
+
+              return {
+                ...img,
+                fileName: fileName,
+                url: getImageUrl(fileName, 'chat-exports'),
+                path: fileName,
+                exists: imageExists
+              };
+            }
+          }
+          return img;
+        });
+
+        // ファイルシステムから検出した画像も追加（savedImagesに含まれていない場合）
+        const finalImages = processedSavedImages.length > 0
+          ? processedSavedImages
+          : images;
+
+        // 画像ファイルの存在確認とログ出力
+        if (finalImages.length > 0) {
+          console.log(`🖼️ 画像情報: ${finalImages.length}件`, {
+            chatId: actualId,
+            images: finalImages.map(img => ({
+              fileName: img.fileName,
+              url: img.url,
+              exists: img.exists !== undefined ? img.exists : fs.existsSync(path.join(imageDir, img.fileName || ''))
+            }))
+          });
+        }
 
         return {
           id: actualId,
@@ -2177,14 +2360,102 @@ apiRouter.get('/history', async (req, res) => {
   }
 });
 
+// GET /api/history/machine-data - 機種・機械番号マスターデータを取得（PostgreSQLから）
+// 注意: /history/:idより前に定義する必要がある（ルーティング順序のため）
+apiRouter.get('/history/machine-data', async (req, res) => {
+  try {
+    console.log('📋 機種・機械番号データ取得リクエスト（PostgreSQLから）');
+
+    // Content-Typeを明示的に設定
+    res.setHeader('Content-Type', 'application/json');
+
+    if (!dbPool) {
+      return res.status(503).json({
+        success: false,
+        error: 'データベース接続が利用できません',
+        machineTypes: [],
+        machines: []
+      });
+    }
+
+    // PostgreSQLのmachine_typesテーブルから機種一覧を取得
+    const machineTypesResult = await dbPool.query(
+      'SELECT id, machine_type_name AS "machineTypeName" FROM machine_types ORDER BY machine_type_name'
+    );
+    const machineTypesData = machineTypesResult.rows.map(row => ({
+      id: row.id,
+      machineTypeName: row.machineTypeName
+    }));
+
+    console.log('📋 PostgreSQLから取得した機種データ:', machineTypesData.length, '件');
+
+    // PostgreSQLのmachinesテーブルから機械番号一覧を取得（機種名も含む）
+    const machinesResult = await dbPool.query(`
+      SELECT
+        m.id,
+        m.machine_number AS "machineNumber",
+        m.machine_type_id AS "machineTypeId",
+        mt.machine_type_name AS "machineTypeName"
+      FROM machines m
+      LEFT JOIN machine_types mt ON m.machine_type_id = mt.id
+      ORDER BY m.machine_number
+    `);
+    const machinesData = machinesResult.rows.map(row => ({
+      id: row.id,
+      machineNumber: row.machineNumber,
+      machineTypeId: row.machineTypeId,
+      machineTypeName: row.machineTypeName
+    }));
+
+    console.log('📋 PostgreSQLから取得した機械データ:', machinesData.length, '件');
+
+    const result = {
+      machineTypes: machineTypesData,
+      machines: machinesData,
+    };
+
+    console.log('📋 機種・機械番号データ取得結果:', {
+      machineTypes: machineTypesData.length,
+      machines: machinesData.length,
+      sampleMachineTypes: machineTypesData.slice(0, 3),
+      sampleMachines: machinesData.slice(0, 3),
+    });
+
+    res.json({
+      success: true,
+      ...result,
+    });
+  } catch (error) {
+    console.error('❌ 機種・機械番号データ取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '機種・機械番号データの取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      machineTypes: [],
+      machines: []
+    });
+  }
+});
+
 // 履歴詳細取得API（ハイブリッドモード対応 - JSONファイルから直接取得）
+// 注意: 具体的なルート（/history/export-files, /history/machine-data）の後に定義する必要がある
 apiRouter.get('/history/:id', async (req, res) => {
   try {
     const { id } = req.params;
+
+    // 特定のサブパス（machine-data, export-files）は除外
+    if (id === 'machine-data' || id === 'export-files') {
+      console.log(`⚠️ /history/:id で特定サブパスがマッチしました: ${id} - これは別のルートで処理されるべきです`);
+      return res.status(404).json({
+        error: 'not_found',
+        message: `指定されたエンドポイントが見つかりません: /history/${id}`
+      });
+    }
+
     console.log(`📋 履歴アイテム取得リクエスト: ${id}`);
 
-    const projectRoot = path.resolve(__dirname, '..');
-    const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
+    // 環境変数対応のパス解決
+    const exportsDir = resolveKnowledgeBasePath('exports');
 
     if (!fs.existsSync(exportsDir)) {
       return res.status(404).json({
@@ -2326,26 +2597,11 @@ apiRouter.post('/history/upload-image', imageUpload.single('image'), async (req,
       });
     }
 
-    // 保存先ディレクトリのパス
-    const projectRoot = path.resolve(__dirname, '..');
-    let imagesDir = path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
-    if (!fs.existsSync(imagesDir)) {
-      const alternativePath = path.join(
-        projectRoot,
-        '..',
-        'knowledge-base',
-        'images',
-        'chat-exports'
-      );
-      if (fs.existsSync(alternativePath)) {
-        imagesDir = alternativePath;
-      }
-    }
-
-    // ディレクトリが存在しない場合は作成
+    // 保存先ディレクトリのパス（環境変数対応）
+    const imagesDir = resolveKnowledgeBasePath('images/chat-exports');
     if (!fs.existsSync(imagesDir)) {
       fs.mkdirSync(imagesDir, { recursive: true });
-      console.log('📁 画像保存ディレクトリを作成しました:', imagesDir);
+      console.log('✅ 画像ディレクトリを作成:', imagesDir);
     }
 
     // ファイル名を生成（タイムスタンプ + ランダム文字列）
@@ -2368,7 +2624,7 @@ apiRouter.post('/history/upload-image', imageUpload.single('image'), async (req,
       fs.writeFileSync(filePath, resizedBuffer);
       console.log('✅ 画像ファイルを保存しました（120pxにリサイズ）:', filePath);
 
-      const imageUrl = `/api/images/chat-exports/${fileName}`;
+      const imageUrl = getImageUrl(fileName, 'chat-exports');
 
       res.json({
         success: true,
@@ -2380,7 +2636,7 @@ apiRouter.post('/history/upload-image', imageUpload.single('image'), async (req,
       console.error('❌ 画像リサイズエラー:', resizeError);
       // リサイズに失敗した場合は元の画像を保存
       fs.writeFileSync(filePath, req.file.buffer);
-      const imageUrl = `/api/images/chat-exports/${fileName}`;
+      const imageUrl = getImageUrl(fileName, 'chat-exports');
       res.json({
         success: true,
         imageUrl,
@@ -2406,8 +2662,9 @@ apiRouter.delete('/history/:id', async (req, res) => {
     console.log(`🗑️ 履歴削除リクエスト（ファイルベース）: ${id}`);
 
     // 履歴一覧取得APIと同じパス解決方法を使用
-    const projectRoot = path.resolve(__dirname, '..');
-    const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
+    // 環境変数対応のパス解決
+    const projectRoot = resolveProjectRoot();
+    const exportsDir = resolveKnowledgeBasePath('exports');
 
     console.log(`📂 プロジェクトルート: ${projectRoot}`);
     console.log(`📂 エクスポートディレクトリ: ${exportsDir}`);
@@ -2471,19 +2728,11 @@ apiRouter.delete('/history/:id', async (req, res) => {
 
     const filePath = path.join(exportsDir, foundFile);
 
-    // 画像ディレクトリのパス解決
-    let imageDir = path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
+    // 画像ディレクトリのパス解決（環境変数対応）
+    const imageDir = resolveKnowledgeBasePath('images/chat-exports');
     if (!fs.existsSync(imageDir)) {
-      const alternativePath = path.join(
-        projectRoot,
-        '..',
-        'knowledge-base',
-        'images',
-        'chat-exports'
-      );
-      if (fs.existsSync(alternativePath)) {
-        imageDir = alternativePath;
-      }
+      fs.mkdirSync(imageDir, { recursive: true });
+      console.log('✅ 画像ディレクトリを作成:', imageDir);
     }
 
     const imagesToDelete = [];
@@ -2562,21 +2811,20 @@ apiRouter.get('/emergency-flow/list', async (req, res) => {
   try {
     console.log('🔍 応急処置フロー一覧取得リクエスト');
 
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+    // 環境変数対応のパス解決
+    const troubleshootingDir = resolveKnowledgeBasePath('troubleshooting');
 
-    let targetDir = troubleshootingDir;
     if (!fs.existsSync(troubleshootingDir)) {
-      if (fs.existsSync(alternativeDir)) {
-        targetDir = alternativeDir;
-      } else {
-        return res.json({
-          success: false,
-          error: 'トラブルシューティングディレクトリが見つかりません',
-          timestamp: new Date().toISOString()
-        });
-      }
+      console.error('❌ トラブルシューティングディレクトリが見つかりません:', troubleshootingDir);
+      return res.json({
+        success: false,
+        error: 'トラブルシューティングディレクトリが見つかりません',
+        path: troubleshootingDir,
+        timestamp: new Date().toISOString()
+      });
     }
+
+    const targetDir = troubleshootingDir;
 
     const files = fs.readdirSync(targetDir);
     const jsonFiles = files.filter(file => file.endsWith('.json'));
@@ -2586,6 +2834,20 @@ apiRouter.get('/emergency-flow/list', async (req, res) => {
         const filePath = path.join(targetDir, file);
         const fileContent = fs.readFileSync(filePath, { encoding: 'utf8' });
         const jsonData = JSON.parse(fileContent);
+
+        // 画像URLを環境変数対応に変換
+        if (jsonData.steps && Array.isArray(jsonData.steps)) {
+          jsonData.steps.forEach(step => {
+            if (step.images && Array.isArray(step.images)) {
+              step.images = step.images.map(img => {
+                if (img.fileName) {
+                  img.url = getImageUrl(img.fileName, 'emergency-flows');
+                }
+                return img;
+              });
+            }
+          });
+        }
 
         return {
           id: jsonData.id || file.replace('.json', ''),
@@ -2634,21 +2896,20 @@ apiRouter.get('/emergency-flow/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`🔍 応急処置フロー詳細取得リクエスト (/:id): ${id}`);
 
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+    // 環境変数対応のパス解決
+    const troubleshootingDir = resolveKnowledgeBasePath('troubleshooting');
 
-    let targetDir = troubleshootingDir;
     if (!fs.existsSync(troubleshootingDir)) {
-      if (fs.existsSync(alternativeDir)) {
-        targetDir = alternativeDir;
-      } else {
-        return res.status(404).json({
-          success: false,
-          error: 'トラブルシューティングディレクトリが見つかりません',
-          timestamp: new Date().toISOString()
-        });
-      }
+      console.error('❌ トラブルシューティングディレクトリが見つかりません:', troubleshootingDir);
+      return res.status(404).json({
+        success: false,
+        error: 'トラブルシューティングディレクトリが見つかりません',
+        path: troubleshootingDir,
+        timestamp: new Date().toISOString()
+      });
     }
+
+    const targetDir = troubleshootingDir;
 
     const files = fs.readdirSync(targetDir);
     const jsonFiles = files.filter(file => file.endsWith('.json'));
@@ -2659,7 +2920,7 @@ apiRouter.get('/emergency-flow/:id', async (req, res) => {
     for (const file of jsonFiles) {
       try {
         const filePath = path.join(targetDir, file);
-        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const fileContent = fs.readFileSync(filePath, { encoding: 'utf8' });
         const data = JSON.parse(fileContent);
 
         if (data.id === id || file.replace('.json', '') === id) {
@@ -2681,17 +2942,17 @@ apiRouter.get('/emergency-flow/:id', async (req, res) => {
       });
     }
 
-    // 画像URLを変換（相対パスの場合は完全なURLに変換）
+    // 画像URLを環境変数対応に変換
     if (flowData.steps) {
       flowData.steps.forEach((step, index) => {
         if (step.images && Array.isArray(step.images)) {
           step.images = step.images.map(img => {
-            if (img.url && !img.url.startsWith('http') && !img.url.startsWith('/')) {
-              img.url = `/api/emergency-flow/image/${img.fileName || img.url}`;
-            } else if (img.url && img.url.startsWith('/api/emergency-flow/image/')) {
-              // 既に正しい形式
-            } else if (img.fileName && !img.url) {
-              img.url = `/api/emergency-flow/image/${img.fileName}`;
+            if (img.fileName) {
+              img.url = getImageUrl(img.fileName, 'emergency-flows');
+            } else if (img.url && !img.url.startsWith('http') && !img.url.startsWith('/api/')) {
+              // ファイル名を抽出してURLを生成
+              const fileName = img.url.split('/').pop() || img.url;
+              img.url = getImageUrl(fileName, 'emergency-flows');
             }
             return img;
           });
@@ -2728,21 +2989,20 @@ apiRouter.get('/emergency-flow/detail/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`🔍 応急処置フロー詳細取得リクエスト: ${id}`);
 
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+    // 環境変数対応のパス解決
+    const troubleshootingDir = resolveKnowledgeBasePath('troubleshooting');
 
-    let targetDir = troubleshootingDir;
     if (!fs.existsSync(troubleshootingDir)) {
-      if (fs.existsSync(alternativeDir)) {
-        targetDir = alternativeDir;
-      } else {
-        return res.status(404).json({
-          success: false,
-          error: 'トラブルシューティングディレクトリが見つかりません',
-          timestamp: new Date().toISOString()
-        });
-      }
+      console.error('❌ トラブルシューティングディレクトリが見つかりません:', troubleshootingDir);
+      return res.status(404).json({
+        success: false,
+        error: 'トラブルシューティングディレクトリが見つかりません',
+        path: troubleshootingDir,
+        timestamp: new Date().toISOString()
+      });
     }
+
+    const targetDir = troubleshootingDir;
 
     const files = fs.readdirSync(targetDir);
     const jsonFiles = files.filter(file => file.endsWith('.json'));
@@ -2753,7 +3013,7 @@ apiRouter.get('/emergency-flow/detail/:id', async (req, res) => {
     for (const file of jsonFiles) {
       try {
         const filePath = path.join(targetDir, file);
-        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const fileContent = fs.readFileSync(filePath, { encoding: 'utf8' });
         const data = JSON.parse(fileContent);
 
         if (data.id === id || file.replace('.json', '') === id) {
@@ -2775,20 +3035,19 @@ apiRouter.get('/emergency-flow/detail/:id', async (req, res) => {
       });
     }
 
-    // 画像URLを変換
+    // 画像URLを環境変数対応に変換
     if (flowData.steps) {
       flowData.steps.forEach((step, index) => {
         if (step.images && Array.isArray(step.images)) {
-          step.images.forEach((img, imgIndex) => {
-            if (img.url && !img.url.startsWith('http')) {
-              // 既にAPIパスが含まれている場合はそのまま使用
-              if (img.url.startsWith('/api/')) {
-                img.url = `${req.protocol}://${req.get('host')}${img.url}`;
-              } else {
-                // ファイル名のみの場合は適切なAPIエンドポイントに変換
-                img.url = `${req.protocol}://${req.get('host')}/api/emergency-flow/image/${img.url}`;
-              }
+          step.images = step.images.map(img => {
+            if (img.fileName) {
+              img.url = getImageUrl(img.fileName, 'emergency-flows');
+            } else if (img.url && !img.url.startsWith('http') && !img.url.startsWith('/api/')) {
+              // ファイル名を抽出してURLを生成
+              const fileName = img.url.split('/').pop() || img.url;
+              img.url = getImageUrl(fileName, 'emergency-flows');
             }
+            return img;
           });
         }
       });
@@ -3112,7 +3371,7 @@ apiRouter.put('/emergency-flow/:id', async (req, res) => {
     for (const file of jsonFiles) {
       try {
         const filePath = path.join(targetDir, file);
-        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const fileContent = fs.readFileSync(filePath, { encoding: 'utf8' });
         const data = JSON.parse(fileContent);
 
         if (data.id === id || file.replace('.json', '') === id) {
@@ -3136,7 +3395,7 @@ apiRouter.put('/emergency-flow/:id', async (req, res) => {
     let originalData = null;
     if (fs.existsSync(filePath)) {
       try {
-        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const fileContent = fs.readFileSync(filePath, { encoding: 'utf8' });
         originalData = JSON.parse(fileContent);
         console.log('📖 既存データ読み込み成功:', {
           id: originalData.id,
@@ -3358,7 +3617,7 @@ apiRouter.post('/emergency-flow/generate', async (req, res) => {
     try {
       const AI_ASSIST_SETTINGS_FILE = path.join(__dirname, '../data/ai-assist-settings.json');
       if (fs.existsSync(AI_ASSIST_SETTINGS_FILE)) {
-        const settingsData = fs.readFileSync(AI_ASSIST_SETTINGS_FILE, 'utf-8');
+        const settingsData = fs.readFileSync(AI_ASSIST_SETTINGS_FILE, { encoding: 'utf8' });
         aiAssistSettings = JSON.parse(settingsData);
         console.log('✅ AI支援設定をフロー生成に適用しました');
       } else {
@@ -3960,7 +4219,7 @@ apiRouter.delete('/emergency-flow/:id', async (req, res) => {
       for (const file of jsonFiles) {
         try {
           const filePath = path.join(testDir, file);
-          const fileContent = fs.readFileSync(filePath, 'utf-8');
+          const fileContent = fs.readFileSync(filePath, { encoding: 'utf8' });
           const data = JSON.parse(fileContent);
 
           if (data.id === id || file.replace('.json', '') === id) {
@@ -4025,12 +4284,20 @@ apiRouter.delete('/emergency-flow/:id', async (req, res) => {
 });
 
 // チャット送信API（テスト用 - 認証不要）
+// 注意: このルートは /api/chats/:id/send-test としてアクセス可能
 apiRouter.post('/chats/:id/send-test', async (req, res) => {
   try {
     const { id } = req.params;
     const { chatData, exportType } = req.body;
 
+    console.log('✅ /chats/:id/send-test エンドポイントに到達しました！');
     console.log('🔍 テスト用チャット送信リクエスト受信:', {
+      method: req.method,
+      url: req.url,
+      originalUrl: req.originalUrl,
+      path: req.path,
+      baseUrl: req.baseUrl,
+      route: req.route?.path,
       chatId: id,
       exportType,
       messageCount: chatData?.messages?.length || 0,
@@ -4045,40 +4312,14 @@ apiRouter.post('/chats/:id/send-test', async (req, res) => {
       });
     }
 
-    // プロジェクトルートの取得
-    const projectRoot = path.resolve(__dirname, '..');
-    const cwd = process.cwd();
+    // 環境変数対応のパス解決を使用
+    const exportsDir = resolveKnowledgeBasePath('exports');
+    console.log(`📁 エクスポート保存先ディレクトリ: ${exportsDir}`);
+    console.log(`📁 ディレクトリ存在確認: ${fs.existsSync(exportsDir)}`);
 
-    // knowledge-base/exports フォルダを作成（複数のパスを試す）
-    const possibleExportsDirs = [
-      path.join(projectRoot, 'knowledge-base', 'exports'),
-      path.join(cwd, 'knowledge-base', 'exports'),
-      path.join(cwd, '..', 'knowledge-base', 'exports'),
-      path.join(__dirname, '..', 'knowledge-base', 'exports'),
-    ];
-
-    let exportsDir = null;
-    for (const testDir of possibleExportsDirs) {
-      if (!fs.existsSync(testDir)) {
-        try {
-          fs.mkdirSync(testDir, { recursive: true });
-          exportsDir = testDir;
-          console.log('exports フォルダを作成しました:', exportsDir);
-          break;
-        } catch (err) {
-          continue;
-        }
-      } else {
-        exportsDir = testDir;
-        break;
-      }
-    }
-
-    if (!exportsDir) {
-      // 最後の手段として、プロジェクトルートを使用
-      exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
+    if (!fs.existsSync(exportsDir)) {
       fs.mkdirSync(exportsDir, { recursive: true });
-      console.log('exports フォルダを作成しました（フォールバック）:', exportsDir);
+      console.log('✅ exports フォルダを作成しました:', exportsDir);
     }
 
     // チャットデータをJSONファイルとして保存
@@ -4117,36 +4358,17 @@ apiRouter.post('/chats/:id/send-test', async (req, res) => {
     const filePath = path.join(exportsDir, fileName);
 
     // 画像を個別ファイルとして保存（chat-exportsディレクトリに保存）
-    const possibleImagesDirs = [
-      path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports'),
-      path.join(cwd, 'knowledge-base', 'images', 'chat-exports'),
-      path.join(cwd, '..', 'knowledge-base', 'images', 'chat-exports'),
-      path.join(__dirname, '..', 'knowledge-base', 'images', 'chat-exports'),
-    ];
+    // 環境変数対応のパス解決
+    const imagesDir = resolveKnowledgeBasePath('images/chat-exports');
+    console.log(`📁 画像保存先ディレクトリ: ${imagesDir}`);
+    console.log(`📁 ディレクトリ存在確認: ${fs.existsSync(imagesDir)}`);
 
-    let imagesDir = null;
-    for (const testDir of possibleImagesDirs) {
-      if (!fs.existsSync(testDir)) {
-        try {
-          fs.mkdirSync(testDir, { recursive: true });
-          imagesDir = testDir;
-          console.log('画像保存ディレクトリを作成しました:', imagesDir);
-          break;
-        } catch (err) {
-          continue;
-        }
-      } else {
-        imagesDir = testDir;
-        break;
-      }
-    }
-
-    if (!imagesDir) {
-      // 最後の手段として、プロジェクトルートを使用
-      imagesDir = path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
+    // ディレクトリが存在しない場合は作成
+    if (!fs.existsSync(imagesDir)) {
       fs.mkdirSync(imagesDir, { recursive: true });
-      console.log('画像保存ディレクトリを作成しました（フォールバック）:', imagesDir);
+      console.log('✅ 画像ディレクトリを作成:', imagesDir);
     }
+
 
     // チャットメッセージから画像を抽出してファイルとして保存
     const savedImages = [];
@@ -4161,10 +4383,10 @@ apiRouter.post('/chats/:id/send-test', async (req, res) => {
 
           // ファイル名を生成
           const imageTimestamp = Date.now();
-          const imageFileName = `chat_image_${id}_${imageTimestamp}.jpg`;
+          const imageFileName = `history_${imageTimestamp}_${crypto.randomBytes(4).toString('hex')}.jpg`;
           const imagePath = path.join(imagesDir, imageFileName);
 
-          // 画像を120pxにリサイズして保存（chat-exports用）
+          // 画像を120pxにリサイズして保存
           const resizedBuffer = await sharp(buffer)
             .resize(120, 120, {
               fit: 'inside', // アスペクト比を維持しながら、120x120以内に収める
@@ -4173,10 +4395,47 @@ apiRouter.post('/chats/:id/send-test', async (req, res) => {
             .jpeg({ quality: 85 })
             .toBuffer();
 
-          fs.writeFileSync(imagePath, resizedBuffer);
-          console.log('画像ファイルを保存しました（120pxにリサイズ）:', imagePath);
+          // 環境変数に応じてローカルまたはBLOBストレージに保存
+          const storageMode = process.env.STORAGE_MODE || 'local';
+          let imageSavedPath = '';
+          let imageBlobName = '';
 
-          const imageUrl = `/api/images/chat-exports/${imageFileName}`;
+          if (storageMode === 'hybrid' || storageMode === 'blob' || storageMode === 'azure') {
+            // BLOBストレージに保存
+            const blobServiceClient = getBlobServiceClient();
+            if (blobServiceClient) {
+              const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
+              const containerClient = blobServiceClient.getContainerClient(containerName);
+              imageBlobName = `images/chat-exports/${imageFileName}`;
+              const blockBlobClient = containerClient.getBlockBlobClient(imageBlobName);
+
+              await blockBlobClient.upload(resizedBuffer, resizedBuffer.length, {
+                blobHTTPHeaders: {
+                  blobContentType: 'image/jpeg'
+                },
+                metadata: {
+                  chatId: id,
+                  uploadedAt: new Date().toISOString()
+                }
+              });
+
+              imageSavedPath = imageBlobName;
+              console.log(`✅ 画像ファイルを保存しました (BLOB): ${imageBlobName} (120pxにリサイズ)`);
+            } else {
+              console.warn('⚠️ BLOBストレージが利用できないため、ローカルに保存します');
+              fs.writeFileSync(imagePath, resizedBuffer);
+              imageSavedPath = imagePath;
+              console.log('✅ 画像ファイルを保存しました（120pxにリサイズ）:', imagePath);
+            }
+          } else {
+            // ローカルファイルシステムに直接保存
+            fs.writeFileSync(imagePath, resizedBuffer);
+            imageSavedPath = imagePath;
+            console.log('✅ 画像ファイルを保存しました（120pxにリサイズ）:', imagePath);
+          }
+
+          const imageUrl = getImageUrl(imageFileName, 'chat-exports');
+          console.log(`🔗 生成された画像URL: ${imageUrl} (STORAGE_MODE: ${storageMode})`);
 
           // base64をURLに置き換え
           message.content = imageUrl;
@@ -4184,8 +4443,7 @@ apiRouter.post('/chats/:id/send-test', async (req, res) => {
           savedImages.push({
             messageId: message.id,
             fileName: imageFileName,
-            path: imagePath,
-            url: imageUrl,
+            url: imageUrl
           });
         } catch (imageError) {
           console.warn('画像保存エラー:', imageError);
@@ -4195,7 +4453,7 @@ apiRouter.post('/chats/:id/send-test', async (req, res) => {
       }
     }
 
-    // base64を完全に除去する関数
+    // base64を完全に除去する関数（念のため残す）
     const removeBase64Recursively = (obj) => {
       if (obj === null || obj === undefined) {
         return obj;
@@ -4253,10 +4511,19 @@ apiRouter.post('/chats/:id/send-test', async (req, res) => {
     try {
       // UTF-8 BOMなしで保存
       fs.writeFileSync(finalFilePath, jsonString, 'utf8');
-      console.log('チャットデータを保存しました:', finalFilePath);
-      console.log('保存されたデータサイズ:', Buffer.byteLength(jsonString, 'utf8'), 'bytes');
+      console.log('✅ チャットデータを保存しました:', finalFilePath);
+      console.log('📊 保存されたデータ情報:', {
+        fileSize: Buffer.byteLength(jsonString, 'utf8'),
+        messageCount: cleanedExportData.chatData?.messages?.length || 0,
+        imageCount: cleanedExportData.savedImages?.length || 0,
+        images: cleanedExportData.savedImages?.map(img => ({
+          fileName: img.fileName,
+          url: img.url
+        })) || [],
+        fileExists: fs.existsSync(finalFilePath)
+      });
     } catch (writeError) {
-      console.error('ファイル保存エラー:', writeError);
+      console.error('❌ ファイル保存エラー:', writeError);
       throw writeError;
     }
 
@@ -4276,6 +4543,156 @@ apiRouter.post('/chats/:id/send-test', async (req, res) => {
     res.status(500).json({
       error: 'Failed to send chat data',
       details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// チャットエクスポートAPI
+apiRouter.post('/chats/:chatId/export', async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const exportData = req.body;
+
+    console.log('[api/chats/export] エクスポートリクエスト:', {
+      chatId,
+      title: exportData.title,
+      hasImages: !!exportData.savedImages,
+      messageCount: exportData.messages?.length || 0,
+    });
+
+    // チャットメッセージをフォーマット
+    const formattedData = {
+      chatId: chatId,
+      title: exportData.title || `チャット履歴 ${new Date().toISOString().split('T')[0]}`,
+      machineType: exportData.machineType || exportData.machineInfo?.machineTypeName || '',
+      machineNumber: exportData.machineNumber || exportData.machineInfo?.machineNumber || '',
+      messages: exportData.messages || [],
+      savedImages: exportData.savedImages || [],
+      exportTimestamp: new Date().toISOString(),
+      exportType: 'chat_export',
+      version: '1.0'
+    };
+
+    // 画像URLを正規化（環境変数対応）
+    if (formattedData.savedImages && Array.isArray(formattedData.savedImages)) {
+      const storageMode = process.env.STORAGE_MODE || 'local';
+      console.log(`🖼️ 画像処理開始: ${formattedData.savedImages.length}件 (STORAGE_MODE: ${storageMode})`);
+      formattedData.savedImages = formattedData.savedImages.map((image, index) => {
+        let fileName = '';
+        if (image.fileName) {
+          fileName = image.fileName.includes('/')
+            ? image.fileName.split('/').pop()
+            : image.fileName.includes('\\')
+              ? image.fileName.split('\\').pop()
+              : image.fileName;
+        } else if (image.url) {
+          const urlParts = image.url.split('/');
+          fileName = urlParts[urlParts.length - 1];
+        }
+
+        // getImageUrl関数を使用して環境変数対応のURLを生成
+        const imageUrl = getImageUrl(fileName, 'chat-exports');
+
+        console.log(`🖼️ 画像[${index}]:`, {
+          original: { fileName: image.fileName, url: image.url },
+          processed: { fileName, url: imageUrl, blobPath: `images/chat-exports/${fileName}` },
+          storageMode: storageMode
+        });
+
+        return {
+          ...image,
+          fileName: fileName,
+          url: imageUrl, // 環境変数に応じてローカル/BLOBのURLが設定される
+          blobPath: `images/chat-exports/${fileName}` // BLOBストレージ用のパス（常に設定）
+        };
+      });
+      console.log(`✅ 画像処理完了: ${formattedData.savedImages.length}件`);
+    }
+
+    // ファイル名を生成
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const titleSlug = (formattedData.title || 'chat')
+      .replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '_')
+      .substring(0, 50);
+    const filename = `${titleSlug}_${chatId}_${timestamp}.json`;
+
+    // 環境変数に応じてローカルまたはBLOBストレージに保存
+    const storageMode = process.env.STORAGE_MODE || 'local';
+    const jsonContent = JSON.stringify(formattedData, null, 2);
+    const jsonBuffer = Buffer.from(jsonContent, 'utf8');
+
+    let savedPath = '';
+    let blobName = '';
+
+    if (storageMode === 'hybrid' || storageMode === 'blob' || storageMode === 'azure') {
+      // BLOBストレージに保存
+      const blobServiceClient = getBlobServiceClient();
+      if (!blobServiceClient) {
+        throw new Error('BLOBストレージが利用できません。AZURE_STORAGE_CONNECTION_STRINGを設定してください。');
+      }
+
+      const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
+      const containerClient = blobServiceClient.getContainerClient(containerName);
+      blobName = `exports/${filename}`;
+      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+      await blockBlobClient.upload(jsonBuffer, jsonBuffer.length, {
+        blobHTTPHeaders: {
+          blobContentType: 'application/json; charset=utf-8'
+        },
+        metadata: {
+          chatId: chatId,
+          title: formattedData.title,
+          exportDate: new Date().toISOString()
+        }
+      });
+
+      savedPath = blobName;
+      console.log(`✅ チャットエクスポート成功 (BLOB): ${blobName}`);
+    } else {
+      // ローカルファイルシステムに保存
+      const exportsDir = resolveKnowledgeBasePath('exports');
+      console.log(`📁 エクスポート保存先ディレクトリ: ${exportsDir}`);
+      console.log(`📁 ディレクトリ存在確認: ${fs.existsSync(exportsDir)}`);
+
+      if (!fs.existsSync(exportsDir)) {
+        fs.mkdirSync(exportsDir, { recursive: true });
+        console.log('✅ exports フォルダを作成しました:', exportsDir);
+      }
+
+      const filePath = path.join(exportsDir, filename);
+      fs.writeFileSync(filePath, jsonContent, { encoding: 'utf8' });
+      savedPath = filePath;
+      console.log(`✅ チャットエクスポート成功 (LOCAL): ${filePath}`);
+    }
+
+    console.log(`📊 保存されたデータ:`, {
+      storageMode: storageMode,
+      savedPath: savedPath,
+      fileSize: Buffer.byteLength(jsonContent, 'utf8'),
+      messageCount: formattedData.messages?.length || 0,
+      imageCount: formattedData.savedImages?.length || 0,
+      images: formattedData.savedImages?.map(img => ({
+        fileName: img.fileName,
+        url: img.url
+      })) || []
+    });
+
+    res.json({
+      success: true,
+      filename: filename,
+      filePath: savedPath,
+      blobName: blobName || undefined,
+      storageMode: storageMode,
+      chatId: chatId,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/chats/export] エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'チャットのエクスポートに失敗しました',
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 });
@@ -4346,55 +4763,7 @@ apiRouter.post('/chats/:id/send', (req, res) => {
   });
 });
 
-// 履歴の機種・機械番号データ取得API
-apiRouter.get('/history/machine-data', async (req, res) => {
-  try {
-    console.log('📋 機種・機械番号データ取得リクエスト（履歴用）');
-
-    if (dbPool) {
-      try {
-        const machineTypesResult = await dbPool.query(`
-          SELECT id, machine_type_name as "machineTypeName"
-          FROM machine_types
-          ORDER BY machine_type_name
-        `);
-
-        const machinesResult = await dbPool.query(`
-          SELECT m.id, m.machine_number as "machineNumber", m.machine_type_id as "machineTypeId",
-                 mt.machine_type_name as "machineTypeName"
-          FROM machines m
-          LEFT JOIN machine_types mt ON m.machine_type_id = mt.id
-          ORDER BY m.machine_number
-        `);
-
-        return res.json({
-          success: true,
-          machineTypes: machineTypesResult.rows,
-          machines: machinesResult.rows,
-          timestamp: new Date().toISOString()
-        });
-      } catch (dbError) {
-        console.error('Database error:', dbError.message);
-      }
-    }
-
-    res.json({
-      success: true,
-      machineTypes: [],
-      machines: [],
-      message: 'データベース接続がありません',
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('❌ 機種・機械番号データ取得エラー:', error);
-    res.status(500).json({
-      success: false,
-      error: '機種・機械番号データの取得に失敗しました',
-      details: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
+// 履歴の機種・機械番号データ取得API（重複削除 - 上記の定義を使用）
 
 // ナレッジベースAPI
 apiRouter.get('/knowledge-base', async (req, res) => {
@@ -4569,7 +4938,7 @@ apiRouter.get('/settings/rag', async (req, res) => {
     let ragSettings = DEFAULT_RAG_SETTINGS;
     try {
       if (fs.existsSync(RAG_SETTINGS_FILE)) {
-        const settingsData = fs.readFileSync(RAG_SETTINGS_FILE, 'utf-8');
+        const settingsData = fs.readFileSync(RAG_SETTINGS_FILE, { encoding: 'utf8' });
         ragSettings = { ...DEFAULT_RAG_SETTINGS, ...JSON.parse(settingsData) };
         console.log('✅ RAG設定ファイルから読み込み成功');
       } else {
@@ -4666,7 +5035,7 @@ apiRouter.get('/ai-assist/settings', async (req, res) => {
     try {
       if (fs.existsSync(AI_ASSIST_SETTINGS_FILE)) {
         console.log('✅ AI支援設定ファイルが存在します');
-        const settingsData = fs.readFileSync(AI_ASSIST_SETTINGS_FILE, 'utf-8');
+        const settingsData = fs.readFileSync(AI_ASSIST_SETTINGS_FILE, { encoding: 'utf8' });
         const parsedSettings = JSON.parse(settingsData);
         aiAssistSettings = { ...DEFAULT_AI_ASSIST_SETTINGS, ...parsedSettings };
         console.log('✅ AI支援設定ファイルから読み込み成功');
@@ -4771,8 +5140,8 @@ apiRouter.get('/images/emergency-flows/:filename', async (req, res) => {
     const { filename } = req.params;
     console.log(`🖼️ emergency-flows画像ファイル取得: ${filename}`);
 
-    const projectRoot = path.resolve(__dirname, '..');
-    const imagesDir = path.join(projectRoot, 'knowledge-base', 'images', 'emergency-flows');
+    // 環境変数対応のパス解決
+    const imagesDir = resolveKnowledgeBasePath('images/emergency-flows');
 
     const imagePath = path.resolve(imagesDir, filename);
 
@@ -4811,9 +5180,8 @@ apiRouter.get('/images/chat-exports/:filename', async (req, res) => {
     const { filename } = req.params;
     console.log(`🖼️ chat-exports画像ファイル取得: ${filename}`);
 
-    // プロジェクトルートを取得（__dirnameベース）
-    const projectRoot = path.resolve(__dirname, '..');
-    const imagesDir = path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
+    // 環境変数対応のパス解決
+    const imagesDir = resolveKnowledgeBasePath('images/chat-exports');
 
     console.log(`🔍 画像検索開始:`, { filename, imagesDir, exists: fs.existsSync(imagesDir) });
 
@@ -5237,8 +5605,8 @@ apiRouter.get('/history/exports/search', async (req, res) => {
     }
 
     // 既存のhistoryエンドポイントと同じパス解決ロジックを使用
-    const projectRoot = path.resolve(__dirname, '..');
-    const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
+    // 環境変数対応のパス解決
+    const exportsDir = resolveKnowledgeBasePath('exports');
 
     if (!fs.existsSync(exportsDir)) {
       return res.json({
@@ -5327,7 +5695,7 @@ apiRouter.get('/history/exports/search', async (req, res) => {
             savedImages: processedSavedImages,
             images: processedSavedImages.map((img) => ({
               fileName: typeof img === 'string' ? img : (img.fileName || img.url || img.path || ''),
-              url: typeof img === 'string' ? img : (img.url || `/api/images/chat-exports/${img.fileName || img.path || ''}`),
+              url: typeof img === 'string' ? getImageUrl(img.split('/').pop() || img, 'chat-exports') : (img.url || getImageUrl(img.fileName || img.path || '', 'chat-exports')),
               path: typeof img === 'string' ? img : (img.path || img.fileName || '')
             })),
             fileSize: 0,
@@ -5366,87 +5734,14 @@ apiRouter.get('/history/exports/search', async (req, res) => {
 });
 
 // GET /api/history/machine-data - 機種・機械番号マスターデータを取得（PostgreSQLから）
-apiRouter.get('/history/machine-data', async (req, res) => {
-  try {
-    console.log('📋 機種・機械番号データ取得リクエスト（PostgreSQLから）');
-
-    // Content-Typeを明示的に設定
-    res.setHeader('Content-Type', 'application/json');
-
-    if (!dbPool) {
-      return res.status(503).json({
-        success: false,
-        error: 'データベース接続が利用できません',
-        machineTypes: [],
-        machines: []
-      });
-    }
-
-    // PostgreSQLのmachine_typesテーブルから機種一覧を取得
-    const machineTypesResult = await dbPool.query(
-      'SELECT id, machine_type_name AS "machineTypeName" FROM machine_types ORDER BY machine_type_name'
-    );
-    const machineTypesData = machineTypesResult.rows.map(row => ({
-      id: row.id,
-      machineTypeName: row.machineTypeName
-    }));
-
-    console.log('📋 PostgreSQLから取得した機種データ:', machineTypesData.length, '件');
-
-    // PostgreSQLのmachinesテーブルから機械番号一覧を取得（機種名も含む）
-    const machinesResult = await dbPool.query(`
-      SELECT
-        m.id,
-        m.machine_number AS "machineNumber",
-        m.machine_type_id AS "machineTypeId",
-        mt.machine_type_name AS "machineTypeName"
-      FROM machines m
-      LEFT JOIN machine_types mt ON m.machine_type_id = mt.id
-      ORDER BY m.machine_number
-    `);
-    const machinesData = machinesResult.rows.map(row => ({
-      id: row.id,
-      machineNumber: row.machineNumber,
-      machineTypeId: row.machineTypeId,
-      machineTypeName: row.machineTypeName
-    }));
-
-    console.log('📋 PostgreSQLから取得した機械データ:', machinesData.length, '件');
-
-    const result = {
-      machineTypes: machineTypesData,
-      machines: machinesData,
-    };
-
-    console.log('📋 機種・機械番号データ取得結果:', {
-      machineTypes: machineTypesData.length,
-      machines: machinesData.length,
-      sampleMachineTypes: machineTypesData.slice(0, 3),
-      sampleMachines: machinesData.slice(0, 3),
-    });
-
-    res.json({
-      success: true,
-      ...result,
-    });
-  } catch (error) {
-    console.error('❌ 機種・機械番号データ取得エラー:', error);
-    res.status(500).json({
-      success: false,
-      error: '機種・機械番号データの取得に失敗しました',
-      details: error instanceof Error ? error.message : 'Unknown error',
-      machineTypes: [],
-      machines: []
-    });
-  }
-});
+// 注意: 重複定義を削除 - 上記（2233行目付近）の定義を使用
 
 // GET /api/history/exports/filter-data - 機種・機械番号のリスト取得
 apiRouter.get('/history/exports/filter-data', async (req, res) => {
   try {
     // 既存のhistoryエンドポイントと同じパス解決ロジックを使用
-    const projectRoot = path.resolve(__dirname, '..');
-    const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
+    // 環境変数対応のパス解決
+    const exportsDir = resolveKnowledgeBasePath('exports');
 
     if (!fs.existsSync(exportsDir)) {
       return res.json({
@@ -6463,7 +6758,7 @@ apiRouter.post('/files/import', upload.single('file'), async (req, res) => {
     const ext = path.extname(originalname).toLowerCase();
 
     if (ext === '.txt') {
-      extractedText = fs.readFileSync(tempPath, 'utf-8');
+      extractedText = fs.readFileSync(tempPath, { encoding: 'utf8' });
     } else {
       // PDF、Excel、PowerPointは現時点ではファイル名のみ
       console.log(`${ext}処理は未実装のため、ファイル名のみ保存`);
@@ -6879,7 +7174,7 @@ apiRouter.post('/chatgpt', async (req, res) => {
           // サーバー側の設定ファイルから読み込む
           const AI_ASSIST_SETTINGS_FILE = path.join(__dirname, '../data/ai-assist-settings.json');
           if (fs.existsSync(AI_ASSIST_SETTINGS_FILE)) {
-            const settingsData = fs.readFileSync(AI_ASSIST_SETTINGS_FILE, 'utf-8');
+            const settingsData = fs.readFileSync(AI_ASSIST_SETTINGS_FILE, { encoding: 'utf8' });
             aiAssistSettings = JSON.parse(settingsData);
             console.log('✅ AI支援設定をサーバーから読み込みました');
           } else {
@@ -7097,7 +7392,21 @@ apiRouter.post('/tech-support/backup-logs', async (req, res) => {
 
 console.log('✅ Tech Support routes mounted (inline)');
 
-// データベース接続診断エンドポイント（APIルーターの前に追加）
+// APIルーターをマウント（すべてのエンドポイント定義の後、他のルートの前に）
+// デバッグ用: すべてのAPIリクエストをログに記録
+app.use('/api', (req, res, next) => {
+  console.log(`📡 APIリクエスト: ${req.method} ${req.path} (originalUrl: ${req.originalUrl})`);
+  console.log(`📡 APIリクエスト詳細:`, {
+    method: req.method,
+    path: req.path,
+    originalUrl: req.originalUrl,
+    baseUrl: req.baseUrl,
+    url: req.url
+  });
+  next();
+}, apiRouter);
+
+// データベース接続診断エンドポイント（apiRouterの後に追加）
 app.get('/api/debug/database', async (req, res) => {
   try {
     const debugInfo = {
@@ -7137,8 +7446,49 @@ app.get('/api/debug/database', async (req, res) => {
   }
 });
 
-// APIルーターをマウント（すべてのエンドポイント定義の後）
-app.use('/api', apiRouter);
+// デバッグ: apiRouterの登録されたルートを確認
+console.log('🔍 apiRouter registered routes:');
+let routeCount = 0;
+apiRouter.stack.forEach((layer, index) => {
+  if (layer.route) {
+    const methods = Object.keys(layer.route.methods).join(',').toUpperCase();
+    const routePath = layer.route.path;
+    console.log(`  ${index}: ${methods} ${routePath}`);
+    if (routePath.includes('chats') && routePath.includes('send-test')) {
+      console.log(`    ✅ /chats/:id/send-test ルートが見つかりました！`);
+    }
+    routeCount++;
+  } else if (layer.name) {
+    console.log(`  ${index}: middleware (${layer.name})`);
+  } else if (layer.regexp) {
+    console.log(`  ${index}: middleware (regexp: ${layer.regexp})`);
+  }
+});
+console.log(`📊 合計 ${routeCount} 個のルートが登録されています`);
+
+// 404ハンドラー（APIルート用）- apiRouterの後に配置
+// 注意: このハンドラーは apiRouter で処理されなかったリクエストのみを処理
+app.use('/api', (req, res) => {
+  // apiRouterで処理されなかった場合のみここに到達
+  console.error(`❌ 404: APIルートが見つかりません: ${req.method} ${req.path} (originalUrl: ${req.originalUrl})`);
+  console.error(`📋 リクエスト詳細:`, {
+    method: req.method,
+    path: req.path,
+    originalUrl: req.originalUrl,
+    baseUrl: req.baseUrl,
+    url: req.url,
+    route: req.route?.path,
+    params: req.params,
+    query: req.query
+  });
+  console.error(`📋 apiRouterスタック確認:`, apiRouter.stack.length, '個のレイヤー');
+  res.status(404).json({
+    error: 'Not Found',
+    message: `API endpoint not found: ${req.method} ${req.originalUrl}`,
+    path: req.path,
+    originalUrl: req.originalUrl
+  });
+});
 
 // エラーハンドリング
 app.use((err, req, res, next) => {
@@ -7159,6 +7509,26 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`🌐 Frontend: http://localhost:${PORT} (proxied to Vite on port ${CLIENT_PORT})`);
     console.log(`🔥 Hot reload: Enabled`);
     console.log(`📁 Source files: Direct from client/src (no build required)`);
+
+    // WebSocketアップグレード処理（Vite HMR用）
+    if (viteProxy) {
+      server.on('upgrade', (req, socket, head) => {
+        // APIルートは除外
+        if (req.url.startsWith('/api/')) {
+          socket.destroy();
+          return;
+        }
+
+        // Viteサーバーが起動していない場合は接続を閉じる
+        if (!viteServer || !viteServerReady) {
+          socket.destroy();
+          return;
+        }
+
+        // プロキシのWebSocketハンドラーを呼び出し
+        viteProxy.upgrade(req, socket, head);
+      });
+    }
   } else {
     const publicDir = path.join(__dirname, 'public');
     const clientDistDir = path.join(__dirname, '..', 'client', 'dist');
