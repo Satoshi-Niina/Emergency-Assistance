@@ -2477,84 +2477,6 @@ app.get('/api/emergency-flows', async (req, res) => {
 });
 
 // 19. 応急処置フローAPI（単数形 - クライアント互換性のため）
-app.get('/api/emergency-flow/list', async (req, res) => {
-  try {
-    console.log('[api/emergency-flow/list] 応急処置フロー一覧取得リクエスト');
-
-    if (!connectionString) {
-      return res.json({
-        success: true,
-        data: [],
-        message: 'Azure Storage not configured',
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    const blobServiceClient = getBlobServiceClient();
-    if (!blobServiceClient) {
-      return res.json({
-        success: true,
-        data: [],
-        message: 'Blob service client unavailable',
-        timestamp: new Date().toISOString()
-      });
-    }
-    const containerClient = blobServiceClient.getContainerClient(containerName);
-
-    const listOptions = {
-      prefix: norm('flows/')
-    };
-
-    const flows = [];
-    for await (const blob of containerClient.listBlobsFlat(listOptions)) {
-      if (blob.name.endsWith('.json')) {
-        try {
-          const blockBlobClient = containerClient.getBlockBlobClient(blob.name);
-          const downloadResponse = await blockBlobClient.download();
-
-          if (downloadResponse.readableStreamBody) {
-            const chunks = [];
-            for await (const chunk of downloadResponse.readableStreamBody) {
-              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-            }
-            const content = Buffer.concat(chunks).toString('utf-8');
-            const cleanContent = content.replace(/^\uFEFF/, '');
-            const jsonData = JSON.parse(cleanContent);
-
-            flows.push({
-              id: blob.name,
-              name: jsonData.name || jsonData.title || blob.name.split('/').pop(),
-              description: jsonData.description || '',
-              steps: jsonData.steps || [],
-              createdAt: blob.properties.lastModified,
-              updatedAt: blob.properties.lastModified
-            });
-          }
-        } catch (error) {
-          console.warn(`⚠️ Failed to parse flow ${blob.name}:`, error.message);
-        }
-      }
-    }
-
-    console.log('[api/emergency-flow/list] 応急処置フロー一覧取得成功:', flows.length + '件');
-
-    res.json({
-      success: true,
-      data: flows,
-      total: flows.length,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('[api/emergency-flow/list] 応急処置フロー一覧取得エラー:', error);
-    res.status(500).json({
-      success: false,
-      error: '応急処置フロー一覧の取得に失敗しました',
-      details: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
 // 20. RAG設定API
 app.get('/api/settings/rag', (req, res) => {
   res.json({
@@ -2655,16 +2577,48 @@ app.get('/api/admin/dashboard', async (req, res) => {
 // エクスポートファイル一覧API
 app.get('/api/history/export-files', async (req, res) => {
   try {
+    console.log('[api/history/export-files] エクスポートファイル一覧取得リクエスト');
+
+    const items = [];
+    const blobServiceClient = getBlobServiceClient();
+
+    if (blobServiceClient) {
+      try {
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        const prefix = norm('exports/');
+
+        console.log(`🔍 BLOBストレージからエクスポート取得: prefix=${prefix}`);
+
+        for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+          if (blob.name.endsWith('.json')) {
+            const fileName = blob.name.split('/').pop();
+            items.push({
+              id: fileName.replace('.json', ''),
+              fileName: fileName,
+              blobName: blob.name,
+              lastModified: blob.properties.lastModified,
+              size: blob.properties.contentLength,
+            });
+          }
+        }
+        console.log(`✅ BLOBから ${items.length} 件のエクスポート取得`);
+      } catch (error) {
+        console.error('❌ BLOB読み込みエラー:', error);
+      }
+    }
+
     res.json({
       success: true,
-      data: [],
-      message: 'エクスポートファイルはありません',
+      data: items,
+      total: items.length,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
+    console.error('[api/history/export-files] エラー:', error);
     res.status(500).json({
       success: false,
       error: 'エクスポートファイル一覧の取得に失敗しました',
+      details: error.message,
       timestamp: new Date().toISOString()
     });
   }
@@ -2910,98 +2864,6 @@ app.get('/api/history', async (req, res) => {
     res.status(500).json({
       success: false,
       error: '履歴データの取得に失敗しました',
-      details: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-// 履歴ファイル一覧取得API（BLOBストレージ優先）
-app.get('/api/history/export-list', async (req, res) => {
-  try {
-    console.log('[api/history/export-list] 履歴ファイル一覧取得リクエスト');
-
-    const items = [];
-
-    // BLOBストレージから取得（本番環境優先）
-    const blobServiceClient = getBlobServiceClient();
-    if (blobServiceClient) {
-      try {
-        const containerClient = blobServiceClient.getContainerClient(containerName);
-        const prefix = norm('exports/');
-
-        console.log(`🔍 BLOBストレージから一覧取得: prefix=${prefix}`);
-
-        for await (const blob of containerClient.listBlobsFlat({ prefix })) {
-          if (!blob.name.endsWith('.json') || blob.name.includes('.backup.')) continue;
-
-          const fileName = blob.name.split('/').pop();
-          const fileNameWithoutExt = fileName.replace('.json', '');
-          const uuidMatch = fileNameWithoutExt.match(/_([a-f0-9-]{36})_/);
-          const fileId = uuidMatch ? uuidMatch[1] : fileNameWithoutExt;
-
-          items.push({
-            id: fileId,
-            fileName: fileName,
-            blobName: blob.name,
-            lastModified: blob.properties.lastModified,
-            size: blob.properties.contentLength,
-            source: 'blob_storage'
-          });
-        }
-
-        console.log(`✅ BLOBから ${items.length} 件取得`);
-      } catch (blobError) {
-        console.error('❌ BLOBストレージエラー:', blobError);
-      }
-    }
-
-    // フォールバック: ローカルファイルシステム（開発環境のみ）
-    if (items.length === 0) {
-      const projectRoot = path.resolve(__dirname, '..');
-      const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
-
-      if (fs.existsSync(exportsDir)) {
-        try {
-          const files = fs.readdirSync(exportsDir);
-          for (const file of files) {
-            if (!file.endsWith('.json') || file.includes('.backup.')) continue;
-
-            const fileNameWithoutExt = file.replace('.json', '');
-            const uuidMatch = fileNameWithoutExt.match(/_([a-f0-9-]{36})_/);
-            const fileId = uuidMatch ? uuidMatch[1] : fileNameWithoutExt;
-
-            const filePath = path.join(exportsDir, file);
-            const stats = fs.statSync(filePath);
-
-            items.push({
-              id: fileId,
-              fileName: file,
-              lastModified: stats.mtime,
-              size: stats.size,
-              source: 'local_file'
-            });
-          }
-
-          console.log(`✅ ローカルから ${items.length} 件取得`);
-        } catch (error) {
-          console.error('[api/history/export-list] ローカルファイル読み込みエラー:', error);
-        }
-      }
-    }
-
-    res.json({
-      success: true,
-      data: items,
-      total: items.length,
-      source: items.length > 0 ? items[0].source : 'none',
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('[api/history/export-list] エラー:', error);
-    res.status(500).json({
-      success: false,
-      error: '履歴ファイル一覧の取得に失敗しました',
       details: error.message,
       timestamp: new Date().toISOString()
     });
@@ -3719,20 +3581,25 @@ app.get('/api/emergency-flow/list', async (req, res) => {
     if (blobServiceClient) {
       try {
         const containerClient = blobServiceClient.getContainerClient(containerName);
-        const prefix = norm('emergency-flows/');
+        const prefix = norm('troubleshooting/');
+
+        console.log(`🔍 BLOBストレージからフロー取得: prefix=${prefix}`);
 
         for await (const blob of containerClient.listBlobsFlat({ prefix })) {
           if (blob.name.endsWith('.json')) {
+            const fileName = blob.name.split('/').pop();
             flows.push({
-              id: path.basename(blob.name, '.json'),
-              name: blob.name,
+              id: path.basename(fileName, '.json'),
+              name: fileName,
+              blobName: blob.name,
               lastModified: blob.properties.lastModified,
               size: blob.properties.contentLength,
             });
           }
         }
+        console.log(`✅ BLOBから ${flows.length} 件のフロー取得`);
       } catch (error) {
-        console.error('BLOB読み込みエラー:', error);
+        console.error('❌ BLOB読み込みエラー:', error);
       }
     }
 
@@ -3746,6 +3613,106 @@ app.get('/api/emergency-flow/list', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'フロー一覧の取得に失敗しました',
+      details: error.message,
+    });
+  }
+});
+
+// 個別エクスポートJSONファイル取得API
+app.get('/api/history/exports/:fileName', async (req, res) => {
+  try {
+    const { fileName } = req.params;
+    console.log(`[api/history/exports] ファイル取得: ${fileName}`);
+
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({
+        success: false,
+        error: 'BLOBストレージが利用できません',
+      });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blobName = norm(`exports/${fileName}`);
+    const blobClient = containerClient.getBlobClient(blobName);
+
+    const downloadResponse = await blobClient.download();
+    const contentType = downloadResponse.contentType || 'application/json';
+    
+    res.setHeader('Content-Type', contentType);
+    downloadResponse.readableStreamBody.pipe(res);
+  } catch (error) {
+    console.error('❌ ファイル取得エラー:', error);
+    res.status(404).json({
+      success: false,
+      error: 'ファイルが見つかりません',
+      details: error.message,
+    });
+  }
+});
+
+// 個別フローJSONファイル取得API
+app.get('/api/emergency-flow/:fileName', async (req, res) => {
+  try {
+    const { fileName } = req.params;
+    console.log(`[api/emergency-flow] ファイル取得: ${fileName}`);
+
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({
+        success: false,
+        error: 'BLOBストレージが利用できません',
+      });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blobName = norm(`troubleshooting/${fileName}`);
+    const blobClient = containerClient.getBlobClient(blobName);
+
+    const downloadResponse = await blobClient.download();
+    const contentType = downloadResponse.contentType || 'application/json';
+    
+    res.setHeader('Content-Type', contentType);
+    downloadResponse.readableStreamBody.pipe(res);
+  } catch (error) {
+    console.error('❌ ファイル取得エラー:', error);
+    res.status(404).json({
+      success: false,
+      error: 'ファイルが見つかりません',
+      details: error.message,
+    });
+  }
+});
+
+// 画像ファイル取得API（汎用）
+app.get('/api/images/:category/:fileName', async (req, res) => {
+  try {
+    const { category, fileName } = req.params;
+    console.log(`[api/images] 画像取得: ${category}/${fileName}`);
+
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({
+        success: false,
+        error: 'BLOBストレージが利用できません',
+      });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blobName = norm(`images/${category}/${fileName}`);
+    const blobClient = containerClient.getBlobClient(blobName);
+
+    const downloadResponse = await blobClient.download();
+    const contentType = downloadResponse.contentType || 'image/jpeg';
+    
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // 1日キャッシュ
+    downloadResponse.readableStreamBody.pipe(res);
+  } catch (error) {
+    console.error('❌ 画像取得エラー:', error);
+    res.status(404).json({
+      success: false,
+      error: '画像が見つかりません',
       details: error.message,
     });
   }
