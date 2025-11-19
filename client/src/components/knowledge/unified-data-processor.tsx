@@ -165,7 +165,7 @@ const UnifiedDataProcessor: React.FC = () => {
 
       // 統合データ処理APIを呼び出す
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/data-processor/process`,
+        buildApiUrl('/data-processor/process'),
         {
           method: 'POST',
           body: formData,
@@ -207,7 +207,7 @@ const UnifiedDataProcessor: React.FC = () => {
   const handleDeleteDocument = async (docId: string, title: string) => {
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/knowledge/${docId}`,
+        buildApiUrl(`/knowledge/${docId}`),
         {
           method: 'DELETE',
         }
@@ -316,9 +316,8 @@ const UnifiedDataProcessor: React.FC = () => {
 
         {/* ドラッグ&ドロップエリア */}
         <div
-          className={`border-2 border-dashed border-blue-300 rounded-lg p-8 mb-4 text-center cursor-pointer bg-blue-50 hover:bg-blue-100 transition-colors ${
-            selectedFile ? 'border-blue-600 bg-blue-100' : ''
-          }`}
+          className={`border-2 border-dashed border-blue-300 rounded-lg p-8 mb-4 text-center cursor-pointer bg-blue-50 hover:bg-blue-100 transition-colors ${selectedFile ? 'border-blue-600 bg-blue-100' : ''
+            }`}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
           onClick={handleFileSelectClick}

@@ -980,7 +980,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
         // バックエンドにも送信を試行（非同期）
         try {
           const response = await fetch(
-            `${import.meta.env.VITE_API_BASE_URL}/api/emergency-guide/send`,
+            buildApiUrl('/emergency-guide/send'),
             {
               method: 'POST',
               credentials: 'include',

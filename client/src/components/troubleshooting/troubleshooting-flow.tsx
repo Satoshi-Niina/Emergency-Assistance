@@ -114,8 +114,9 @@ export default function TroubleshootingFlow({
         console.log(`🔄 フローデータ取得開始: ${id}`);
 
         // 正しいAPIエンドポイントを使用
+        const { buildApiUrl } = await import('../../lib/api/config');
         const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${id}`
+          buildApiUrl(`/emergency-flow/${id}`)
         );
 
         if (!response.ok) {

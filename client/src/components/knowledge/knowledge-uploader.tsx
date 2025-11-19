@@ -112,8 +112,9 @@ const KnowledgeUploader: React.FC = () => {
       const formData = new FormData();
       formData.append('file', selectedFile);
 
+      const { buildApiUrl } = await import('../../lib/api/config');
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/knowledge/upload`,
+        buildApiUrl('/knowledge/upload'),
         {
           method: 'POST',
           body: formData,
@@ -190,8 +191,8 @@ const KnowledgeUploader: React.FC = () => {
   const fetchDocuments = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/knowledge`
+      const res = await fetch(
+        buildApiUrl('/knowledge')
       );
       if (!response.ok) {
         throw new Error('ドキュメントの取得に失敗しました');

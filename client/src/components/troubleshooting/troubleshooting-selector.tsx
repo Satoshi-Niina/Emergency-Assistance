@@ -39,8 +39,9 @@ export default function TroubleshootingSelector({
   const fetchFlows = async () => {
     try {
       setLoading(true);
+      const { buildApiUrl } = await import('../../lib/api/config');
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/list`
+        buildApiUrl('/emergency-flow/list')
       );
       if (!response.ok)
         throw new Error(`HTTP error! status: ${response.status}`);

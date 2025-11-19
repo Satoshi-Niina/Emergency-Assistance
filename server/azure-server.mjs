@@ -382,8 +382,65 @@ function initializeDatabase() {
       try {
         const client = await dbPool.connect();
         const result = await client.query('SELECT NOW() as current_time, version() as version');
-        await client.release();
         console.log('✅ Database connection test successful:', result.rows[0]);
+
+        // PostgreSQL用テーブル作成
+        console.log('🔧 Creating PostgreSQL tables if not exist...');
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            display_name TEXT,
+            role TEXT DEFAULT 'user',
+            department TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+
+          CREATE TABLE IF NOT EXISTS machine_types (
+            id SERIAL PRIMARY KEY,
+            machine_type_name TEXT UNIQUE NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+
+          CREATE TABLE IF NOT EXISTS machines (
+            id SERIAL PRIMARY KEY,
+            machine_number TEXT NOT NULL,
+            machine_type_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (machine_type_id) REFERENCES machine_types(id) ON DELETE CASCADE
+          );
+
+          CREATE TABLE IF NOT EXISTS chat_history (
+            id SERIAL PRIMARY KEY,
+            title TEXT,
+            machine_type TEXT,
+            machine_number TEXT,
+            content TEXT,
+            conversation_history TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            user_id INTEGER,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+          );
+
+          CREATE INDEX IF NOT EXISTS idx_chat_history_machine_type ON chat_history(machine_type);
+          CREATE INDEX IF NOT EXISTS idx_chat_history_machine_number ON chat_history(machine_number);
+          CREATE INDEX IF NOT EXISTS idx_chat_history_created_at ON chat_history(created_at);
+        `);
+        console.log('✅ PostgreSQL tables created/verified');
+
+        // デフォルト管理者ユーザーの作成
+        const adminCheck = await client.query('SELECT id FROM users WHERE username = $1', ['admin']);
+        if (adminCheck.rows.length === 0) {
+          const hashedPassword = bcrypt.hashSync('admin', 10);
+          await client.query(
+            'INSERT INTO users (username, password, display_name, role, department) VALUES ($1, $2, $3, $4, $5)',
+            ['admin', hashedPassword, '管理者', 'admin', 'システム管理']
+          );
+          console.log('✅ Default admin user created (username: admin, password: admin)');
+        }
+
+        await client.release();
       } catch (err) {
         console.warn('⚠️ Database connection test failed:', err.message);
         console.warn('⚠️ Server will continue running without database features');
@@ -2809,17 +2866,16 @@ app.get('/api/history', async (req, res) => {
     const isPostgres = !!dbPool;
     let paramIndex = 1;
 
-    // 履歴データを取得
+    // 履歴データを取得 (support_history テーブルを使用)
     let query = `
       SELECT
         h.id,
-        h.title,
         h.machine_type,
         h.machine_number,
         h.created_at,
-        h.content,
-        h.conversation_history
-      FROM chat_history h
+        h.json_data,
+        h.image_path
+      FROM support_history h
       WHERE 1=1
     `;
     let params = [];

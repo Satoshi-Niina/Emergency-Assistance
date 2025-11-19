@@ -86,20 +86,16 @@ jobs:
 
       - name: Build Client
         working-directory: ./client
-        env:
-          NODE_ENV: production
-          VITE_BACKEND_SERVICE_URL: ${{ env.BACKEND_URL }}
-          VITE_ENVIRONMENT: ${{ env.ENVIRONMENT }}
         run: |
           echo "🔨 Building client for $ENVIRONMENT environment..."
           echo "   Backend URL: $BACKEND_URL"
 
-          # Set VITE_API_BASE_URL with fallback
-          if [ -n "${{ secrets.VITE_API_BASE_URL }}" ]; then
-            export VITE_API_BASE_URL="${{ secrets.VITE_API_BASE_URL }}"
-          else
-            export VITE_API_BASE_URL="/api"
-          fi
+          # Set environment variables for Vite build
+          export NODE_ENV=production
+          export VITE_BACKEND_SERVICE_URL="$BACKEND_URL"
+          export VITE_API_BASE_URL="$BACKEND_URL/api"
+          export VITE_ENVIRONMENT="$ENVIRONMENT"
+
           echo "   API Base URL: $VITE_API_BASE_URL"
 
           npm run build

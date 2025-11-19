@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { buildApiUrl } from '../lib/api/config';
 
 type Machine = {
   id: string;
@@ -19,7 +20,7 @@ export default function MachineList() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_BASE_URL}/api/all-machines`)
+    fetch(buildApiUrl('/all-machines'))
       .then(res => res.json())
       .then(json => {
         setData(json.data || []);

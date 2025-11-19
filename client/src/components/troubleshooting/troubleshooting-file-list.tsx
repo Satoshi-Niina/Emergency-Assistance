@@ -59,8 +59,9 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
 
       // キャッシュ無効化のためにタイムスタンプを追加
       const timestamp = Date.now();
+      const { buildApiUrl } = await import('../../lib/api/config');
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list?t=${timestamp}`,
+        buildApiUrl(`/troubleshooting/list?t=${timestamp}`),
         {
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -94,8 +95,9 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
     if (!confirm('このファイルを削除してもよろしいですか？')) return;
 
     try {
+      const { buildApiUrl } = await import('../../lib/api/config');
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${id}`,
+        buildApiUrl(`/troubleshooting/${id}`),
         {
           method: 'DELETE',
         }
