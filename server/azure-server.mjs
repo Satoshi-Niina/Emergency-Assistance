@@ -2250,6 +2250,96 @@ app.get('/api/knowledge-base', async (req, res) => {
   }
 });
 
+// ドキュメント管理API - 一覧取得
+app.get('/api/documents', async (req, res) => {
+  try {
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({
+        success: false,
+        error: 'BLOBストレージが利用できません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient('documents');
+    const documents = [];
+
+    for await (const blob of containerClient.listBlobsFlat({ prefix: '' })) {
+      documents.push({
+        id: blob.name,
+        name: blob.name.split('/').pop(),
+        path: blob.name,
+        size: blob.properties.contentLength,
+        contentType: blob.properties.contentType,
+        createdAt: blob.properties.createdOn,
+        lastModified: blob.properties.lastModified
+      });
+    }
+
+    res.json({
+      success: true,
+      data: documents,
+      total: documents.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/documents] エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ドキュメント一覧の取得に失敗しました',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// ドキュメント管理API - アップロード
+app.post('/api/documents', async (req, res) => {
+  try {
+    const { filename, content, contentType } = req.body;
+
+    if (!filename || !content) {
+      return res.status(400).json({
+        success: false,
+        error: 'ファイル名とコンテンツが必要です',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({
+        success: false,
+        error: 'BLOBストレージが利用できません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient('documents');
+    const blockBlobClient = containerClient.getBlockBlobClient(filename);
+
+    await blockBlobClient.upload(content, content.length, {
+      blobHTTPHeaders: {
+        blobContentType: contentType || 'application/octet-stream'
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'ドキュメントをアップロードしました',
+      data: { filename },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/documents] アップロードエラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ドキュメントのアップロードに失敗しました',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // 18. 応急処置フローAPI
 app.get('/api/emergency-flows', async (req, res) => {
   try {
@@ -2544,7 +2634,50 @@ app.get('/api/history/exports/filter-data', async (req, res) => {
   }
 });
 
-// 21. チャット履歴保存API
+// 21. チャット履歴取得API
+app.get('/api/chat-history', async (req, res) => {
+  try {
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({
+        success: false,
+        error: 'BLOBストレージが利用できません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient('exports');
+    const histories = [];
+
+    for await (const blob of containerClient.listBlobsFlat({ prefix: '' })) {
+      if (blob.name.endsWith('.json')) {
+        histories.push({
+          id: blob.name,
+          name: blob.name,
+          size: blob.properties.contentLength,
+          createdAt: blob.properties.createdOn,
+          lastModified: blob.properties.lastModified
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      data: histories,
+      total: histories.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/chat-history] エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'チャット履歴の取得に失敗しました',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// チャット履歴保存API
 app.post('/api/chat-history', (req, res) => {
   const { messages, chatId, machineType, machineNumber } = req.body;
   res.json({
