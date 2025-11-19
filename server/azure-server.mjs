@@ -2720,9 +2720,45 @@ app.post('/api/chat/export', async (req, res) => {
     const titleSlug = (exportData.title || 'untitled').replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '_').substring(0, 50);
     const filename = `${titleSlug}_${chatId}_${timestamp}.json`;
 
+    // 画像URLをBLOBストレージパスに正規化
+    let normalizedImages = [];
+    if (exportData.savedImages && Array.isArray(exportData.savedImages)) {
+      normalizedImages = exportData.savedImages.map(image => {
+        // ファイル名を抽出
+        let fileName = '';
+        if (image.fileName) {
+          fileName = image.fileName.includes('/')
+            ? image.fileName.split('/').pop()
+            : image.fileName.includes('\\')
+              ? image.fileName.split('\\').pop()
+              : image.fileName;
+        } else if (image.path) {
+          const pathParts = image.path.split(/[/\\]/);
+          fileName = pathParts[pathParts.length - 1];
+        } else if (image.url) {
+          // URLからファイル名を抽出
+          const urlParts = image.url.split('/');
+          fileName = urlParts[urlParts.length - 1];
+        } else if (image.originalFileName) {
+          fileName = image.originalFileName;
+        }
+
+        // BLOBストレージのAPIパスに統一
+        return {
+          ...image,
+          fileName: fileName,
+          url: `/api/images/chat-exports/${fileName}`,
+          blobPath: `images/chat-exports/${fileName}`,
+          originalFileName: image.originalFileName || fileName
+        };
+      });
+    }
+
     // メタデータを追加
     const dataToSave = {
       ...exportData,
+      savedImages: normalizedImages,
+      images: normalizedImages, // 互換性のため
       exportTimestamp: new Date().toISOString(),
       exportType: 'blob_stored',
       version: '1.0'
@@ -3570,6 +3606,207 @@ ${toneInstruction}`,
   }
 });
 
+// 30. フロー保存エンドポイント（新規作成）
+app.post('/api/emergency-flow', async (req, res) => {
+  try {
+    const flowData = req.body;
+    console.log('[api/emergency-flow] フロー保存リクエスト:', {
+      id: flowData.id,
+      title: flowData.title,
+      stepsCount: flowData.steps?.length || 0
+    });
+
+    // 画像URLを正規化
+    const normalizedSteps = flowData.steps?.map(step => {
+      if (step.images && Array.isArray(step.images)) {
+        const normalizedImages = step.images.map(image => {
+          let fileName = '';
+          if (image.fileName) {
+            fileName = image.fileName.includes('/') 
+              ? image.fileName.split('/').pop() 
+              : image.fileName.includes('\\')
+                ? image.fileName.split('\\').pop()
+                : image.fileName;
+          } else if (image.url) {
+            const urlParts = image.url.split('/');
+            fileName = urlParts[urlParts.length - 1];
+          }
+
+          return {
+            ...image,
+            fileName: fileName,
+            url: `/api/images/emergency-flows/${fileName}`,
+            blobPath: `images/emergency-flows/${fileName}`
+          };
+        });
+
+        return {
+          ...step,
+          images: normalizedImages
+        };
+      }
+      return step;
+    }) || [];
+
+    const dataToSave = {
+      ...flowData,
+      steps: normalizedSteps,
+      updatedAt: new Date().toISOString(),
+      version: '1.0'
+    };
+
+    // ファイル名を生成
+    const fileName = flowData.id ? `${flowData.id}.json` : `flow-${Date.now()}.json`;
+
+    // BLOBストレージに保存
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({
+        success: false,
+        error: 'BLOBストレージが利用できません'
+      });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blobName = norm(`troubleshooting/${fileName}`);
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+    const jsonContent = JSON.stringify(dataToSave, null, 2);
+    await blockBlobClient.upload(
+      jsonContent,
+      Buffer.byteLength(jsonContent),
+      {
+        blobHTTPHeaders: {
+          blobContentType: 'application/json; charset=utf-8'
+        },
+        metadata: {
+          flowId: flowData.id || fileName.replace('.json', ''),
+          title: flowData.title || 'untitled',
+          updatedAt: new Date().toISOString()
+        }
+      }
+    );
+
+    console.log(`✅ フロー保存成功: ${blobName}`);
+
+    res.json({
+      success: true,
+      data: dataToSave,
+      fileName: fileName,
+      blobName: blobName,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/emergency-flow] 保存エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'フローの保存に失敗しました',
+      details: error.message
+    });
+  }
+});
+
+// フロー更新エンドポイント
+app.put('/api/emergency-flow/:flowId', async (req, res) => {
+  try {
+    const { flowId } = req.params;
+    const flowData = req.body;
+    
+    console.log('[api/emergency-flow] フロー更新リクエスト:', {
+      flowId: flowId,
+      title: flowData.title,
+      stepsCount: flowData.steps?.length || 0
+    });
+
+    // 画像URLを正規化
+    const normalizedSteps = flowData.steps?.map(step => {
+      if (step.images && Array.isArray(step.images)) {
+        const normalizedImages = step.images.map(image => {
+          let fileName = '';
+          if (image.fileName) {
+            fileName = image.fileName.includes('/') 
+              ? image.fileName.split('/').pop() 
+              : image.fileName.includes('\\')
+                ? image.fileName.split('\\').pop()
+                : image.fileName;
+          } else if (image.url) {
+            const urlParts = image.url.split('/');
+            fileName = urlParts[urlParts.length - 1];
+          }
+
+          return {
+            ...image,
+            fileName: fileName,
+            url: `/api/images/emergency-flows/${fileName}`,
+            blobPath: `images/emergency-flows/${fileName}`
+          };
+        });
+
+        return {
+          ...step,
+          images: normalizedImages
+        };
+      }
+      return step;
+    }) || [];
+
+    const dataToSave = {
+      ...flowData,
+      id: flowId,
+      steps: normalizedSteps,
+      updatedAt: new Date().toISOString(),
+      version: '1.0'
+    };
+
+    // BLOBストレージに保存
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({
+        success: false,
+        error: 'BLOBストレージが利用できません'
+      });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const fileName = `${flowId}.json`;
+    const blobName = norm(`troubleshooting/${fileName}`);
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+    const jsonContent = JSON.stringify(dataToSave, null, 2);
+    await blockBlobClient.upload(
+      jsonContent,
+      Buffer.byteLength(jsonContent),
+      {
+        blobHTTPHeaders: {
+          blobContentType: 'application/json; charset=utf-8'
+        },
+        metadata: {
+          flowId: flowId,
+          title: flowData.title || 'untitled',
+          updatedAt: new Date().toISOString()
+        }
+      }
+    );
+
+    console.log(`✅ フロー更新成功: ${blobName}`);
+
+    res.json({
+      success: true,
+      data: dataToSave,
+      fileName: fileName,
+      blobName: blobName,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/emergency-flow] 更新エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'フローの更新に失敗しました',
+      details: error.message
+    });
+  }
+});
+
 // 31. フロー一覧取得エンドポイント
 app.get('/api/emergency-flow/list', async (req, res) => {
   try {
@@ -3638,7 +3875,7 @@ app.get('/api/history/exports/:fileName', async (req, res) => {
 
     const downloadResponse = await blobClient.download();
     const contentType = downloadResponse.contentType || 'application/json';
-    
+
     res.setHeader('Content-Type', contentType);
     downloadResponse.readableStreamBody.pipe(res);
   } catch (error) {
@@ -3671,7 +3908,7 @@ app.get('/api/emergency-flow/:fileName', async (req, res) => {
 
     const downloadResponse = await blobClient.download();
     const contentType = downloadResponse.contentType || 'application/json';
-    
+
     res.setHeader('Content-Type', contentType);
     downloadResponse.readableStreamBody.pipe(res);
   } catch (error) {
@@ -3704,7 +3941,7 @@ app.get('/api/images/:category/:fileName', async (req, res) => {
 
     const downloadResponse = await blobClient.download();
     const contentType = downloadResponse.contentType || 'image/jpeg';
-    
+
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=86400'); // 1日キャッシュ
     downloadResponse.readableStreamBody.pipe(res);
