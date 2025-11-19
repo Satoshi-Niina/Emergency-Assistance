@@ -52,38 +52,33 @@ export const buildApiUrl = (endpoint: string): string => {
   let normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
 
   // API_BASE_URLの正規化（末尾の/を除去）
-  const normalizedBaseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+  let normalizedBaseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
 
-  // エンドポイントが既に '/api/' で始まっている場合の処理
-  if (normalizedEndpoint.startsWith('/api/')) {
-    // BASE_URLが空文字列または相対パスの場合
-    if (!normalizedBaseUrl || normalizedBaseUrl === '/api') {
-      const fullUrl = normalizedEndpoint;
-      console.log(`🔗 API URL構築 (既に/api含む): ${endpoint} -> ${fullUrl}`);
-      return fullUrl;
-    }
-    // BASE_URLが絶対URLの場合
-    const fullUrl = `${normalizedBaseUrl}${normalizedEndpoint}`;
-    console.log(`🔗 API URL構築 (絶対URL+/api含む): ${endpoint} -> ${fullUrl}`);
-    return fullUrl;
+  // BASE_URLが既に /api で終わっている場合は /api を除去
+  if (normalizedBaseUrl.endsWith('/api')) {
+    normalizedBaseUrl = normalizedBaseUrl.slice(0, -4);
   }
 
-  // エンドポイントに /api が含まれていない場合
-  // BASE_URLが '/api' の場合
-  if (normalizedBaseUrl === '/api') {
+  // エンドポイントが既に '/api/' で始まっている場合は、/api/ を除去
+  if (normalizedEndpoint.startsWith('/api/')) {
+    normalizedEndpoint = normalizedEndpoint.slice(4); // '/api/' -> '/'
+  }
+
+  // BASE_URLが空文字列または相対パスの場合
+  if (!normalizedBaseUrl) {
     const fullUrl = `/api${normalizedEndpoint}`;
-    console.log(`🔗 API URL構築 (/api追加): ${endpoint} -> ${fullUrl}`);
+    console.log(`🔗 API URL構築 (相対パス): ${endpoint} -> ${fullUrl}`);
     return fullUrl;
   }
 
   // BASE_URLが絶対URLの場合
   if (normalizedBaseUrl.includes('://')) {
     const fullUrl = `${normalizedBaseUrl}/api${normalizedEndpoint}`;
-    console.log(`🔗 API URL構築 (絶対URL+/api追加): ${endpoint} -> ${fullUrl}`);
+    console.log(`🔗 API URL構築 (絶対URL): ${endpoint} -> ${fullUrl}`);
     return fullUrl;
   }
 
-  // それ以外の場合（空または相対パス）
+  // それ以外の場合（相対パス）
   const fullUrl = `/api${normalizedEndpoint}`;
   console.log(`🔗 API URL構築 (標準): ${endpoint} -> ${fullUrl}`);
   return fullUrl;
