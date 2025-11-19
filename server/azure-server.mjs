@@ -1161,16 +1161,25 @@ app.get('/api/history/:id', async (req, res) => {
         };
 
         console.log(`✅ 履歴アイテム取得完了: ${id} (画像: ${savedImages.length}件)`);
-        res.json(convertedItem);
-      } catch (error) {
-        console.error('❌ 履歴詳細取得エラー:', error);
-        res.status(500).json({
-          success: false,
-          error: '履歴の取得に失敗しました',
-          details: error.message
-        });
+        return res.json(convertedItem);
       }
+    }
+
+    // 見つからなかった場合
+    console.log(`❌ 履歴アイテムが見つかりませんでした: ${id}`);
+    res.status(404).json({
+      success: false,
+      error: '指定された履歴が見つかりませんでした',
     });
+  } catch (error) {
+    console.error('❌ 履歴詳細取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '履歴の取得に失敗しました',
+      details: error.message
+    });
+  }
+});
 
 // 16. 履歴API（機種・機械番号データ）
 app.get('/api/history/machine-data', async (req, res) => {
