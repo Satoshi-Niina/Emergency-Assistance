@@ -41,6 +41,7 @@ import session from 'express-session';
 import fs from 'fs';
 import Database from 'better-sqlite3';
 import OpenAI from 'openai';
+import multer from 'multer';
 
 // ==== まず環境値（ログより前に宣言）=====
 // Azure Static Web Apps のデフォルトURL
@@ -119,6 +120,23 @@ app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));
 
+// Multer設定（メモリストレージ使用）
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB
+  },
+  fileFilter: (req, file, cb) => {
+    // 画像ファイルのみ許可
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('画像ファイルのみアップロード可能です'), false);
+    }
+  }
+});
+
+console.log('📤 Multer initialized for image uploads');
 console.log('🔗 Frontend URL:', FRONTEND_URL);
 console.log('🌐 Static Web App URL:', STATIC_WEB_APP_URL);
 
@@ -3622,8 +3640,8 @@ app.post('/api/emergency-flow', async (req, res) => {
         const normalizedImages = step.images.map(image => {
           let fileName = '';
           if (image.fileName) {
-            fileName = image.fileName.includes('/') 
-              ? image.fileName.split('/').pop() 
+            fileName = image.fileName.includes('/')
+              ? image.fileName.split('/').pop()
               : image.fileName.includes('\\')
                 ? image.fileName.split('\\').pop()
                 : image.fileName;
@@ -3711,7 +3729,7 @@ app.put('/api/emergency-flow/:flowId', async (req, res) => {
   try {
     const { flowId } = req.params;
     const flowData = req.body;
-    
+
     console.log('[api/emergency-flow] フロー更新リクエスト:', {
       flowId: flowId,
       title: flowData.title,
@@ -3724,8 +3742,8 @@ app.put('/api/emergency-flow/:flowId', async (req, res) => {
         const normalizedImages = step.images.map(image => {
           let fileName = '';
           if (image.fileName) {
-            fileName = image.fileName.includes('/') 
-              ? image.fileName.split('/').pop() 
+            fileName = image.fileName.includes('/')
+              ? image.fileName.split('/').pop()
               : image.fileName.includes('\\')
                 ? image.fileName.split('\\').pop()
                 : image.fileName;
@@ -3851,6 +3869,175 @@ app.get('/api/emergency-flow/list', async (req, res) => {
       success: false,
       error: 'フロー一覧の取得に失敗しました',
       details: error.message,
+    });
+  }
+});
+
+// チャットエクスポートAPI
+app.post('/api/chats/:chatId/export', async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    console.log('[api/chats/export] エクスポートリクエスト:', chatId);
+
+    // リクエストボディからエクスポートデータを取得
+    const exportData = req.body;
+
+    // チャットメッセージをフォーマット
+    const formattedData = {
+      chatId: chatId,
+      title: exportData.title || `チャット履歴 ${new Date().toISOString().split('T')[0]}`,
+      machineType: exportData.machineType || '',
+      machineNumber: exportData.machineNumber || '',
+      messages: exportData.messages || [],
+      savedImages: exportData.savedImages || [],
+      exportTimestamp: new Date().toISOString(),
+      exportType: 'chat_export',
+      version: '1.0'
+    };
+
+    // 画像URLを正規化
+    if (formattedData.savedImages && Array.isArray(formattedData.savedImages)) {
+      formattedData.savedImages = formattedData.savedImages.map(image => {
+        let fileName = '';
+        if (image.fileName) {
+          fileName = image.fileName.includes('/')
+            ? image.fileName.split('/').pop()
+            : image.fileName.includes('\\')
+              ? image.fileName.split('\\').pop()
+              : image.fileName;
+        } else if (image.url) {
+          const urlParts = image.url.split('/');
+          fileName = urlParts[urlParts.length - 1];
+        }
+
+        return {
+          ...image,
+          fileName: fileName,
+          url: `/api/images/chat-exports/${fileName}`,
+          blobPath: `images/chat-exports/${fileName}`
+        };
+      });
+    }
+
+    // ファイル名を生成
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const titleSlug = (formattedData.title || 'chat').replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '_').substring(0, 50);
+    const filename = `${titleSlug}_${chatId}_${timestamp}.json`;
+
+    // BLOBストレージに保存
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({
+        success: false,
+        error: 'BLOBストレージが利用できません'
+      });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blobName = norm(`exports/${filename}`);
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+    const jsonContent = JSON.stringify(formattedData, null, 2);
+    await blockBlobClient.upload(
+      jsonContent,
+      Buffer.byteLength(jsonContent),
+      {
+        blobHTTPHeaders: {
+          blobContentType: 'application/json; charset=utf-8'
+        },
+        metadata: {
+          chatId: chatId,
+          title: formattedData.title,
+          exportDate: new Date().toISOString()
+        }
+      }
+    );
+
+    console.log(`✅ チャットエクスポート成功: ${blobName}`);
+
+    res.json({
+      success: true,
+      filename: filename,
+      blobName: blobName,
+      chatId: chatId,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/chats/export] エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'チャットのエクスポートに失敗しました',
+      details: error.message
+    });
+  }
+});
+
+// 画像アップロードAPI（応急処置フロー用）
+app.post('/api/emergency-flow/upload-image', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: '画像ファイルが見つかりません'
+      });
+    }
+
+    const { stepId } = req.body;
+    console.log('[api/emergency-flow/upload-image] 画像アップロード:', {
+      fileName: req.file.originalname,
+      size: req.file.size,
+      stepId: stepId
+    });
+
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({
+        success: false,
+        error: 'BLOBストレージが利用できません'
+      });
+    }
+
+    // ファイル名を生成（タイムスタンプ付き）
+    const timestamp = Date.now();
+    const ext = path.extname(req.file.originalname);
+    const baseName = path.basename(req.file.originalname, ext);
+    const fileName = `${baseName}_${timestamp}${ext}`;
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blobName = norm(`images/emergency-flows/${fileName}`);
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+    // 画像をBLOBにアップロード
+    await blockBlobClient.uploadData(req.file.buffer, {
+      blobHTTPHeaders: {
+        blobContentType: req.file.mimetype
+      },
+      metadata: {
+        originalName: req.file.originalname,
+        stepId: stepId || '',
+        uploadedAt: new Date().toISOString()
+      }
+    });
+
+    console.log(`✅ 画像アップロード成功: ${blobName}`);
+
+    const imageUrl = `/api/images/emergency-flows/${fileName}`;
+
+    res.json({
+      success: true,
+      imageUrl: imageUrl,
+      fileName: fileName,
+      imageFileName: fileName,
+      blobName: blobName,
+      size: req.file.size,
+      isDuplicate: false
+    });
+  } catch (error) {
+    console.error('[api/emergency-flow/upload-image] エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '画像のアップロードに失敗しました',
+      details: error.message
     });
   }
 });

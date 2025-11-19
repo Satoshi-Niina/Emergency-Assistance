@@ -6,7 +6,8 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "dev": "node server/unified-hot-reload-server.js",
+    "dev": "cross-env NODE_ENV=development node server/azure-server.mjs",
+    "dev:legacy": "node server/unified-hot-reload-server.js",
     "start": "npm run dev",
     "build": "npm --prefix client run build",
     "prebuild": "echo 🔨 Building client for production deployment...",
