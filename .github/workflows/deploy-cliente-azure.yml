@@ -109,13 +109,13 @@ jobs:
           echo "🧹 Clearing ALL build artifacts and caches..."
           rm -rf dist node_modules/.vite .vite .cache .parcel-cache .turbo || true
           npm cache clean --force || true
-          
+
           # Remove any existing dist to ensure clean build
           if [ -d "dist" ]; then
             echo "🗑️ Removing existing dist directory..."
             rm -rf dist
           fi
-          
+
           # Verify source file has correct changes
           echo "🔍 Verifying source file changes..."
           if grep -q "hasSecurityAccess" src/pages/settings.tsx; then
@@ -279,18 +279,18 @@ jobs:
             SHA_SHORT="${{ github.sha }}"
             BUILD_TIMESTAMP=$(date +%s)
             BUILD_VERSION="v${BUILD_TIMESTAMP}-${SHA_SHORT:0:7}"
-            
+
             # HTMLタグにビルド情報を追加
             sed -i "s|<html lang=\"ja\">|<html lang=\"ja\" data-build=\"$BUILD_VERSION\" data-timestamp=\"$BUILD_TIMESTAMP\">|g" client/dist/index.html
-            
+
             # スクリプトタグにバージョンとタイムスタンプを追加
             sed -i "s|<script type=\"module\"|<script type=\"module\" data-version=\"$BUILD_VERSION\" data-timestamp=\"$BUILD_TIMESTAMP\"|g" client/dist/index.html
-            
+
             # metaタグでキャッシュを無効化（既に存在しない場合のみ追加）
             if ! grep -q "Cache-Control" client/dist/index.html; then
               sed -i "s|<head>|<head>\n  <meta http-equiv=\"Cache-Control\" content=\"no-cache, no-store, must-revalidate\">\n  <meta http-equiv=\"Pragma\" content=\"no-cache\">\n  <meta http-equiv=\"Expires\" content=\"0\">|g" client/dist/index.html
             fi
-            
+
             echo "✅ Build version and cache-busting added: $BUILD_VERSION (timestamp: $BUILD_TIMESTAMP)"
           fi
 
@@ -481,18 +481,28 @@ jobs:
           DEBUG: '*'
 
       - name: Verify Deployment
-        if: success()
+        if: always()
         run: |
-          echo "✅ Deployment completed successfully"
-          echo "🔗 Deployed to: $STATIC_WEB_APP_URL"
-          echo "⏰ Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-          echo "🔢 Build ID: $VITE_BUILD_ID"
-          echo ""
-          echo "⚠️ Note: Azure Static Web Apps may take 2-3 minutes to propagate changes globally"
-          echo "💡 If changes are not visible immediately, please:"
-          echo "   1. Wait 2-3 minutes for CDN cache to clear"
-          echo "   2. Hard refresh your browser (Ctrl+Shift+R or Cmd+Shift+R)"
-          echo "   3. Clear browser cache if needed"
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Deployment completed successfully"
+            echo "🔗 Deployed to: $STATIC_WEB_APP_URL"
+            echo "⏰ Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            echo "🔢 Build ID: $VITE_BUILD_ID"
+            echo ""
+            echo "⚠️ Note: Azure Static Web Apps may take 2-3 minutes to propagate changes globally"
+            echo "💡 If changes are not visible immediately, please:"
+            echo "   1. Wait 2-3 minutes for CDN cache to clear"
+            echo "   2. Hard refresh your browser (Ctrl+Shift+R or Cmd+Shift+R)"
+            echo "   3. Clear browser cache if needed"
+            echo ""
+            echo "🔍 To verify cards are visible:"
+            echo "   - Open: $STATIC_WEB_APP_URL/settings"
+            echo "   - Check for 'セキュリティー監視' and '保守管理' cards"
+          else
+            echo "⚠️ Deployment completed with warnings/errors"
+            echo "   Check the steps above for details"
+            echo "   Deployment may still be successful despite warnings"
+          fi
 
       - name: Deployment Error Details
         if: failure()
@@ -531,18 +541,30 @@ jobs:
           echo "🔄 Sending cache-busting requests..."
           
           # 主要なエンドポイントにキャッシュ無効化リクエスト
-          ENDPOINTS=("/" "/index.html" "/settings" "/main.0.mjs" "/style.0.css")
+          ENDPOINTS=("/" "/index.html" "/settings")
+          ERROR_COUNT=0
           for endpoint in "${ENDPOINTS[@]}"; do
-            curl -X GET "$STATIC_WEB_APP_URL$endpoint?v=$TIMESTAMP&r=$RANDOM_ID&_t=$TIMESTAMP" \
+            if curl -X GET "$STATIC_WEB_APP_URL$endpoint?v=$TIMESTAMP&r=$RANDOM_ID&_t=$TIMESTAMP" \
               -H "Cache-Control: no-cache, no-store, must-revalidate, max-age=0" \
               -H "Pragma: no-cache" \
               -H "Expires: 0" \
               -H "X-Force-Refresh: true" \
               -H "X-Cache-Bust: $TIMESTAMP" \
-              -s -o /dev/null -w "  $endpoint: %{http_code}\n" || true
+              --max-time 10 \
+              -s -o /dev/null -w "  $endpoint: %{http_code}\n" 2>&1; then
+              echo "  ✅ $endpoint: Success"
+            else
+              echo "  ⚠️ $endpoint: Failed (non-critical)"
+              ERROR_COUNT=$((ERROR_COUNT + 1))
+            fi
           done
           
-          echo "✅ Cache-busting requests sent"
+          if [ $ERROR_COUNT -gt 0 ]; then
+            echo "⚠️ Some cache-busting requests failed (this is non-critical)"
+          else
+            echo "✅ All cache-busting requests sent successfully"
+          fi
+          
           echo "💡 Note: Azure Static Web Apps CDN cache will be automatically invalidated on deployment"
           echo "💡 Users should hard refresh (Ctrl+Shift+R) or clear browser cache to see latest changes"
 
@@ -552,6 +574,7 @@ jobs:
           echo "⏳ Waiting for CDN propagation (30 seconds)..."
           sleep 30
           echo "✅ Wait completed"
+          echo "💡 Deployment is complete. Changes should be visible within 2-3 minutes."
 
       - name: Health Check
         env:
