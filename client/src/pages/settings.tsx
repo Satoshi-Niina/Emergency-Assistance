@@ -64,29 +64,8 @@ export default function SettingsPage() {
   const [useOnlyKnowledgeBase, setUseOnlyKnowledgeBase] = useState(true);
 
   // セキュリティー監視・保守管理アクセス権限チェック
-  // 管理者権限（admin または employee）のユーザーに表示
-
-  // デバッグ: 現在のユーザー情報をコンソールに表示
-  console.log('🔍 [Settings] 現在のユーザー:', user?.username, 'ロール:', user?.role);
-  console.log('🔍 [Settings] user オブジェクト全体:', JSON.stringify(user, null, 2));
-
-  // 🚨 テスト用: 全員に表示（デバッグ後に元に戻す）
-  const hasSecurityAccess = true; // ← テスト用に一時的に true
-
-  // 本来のチェック（テスト後に戻す）
-  // const hasSecurityAccess = user?.role === 'admin' || user?.role === 'employee';
-
-  console.log('🔍 [Settings] セキュリティーカード表示フラグ:', hasSecurityAccess);
-  console.log('🔍 [Settings] user?.role:', user?.role);
-  console.log('🔍 [Settings] user?.role === "admin":', user?.role === 'admin');
-  console.log('🔍 [Settings] user?.role === "employee":', user?.role === 'employee');
-
-  // 特定のユーザー名のみに制限する場合は、以下のコードを使用
-  // const SECURITY_ADMINS = ['super_admin', 'security_admin', 'niina'];
-  // const hasSecurityAccess = user?.username && SECURITY_ADMINS.includes(user.username);
-
-  // または、データベースのフラグで管理する場合
-  // const hasSecurityAccess = user?.securityAccess === true;
+  // 管理者権限（admin）のユーザーに表示
+  const hasSecurityAccess = user?.role === 'admin';
 
   // システム健全性チェック
   // System health state removed - integrated into system diagnostic page
