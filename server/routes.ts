@@ -100,6 +100,7 @@ export function registerRoutes(app: Express): void {
   app.use('/api/qa-learning', qaLearningRouter);
   app.use('/api/maintenance', maintenanceRouter);
   app.use('/api/settings', settingsRouter);
+  app.use('/api/ai-assist/settings', settingsRouter); // AI assist settings endpoint
 
   // Health check endpoints
   app.get('/api/health', (req, res) => {

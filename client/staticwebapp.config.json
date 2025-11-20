@@ -120,7 +120,7 @@
     ".wasm": "application/wasm"
   },
   "globalHeaders": {
-    "Content-Security-Policy": "default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https: wss: ws:; font-src 'self' https://fonts.gstatic.com;",
+    "Content-Security-Policy": "default-src 'self'; img-src 'self' data: blob: https: https://*.blob.core.windows.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https: wss: ws:; font-src 'self' https://fonts.gstatic.com;",
     "X-Frame-Options": "DENY",
     "X-XSS-Protection": "1; mode=block"
   },

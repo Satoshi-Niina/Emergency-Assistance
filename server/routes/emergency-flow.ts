@@ -1868,10 +1868,21 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
     });
   } catch (error) {
     console.error('❌ 画像アップロードエラー:', error);
+    console.error('エラースタック:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('エラー詳細:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      hasFile: !!req.file,
+      fileSize: req.file?.size,
+      fileName: req.file?.originalname
+    });
+    
     res.status(500).json({
       success: false,
       error: '応急処置フローの処理中にエラーが発生しました',
       details: error instanceof Error ? error.message : 'Unknown error',
+      errorType: error instanceof Error ? error.name : 'Unknown',
+      timestamp: new Date().toISOString()
     });
   }
 });

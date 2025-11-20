@@ -2449,10 +2449,22 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
     }
   } catch (error) {
     console.error('❌ 画像アップロードエラー:', error);
+    console.error('エラースタック:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('エラー詳細:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      hasFile: !!req.file,
+      fileSize: req.file?.size,
+      fileName: req.file?.originalname,
+      imagesDir: process.env.FAULT_HISTORY_IMAGES_DIR || path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports')
+    });
+    
     res.status(500).json({
       success: false,
       error: '画像のアップロードに失敗しました',
       details: error instanceof Error ? error.message : 'Unknown error',
+      errorType: error instanceof Error ? error.name : 'Unknown',
+      timestamp: new Date().toISOString()
     });
   }
 });
