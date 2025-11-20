@@ -118,18 +118,46 @@ jobs:
 
           # Verify source file has correct changes
           echo "🔍 Verifying source file changes..."
+          echo "📄 Checking source file: src/pages/settings.tsx"
+          echo "   File exists: $([ -f "src/pages/settings.tsx" ] && echo 'yes' || echo 'no')"
+          echo "   File size: $(wc -c < src/pages/settings.tsx 2>/dev/null || echo 'unknown') bytes"
+          echo "   Last modified: $(stat -c %y src/pages/settings.tsx 2>/dev/null || ls -la src/pages/settings.tsx | awk '{print $6, $7, $8}')"
+          
           if grep -q "hasSecurityAccess" src/pages/settings.tsx; then
             echo "❌ ERROR: Source file still contains hasSecurityAccess!"
+            grep -n "hasSecurityAccess" src/pages/settings.tsx | head -3
             exit 1
           fi
-          if ! grep -q "セキュリティー監視" src/pages/settings.tsx; then
+          
+          SECURITY_COUNT=$(grep -c "セキュリティー監視" src/pages/settings.tsx || echo "0")
+          MAINTENANCE_COUNT=$(grep -c "保守管理" src/pages/settings.tsx || echo "0")
+          
+          echo "   Security card count: $SECURITY_COUNT"
+          echo "   Maintenance card count: $MAINTENANCE_COUNT"
+          
+          if [ "$SECURITY_COUNT" -eq "0" ]; then
             echo "❌ ERROR: Security card not found in source file!"
+            echo "   Showing lines around expected location:"
+            grep -n "Card" src/pages/settings.tsx | head -10
             exit 1
           fi
-          if ! grep -q "保守管理" src/pages/settings.tsx; then
+          
+          if [ "$MAINTENANCE_COUNT" -eq "0" ]; then
             echo "❌ ERROR: Maintenance card not found in source file!"
+            echo "   Showing lines around expected location:"
+            grep -n "Card" src/pages/settings.tsx | tail -10
             exit 1
           fi
+          
+          # Verify the cards are NOT inside conditional rendering
+          if grep -A 50 "セキュリティー監視" src/pages/settings.tsx | grep -q "hasSecurityAccess\|user\?\.role.*admin\|role === 'admin'"; then
+            echo "⚠️ WARNING: Security card might be inside conditional rendering!"
+          fi
+          
+          if grep -A 50 "保守管理" src/pages/settings.tsx | grep -B 10 "保守管理" | grep -q "hasSecurityAccess\|user\?\.role.*admin\|role === 'admin'"; then
+            echo "⚠️ WARNING: Maintenance card might be inside conditional rendering!"
+          fi
+          
           echo "✅ Source file verification passed"
 
           # Set environment variables for Vite build
@@ -486,13 +514,13 @@ jobs:
           DEPLOY_STATUS="${{ steps.deploy.outcome }}"
           CDN_CACHE_STATUS="${{ steps.cdn-cache.outcome }}"
           CDN_WAIT_STATUS="${{ steps.cdn-wait.outcome }}"
-          
+
           echo "📊 Deployment Status Summary:"
           echo "  Deploy step: $DEPLOY_STATUS"
           echo "  CDN cache step: $CDN_CACHE_STATUS"
           echo "  CDN wait step: $CDN_WAIT_STATUS"
           echo ""
-          
+
           if [ "$DEPLOY_STATUS" == "success" ]; then
             echo "✅ Deployment completed successfully!"
             echo "🔗 Deployed to: $STATIC_WEB_APP_URL"
@@ -508,7 +536,7 @@ jobs:
             echo "🔍 To verify cards are visible:"
             echo "   - Open: $STATIC_WEB_APP_URL/settings"
             echo "   - Check for 'セキュリティー監視' and '保守管理' cards"
-            
+
             if [ "$CDN_CACHE_STATUS" != "success" ] || [ "$CDN_WAIT_STATUS" != "success" ]; then
               echo ""
               echo "⚠️ Warning: Some non-critical steps failed (CDN cache clearing)"
