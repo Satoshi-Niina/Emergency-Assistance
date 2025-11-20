@@ -119,46 +119,82 @@ jobs:
           # Verify source file has correct changes
           echo "🔍 Verifying source file changes..."
           echo "📄 Checking source file: src/pages/settings.tsx"
-          echo "   File exists: $([ -f "src/pages/settings.tsx" ] && echo 'yes' || echo 'no')"
-          echo "   File size: $(wc -c < src/pages/settings.tsx 2>/dev/null || echo 'unknown') bytes"
-          echo "   Last modified: $(stat -c %y src/pages/settings.tsx 2>/dev/null || ls -la src/pages/settings.tsx | awk '{print $6, $7, $8}')"
           
-          if grep -q "hasSecurityAccess" src/pages/settings.tsx; then
-            echo "❌ ERROR: Source file still contains hasSecurityAccess!"
-            grep -n "hasSecurityAccess" src/pages/settings.tsx | head -3
+          # Check file exists
+          if [ ! -f "src/pages/settings.tsx" ]; then
+            echo "❌ ERROR: src/pages/settings.tsx not found!"
+            ls -la src/pages/ || echo "src/pages directory not found"
             exit 1
           fi
           
-          SECURITY_COUNT=$(grep -c "セキュリティー監視" src/pages/settings.tsx || echo "0")
-          MAINTENANCE_COUNT=$(grep -c "保守管理" src/pages/settings.tsx || echo "0")
+          FILE_SIZE=$(wc -c < src/pages/settings.tsx 2>/dev/null || echo "0")
+          echo "   File exists: yes"
+          echo "   File size: $FILE_SIZE bytes"
+          
+          # Show file info
+          if command -v stat >/dev/null 2>&1; then
+            echo "   Last modified: $(stat -c %y src/pages/settings.tsx 2>/dev/null || stat -f %Sm src/pages/settings.tsx 2>/dev/null || echo 'unknown')"
+          else
+            echo "   Last modified: $(ls -la src/pages/settings.tsx | awk '{print $6, $7, $8}' 2>/dev/null || echo 'unknown')"
+          fi
+          
+          # Check for old code
+          if grep -q "hasSecurityAccess" src/pages/settings.tsx; then
+            echo "❌ ERROR: Source file still contains hasSecurityAccess!"
+            echo "   Found at lines:"
+            grep -n "hasSecurityAccess" src/pages/settings.tsx | head -3
+            exit 1
+          fi
+          echo "   ✅ hasSecurityAccess not found (good)"
+          
+          # Count card occurrences
+          SECURITY_COUNT=$(grep -c "セキュリティー監視" src/pages/settings.tsx 2>/dev/null || echo "0")
+          MAINTENANCE_COUNT=$(grep -c "保守管理" src/pages/settings.tsx 2>/dev/null || echo "0")
           
           echo "   Security card count: $SECURITY_COUNT"
           echo "   Maintenance card count: $MAINTENANCE_COUNT"
           
+          # Verify cards exist
           if [ "$SECURITY_COUNT" -eq "0" ]; then
-            echo "❌ ERROR: Security card not found in source file!"
-            echo "   Showing lines around expected location:"
-            grep -n "Card" src/pages/settings.tsx | head -10
+            echo "❌ ERROR: Security card (セキュリティー監視) not found in source file!"
+            echo "   Showing Card components in file:"
+            grep -n "Card" src/pages/settings.tsx | head -15
+            echo "   Showing lines around line 440-450:"
+            sed -n '440,460p' src/pages/settings.tsx 2>/dev/null || echo "   Cannot read file"
             exit 1
           fi
           
           if [ "$MAINTENANCE_COUNT" -eq "0" ]; then
-            echo "❌ ERROR: Maintenance card not found in source file!"
-            echo "   Showing lines around expected location:"
-            grep -n "Card" src/pages/settings.tsx | tail -10
+            echo "❌ ERROR: Maintenance card (保守管理) not found in source file!"
+            echo "   Showing Card components in file:"
+            grep -n "Card" src/pages/settings.tsx | tail -15
+            echo "   Showing lines around line 500-510:"
+            sed -n '500,520p' src/pages/settings.tsx 2>/dev/null || echo "   Cannot read file"
             exit 1
           fi
           
-          # Verify the cards are NOT inside conditional rendering
-          if grep -A 50 "セキュリティー監視" src/pages/settings.tsx | grep -q "hasSecurityAccess\|user\?\.role.*admin\|role === 'admin'"; then
-            echo "⚠️ WARNING: Security card might be inside conditional rendering!"
+          # Verify cards are NOT inside conditional rendering (check 20 lines before)
+          SECURITY_LINE=$(grep -n "セキュリティー監視" src/pages/settings.tsx | head -1 | cut -d: -f1)
+          if [ -n "$SECURITY_LINE" ]; then
+            START_LINE=$((SECURITY_LINE - 20))
+            if [ "$START_LINE" -lt 1 ]; then START_LINE=1; fi
+            if sed -n "${START_LINE},${SECURITY_LINE}p" src/pages/settings.tsx | grep -q "hasSecurityAccess\|user\?\.role.*admin\|role === 'admin'\|&&.*Card\|if.*Card"; then
+              echo "⚠️ WARNING: Security card might be inside conditional rendering!"
+              sed -n "${START_LINE},${SECURITY_LINE}p" src/pages/settings.tsx | grep -n "hasSecurityAccess\|user\?\.role\|role ===\|&&\|if"
+            fi
           fi
           
-          if grep -A 50 "保守管理" src/pages/settings.tsx | grep -B 10 "保守管理" | grep -q "hasSecurityAccess\|user\?\.role.*admin\|role === 'admin'"; then
-            echo "⚠️ WARNING: Maintenance card might be inside conditional rendering!"
+          MAINTENANCE_LINE=$(grep -n "保守管理" src/pages/settings.tsx | head -1 | cut -d: -f1)
+          if [ -n "$MAINTENANCE_LINE" ]; then
+            START_LINE=$((MAINTENANCE_LINE - 20))
+            if [ "$START_LINE" -lt 1 ]; then START_LINE=1; fi
+            if sed -n "${START_LINE},${MAINTENANCE_LINE}p" src/pages/settings.tsx | grep -q "hasSecurityAccess\|user\?\.role.*admin\|role === 'admin'\|&&.*Card\|if.*Card"; then
+              echo "⚠️ WARNING: Maintenance card might be inside conditional rendering!"
+              sed -n "${START_LINE},${MAINTENANCE_LINE}p" src/pages/settings.tsx | grep -n "hasSecurityAccess\|user\?\.role\|role ===\|&&\|if"
+            fi
           fi
           
-          echo "✅ Source file verification passed"
+          echo "✅ Source file verification passed - cards are present and should be visible"
 
           # Set environment variables for Vite build
           export NODE_ENV=production
@@ -199,20 +235,45 @@ jobs:
           fi
 
           echo "📄 Checking built file: $MAIN_FILE"
+          echo "   File size: $(wc -c < "$MAIN_FILE" 2>/dev/null || echo 'unknown') bytes"
+          
+          # Check for security card in built file
           if grep -q "セキュリティー監視" "$MAIN_FILE"; then
-            echo "✅ Security card found in $MAIN_FILE"
+            SECURITY_MATCHES=$(grep -o "セキュリティー監視" "$MAIN_FILE" | wc -l)
+            echo "✅ Security card found in $MAIN_FILE ($SECURITY_MATCHES occurrences)"
           else
             echo "❌ ERROR: Security card NOT found in $MAIN_FILE!"
-            echo "File size: $(wc -c < "$MAIN_FILE") bytes"
+            echo "   File size: $(wc -c < "$MAIN_FILE" 2>/dev/null || echo 'unknown') bytes"
+            echo "   Showing sample content from built file:"
+            head -c 5000 "$MAIN_FILE" 2>/dev/null | tail -c 1000 || echo "   Cannot read file"
+            echo "   Checking if file contains any Japanese text:"
+            grep -o '[あ-ん]' "$MAIN_FILE" | head -20 || echo "   No Japanese characters found"
             exit 1
           fi
 
+          # Check for maintenance card in built file
           if grep -q "保守管理" "$MAIN_FILE"; then
-            echo "✅ Maintenance card found in $MAIN_FILE"
+            MAINTENANCE_MATCHES=$(grep -o "保守管理" "$MAIN_FILE" | wc -l)
+            echo "✅ Maintenance card found in $MAIN_FILE ($MAINTENANCE_MATCHES occurrences)"
           else
             echo "❌ ERROR: Maintenance card NOT found in $MAIN_FILE!"
+            echo "   File size: $(wc -c < "$MAIN_FILE" 2>/dev/null || echo 'unknown') bytes"
+            echo "   Showing sample content from built file:"
+            head -c 5000 "$MAIN_FILE" 2>/dev/null | tail -c 1000 || echo "   Cannot read file"
             exit 1
           fi
+          
+          # Verify old code is not in built file
+          if grep -q "hasSecurityAccess" "$MAIN_FILE"; then
+            echo "❌ ERROR: hasSecurityAccess still found in $MAIN_FILE!"
+            echo "   Found at:"
+            grep -o "hasSecurityAccess[^\"']*" "$MAIN_FILE" | head -3
+            exit 1
+          else
+            echo "✅ hasSecurityAccess removed from $MAIN_FILE (good)"
+          fi
+          
+          echo "✅ Build verification passed - both cards are in the built file"
 
           if grep -q "hasSecurityAccess" "$MAIN_FILE"; then
             echo "❌ ERROR: hasSecurityAccess still found in $MAIN_FILE!"
@@ -719,3 +780,4 @@ jobs:
           echo "1. Visit: $STATIC_WEB_APP_URL"
           echo "2. Test key features"
           echo "3. Monitor logs if issues occur"
+
