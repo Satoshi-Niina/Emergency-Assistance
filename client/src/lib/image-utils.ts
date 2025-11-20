@@ -15,37 +15,41 @@ function getApiBaseUrl(): string {
         // /apiが含まれている場合は削除（後で適切に追加するため）
         return apiBaseUrl.replace(/\/api$/, '');
       }
-      
+
       // 環境変数が設定されている場合
       if (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.trim() !== '') {
         return import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '');
       }
-      
+
       // 環境判定によるフォールバック
       const isLocalhost = window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1');
       const isAzureStaticWebApp = /\.azurestaticapps\.net$/i.test(window.location.hostname);
-      
+
       // Azure Static Web Appの場合は相対パス
       if (isAzureStaticWebApp) {
         return '';
       }
-      
+
       // ローカル開発環境 - Viteプロキシを使用するため現在のoriginを使用
       if (isLocalhost) {
         // 開発環境では現在のoriginを使用（Viteプロキシが適切にルーティング）
         return window.location.origin;
       }
-      
+
       // 本番環境のデフォルト（環境変数から取得、フォールバックは相対パス）
       return import.meta.env.VITE_BACKEND_SERVICE_URL || '';
     }
   } catch (error) {
     console.warn('APIベースURL取得エラー:', error);
   }
-  
-  // フォールバック - 現在のoriginを使用
-  const fallbackUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-  return typeof window !== 'undefined' ? window.location.origin : fallbackUrl;
+
+  // フォールバック - 環境変数またはバックエンドサービスURL
+  const fallbackUrl = import.meta.env.VITE_BACKEND_SERVICE_URL || import.meta.env.VITE_SERVER_URL || '';
+  // ブラウザ環境では現在のoriginを優先
+  if (typeof window !== 'undefined') {
+    return fallbackUrl || window.location.origin;
+  }
+  return fallbackUrl;
 }
 
 /**
@@ -55,12 +59,12 @@ function getApiBaseUrl(): string {
  */
 export function convertImageUrl(url: any): string {
   console.log('🖼️ convertImageUrl 開始:', { url, type: typeof url });
-  
+
   if (!url) {
     console.log('❌ URLが空です');
     return '';
   }
-  
+
   // urlがオブジェクトの場合はurlプロパティを参照
   if (typeof url !== 'string') {
     if (typeof url.url === 'string') {
@@ -73,11 +77,11 @@ export function convertImageUrl(url: any): string {
   }
 
   // レガシーポート参照の自動修正
-  if (typeof url === 'string' && url.includes('localhost:8000')) {
-    // 現在のoriginを使用して動的に修正
-    const fallbackUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : fallbackUrl;
-    const correctedUrl = url.replace(/http:\/\/localhost:8000/g, currentOrigin);
+  if (typeof url === 'string' && (url.includes('localhost:8000') || url.includes('localhost:8080'))) {
+    // 環境変数から適切なベースURLを取得
+    const backendUrl = import.meta.env.VITE_BACKEND_SERVICE_URL || import.meta.env.VITE_SERVER_URL;
+    const currentOrigin = typeof window !== 'undefined' && backendUrl ? backendUrl : (typeof window !== 'undefined' ? window.location.origin : '');
+    const correctedUrl = url.replace(/http:\/\/localhost:(8000|8080)/g, currentOrigin);
     console.log('🔧 レガシーポート修正:', { original: url, corrected: correctedUrl, currentOrigin });
     return correctedUrl;
   }
@@ -93,12 +97,12 @@ export function convertImageUrl(url: any): string {
     console.log('✅ Base64データ:', url.substring(0, 50) + '...');
     return url;
   }
-  
+
   // APIパスの場合の処理 - /api/emergency-flow/image/ または /api/troubleshooting/image/ の場合
   if (url.startsWith('/api/emergency-flow/image/') || url.startsWith('/api/troubleshooting/image/')) {
     // ファイル名を抽出
     const fileName = url.split('/').pop() || url.split('\\').pop() || url;
-    
+
     // 開発環境でViteプロキシを使用する場合は相対パスを再構築
     if (import.meta.env.DEV && window.location.hostname.includes('localhost')) {
       // emergency-flow画像の場合は emergency-flow APIエンドポイントを使用
@@ -112,7 +116,7 @@ export function convertImageUrl(url: any): string {
       console.log('✅ troubleshooting URL（プロキシ、再構築）:', { original: url, fileName, troubleshootingUrl });
       return troubleshootingUrl;
     }
-    
+
     // 本番環境や他の環境では完全なURLに変換
     const apiBaseUrl = getApiBaseUrl();
     if (url.includes('emergency-flow')) {
@@ -132,24 +136,24 @@ export function convertImageUrl(url: any): string {
       console.log('✅ 開発環境のAPIパス（プロキシ使用）:', url);
       return url;
     }
-    
+
     // 本番環境や他の環境では完全なURLに変換
     const apiBaseUrl = getApiBaseUrl();
     const fullUrl = `${apiBaseUrl}${url}`;
     console.log('✅ APIパス変換（完全URL）:', { original: url, apiBaseUrl, fullUrl });
     return fullUrl;
   }
-  
+
   // その他の相対パスの場合はそのまま返す（静的ファイルとして配信）
   if (url.startsWith('/')) {
     console.log('✅ 相対パス:', url);
     return url;
   }
-  
+
   // ファイル名のみの場合は、APIエンドポイントに変換
   const apiBaseUrl = getApiBaseUrl();
   console.log('🔧 APIベースURL:', apiBaseUrl);
-  
+
   // ファイル名を抽出（パスから最後の部分を取得）
   let fileName = url;
   if (url.includes('/')) {
@@ -157,9 +161,9 @@ export function convertImageUrl(url: any): string {
   } else if (url.includes('\\')) {
     fileName = url.split('\\').pop() || url;
   }
-  
+
   console.log('📁 ファイル名抽出:', { original: url, fileName });
-  
+
   // emergency-flow APIエンドポイントを優先使用
   if (fileName.includes('emergency-flow-step') || url.includes('/api/emergency-flow/image/')) {
     // 開発環境でViteプロキシを使用する場合は相対パス
@@ -168,20 +172,20 @@ export function convertImageUrl(url: any): string {
       console.log('✅ emergency-flow URL（プロキシ）:', emergencyUrl);
       return emergencyUrl;
     }
-    
+
     // 本番環境では完全URL
     const emergencyUrl = `${apiBaseUrl}/api/emergency-flow/image/${fileName}`;
     console.log('✅ emergency-flow URL:', emergencyUrl);
     return emergencyUrl;
   }
-  
+
   // その他の場合はtroubleshooting APIエンドポイントを使用
   if (import.meta.env.DEV && window.location.hostname.includes('localhost')) {
     const troubleshootingUrl = `/api/troubleshooting/image/${fileName}`;
     console.log('✅ troubleshooting URL（プロキシ）:', troubleshootingUrl);
     return troubleshootingUrl;
   }
-  
+
   const troubleshootingUrl = `${apiBaseUrl}/api/troubleshooting/image/${fileName}`;
   console.log('✅ troubleshooting URL:', troubleshootingUrl);
   return troubleshootingUrl;
@@ -213,7 +217,7 @@ export function handleImageError(
 ): void {
   const imgElement = e.currentTarget;
   const currentSrc = imgElement.src;
-  
+
   // 再試行回数をチェック
   const retryCount = imageErrorCounts.get(currentSrc) || 0;
   console.error('画像表示エラー:', {
@@ -241,7 +245,7 @@ export function handleImageError(
 
     // ファイル名を抽出（元のimageUrlから、またはcurrentSrcから）
     let fileName: string | undefined;
-    
+
     // まず、currentSrcからファイル名を抽出を試みる（既に変換済みURLの場合）
     const currentSrcFileName = currentSrc.split('/').pop() || currentSrc.split('\\').pop();
     if (currentSrcFileName && currentSrcFileName.includes('emergency-flow-step')) {
@@ -261,14 +265,14 @@ export function handleImageError(
 
     // ファイル名が取得できた場合のみ再試行
     if (fileName && fileName.trim() !== '' && fileName.includes('emergency-flow-step')) {
-      console.log('🔄 画像再試行:', { 
+      console.log('🔄 画像再試行:', {
         original: imageUrl,
         currentSrc: currentSrc,
         fileName,
         retryCount: retryCount + 1,
         maxRetries: MAX_RETRY_COUNT
       });
-      
+
       // 開発環境では相対パスを優先（Viteプロキシ経由）
       if (import.meta.env.DEV && window.location.hostname.includes('localhost')) {
         const newUrl = `/api/emergency-flow/image/${fileName}`;

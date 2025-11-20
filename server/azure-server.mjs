@@ -4842,19 +4842,26 @@ app.use((err, req, res, _next) => {
 // ===== サーバー起動準備 =====
 // サーバー起動は最後に行う（ファイルの最後を参照）
 
+// サーバーインスタンスを先に宣言（後で初期化）
+let server;
+
 const shutdown = (sig) => () => {
   console.log(`↩️  Received ${sig}, shutting down gracefully...`);
-  server.close(() => {
-    if (dbPool) {
-      dbPool.end(() => {
-        console.log('Database pool closed');
+  if (server) {
+    server.close(() => {
+      if (dbPool) {
+        dbPool.end(() => {
+          console.log('Database pool closed');
+          process.exit(0);
+        });
+      } else {
         process.exit(0);
-      });
-    } else {
-      process.exit(0);
-    }
-  });
-  setTimeout(() => process.exit(1), 10000);
+      }
+    });
+    setTimeout(() => process.exit(1), 10000);
+  } else {
+    process.exit(0);
+  }
 };
 
 process.on('SIGTERM', shutdown('SIGTERM'));
@@ -4874,7 +4881,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // サーバー起動（これが必須！）
-const server = app.listen(PORT, '0.0.0.0', () => {
+server = app.listen(PORT, '0.0.0.0', () => {
   console.log('');
   console.log('🎉 ================================================');
   console.log('🚀 Azure Production Server Started Successfully!');

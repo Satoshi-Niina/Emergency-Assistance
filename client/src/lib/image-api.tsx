@@ -1,9 +1,9 @@
 // 画像データベ�EスAPI用のユーティングーリティングー関数
 import React from 'react';
 
-// API設宁E- VITE_API_BASE_URLのみを使用
+// API設定 - 環境変数から取得、フォールバックは相対パス
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+  import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_BACKEND_SERVICE_URL || '';
 
 export interface ImageData {
   id: string;
@@ -72,9 +72,9 @@ export async function getImageUrl(imageId: string): Promise<string> {
     return response.url;
   } catch (error) {
     console.error('Failed to get image SAS URL:', error);
-    // フォールバック: 従来のAPIエンド�Eインティング
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-    return `${API_BASE_URL}/api/images/${imageId}`;
+    // フォールバック: 従来のAPIエンドポイント
+    const fallbackBaseUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_BACKEND_SERVICE_URL || '';
+    return `${fallbackBaseUrl}/api/images/${imageId}`;
   }
 }
 

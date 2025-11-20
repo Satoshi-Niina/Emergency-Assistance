@@ -1,8 +1,8 @@
 // 画像データベースAPI用のユーティリティ関数
 import React from 'react';
 
-// API設定 - VITE_API_BASE_URLのみを使用
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+// API設定 - 環境変数から取得、フォールバックは相対パス
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_BACKEND_SERVICE_URL || '';
 
 export interface ImageData {
     id: string;
@@ -23,7 +23,7 @@ export async function uploadImage(
 ): Promise<{ success: boolean; imageId?: string; error?: string }> {
     try {
         const base64Data = await fileToBase64(file);
-        
+
         const response = await fetch(`${API_BASE_URL}/api/images/upload`, {
             method: 'POST',
             headers: {
@@ -41,7 +41,7 @@ export async function uploadImage(
         });
 
         const result = await response.json();
-        
+
         if (response.ok) {
             return { success: true, imageId: result.imageId };
         } else {
@@ -62,7 +62,7 @@ export function getImageUrl(imageId: string): string {
 export async function getImagesByCategory(category: string): Promise<ImageData[]> {
     try {
         const response = await fetch(`${API_BASE_URL}/api/images/category/${category}`);
-        
+
         if (response.ok) {
             return await response.json();
         } else {
@@ -79,7 +79,7 @@ export async function getImagesByCategory(category: string): Promise<ImageData[]
 export async function searchImages(query: string): Promise<ImageData[]> {
     try {
         const response = await fetch(`${API_BASE_URL}/api/images/search/${encodeURIComponent(query)}`);
-        
+
         if (response.ok) {
             return await response.json();
         } else {
@@ -98,7 +98,7 @@ export async function deleteImage(imageId: string): Promise<boolean> {
         const response = await fetch(`${API_BASE_URL}/api/images/${imageId}`, {
             method: 'DELETE',
         });
-        
+
         return response.ok;
     } catch (error) {
         console.error('画像削除エラー:', error);
