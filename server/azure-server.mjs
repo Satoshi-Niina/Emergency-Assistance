@@ -4189,6 +4189,290 @@ app.post('/api/emergency-flow/upload-image', upload.single('image'), async (req,
   }
 });
 
+// チャット画像アップロードAPI
+app.post('/api/history/upload-image', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: '画像ファイルが見つかりません'
+      });
+    }
+
+    console.log('[api/history/upload-image] 画像アップロード:', {
+      fileName: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype
+    });
+
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({
+        success: false,
+        error: 'BLOBストレージが利用できません'
+      });
+    }
+
+    // ファイル名を生成（タイムスタンプ付き）
+    const timestamp = Date.now();
+    const ext = path.extname(req.file.originalname);
+    const baseName = path.basename(req.file.originalname, ext);
+    const fileName = `chat_image_${timestamp}${ext}`;
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blobName = norm(`images/chat-exports/${fileName}`);
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+    // 画像をBLOBにアップロード
+    await blockBlobClient.uploadData(req.file.buffer, {
+      blobHTTPHeaders: {
+        blobContentType: req.file.mimetype
+      },
+      metadata: {
+        originalName: req.file.originalname,
+        uploadedAt: new Date().toISOString()
+      }
+    });
+
+    console.log(`✅ チャット画像アップロード成功: ${blobName}`);
+
+    const imageUrl = blockBlobClient.url;
+
+    res.json({
+      success: true,
+      imageUrl: imageUrl,
+      fileName: fileName,
+      blobName: blobName,
+      size: req.file.size
+    });
+  } catch (error) {
+    console.error('[api/history/upload-image] エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '画像のアップロードに失敗しました',
+      details: error.message
+    });
+  }
+});
+
+// チャット送信API（本番用 - 認証付き）
+app.post('/api/chats/:chatId/send', async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const { chatData, exportType } = req.body;
+
+    console.log('✅ /api/chats/:chatId/send エンドポイントに到達');
+    console.log('🔍 チャット送信リクエスト:', {
+      method: req.method,
+      url: req.url,
+      chatId: chatId,
+      exportType: exportType,
+      messageCount: chatData?.messages?.length || 0,
+      machineInfo: chatData?.machineInfo
+    });
+
+    // チャットデータの検証
+    if (!chatData || !chatData.messages || !Array.isArray(chatData.messages)) {
+      return res.status(400).json({
+        error: 'Invalid chat data format',
+        details: 'chatData.messages must be an array'
+      });
+    }
+
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({
+        success: false,
+        error: 'BLOBストレージが利用できません'
+      });
+    }
+
+    // タイムスタンプを生成
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+    // ユーザーメッセージから事象情報を抽出してファイル名に使用
+    const userMessages = chatData.messages.filter((m) => !m.isAiResponse);
+    const textMessages = userMessages
+      .map((m) => m.content)
+      .filter((content) => content && !content.trim().startsWith('data:image/'))
+      .join('\n')
+      .trim();
+
+    let incidentTitle = '事象なし';
+    if (textMessages) {
+      incidentTitle = textMessages.split('\n')[0].trim();
+    } else {
+      incidentTitle = '画像による故障報告';
+    }
+
+    // ファイル名用に事象内容をサニタイズ
+    const sanitizedTitle = incidentTitle
+      .replace(/[<>:"/\\|?*]/g, '')
+      .replace(/\s+/g, '_')
+      .substring(0, 50);
+
+    const fileName = `${sanitizedTitle}_${chatId}_${timestamp}.json`;
+
+    // チャットメッセージから画像を抽出してBLOBに保存
+    const savedImages = [];
+    const cleanedChatData = JSON.parse(JSON.stringify(chatData));
+
+    for (const message of cleanedChatData.messages) {
+      if (message.content && message.content.startsWith('data:image/')) {
+        try {
+          const base64Data = message.content.replace(/^data:image\/[a-z]+;base64,/, '');
+          const buffer = Buffer.from(base64Data, 'base64');
+
+          const imageTimestamp = Date.now();
+          const imageFileName = `chat_image_${chatId}_${imageTimestamp}.jpg`;
+          
+          const containerClient = blobServiceClient.getContainerClient(containerName);
+          const blobName = norm(`images/chat-exports/${imageFileName}`);
+          const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+          await blockBlobClient.uploadData(buffer, {
+            blobHTTPHeaders: {
+              blobContentType: 'image/jpeg'
+            },
+            metadata: {
+              chatId: chatId,
+              uploadedAt: new Date().toISOString()
+            }
+          });
+
+          const imageUrl = blockBlobClient.url;
+          savedImages.push({
+            fileName: imageFileName,
+            blobName: blobName,
+            url: imageUrl,
+            timestamp: imageTimestamp
+          });
+
+          // メッセージ内容を画像参照に置き換え
+          message.content = `[画像: ${imageFileName}]`;
+          message.imageUrl = imageUrl;
+        } catch (error) {
+          console.error('画像保存エラー:', error);
+        }
+      }
+    }
+
+    // チャットデータをJSONとして保存
+    const exportData = {
+      chatId: chatId,
+      title: `${incidentTitle} (${chatId})`,
+      machineType: chatData.machineInfo?.type || '',
+      machineNumber: chatData.machineInfo?.number || '',
+      messages: cleanedChatData.messages,
+      savedImages: savedImages,
+      exportTimestamp: new Date().toISOString(),
+      exportType: exportType || 'chat_export',
+      version: '1.0'
+    };
+
+    // BLOBストレージに保存
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blobName = norm(`exports/${fileName}`);
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+    await blockBlobClient.upload(
+      JSON.stringify(exportData, null, 2),
+      JSON.stringify(exportData, null, 2).length,
+      {
+        blobHTTPHeaders: {
+          blobContentType: 'application/json'
+        },
+        metadata: {
+          chatId: chatId,
+          exportType: exportType || 'chat_export',
+          exportedAt: new Date().toISOString()
+        }
+      }
+    );
+
+    console.log(`✅ チャットデータ保存成功: ${blobName}`);
+    console.log(`📊 保存された画像数: ${savedImages.length}`);
+
+    res.json({
+      success: true,
+      message: 'チャットを送信しました',
+      chatId: chatId,
+      fileName: fileName,
+      blobName: blobName,
+      savedImagesCount: savedImages.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/chats/send] エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'チャットの送信に失敗しました',
+      details: error.message
+    });
+  }
+});
+
+// 応急復旧フロー詳細取得API
+app.get('/api/emergency-flow/detail/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`[api/emergency-flow/detail] フロー詳細取得: ${id}`);
+
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({
+        success: false,
+        error: 'BLOBストレージが利用できません'
+      });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blobName = norm(`troubleshooting/${id}.json`);
+    const blobClient = containerClient.getBlobClient(blobName);
+
+    try {
+      const downloadResponse = await blobClient.download();
+      const downloaded = await streamToBuffer(downloadResponse.readableStreamBody);
+      const flowData = JSON.parse(downloaded.toString('utf-8'));
+
+      console.log(`✅ フロー詳細取得成功: ${id}`);
+
+      res.json({
+        success: true,
+        data: flowData
+      });
+    } catch (blobError) {
+      console.error(`❌ BLOB取得エラー: ${blobName}`, blobError);
+      res.status(404).json({
+        success: false,
+        error: 'フロー詳細が見つかりません',
+        details: blobError.message
+      });
+    }
+  } catch (error) {
+    console.error('[api/emergency-flow/detail] エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'フロー詳細の取得に失敗しました',
+      details: error.message
+    });
+  }
+});
+
+// ヘルパー関数: Streamをバッファに変換
+async function streamToBuffer(readableStream) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    readableStream.on('data', (data) => {
+      chunks.push(data instanceof Buffer ? data : Buffer.from(data));
+    });
+    readableStream.on('end', () => {
+      resolve(Buffer.concat(chunks));
+    });
+    readableStream.on('error', reject);
+  });
+}
+
 // 個別エクスポートJSONファイル取得API
 app.get('/api/history/exports/:fileName', async (req, res) => {
   try {
