@@ -249,13 +249,13 @@ jobs:
         working-directory: ./client
         run: |
           echo "📦 Verifying build output before deployment..."
-          
+
           # distフォルダの存在確認
           if [ ! -d "dist" ]; then
             echo "❌ ERROR: dist directory not found!"
             exit 1
           fi
-          
+
           # 必須ファイルの確認
           required_files=("index.html" "main.*.mjs" "style.*.css")
           for pattern in "${required_files[@]}"; do
@@ -265,7 +265,7 @@ jobs:
               exit 1
             fi
           done
-          
+
           # settings.tsxの変更が反映されているか確認（ビルドされたファイルにhasSecurityAccessが含まれていないか）
           echo "🔍 Checking if settings page changes are in build..."
           if find dist -name "*.mjs" -exec grep -l "hasSecurityAccess" {} \; 2>/dev/null | grep -q .; then
@@ -273,11 +273,11 @@ jobs:
           else
             echo "✅ hasSecurityAccess not found in built files - changes are included"
           fi
-          
+
           # ファイル一覧を表示
           echo "📊 Build output files:"
           ls -lah dist/ | head -20
-          
+
           echo "✅ Build output verification completed"
 
       - name: Clear Azure Static Web Apps Cache
@@ -287,6 +287,27 @@ jobs:
           rm -rf ~/.azure-static-web-apps-cli || true
           # Clear npm cache
           npm cache clean --force || true
+
+      - name: Verify Files Before Deploy
+        run: |
+          echo "📋 Verifying files before deployment..."
+          echo "Current directory: $(pwd)"
+          echo "Checking client/dist directory:"
+          ls -lah client/dist/ || echo "❌ client/dist directory not found!"
+          
+          if [ ! -d "client/dist" ]; then
+            echo "❌ ERROR: client/dist directory does not exist!"
+            exit 1
+          fi
+          
+          if [ ! -f "client/dist/index.html" ]; then
+            echo "❌ ERROR: client/dist/index.html not found!"
+            exit 1
+          fi
+          
+          echo "✅ Required files verified"
+          echo "File count in client/dist: $(find client/dist -type f | wc -l)"
+          echo "Directory size: $(du -sh client/dist | cut -f1)"
 
       - name: Deploy to Azure Static Web Apps
         id: deploy
@@ -302,10 +323,13 @@ jobs:
           production_branch: main
           deployment_environment: production
         continue-on-error: false
+        env:
+          DEBUG: '*'
 
       - name: Verify Deployment
+        if: success()
         run: |
-          echo "✅ Deployment completed"
+          echo "✅ Deployment completed successfully"
           echo "🔗 Deployed to: $STATIC_WEB_APP_URL"
           echo "⏰ Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           echo "🔢 Build ID: $VITE_BUILD_ID"
@@ -315,6 +339,21 @@ jobs:
           echo "   1. Wait 2-3 minutes for CDN cache to clear"
           echo "   2. Hard refresh your browser (Ctrl+Shift+R or Cmd+Shift+R)"
           echo "   3. Clear browser cache if needed"
+
+      - name: Deployment Error Details
+        if: failure()
+        run: |
+          echo "❌ Deployment failed!"
+          echo "📋 Debug information:"
+          echo "  Working directory: $(pwd)"
+          echo "  Client dist exists: $([ -d 'client/dist' ] && echo 'yes' || echo 'no')"
+          echo "  Index.html exists: $([ -f 'client/dist/index.html' ] && echo 'yes' || echo 'no')"
+          echo "  Token set: $([ -n '${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}' ] && echo 'yes' || echo 'no')"
+          echo ""
+          echo "📁 Contents of client/dist:"
+          ls -lah client/dist/ || echo "Directory not found"
+          echo ""
+          echo "🔍 Check the step above for detailed error messages"
 
       - name: Trigger CDN Cache Purge
         continue-on-error: true
