@@ -21,42 +21,10 @@ const issueJwt = (userId, options = {}) => {
 };
 const router = express_1.default.Router();
 // CORSミドルウェア（認証ルート用）
+// 注意: CORS設定はazure-server.mjsで一元管理されているため、このミドルウェアは不要
+// ただし、レガシーコードとの互換性のため、次のリクエストに進むだけの処理として残す
 router.use((req, res, next) => {
-    const origin = req.headers.origin;
-    // 注意: 本番環境では必ずSTATIC_WEB_APP_URL環境変数を設定してください
-    const staticWebAppUrl = process.env.STATIC_WEB_APP_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080');
-    const clientPort = process.env.CLIENT_PORT || '5173';
-    const allowedOrigins = [
-        `http://localhost:${clientPort}`,
-        `http://localhost:${parseInt(clientPort) + 1}`,
-        `http://localhost:${parseInt(clientPort) + 2}`,
-        `http://localhost:${parseInt(clientPort) + 3}`,
-        `http://localhost:${parseInt(clientPort) + 4}`,
-        `http://localhost:${parseInt(clientPort) + 5}`,
-        `http://127.0.0.1:${clientPort}`,
-        `http://127.0.0.1:${parseInt(clientPort) + 1}`,
-        `http://127.0.0.1:${parseInt(clientPort) + 2}`,
-        `http://127.0.0.1:${parseInt(clientPort) + 3}`,
-        `http://127.0.0.1:${parseInt(clientPort) + 4}`,
-        `http://127.0.0.1:${parseInt(clientPort) + 5}`,
-        staticWebAppUrl,
-        ...(process.env.CORS_ALLOW_ORIGINS?.split(',') || [])
-    ].filter(Boolean);
-    if (origin && (allowedOrigins.includes(origin) || allowedOrigins.includes('*'))) {
-        res.header('Access-Control-Allow-Origin', origin);
-    }
-    else if (!origin) {
-        // オリジンなし（同一オリジン）を許可
-        res.header('Access-Control-Allow-Origin', '*');
-    }
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Cache-Control, Pragma, Expires, Cookie');
-    res.header('Access-Control-Max-Age', '86400');
-    // プリフライトリクエスト（OPTIONS）の処理
-    if (req.method === 'OPTIONS') {
-        return res.status(204).end();
-    }
+    // CORS設定はazure-server.mjsで既に適用されているため、ここでは何もしない
     next();
 });
 // デバッグ用エンドポイント - 環境変数とセッション状態を確認

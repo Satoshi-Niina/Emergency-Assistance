@@ -1,35 +1,24 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.RagConfigSchema = void 0;
-exports.loadRagConfig = loadRagConfig;
-exports.saveRagConfig = saveRagConfig;
-exports.updateRagConfig = updateRagConfig;
-exports.validateRagConfig = validateRagConfig;
-exports.getConfigDiff = getConfigDiff;
-const promises_1 = __importDefault(require("fs/promises"));
-const path_1 = __importDefault(require("path"));
-const zod_1 = require("zod");
-const dotenv_1 = require("dotenv");
+import fs from 'fs/promises';
+import path from 'path';
+import { z } from 'zod';
+import { config } from 'dotenv';
 // 環境変数を読み込み
-(0, dotenv_1.config)();
+config();
 // RAG設定のスキーマ定義
-exports.RagConfigSchema = zod_1.z.object({
-    embedDim: zod_1.z.number().min(1).max(4096).default(1536),
-    chunkSize: zod_1.z.number().min(100).max(2000).default(800),
-    chunkOverlap: zod_1.z.number().min(0).max(500).default(80),
-    retrieveK: zod_1.z.number().min(1).max(50).default(8),
-    rerankTop: zod_1.z.number().min(1).max(20).default(3),
-    rerankMin: zod_1.z.number().min(0).max(1).default(0.25),
-    maxTextLength: zod_1.z.number().min(1000).max(1000000).default(100000),
-    batchSize: zod_1.z.number().min(1).max(20).default(5),
-    similarityThreshold: zod_1.z.number().min(0).max(1).default(0.7),
+export const RagConfigSchema = z.object({
+    embedDim: z.number().min(1).max(4096).default(1536),
+    chunkSize: z.number().min(100).max(2000).default(800),
+    chunkOverlap: z.number().min(0).max(500).default(80),
+    retrieveK: z.number().min(1).max(50).default(8),
+    rerankTop: z.number().min(1).max(20).default(3),
+    rerankMin: z.number().min(0).max(1).default(0.25),
+    maxTextLength: z.number().min(1000).max(1000000).default(100000),
+    batchSize: z.number().min(1).max(20).default(5),
+    similarityThreshold: z.number().min(0).max(1).default(0.7),
 });
 // 設定ファイルのパス
-const CONFIG_DIR = path_1.default.join(process.cwd(), 'server', 'config');
-const CONFIG_FILE = path_1.default.join(CONFIG_DIR, 'rag.config.json');
+const CONFIG_DIR = path.join(process.cwd(), 'server', 'config');
+const CONFIG_FILE = path.join(CONFIG_DIR, 'rag.config.json');
 // デフォルト設定
 const DEFAULT_CONFIG = {
     embedDim: 1536,
@@ -46,13 +35,13 @@ const DEFAULT_CONFIG = {
  * 設定ファイルを読み込む
  * @returns RAG設定
  */
-async function loadRagConfig() {
+export async function loadRagConfig() {
     try {
         // 設定ディレクトリが存在しない場合は作成
-        await promises_1.default.mkdir(CONFIG_DIR, { recursive: true });
+        await fs.mkdir(CONFIG_DIR, { recursive: true });
         // 設定ファイルが存在しない場合はデフォルト設定で作成
         try {
-            await promises_1.default.access(CONFIG_FILE);
+            await fs.access(CONFIG_FILE);
         }
         catch {
             console.log('📝 RAG設定ファイルが存在しません。デフォルト設定で作成します。');
@@ -60,10 +49,10 @@ async function loadRagConfig() {
             return DEFAULT_CONFIG;
         }
         // 設定ファイルを読み込み
-        const configData = await promises_1.default.readFile(CONFIG_FILE, 'utf-8');
+        const configData = await fs.readFile(CONFIG_FILE, 'utf-8');
         const parsedConfig = JSON.parse(configData);
         // スキーマ検証
-        const validatedConfig = exports.RagConfigSchema.parse(parsedConfig);
+        const validatedConfig = RagConfigSchema.parse(parsedConfig);
         // 環境変数から値を上書き（.envが存在する場合）
         if (process.env.EMBED_DIM) {
             const embedDim = parseInt(process.env.EMBED_DIM);
@@ -85,14 +74,14 @@ async function loadRagConfig() {
  * 設定ファイルを保存する
  * @param config RAG設定
  */
-async function saveRagConfig(config) {
+export async function saveRagConfig(config) {
     try {
         // 設定ディレクトリが存在しない場合は作成
-        await promises_1.default.mkdir(CONFIG_DIR, { recursive: true });
+        await fs.mkdir(CONFIG_DIR, { recursive: true });
         // 設定を検証
-        const validatedConfig = exports.RagConfigSchema.parse(config);
+        const validatedConfig = RagConfigSchema.parse(config);
         // 設定ファイルに保存
-        await promises_1.default.writeFile(CONFIG_FILE, JSON.stringify(validatedConfig, null, 2), 'utf-8');
+        await fs.writeFile(CONFIG_FILE, JSON.stringify(validatedConfig, null, 2), 'utf-8');
         console.log('✅ RAG設定を保存しました:', validatedConfig);
     }
     catch (error) {
@@ -105,12 +94,12 @@ async function saveRagConfig(config) {
  * @param partialConfig 部分的な設定更新
  * @returns 更新後の設定
  */
-async function updateRagConfig(partialConfig) {
+export async function updateRagConfig(partialConfig) {
     try {
         const currentConfig = await loadRagConfig();
         const updatedConfig = { ...currentConfig, ...partialConfig };
         // 更新された設定を検証
-        const validatedConfig = exports.RagConfigSchema.parse(updatedConfig);
+        const validatedConfig = RagConfigSchema.parse(updatedConfig);
         // 設定を保存
         await saveRagConfig(validatedConfig);
         return validatedConfig;
@@ -125,13 +114,13 @@ async function updateRagConfig(partialConfig) {
  * @param config 検証対象の設定
  * @returns 検証結果
  */
-function validateRagConfig(config) {
+export function validateRagConfig(config) {
     try {
-        exports.RagConfigSchema.parse(config);
+        RagConfigSchema.parse(config);
         return { valid: true, errors: [] };
     }
     catch (error) {
-        if (error instanceof zod_1.z.ZodError) {
+        if (error instanceof z.ZodError) {
             return {
                 valid: false,
                 errors: error.errors.map(err => `${err.path.join('.')}: ${err.message}`),
@@ -148,7 +137,7 @@ function validateRagConfig(config) {
  * @param newConfig 新しい設定
  * @returns 変更された項目のリスト
  */
-async function getConfigDiff(newConfig) {
+export async function getConfigDiff(newConfig) {
     try {
         const currentConfig = await loadRagConfig();
         const changes = [];

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
-import { Input } from '../ui/input'; 
+import { Input } from '../ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import {
   Select,
@@ -59,13 +59,13 @@ export default function FaultHistoryManager({ onHistorySelect }: FaultHistoryMan
     try {
       setLoading(true);
       const response = await fetchFaultHistoryList(filters);
-      
+
       if (filters.offset === 0) {
         setHistoryItems(response.data);
       } else {
         setHistoryItems(prev => [...prev, ...response.data]);
       }
-      
+
       setTotal(response.total);
       setHasMore(response.hasMore);
     } catch (error) {
@@ -102,7 +102,7 @@ export default function FaultHistoryManager({ onHistorySelect }: FaultHistoryMan
     try {
       setImportLoading(true);
       const result = await importFromExports(force);
-      
+
       if (result.imported > 0) {
         showToast.success(`${result.imported}件の履歴をインポートしました`);
         await loadHistoryList({ ...searchFilters, offset: 0 });
@@ -110,12 +110,12 @@ export default function FaultHistoryManager({ onHistorySelect }: FaultHistoryMan
       } else {
         showToast.success('インポートする新しい履歴はありませんでした');
       }
-      
+
       if (result.errors && result.errors.length > 0) {
         console.warn('インポートエラー:', result.errors);
         showToast.error(`${result.errors.length}件のファイルでエラーが発生しました`);
       }
-      
+
       setShowImportDialog(false);
     } catch (error) {
       console.error('インポートエラー:', error);
@@ -247,10 +247,34 @@ export default function FaultHistoryManager({ onHistorySelect }: FaultHistoryMan
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
+                    {/* 画像プレビュー */}
+                    {item.images && item.images.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2 mb-2">
+                        {item.images.slice(0, 3).map((image, idx) => (
+                          <div key={image.fileName || idx} className="relative aspect-square">
+                            <img
+                              src={getFaultHistoryImageUrl(image.fileName)}
+                              alt={image.description || image.originalFileName || image.fileName}
+                              className="w-full h-full object-cover rounded border"
+                              onError={(e) => {
+                                console.error('画像読み込みエラー:', image.fileName, getFaultHistoryImageUrl(image.fileName));
+                                e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22%3ENo Image%3C/text%3E%3C/svg%3E';
+                              }}
+                            />
+                          </div>
+                        ))}
+                        {item.images.length > 3 && (
+                          <div className="flex items-center justify-center bg-gray-100 rounded border text-sm text-gray-600">
+                            +{item.images.length - 3}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {item.description && (
                       <p className="text-sm text-gray-600 line-clamp-2">{item.description}</p>
                     )}
-                    
+
                     <div className="flex flex-wrap gap-1">
                       {item.machineType && (
                         <Badge variant="outline" className="text-xs">
@@ -312,7 +336,7 @@ export default function FaultHistoryManager({ onHistorySelect }: FaultHistoryMan
 
           {/* ローディング・もっと読み込み */}
           {loading && <div className="text-center py-4">読み込み中...</div>}
-          
+
           {!loading && hasMore && (
             <div className="text-center">
               <Button onClick={loadMore} variant="outline">
@@ -390,7 +414,7 @@ export default function FaultHistoryManager({ onHistorySelect }: FaultHistoryMan
                   {selectedHistory.description}
                 </DialogDescription>
               </DialogHeader>
-              
+
               <div className="space-y-4">
                 {/* 基本情報 */}
                 <div className="grid grid-cols-2 gap-4">

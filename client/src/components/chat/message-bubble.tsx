@@ -293,9 +293,10 @@ export default function MessageBubble({
                           <img
                             src={media.url}
                             alt='添付画像'
-                            className='rounded-lg w-full max-w-xs cursor-pointer border border-blue-200 shadow-md'
+                            className='rounded-lg w-full cursor-pointer border border-blue-200 shadow-md'
                             style={{
-                              maxHeight: '300px',
+                              maxHeight: '600px',
+                              maxWidth: '100%',
                               objectFit: 'contain',
                               marginLeft: isUserMessage ? 'auto' : '0',
                               marginRight: isUserMessage ? '0' : 'auto'
@@ -471,93 +472,123 @@ export default function MessageBubble({
       <div
         className={`mx-2 flex flex-col min-w-[200px]`}
         style={{
-          // 完全に左端または右端に配置
           alignItems: isUserMessage ? 'flex-end' : 'flex-start',
-          maxWidth: '60%' // 表示エリアの3/5 (60%) に制限
+          maxWidth: isUserMessage ? '90%' : '90%'
         }}
       >
-        <div className='flex items-center gap-2 mb-1'>
-          {/* AIメッセージの場合に音声読み上げボタンを表示 */}
-          {!isUserMessage && (
-            <button
-              onClick={handleTextToSpeech}
-              className={`w-8 h-8 flex items-center justify-center rounded-full shadow-sm
-                ${isSpeaking
-                  ? 'bg-indigo-600 text-white animate-pulse'
-                  : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-                }`}
-              title={isSpeaking ? '音声読み上げを停止' : '音声読み上げ'}
-            >
-              <Volume2 size={16} />
-            </button>
-          )}
-        </div>
-        <div
-          className={`px-4 py-3 mb-1 shadow-sm w-full ${isUserMessage
-            ? `chat-bubble-user bg-blue-500 text-white rounded-[18px_18px_4px_18px] border border-blue-500`
-            : 'chat-bubble-ai bg-white rounded-[18px_18px_18px_4px] border border-gray-200'
-            }`}
-        >
-          <div className='relative'>
-            {/* シンプルなコンテンツ表示 */}
-            {(() => {
-              const content = message.content || '';
+        {(() => {
+          const content = message.content || '';
+          const isImageUrl =
+            content.startsWith('/api/images/') ||
+            (content.startsWith('http') && (content.includes('.jpg') || content.includes('.png') || content.includes('.jpeg')));
 
-              // 画像データの判定
-              const isImage =
-                content.startsWith('data:image/') ||
-                content.includes('.jpg') ||
-                content.includes('.png') ||
-                content.includes('/knowledge-base/images/');
+          if (isImageUrl) {
+            return (
+              <>
+                <img
+                  src={content}
+                  alt='画像'
+                  className='rounded-lg cursor-pointer shadow-md'
+                  style={{
+                    width: '600px',
+                    maxWidth: '100%',
+                    height: 'auto',
+                    objectFit: 'contain',
+                  }}
+                  onClick={() => handleImagePreview(content)}
+                  onError={(e) => {
+                    console.error('画像読み込みエラー:', content);
+                    const img = e.target as HTMLImageElement;
+                    img.style.display = 'none';
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'bg-gray-100 border border-gray-300 rounded-lg p-4 text-sm text-gray-500';
+                    errorDiv.textContent = '画像が見つかりません';
+                    img.parentNode?.insertBefore(errorDiv, img);
+                  }}
+                />
+                <span
+                  className={`text-xs ${isUserMessage ? 'text-blue-400' : 'text-gray-400'} mt-1`}
+                >
+                  {formattedTime}
+                </span>
+              </>
+            );
+          }
 
-              if (isImage) {
-                return (
-                  <img
-                    src={content}
-                    alt='画像'
-                    className='rounded-lg max-w-xs cursor-pointer'
-                    style={{
-                      maxHeight: '300px',
-                      objectFit: 'contain',
-                      marginLeft: isUserMessage ? 'auto' : '0',
-                      marginRight: isUserMessage ? '0' : 'auto'
-                    }}
-                    onClick={() => handleImagePreview(content)}
-                  />
-                );
-              }
-
-              // テキストの場合
-              return (
-                <p className={isUserMessage ? 'text-white' : 'text-gray-900'}>
-                  {content}
-                </p>
-              );
-            })()}
-
-            {/* テキスト選択時のコピーボタン */}
-            {showCopyButton && (
-              <button
-                onClick={copyToInput}
-                className='absolute -top-2 -right-2 bg-blue-600 text-white p-1.5 rounded-full shadow-md hover:bg-blue-700 transition-colors'
-                title='入力欄にコピー'
+          return (
+            <>
+              <div className='flex items-center gap-2 mb-1'>
+                {!isUserMessage && (
+                  <button
+                    onClick={handleTextToSpeech}
+                    className={`w-8 h-8 flex items-center justify-center rounded-full shadow-sm
+                      ${isSpeaking
+                        ? 'bg-indigo-600 text-white animate-pulse'
+                        : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                      }`}
+                    title={isSpeaking ? '音声読み上げを停止' : '音声読み上げ'}
+                  >
+                    <Volume2 size={16} />
+                  </button>
+                )}
+              </div>
+              <div
+                className={`px-4 py-3 mb-1 shadow-sm w-full ${isUserMessage
+                  ? `chat-bubble-user bg-blue-500 text-white rounded-[18px_18px_4px_18px] border border-blue-500`
+                  : 'chat-bubble-ai bg-white rounded-[18px_18px_18px_4px] border border-gray-200'
+                  }`}
               >
-                <Copy size={14} />
-              </button>
-            )}
-          </div>
+                <div className='relative'>
+                  {(() => {
+                    const isBase64Image = content.startsWith('data:image/');
 
-          {/* Display media attachments if any */}
-          {renderMedia()}
-        </div>
-        <span
-          className={`text-xs ${isUserMessage ? 'text-blue-400' : 'text-gray-400'}`}
-        >
-          {formattedTime}
-        </span>
+                    if (isBase64Image) {
+                      return (
+                        <img
+                          src={content}
+                          alt='画像'
+                          className='rounded-lg max-w-xs cursor-pointer'
+                          style={{
+                            maxHeight: '300px',
+                            objectFit: 'contain',
+                            marginLeft: isUserMessage ? 'auto' : '0',
+                            marginRight: isUserMessage ? '0' : 'auto'
+                          }}
+                          onClick={() => handleImagePreview(content)}
+                        />
+                      );
+                    }
+
+                    return (
+                      <p className={isUserMessage ? 'text-white' : 'text-gray-900'}>
+                        {content}
+                      </p>
+                    );
+                  })()}
+
+                  {showCopyButton && (
+                    <button
+                      onClick={copyToInput}
+                      className='absolute -top-2 -right-2 bg-blue-600 text-white p-1.5 rounded-full shadow-md hover:bg-blue-700 transition-colors'
+                      title='入力欄にコピー'
+                    >
+                      <Copy size={14} />
+                    </button>
+                  )}
+                </div>
+
+                {renderMedia()}
+              </div>
+              <span
+                className={`text-xs ${isUserMessage ? 'text-blue-400' : 'text-gray-400'}`}
+              >
+                {formattedTime}
+              </span>
+            </>
+          );
+        })()}
       </div>
 
-      {/* ユーザーメッセージの場合、右側にアバターを配置 */}
       {isUserMessage && (
         <div>
           <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-500">
@@ -565,6 +596,6 @@ export default function MessageBubble({
           </div>
         </div>
       )}
-    </div>
+    </div >
   );
 }

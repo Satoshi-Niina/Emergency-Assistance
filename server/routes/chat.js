@@ -1,25 +1,19 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.registerChatRoutes = registerChatRoutes;
-const zod_1 = require("zod");
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
-const url_1 = require("url");
-const sharp_1 = __importDefault(require("sharp"));
-const index_js_1 = require("../db/index.js");
-const storage_js_1 = require("../storage.js");
-const chat_export_formatter_js_1 = require("../lib/chat-export-formatter.js");
-const openai_js_1 = require("../lib/openai.js");
-const fault_history_service_js_1 = require("../services/fault-history-service.js");
-const schema_js_1 = require("../db/schema.js");
-const image_encoding_js_1 = require("../utils/image-encoding.js");
+import { z } from 'zod';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import sharp from 'sharp';
+import { db } from '../db/index.js';
+import { storage } from '../storage.js';
+import { formatChatHistoryForExternalSystem } from '../lib/chat-export-formatter.js';
+import { processOpenAIRequest } from '../lib/openai.js';
+import { faultHistoryService } from '../services/fault-history-service.js';
+import { insertMessageSchema, insertMediaSchema, insertChatSchema, messages, } from '../db/schema.js';
+import { IMAGE_DATA_ENCODING } from '../utils/image-encoding.js';
 // ESM用__dirname
-const __filename = (0, url_1.fileURLToPath)(import.meta.url);
-const __dirname = path_1.default.dirname(__filename);
-function registerChatRoutes(app) {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+export function registerChatRoutes(app) {
     console.log('📡 チャットルートを登録中...');
     const requireAuth = async (req, res, next) => {
         console.log('🔐 認証チェック:', {
@@ -55,22 +49,22 @@ function registerChatRoutes(app) {
     // チャット一覧取得
     app.get('/api/chats', requireAuth, async (req, res) => {
         // 残りのreq.sessionの型エラーを型アサーションで回避
-        const chats = await storage_js_1.storage.getChatsForUser(String(req.session.userId ?? ''));
+        const chats = await storage.getChatsForUser(String(req.session.userId ?? ''));
         return res.json(chats);
     });
     // チャット作成
     app.post('/api/chats', requireAuth, async (req, res) => {
         try {
             // チャット作成時のreq.session
-            const chatData = schema_js_1.insertChatSchema.parse({
+            const chatData = insertChatSchema.parse({
                 ...req.body,
                 userId: String(req.session.userId ?? ''),
             });
-            const chat = await storage_js_1.storage.createChat(chatData);
+            const chat = await storage.createChat(chatData);
             return res.json(chat);
         }
         catch (error) {
-            if (error instanceof zod_1.z.ZodError) {
+            if (error instanceof z.ZodError) {
                 return res.status(400).json({ message: error.errors });
             }
             return res.status(500).json({ message: 'Internal server error' });
@@ -78,7 +72,7 @@ function registerChatRoutes(app) {
     });
     // チャット取得
     app.get('/api/chats/:id', requireAuth, async (req, res) => {
-        const chat = await storage_js_1.storage.getChat(req.params.id);
+        const chat = await storage.getChat(req.params.id);
         if (!chat) {
             return res.status(404).json({ message: 'Chat not found' });
         }
@@ -92,7 +86,7 @@ function registerChatRoutes(app) {
     app.get('/api/chats/:id/messages', requireAuth, async (req, res) => {
         const chatId = req.params.id;
         const clearCache = req.query.clear === 'true';
-        const chat = await storage_js_1.storage.getChat(chatId);
+        const chat = await storage.getChat(chatId);
         if (!chat) {
             return res.status(404).json({ message: 'Chat not found' });
         }
@@ -105,9 +99,9 @@ function registerChatRoutes(app) {
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
             return res.json([]);
         }
-        const messages = await storage_js_1.storage.getMessagesForChat(chat.id);
+        const messages = await storage.getMessagesForChat(chat.id);
         const messagesWithMedia = await Promise.all(messages.map(async (message) => {
-            const media = await storage_js_1.storage.getMediaForMessage(message.id);
+            const media = await storage.getMediaForMessage(message.id);
             return { ...message, media };
         }));
         return res.json(messagesWithMedia);
@@ -117,12 +111,12 @@ function registerChatRoutes(app) {
         try {
             const chatId = req.params.id;
             const { content, isUserMessage = true } = req.body;
-            const chat = await storage_js_1.storage.getChat(chatId);
+            const chat = await storage.getChat(chatId);
             if (!chat) {
                 return res.status(404).json({ message: 'Chat not found' });
             }
             console.log(`システムメッセージ送信: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${req.session.userId}`);
-            const message = await storage_js_1.storage.createMessage({
+            const message = await storage.createMessage({
                 chatId,
                 content,
                 isAiResponse: !isUserMessage,
@@ -166,11 +160,11 @@ function registerChatRoutes(app) {
                 bodyType: typeof req.body,
                 bodyKeys: Object.keys(req.body || {}),
             });
-            let chat = await storage_js_1.storage.getChat(chatId);
+            let chat = await storage.getChat(chatId);
             if (!chat) {
                 console.log(`メッセージ送信時: チャットID ${chatId} が存在しないため、新規作成します`);
                 try {
-                    chat = await storage_js_1.storage.createChat({
+                    chat = await storage.createChat({
                         id: chatId,
                         userId: userId,
                         title: '新しいチャット',
@@ -184,16 +178,16 @@ function registerChatRoutes(app) {
             }
             console.log(`チャットアクセス: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${req.session.userId}`);
             console.log(`設定: ナレッジベースのみを使用=${useOnlyKnowledgeBase}`);
-            const messageData = schema_js_1.insertMessageSchema.parse({
+            const messageData = insertMessageSchema.parse({
                 chatId: chatId,
                 content: content,
                 senderId: String(req.session.userId ?? ''),
                 isAiResponse: false,
             });
-            const message = await storage_js_1.storage.createMessage(messageData);
+            const message = await storage.createMessage(messageData);
             const getAIResponse = async (content, useKnowledgeBase) => {
                 try {
-                    return await (0, openai_js_1.processOpenAIRequest)(content, useKnowledgeBase);
+                    return await processOpenAIRequest(content, useKnowledgeBase);
                 }
                 catch (error) {
                     console.error('OpenAI処理エラー:', error);
@@ -231,8 +225,8 @@ function registerChatRoutes(app) {
             });
             // AIメッセージを保存
             // db.insert(messages).values を型アサーションで回避
-            const [aiMessage] = await index_js_1.db
-                .insert(schema_js_1.messages)
+            const [aiMessage] = await db
+                .insert(messages)
                 .values({
                 chatId: chatId,
                 senderId: 'ai',
@@ -310,12 +304,12 @@ function registerChatRoutes(app) {
     // メディア関連ルート
     app.post('/api/media', requireAuth, async (req, res) => {
         try {
-            const mediaData = schema_js_1.insertMediaSchema.parse(req.body);
-            const media = await storage_js_1.storage.createMedia(mediaData);
+            const mediaData = insertMediaSchema.parse(req.body);
+            const media = await storage.createMedia(mediaData);
             return res.json(media);
         }
         catch (error) {
-            if (error instanceof zod_1.z.ZodError) {
+            if (error instanceof z.ZodError) {
                 return res.status(400).json({ message: error.errors });
             }
             return res.status(500).json({ message: 'Internal server error' });
@@ -327,7 +321,7 @@ function registerChatRoutes(app) {
             const chatId = req.params.id;
             const { force, clearAll } = req.body;
             console.log(`チャット履歴クリア開始: chatId=${chatId}, force=${force}, clearAll=${clearAll}`);
-            const chat = await storage_js_1.storage.getChat(chatId);
+            const chat = await storage.getChat(chatId);
             if (!chat) {
                 return res.status(404).json({ message: 'Chat not found' });
             }
@@ -336,13 +330,13 @@ function registerChatRoutes(app) {
             let deletedMediaCount = 0;
             try {
                 // まず現在のメッセージ数を確認
-                const beforeMessages = await storage_js_1.storage.getMessagesForChat(chatId);
+                const beforeMessages = await storage.getMessagesForChat(chatId);
                 const beforeCount = beforeMessages.length;
                 console.log(`削除前のメッセージ数: ${beforeCount}`);
                 // 各メッセージに関連するメディアも削除
                 for (const message of beforeMessages) {
                     try {
-                        const media = await storage_js_1.storage.getMediaForMessage(message.id);
+                        const media = await storage.getMediaForMessage(message.id);
                         for (const mediaItem of media) {
                             // await storage.deleteMedia(mediaItem.id);
                             deletedMediaCount++;
@@ -354,7 +348,7 @@ function registerChatRoutes(app) {
                 }
                 // データベースからメッセージを完全削除
                 try {
-                    const result = await storage_js_1.storage.clearChatMessages(chatId);
+                    const result = await storage.clearChatMessages(chatId);
                     console.log(`データベース削除結果:`, result);
                 }
                 catch (clearError) {
@@ -362,7 +356,7 @@ function registerChatRoutes(app) {
                     // 個別削除にフォールバック
                 }
                 // 削除後のメッセージ数を確認
-                const afterMessages = await storage_js_1.storage.getMessagesForChat(chatId);
+                const afterMessages = await storage.getMessagesForChat(chatId);
                 const afterCount = afterMessages.length;
                 deletedMessageCount = beforeCount - afterCount;
                 console.log(`削除後のメッセージ数: ${afterCount}, 削除されたメッセージ数: ${deletedMessageCount}`);
@@ -391,7 +385,7 @@ function registerChatRoutes(app) {
                 });
             }
             // 最終確認
-            const finalMessages = await storage_js_1.storage.getMessagesForChat(chatId);
+            const finalMessages = await storage.getMessagesForChat(chatId);
             const finalCount = finalMessages.length;
             console.log(`チャット履歴クリア完了: chatId=${chatId}, 削除メッセージ数=${deletedMessageCount}, 削除メディア数=${deletedMediaCount}, 最終メッセージ数=${finalCount}`);
             return res.json({
@@ -437,7 +431,7 @@ function registerChatRoutes(app) {
             // チャットの存在確認（エラーをキャッチ）
             let chat = null;
             try {
-                chat = await storage_js_1.storage.getChat(chatId);
+                chat = await storage.getChat(chatId);
             }
             catch (chatError) {
                 console.warn('チャット取得エラー（新規チャットとして処理）:', chatError);
@@ -497,20 +491,132 @@ function registerChatRoutes(app) {
                     details: 'chatData.messages must be an array',
                 });
             }
-            // knowledge-base/exports フォルダを作成（ルートディレクトリ）
-            const exportsDir = path_1.default.join(process.cwd(), '..', 'knowledge-base', 'exports');
-            if (!fs_1.default.existsSync(exportsDir)) {
-                fs_1.default.mkdirSync(exportsDir, { recursive: true });
-                console.log('exports フォルダを作成しました:', exportsDir);
+            // knowledge-base/troubleshooting フォルダを作成（プロジェクトルート直下）
+            const projectRoot = path.resolve(__dirname, '..', '..');
+            const exportsDir = process.env.LOCAL_EXPORT_DIR
+                ? path.isAbsolute(process.env.LOCAL_EXPORT_DIR)
+                    ? process.env.LOCAL_EXPORT_DIR.replace('exports', 'troubleshooting')
+                    : path.join(projectRoot, process.env.LOCAL_EXPORT_DIR.replace('exports', 'troubleshooting'))
+                : path.join(projectRoot, 'knowledge-base', 'troubleshooting');
+            if (!fs.existsSync(exportsDir)) {
+                fs.mkdirSync(exportsDir, { recursive: true });
+                console.log('troubleshooting フォルダを作成しました:', exportsDir);
+            }
+            // 画像を個別ファイルとして保存（環境変数または projectRoot）
+            const projectRoot = path.resolve(__dirname, '..', '..');
+            const imagesDir = process.env.FAULT_HISTORY_IMAGES_DIR || path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
+            if (!fs.existsSync(imagesDir)) {
+                fs.mkdirSync(imagesDir, { recursive: true });
+                console.log('画像保存ディレクトリを作成しました:', imagesDir);
+            }
+            // チャットメッセージから画像を抽出してファイルとして保存（先に処理）
+            const savedImages = [];
+            const cleanedChatData = JSON.parse(JSON.stringify(chatData)); // ディープコピー
+            for (const message of cleanedChatData.messages) {
+                // 既存の画像URL（/api/images/chat-exports/）を検出 - 1箇所目
+                if (message.content && message.content.includes('/api/images/chat-exports/')) {
+                    try {
+                        // URLからファイル名を抽出
+                        const urlMatch = message.content.match(/\/api\/images\/chat-exports\/([^"'\s]+)/);
+                        if (urlMatch && urlMatch[1]) {
+                            const imageFileName = urlMatch[1];
+                            const imagePath = path.join(imagesDir, imageFileName);
+                            savedImages.push({
+                                messageId: message.id,
+                                fileName: imageFileName,
+                                originalFileName: imageFileName,
+                                path: imagePath,
+                                url: `/api/images/chat-exports/${imageFileName}`,
+                                mimeType: 'image/jpeg',
+                                fileSize: fs.existsSync(imagePath) ? fs.statSync(imagePath).size.toString() : '0',
+                                description: `Chat image ${imageFileName}`,
+                                createdAt: new Date().toISOString(),
+                            });
+                            console.log('既存の画像URLを検出（1箇所目）:', imageFileName);
+                        }
+                    }
+                    catch (error) {
+                        console.warn('画像URL抽出エラー（1箇所目）:', error);
+                    }
+                }
+                // Base64画像の処理（後方互換性のため）
+                else if (message.content && message.content.startsWith('data:image/')) {
+                    try {
+                        // 画像データから画像を抽出
+                        const dataUriPattern = new RegExp(`^data:image/[a-z]+;${IMAGE_DATA_ENCODING},`);
+                        const imageData = message.content.replace(dataUriPattern, '');
+                        const buffer = Buffer.from(imageData, IMAGE_DATA_ENCODING);
+                        // ファイル名を生成
+                        const imageTimestamp = Date.now();
+                        const imageFileName = `chat_image_${chatId}_${imageTimestamp}.jpg`;
+                        const imagePath = path.join(imagesDir, imageFileName);
+                        // 画像を120pxにリサイズして保存
+                        try {
+                            const resizedBuffer = await sharp(buffer)
+                                .resize(120, 120, {
+                                fit: 'inside', // アスペクト比を維持しながら、120x120以内に収める
+                                withoutEnlargement: true, // 拡大しない
+                            })
+                                .jpeg({ quality: 85 })
+                                .toBuffer();
+                            fs.writeFileSync(imagePath, resizedBuffer);
+                            console.log('画像ファイルを保存しました（120pxにリサイズ）:', imagePath);
+                        }
+                        catch (resizeError) {
+                            // リサイズに失敗した場合は元の画像を保存
+                            console.warn('画像リサイズエラー、元の画像を保存:', resizeError);
+                            fs.writeFileSync(imagePath, buffer);
+                            console.log('画像ファイルを保存しました（リサイズなし）:', imagePath);
+                        }
+                        const imageUrl = `/api/images/chat-exports/${imageFileName}`;
+                        // 画像データをURLに置き換え
+                        message.content = imageUrl;
+                        savedImages.push({
+                            messageId: message.id,
+                            fileName: imageFileName,
+                            originalFileName: imageFileName,
+                            path: imagePath,
+                            url: imageUrl,
+                            mimeType: 'image/jpeg',
+                            fileSize: fs.existsSync(imagePath) ? fs.statSync(imagePath).size.toString() : '0',
+                            description: `Chat image ${imageFileName}`,
+                            createdAt: new Date().toISOString(),
+                        });
+                    }
+                    catch (imageError) {
+                        console.warn('画像保存エラー:', imageError);
+                        // エラー時は画像データを削除
+                        message.content = '[画像データ削除]';
+                    }
+                }
             }
             // チャットデータをJSONファイルとして保存
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            // ユーザーメッセージから事象情報を抽出してファイル名に使用
-            const userMessages = chatData.messages.filter((m) => !m.isAiResponse);
+            // 画像処理後にユーザーメッセージから事象情報を抽出してファイル名に使用
+            const userMessages = cleanedChatData.messages.filter((m) => !m.isAiResponse);
             console.log('🔍 事象抽出 - ユーザーメッセージ:', userMessages);
             const textMessages = userMessages
                 .map((m) => m.content)
-                .filter((content) => !content.trim().startsWith('data:image/'))
+                .filter((content) => {
+                if (!content) {
+                    console.log('🔍 フィルタ - 空のコンテンツ');
+                    return false;
+                }
+                const trimmed = content.trim();
+                console.log('🔍 フィルタ - チェック中:', {
+                    content: trimmed.substring(0, 50),
+                    isDataImage: trimmed.startsWith('data:image/'),
+                    isApiImages: trimmed.startsWith('/api/images/'),
+                    includesChatExports: trimmed.includes('/api/images/chat-exports/'),
+                    isDeleted: trimmed === '[画像データ削除]',
+                });
+                const result = !trimmed.startsWith('data:image/') &&
+                    !trimmed.startsWith('/api/images/') &&
+                    !trimmed.includes('/api/images/chat-exports/') &&
+                    trimmed !== '[画像データ削除]';
+                console.log('🔍 フィルタ - 結果:', result ? 'テキストとして採用' : '画像として除外');
+                return result;
+            })
                 .join('\n')
                 .trim();
             console.log('🔍 事象抽出 - テキストメッセージ:', textMessages);
@@ -530,90 +636,20 @@ function registerChatRoutes(app) {
                 .replace(/[<>:"/\\|?*]/g, '') // ファイル名に使用できない文字を除去
                 .replace(/\s+/g, '_') // スペースをアンダースコアに変換
                 .substring(0, 50); // 長さを制限
-            const fileName = `${sanitizedTitle}_${chatId}_${timestamp}.json`;
-            const filePath = path_1.default.join(exportsDir, fileName);
-            // 画像を個別ファイルとして保存
-            // パス解決（複数の可能性を試す）
-            const projectRoot = path_1.default.resolve(__dirname, '..', '..');
-            const possibleImagesDirs = [
-                path_1.default.join(projectRoot, 'knowledge-base', 'images', 'chat-exports'),
-                path_1.default.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports'),
-                path_1.default.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports'),
-                path_1.default.join(__dirname, '..', '..', 'knowledge-base', 'images', 'chat-exports'),
-            ];
-            let imagesDir = null;
-            for (const testDir of possibleImagesDirs) {
-                if (!fs_1.default.existsSync(testDir)) {
-                    try {
-                        fs_1.default.mkdirSync(testDir, { recursive: true });
-                        imagesDir = testDir;
-                        console.log('画像保存ディレクトリを作成しました:', imagesDir);
-                        break;
-                    }
-                    catch (err) {
-                        continue;
-                    }
-                }
-                else {
-                    imagesDir = testDir;
-                    break;
+            // 既存のファイルを検索（同じchatIdのファイルがあれば上書き）
+            let existingFilePath = null;
+            if (fs.existsSync(exportsDir)) {
+                const files = fs.readdirSync(exportsDir);
+                const existingFile = files.find(file => file.includes(`_${chatId}_`) && file.endsWith('.json'));
+                if (existingFile) {
+                    existingFilePath = path.join(exportsDir, existingFile);
+                    console.log('🔄 既存ファイルを上書きします:', existingFile);
                 }
             }
-            if (!imagesDir) {
-                // 最後の手段として、プロジェクトルートを使用
-                imagesDir = path_1.default.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
-                fs_1.default.mkdirSync(imagesDir, { recursive: true });
-                console.log('画像保存ディレクトリを作成しました（フォールバック）:', imagesDir);
-            }
-            // チャットメッセージから画像を抽出してファイルとして保存
-            const savedImages = [];
-            const cleanedChatData = JSON.parse(JSON.stringify(chatData)); // ディープコピー
-            for (const message of cleanedChatData.messages) {
-                if (message.content && message.content.startsWith('data:image/')) {
-                    try {
-                        // 画像データから画像を抽出
-                        const dataUriPattern = new RegExp(`^data:image/[a-z]+;${image_encoding_js_1.IMAGE_DATA_ENCODING},`);
-                        const imageData = message.content.replace(dataUriPattern, '');
-                        const buffer = Buffer.from(imageData, image_encoding_js_1.IMAGE_DATA_ENCODING);
-                        // ファイル名を生成
-                        const imageTimestamp = Date.now();
-                        const imageFileName = `chat_image_${chatId}_${imageTimestamp}.jpg`;
-                        const imagePath = path_1.default.join(imagesDir, imageFileName);
-                        // 画像を120pxにリサイズして保存
-                        try {
-                            const resizedBuffer = await (0, sharp_1.default)(buffer)
-                                .resize(120, 120, {
-                                fit: 'inside', // アスペクト比を維持しながら、120x120以内に収める
-                                withoutEnlargement: true, // 拡大しない
-                            })
-                                .jpeg({ quality: 85 })
-                                .toBuffer();
-                            fs_1.default.writeFileSync(imagePath, resizedBuffer);
-                            console.log('画像ファイルを保存しました（120pxにリサイズ）:', imagePath);
-                        }
-                        catch (resizeError) {
-                            // リサイズに失敗した場合は元の画像を保存
-                            console.warn('画像リサイズエラー、元の画像を保存:', resizeError);
-                            fs_1.default.writeFileSync(imagePath, buffer);
-                            console.log('画像ファイルを保存しました（リサイズなし）:', imagePath);
-                        }
-                        const imageUrl = `/api/images/chat-exports/${imageFileName}`;
-                        // 画像データをURLに置き換え
-                        message.content = imageUrl;
-                        savedImages.push({
-                            messageId: message.id,
-                            fileName: imageFileName,
-                            path: imagePath,
-                            url: imageUrl,
-                        });
-                    }
-                    catch (imageError) {
-                        console.warn('画像保存エラー:', imageError);
-                        // エラー時は画像データを削除
-                        message.content = '[画像データ削除]';
-                    }
-                }
-            }
+            const fileName = existingFilePath
+                ? path.basename(existingFilePath)
+                : `${sanitizedTitle}_${chatId}_${timestamp}.json`;
+            const filePath = existingFilePath || path.join(exportsDir, fileName);
             // 画像データを完全に除去する関数
             const removeImageDataRecursively = (obj) => {
                 if (obj === null || obj === undefined) {
@@ -651,23 +687,15 @@ function registerChatRoutes(app) {
                 chatData: removeImageDataRecursively(cleanedChatData),
                 savedImages: savedImages,
             };
-            // titleフィールドの値でファイル名を再生成
-            const finalSanitizedTitle = exportData.title
-                .replace(/[<>:"/\\|?*]/g, '') // ファイル名に使用できない文字を除去
-                .replace(/\s+/g, '_') // スペースをアンダースコアに変換
-                .substring(0, 50); // 長さを制限
-            console.log('🔍 事象抽出 - 最終サニタイズ済みタイトル:', finalSanitizedTitle);
-            const finalFileName = `${finalSanitizedTitle}_${chatId}_${timestamp}.json`;
-            const finalFilePath = path_1.default.join(exportsDir, finalFileName);
-            console.log('🔍 事象抽出 - 最終ファイル名:', finalFileName);
             // エクスポートデータは既に画像データが除去されているので、そのまま使用
             const cleanedExportData = exportData;
             // UTF-8エンコーディングでJSONファイルを保存（BOMなし）
             const jsonString = JSON.stringify(cleanedExportData, null, 2);
             try {
                 // UTF-8 BOMなしで保存
-                fs_1.default.writeFileSync(finalFilePath, jsonString, 'utf8');
-                console.log('チャットデータを保存しました:', finalFilePath);
+                fs.writeFileSync(filePath, jsonString, 'utf8');
+                console.log('チャットデータを保存しました:', filePath);
+                console.log('保存されたファイル名:', fileName);
                 console.log('保存されたデータサイズ:', Buffer.byteLength(jsonString, 'utf8'), 'bytes');
             }
             catch (writeError) {
@@ -699,17 +727,18 @@ function registerChatRoutes(app) {
             console.log('📋 チャットエクスポート一覧取得リクエスト');
             // Content-Typeを明示的に設定
             res.setHeader('Content-Type', 'application/json');
-            const exportsDir = path_1.default.join(process.cwd(), '..', 'knowledge-base', 'exports');
-            if (!fs_1.default.existsSync(exportsDir)) {
+            const projectRoot = path.resolve(__dirname, '..', '..');
+            const exportsDir = path.join(projectRoot, 'knowledge-base', 'troubleshooting');
+            if (!fs.existsSync(exportsDir)) {
                 return res.json([]);
             }
-            const files = fs_1.default
+            const files = fs
                 .readdirSync(exportsDir)
                 .filter(file => file.endsWith('.json'))
                 .map(file => {
-                const filePath = path_1.default.join(exportsDir, file);
-                const stats = fs_1.default.statSync(filePath);
-                const content = fs_1.default.readFileSync(filePath, 'utf8');
+                const filePath = path.join(exportsDir, file);
+                const stats = fs.statSync(filePath);
+                const content = fs.readFileSync(filePath, 'utf8');
                 const data = JSON.parse(content);
                 return {
                     fileName: file,
@@ -761,9 +790,14 @@ function registerChatRoutes(app) {
                 });
             }
             // knowledge-base/exports フォルダを作成（プロジェクトルート）
-            const exportsDir = path_1.default.join(process.cwd(), 'knowledge-base', 'exports');
-            if (!fs_1.default.existsSync(exportsDir)) {
-                fs_1.default.mkdirSync(exportsDir, { recursive: true });
+            const projectRoot = path.resolve(__dirname, '..', '..');
+            const exportsDir = process.env.LOCAL_EXPORT_DIR
+                ? path.isAbsolute(process.env.LOCAL_EXPORT_DIR)
+                    ? process.env.LOCAL_EXPORT_DIR
+                    : path.join(projectRoot, process.env.LOCAL_EXPORT_DIR)
+                : path.join(projectRoot, 'knowledge-base', 'exports');
+            if (!fs.existsSync(exportsDir)) {
+                fs.mkdirSync(exportsDir, { recursive: true });
                 console.log('exports フォルダを作成しました:', exportsDir);
             }
             // 新しいフォーマット関数を使用してエクスポートデータを生成
@@ -816,94 +850,90 @@ function registerChatRoutes(app) {
                     },
                 };
             }
-            // 事象内容をファイル名に含める（画像が先でも発生事象を優先）
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            // ユーザーメッセージからテキストのみを抽出（画像を除外）
-            const userMessages = chatData.messages.filter((m) => !m.isAiResponse);
-            const textMessages = userMessages
-                .map((m) => m.content)
-                .filter(content => !content.trim().startsWith('data:image/'))
-                .join('\n')
-                .trim();
-            let incidentTitle = '事象なし';
-            if (textMessages) {
-                // テキストがある場合は最初の行を使用
-                incidentTitle = textMessages.split('\n')[0].trim();
+            // 画像を個別ファイルとして保存（環境変数または projectRoot）
+            const projectRoot = path.resolve(__dirname, '..', '..');
+            const imagesDir = process.env.FAULT_HISTORY_IMAGES_DIR
+                ? path.isAbsolute(process.env.FAULT_HISTORY_IMAGES_DIR)
+                    ? process.env.FAULT_HISTORY_IMAGES_DIR
+                    : path.join(projectRoot, process.env.FAULT_HISTORY_IMAGES_DIR)
+                : path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
+            if (!fs.existsSync(imagesDir)) {
+                fs.mkdirSync(imagesDir, { recursive: true });
+                console.log('画像保存ディレクトリを作成しました:', imagesDir);
             }
             else {
-                // テキストがない場合（画像のみ）は、フォーマットされたタイトルを使用
-                incidentTitle = formattedHistoryData.title || '画像による故障報告';
+                console.log('📁 画像保存先ディレクトリ:', imagesDir);
+                console.log('📁 ディレクトリ存在確認:', fs.existsSync(imagesDir));
             }
-            // ファイル名用に事象内容をサニタイズ（特殊文字を除去）
-            const sanitizedTitle = incidentTitle
-                .replace(/[<>:"/\\|?*]/g, '') // ファイル名に使用できない文字を除去
-                .replace(/\s+/g, '_') // スペースをアンダースコアに変換
-                .substring(0, 50); // 長さを制限
-            const fileName = `${sanitizedTitle}_${chatId}_${timestamp}.json`;
-            const filePath = path_1.default.join(exportsDir, fileName);
-            // 画像を個別ファイルとして保存
-            // パス解決（複数の可能性を試す）
-            const projectRoot = path_1.default.resolve(__dirname, '..', '..');
-            const possibleImagesDirs = [
-                path_1.default.join(projectRoot, 'knowledge-base', 'images', 'chat-exports'),
-                path_1.default.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports'),
-                path_1.default.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports'),
-                path_1.default.join(__dirname, '..', '..', 'knowledge-base', 'images', 'chat-exports'),
-            ];
-            let imagesDir = null;
-            for (const testDir of possibleImagesDirs) {
-                if (!fs_1.default.existsSync(testDir)) {
-                    try {
-                        fs_1.default.mkdirSync(testDir, { recursive: true });
-                        imagesDir = testDir;
-                        console.log('画像保存ディレクトリを作成しました:', imagesDir);
-                        break;
-                    }
-                    catch (err) {
-                        continue;
-                    }
-                }
-                else {
-                    imagesDir = testDir;
-                    break;
-                }
-            }
-            if (!imagesDir) {
-                // 最後の手段として、プロジェクトルートを使用
-                imagesDir = path_1.default.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
-                fs_1.default.mkdirSync(imagesDir, { recursive: true });
-                console.log('画像保存ディレクトリを作成しました（フォールバック）:', imagesDir);
-            }
-            // チャットメッセージから画像を抽出してファイルとして保存
+            // チャットメッセージから画像を抽出してファイルとして保存（先に処理）
             const savedImages = [];
             const cleanedChatData = JSON.parse(JSON.stringify(chatData)); // ディープコピー
+            console.log('🔍 画像検出開始 - メッセージ数:', cleanedChatData.messages.length);
+            console.log('🔍 元のメッセージ内容:', cleanedChatData.messages.map((m) => ({
+                id: m.id,
+                isAiResponse: m.isAiResponse,
+                contentPreview: m.content?.substring(0, 100)
+            })));
             for (const message of cleanedChatData.messages) {
-                if (message.content && message.content.startsWith('data:image/')) {
+                console.log('🔍 メッセージ内容チェック:', {
+                    id: message.id,
+                    content: message.content?.substring(0, 100),
+                    hasImageUrl: message.content?.includes('/api/images/chat-exports/'),
+                    hasBase64: message.content?.startsWith('data:image/')
+                });
+                // 既存の画像URL（/api/images/chat-exports/）を検出 - 2箇所目
+                if (message.content && message.content.includes('/api/images/chat-exports/')) {
+                    try {
+                        // URLからファイル名を抽出
+                        const urlMatch = message.content.match(/\/api\/images\/chat-exports\/([^"'\s]+)/);
+                        if (urlMatch && urlMatch[1]) {
+                            const imageFileName = urlMatch[1];
+                            const imagePath = path.join(imagesDir, imageFileName);
+                            savedImages.push({
+                                messageId: message.id,
+                                fileName: imageFileName,
+                                originalFileName: imageFileName,
+                                path: imagePath,
+                                url: `/api/images/chat-exports/${imageFileName}`,
+                                mimeType: 'image/jpeg',
+                                fileSize: fs.existsSync(imagePath) ? fs.statSync(imagePath).size.toString() : '0',
+                                description: `Chat image ${imageFileName}`,
+                                createdAt: new Date().toISOString(),
+                            });
+                            console.log('既存の画像URLを検出（2箇所目）:', imageFileName);
+                        }
+                    }
+                    catch (error) {
+                        console.warn('画像URL抽出エラー（2箇所目）:', error);
+                    }
+                }
+                // Base64画像の処理（後方互換性のため）
+                else if (message.content && message.content.startsWith('data:image/')) {
                     try {
                         // 画像データから画像を抽出
-                        const dataUriPattern = new RegExp(`^data:image/[a-z]+;${image_encoding_js_1.IMAGE_DATA_ENCODING},`);
+                        const dataUriPattern = new RegExp(`^data:image/[a-z]+;${IMAGE_DATA_ENCODING},`);
                         const imageData = message.content.replace(dataUriPattern, '');
-                        const buffer = Buffer.from(imageData, image_encoding_js_1.IMAGE_DATA_ENCODING);
+                        const buffer = Buffer.from(imageData, IMAGE_DATA_ENCODING);
                         // ファイル名を生成
                         const imageTimestamp = Date.now();
                         const imageFileName = `chat_image_${chatId}_${imageTimestamp}.jpg`;
-                        const imagePath = path_1.default.join(imagesDir, imageFileName);
+                        const imagePath = path.join(imagesDir, imageFileName);
                         // 画像を120pxにリサイズして保存
                         try {
-                            const resizedBuffer = await (0, sharp_1.default)(buffer)
+                            const resizedBuffer = await sharp(buffer)
                                 .resize(120, 120, {
                                 fit: 'inside', // アスペクト比を維持しながら、120x120以内に収める
                                 withoutEnlargement: true, // 拡大しない
                             })
                                 .jpeg({ quality: 85 })
                                 .toBuffer();
-                            fs_1.default.writeFileSync(imagePath, resizedBuffer);
+                            fs.writeFileSync(imagePath, resizedBuffer);
                             console.log('画像ファイルを保存しました（120pxにリサイズ）:', imagePath);
                         }
                         catch (resizeError) {
                             // リサイズに失敗した場合は元の画像を保存
                             console.warn('画像リサイズエラー、元の画像を保存:', resizeError);
-                            fs_1.default.writeFileSync(imagePath, buffer);
+                            fs.writeFileSync(imagePath, buffer);
                             console.log('画像ファイルを保存しました（リサイズなし）:', imagePath);
                         }
                         const imageUrl = `/api/images/chat-exports/${imageFileName}`;
@@ -912,8 +942,13 @@ function registerChatRoutes(app) {
                         savedImages.push({
                             messageId: message.id,
                             fileName: imageFileName,
+                            originalFileName: imageFileName,
                             path: imagePath,
                             url: imageUrl,
+                            mimeType: 'image/jpeg',
+                            fileSize: fs.existsSync(imagePath) ? fs.statSync(imagePath).size.toString() : '0',
+                            description: `Chat image ${imageFileName}`,
+                            createdAt: new Date().toISOString(),
                         });
                     }
                     catch (imageError) {
@@ -923,6 +958,82 @@ function registerChatRoutes(app) {
                     }
                 }
             }
+            console.log('🔍 画像処理完了 - 保存された画像数:', savedImages.length);
+            console.log('🔍 処理後のメッセージ内容:', cleanedChatData.messages.map((m) => ({
+                id: m.id,
+                isAiResponse: m.isAiResponse,
+                contentPreview: m.content?.substring(0, 100)
+            })));
+            // 画像処理後にファイル名を抽出（画像URLが既に置き換えられている）
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            // ユーザーメッセージからテキストのみを抽出（画像を除外）
+            const userMessages = cleanedChatData.messages.filter((m) => !m.isAiResponse);
+            const textMessages = userMessages
+                .map((m) => m.content)
+                .filter((content) => {
+                if (!content) {
+                    console.log('🔍 /send フィルタ - 空のコンテンツ');
+                    return false;
+                }
+                const trimmed = content.trim();
+                console.log('🔍 /send フィルタ - チェック中:', {
+                    content: trimmed.substring(0, 50),
+                    isDataImage: trimmed.startsWith('data:image/'),
+                    isApiImages: trimmed.startsWith('/api/images/'),
+                    includesChatExports: trimmed.includes('/api/images/chat-exports/'),
+                    isDeleted: trimmed === '[画像データ削除]',
+                });
+                // Base64画像、画像URL、画像削除マーカーを除外
+                const result = !trimmed.startsWith('data:image/') &&
+                    !trimmed.startsWith('/api/images/') &&
+                    !trimmed.includes('/api/images/chat-exports/') &&
+                    trimmed !== '[画像データ削除]';
+                console.log('🔍 /send フィルタ - 結果:', result ? 'テキストとして採用' : '画像として除外');
+                return result;
+            })
+                .join('\n')
+                .trim();
+            console.log('🔍 抽出されたテキストメッセージ:', textMessages);
+            let incidentTitle = '事象なし';
+            if (textMessages) {
+                // テキストがある場合は最初の行を使用
+                incidentTitle = textMessages.split('\n')[0].trim();
+            }
+            else {
+                // テキストがない場合（画像のみ）は、AIの応答から事象を推測
+                const aiMessages = cleanedChatData.messages.filter((m) => m.isAiResponse);
+                if (aiMessages.length > 0) {
+                    // 最初のAI応答から事象を抽出（最初の一文を使用）
+                    const firstAiResponse = aiMessages[0].content;
+                    const firstSentence = firstAiResponse.split(/[。.\n]/).filter((s) => s.trim().length > 0)[0];
+                    incidentTitle = firstSentence?.trim().substring(0, 50) || formattedHistoryData.title || '画像による故障報告';
+                }
+                else {
+                    // AI応答もない場合は、フォーマットされたタイトルを使用
+                    incidentTitle = formattedHistoryData.title || '画像による故障報告';
+                }
+            }
+            console.log('🔍 決定されたファイル名:', incidentTitle);
+            // ファイル名用に事象内容をサニタイズ（特殊文字を除去）
+            const sanitizedTitle = incidentTitle
+                .replace(/[<>:"/\\|?*]/g, '') // ファイル名に使用できない文字を除去
+                .replace(/\s+/g, '_') // スペースをアンダースコアに変換
+                .substring(0, 50); // 長さを制限
+            // 既存のファイルを検索（同じchatIdのファイルがあれば上書き）
+            let existingFilePath = null;
+            if (fs.existsSync(exportsDir)) {
+                const files = fs.readdirSync(exportsDir);
+                const existingFile = files.find(file => file.includes(`_${chatId}_`) && file.endsWith('.json'));
+                if (existingFile) {
+                    existingFilePath = path.join(exportsDir, existingFile);
+                    console.log('🔄 既存ファイルを上書きします:', existingFile);
+                }
+            }
+            const fileName = existingFilePath
+                ? path.basename(existingFilePath)
+                : `${sanitizedTitle}_${chatId}_${timestamp}.json`;
+            const filePath = existingFilePath || path.join(exportsDir, fileName);
+            console.log('🔍 最終的なファイル名:', fileName);
             // 画像データを完全に除去する関数
             const removeImageDataRecursively = (obj) => {
                 if (obj === null || obj === undefined) {
@@ -978,7 +1089,7 @@ function registerChatRoutes(app) {
             const jsonString = JSON.stringify(cleanedExportData, null, 2);
             try {
                 // UTF-8 BOMなしで保存
-                fs_1.default.writeFileSync(filePath, jsonString, 'utf8');
+                fs.writeFileSync(filePath, jsonString, 'utf8');
                 console.log('チャットデータを保存しました:', filePath);
                 console.log('保存されたデータサイズ:', Buffer.byteLength(jsonString, 'utf8'), 'bytes');
             }
@@ -986,21 +1097,48 @@ function registerChatRoutes(app) {
                 console.error('ファイル保存エラー:', writeError);
                 throw writeError;
             }
-            // DBにも保存（故障履歴サービス使用）
-            try {
-                console.log('📊 故障履歴をDBに保存中...');
-                const dbSaveResult = await fault_history_service_js_1.faultHistoryService.saveFaultHistory(exportData, {
-                    title: formattedHistoryData.title,
-                    description: formattedHistoryData.problem_description,
-                    extractImages: true, // 画像も抽出・保存
-                });
-                console.log('✅ 故障履歴をDBに保存完了:', dbSaveResult.id);
+            // Azure BLOB Storageにアップロード（本番環境のみ）
+            if (process.env.STORAGE_MODE === 'hybrid' && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+                try {
+                    console.log('☁️ Azure BLOB Storageにアップロード中...');
+                    const { azureStorage } = await import('../lib/azure-storage.js');
+                    // JSONファイルをアップロード
+                    const relativePath = path.relative(process.cwd(), filePath);
+                    const blobName = relativePath.replace(/\\/g, '/');
+                    await azureStorage.uploadFile(filePath, blobName);
+                    console.log('✅ JSONファイルをBLOBにアップロード完了:', blobName);
+                    // 画像ファイルもアップロード（既に保存済みのファイル）
+                    for (const image of savedImages) {
+                        if (image.fileName) {
+                            const imagePath = path.join(imagesDir, image.fileName);
+                            if (fs.existsSync(imagePath)) {
+                                const imageBlobName = `images/chat-exports/${image.fileName}`;
+                                await azureStorage.uploadFile(imagePath, imageBlobName);
+                                console.log('✅ 画像をBLOBにアップロード完了:', imageBlobName);
+                            }
+                        }
+                    }
+                }
+                catch (uploadError) {
+                    console.error('⚠️ Azure BLOBアップロードエラー（ローカル保存は成功）:', uploadError);
+                }
             }
-            catch (dbError) {
-                console.error('❌ DB保存エラー（ファイル保存は成功）:', dbError);
-                // ファイル保存は成功しているので、エラーにはしない
+            // DBバックアップ（オプション、画像は含めない）
+            if (process.env.DATABASE_BACKUP === 'true' && process.env.DATABASE_URL) {
+                try {
+                    console.log('💾 DBバックアップ中...');
+                    const dbSaveResult = await faultHistoryService.saveFaultHistory(exportData, {
+                        title: formattedHistoryData.title,
+                        description: formattedHistoryData.problem_description,
+                        extractImages: false, // 画像はファイルのみ、DBには保存しない
+                    });
+                    console.log('✅ DBバックアップ完了:', dbSaveResult.id);
+                }
+                catch (dbError) {
+                    console.error('⚠️ DBバックアップエラー（ファイル保存は成功）:', dbError);
+                }
             }
-            console.log('チャットエクスポートがファイルとDBに保存されました');
+            console.log(`✅ チャットエクスポート完了: JSON=${fileName}, 画像=${savedImages.length}件`);
             // 成功レスポンス
             res.json({
                 success: true,
@@ -1008,6 +1146,7 @@ function registerChatRoutes(app) {
                 filePath: filePath,
                 fileName: fileName,
                 messageCount: chatData.messages.length,
+                savedImagesCount: savedImages.length,
             });
         }
         catch (error) {
@@ -1023,7 +1162,7 @@ function registerChatRoutes(app) {
         try {
             const userId = req.session.userId;
             const chatId = req.params.id;
-            const chat = await storage_js_1.storage.getChat(chatId);
+            const chat = await storage.getChat(chatId);
             if (!chat) {
                 return res.status(404).json({ message: 'Chat not found' });
             }
@@ -1032,13 +1171,13 @@ function registerChatRoutes(app) {
                 req.session.userRole !== 'admin') {
                 return res.status(403).json({ message: 'Access denied' });
             }
-            const messages = await storage_js_1.storage.getMessagesForChat(chatId);
+            const messages = await storage.getMessagesForChat(chatId);
             const messageMedia = {};
             for (const message of messages) {
-                messageMedia[message.id] = await storage_js_1.storage.getMediaForMessage(message.id);
+                messageMedia[message.id] = await storage.getMediaForMessage(message.id);
             }
-            const lastExport = await storage_js_1.storage.getLastChatExport(chatId);
-            const formattedData = await (0, chat_export_formatter_js_1.formatChatHistoryForExternalSystem)(chat, messages, messageMedia, lastExport);
+            const lastExport = await storage.getLastChatExport(chatId);
+            const formattedData = await formatChatHistoryForExternalSystem(chat, messages, messageMedia, lastExport);
             res.json(formattedData);
         }
         catch (error) {
@@ -1052,11 +1191,11 @@ function registerChatRoutes(app) {
     app.get('/api/chats/:id/last-export', requireAuth, async (req, res) => {
         try {
             const chatId = req.params.id;
-            const chat = await storage_js_1.storage.getChat(chatId);
+            const chat = await storage.getChat(chatId);
             if (!chat) {
                 return res.status(404).json({ message: 'Chat not found' });
             }
-            const lastExport = await storage_js_1.storage.getLastChatExport(chatId);
+            const lastExport = await storage.getLastChatExport(chatId);
             res.json(lastExport || { timestamp: null });
         }
         catch (error) {
@@ -1069,27 +1208,27 @@ function registerChatRoutes(app) {
     // 保存されたチャット履歴一覧を取得
     app.get('/api/chats/exports', requireAuth, async (req, res) => {
         try {
-            const exportsDir = path_1.default.join(process.cwd(), '..', 'knowledge-base', 'exports');
-            if (!fs_1.default.existsSync(exportsDir)) {
+            const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+            if (!fs.existsSync(exportsDir)) {
                 return res.json([]);
             }
             // 再帰的にJSONファイルを検索する関数
             const findJsonFiles = (dir, baseDir = exportsDir) => {
                 const files = [];
-                const items = fs_1.default.readdirSync(dir);
+                const items = fs.readdirSync(dir);
                 for (const item of items) {
-                    const itemPath = path_1.default.join(dir, item);
-                    const stats = fs_1.default.statSync(itemPath);
+                    const itemPath = path.join(dir, item);
+                    const stats = fs.statSync(itemPath);
                     if (stats.isDirectory()) {
                         // サブディレクトリを再帰的に検索
                         files.push(...findJsonFiles(itemPath, baseDir));
                     }
                     else if (item.endsWith('.json')) {
                         try {
-                            const content = fs_1.default.readFileSync(itemPath, 'utf8');
+                            const content = fs.readFileSync(itemPath, 'utf8');
                             const data = JSON.parse(content);
                             // 相対パスを計算
-                            const relativePath = path_1.default.relative(baseDir, itemPath);
+                            const relativePath = path.relative(baseDir, itemPath);
                             files.push({
                                 fileName: relativePath,
                                 filePath: itemPath,
@@ -1128,12 +1267,12 @@ function registerChatRoutes(app) {
     app.get('/api/chats/exports/:fileName', requireAuth, async (req, res) => {
         try {
             const fileName = req.params.fileName;
-            const exportsDir = path_1.default.join(process.cwd(), '..', 'knowledge-base', 'exports');
-            const filePath = path_1.default.join(exportsDir, fileName);
-            if (!fs_1.default.existsSync(filePath)) {
+            const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+            const filePath = path.join(exportsDir, fileName);
+            if (!fs.existsSync(filePath)) {
                 return res.status(404).json({ message: 'Export file not found' });
             }
-            const content = fs_1.default.readFileSync(filePath, 'utf8');
+            const content = fs.readFileSync(filePath, 'utf8');
             const data = JSON.parse(content);
             res.json(data);
         }
@@ -1146,13 +1285,13 @@ function registerChatRoutes(app) {
     app.get('/api/images/chat-exports/:fileName', async (req, res) => {
         try {
             const fileName = req.params.fileName;
-            const imagePath = path_1.default.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports', fileName);
-            if (!fs_1.default.existsSync(imagePath)) {
+            const imagePath = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports', fileName);
+            if (!fs.existsSync(imagePath)) {
                 return res.status(404).json({ message: 'Image not found' });
             }
             // 画像ファイルを読み込んで送信
-            const imageBuffer = fs_1.default.readFileSync(imagePath);
-            const ext = path_1.default.extname(fileName).toLowerCase();
+            const imageBuffer = fs.readFileSync(imagePath);
+            const ext = path.extname(fileName).toLowerCase();
             let contentType = 'image/jpeg';
             if (ext === '.png')
                 contentType = 'image/png';

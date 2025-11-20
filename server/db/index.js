@@ -1,45 +1,6 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.db = void 0;
-const postgres_js_1 = require("drizzle-orm/postgres-js");
-const postgres_1 = __importDefault(require("postgres"));
-const schema = __importStar(require("./schema.js"));
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+import * as schema from './schema.js';
 // セーフモード判定
 const isSafeMode = process.env.SAFE_MODE === 'true';
 // データベース接続設定
@@ -109,14 +70,14 @@ let dbInstance = null;
 // セーフモードでない場合のみDB接続を初期化
 if (!isSafeMode) {
     try {
-        client = (0, postgres_1.default)(getDatabaseUrl(), {
+        client = postgres(getDatabaseUrl(), {
             ssl: getSSLConfig(),
             max: 10,
             idle_timeout: 20,
             connect_timeout: 10,
             prepare: false,
         });
-        dbInstance = (0, postgres_js_1.drizzle)(client, { schema });
+        dbInstance = drizzle(client, { schema });
         console.log('🔍 DEBUG server/db/index.ts: データベース接続を有効化');
         console.log('🔍 DEBUG server/db/index.ts: 接続先 =', getDatabaseUrl().replace(/\/\/.*@/, '//***:***@'));
         // 接続プールの準備完了ログ
@@ -134,7 +95,7 @@ else {
     console.log('🛡️ セーフモード: データベース接続をスキップ');
 }
 // DBインスタンスのエクスポート（セーフモード対応）
-exports.db = dbInstance || createSafeModeDB();
+export const db = dbInstance || createSafeModeDB();
 // デバッグ用ログ
 console.log('🔍 DEBUG server/db/index.ts: 環境 =', {
     NODE_ENV: process.env.NODE_ENV,

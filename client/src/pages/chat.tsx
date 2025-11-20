@@ -420,12 +420,30 @@ export default function ChatPage() {
       }
     };
 
+    // 応急復旧マニュアル完了イベントのリスナー
+    const handleEmergencyGuideCompleted = (event: CustomEvent) => {
+      const { detail } = event;
+      console.log('📋 応急復旧マニュアル履歴受信:', detail);
+
+      // マニュアルの実行履歴をメッセージとして追加
+      const summaryText = `【応急復旧マニュアル実行履歴】\n\nマニュアル: ${detail.title}\n\n実行したステップ:\n${detail.executedSteps.map((step: any, index: number) => `${index + 1}. ${step.title}\n   ${step.message}${step.selectedCondition ? `\n   選択: ${step.selectedCondition}` : ''}`).join('\n\n')}\n\n${detail.isPartial ? '※ 途中までの実行履歴です' : '完了'}`;
+
+      sendMessage(summaryText, [], false);
+
+      toast({
+        title: '履歴を追加しました',
+        description: 'マニュアルの実行履歴をチャットに追加しました',
+      });
+    };
+
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('aiAssistSettingsChanged', handleCustomStorageChange);
+    window.addEventListener('emergency-guide-completed', handleEmergencyGuideCompleted as EventListener);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('aiAssistSettingsChanged', handleCustomStorageChange);
+      window.removeEventListener('emergency-guide-completed', handleEmergencyGuideCompleted as EventListener);
     };
   }, []);
 
@@ -950,7 +968,7 @@ export default function ChatPage() {
   };
 
   // AI支援終了後のチャットエリアリセット処理
-  const handleAiSupportExit = () => {
+  const handleAiSupportExit = async () => {
     // AI支援終了メッセージを送信
     const aiSupportEndMessage = {
       id: Date.now().toString(),
@@ -979,6 +997,39 @@ export default function ChatPage() {
       title: '支援終了',
       description: 'AI支援を終了しました',
     });
+
+    // 継続選択ダイアログを表示
+    const shouldContinue = await new Promise<boolean>((resolve) => {
+      const dialog = document.createElement('div');
+      dialog.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:24px;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,0.1);z-index:9999;min-width:400px';
+      dialog.innerHTML = `
+        <h3 style="font-size:18px;font-weight:bold;margin-bottom:16px">AI支援終了</h3>
+        <p style="margin-bottom:24px;color:#666">引き続き別の機能を使用しますか？</p>
+        <div style="display:flex;gap:12px;justify-content:flex-end">
+          <button id="continue-btn" style="padding:8px 16px;background:#3B82F6;color:white;border:none;border-radius:4px;cursor:pointer;font-weight:500">継続する</button>
+          <button id="end-btn" style="padding:8px 16px;background:#6B7280;color:white;border:none;border-radius:4px;cursor:pointer;font-weight:500">終了</button>
+        </div>
+      `;
+      document.body.appendChild(dialog);
+
+      document.getElementById('continue-btn')!.onclick = () => {
+        document.body.removeChild(dialog);
+        resolve(true);
+      };
+      document.getElementById('end-btn')!.onclick = () => {
+        document.body.removeChild(dialog);
+        resolve(false);
+      };
+    });
+
+    if (shouldContinue) {
+      // 継続する場合：メッセージを保持したまま再度AI支援や他機能を使用可能にする
+      toast({
+        title: '継続モード',
+        description: '引き続きAI支援や応急復旧マニュアル等をご利用いただけます',
+        duration: 3000,
+      });
+    }
   };
 
   const handleExport = async () => {
@@ -1173,21 +1224,41 @@ export default function ChatPage() {
           }, 2000);
         }
 
-        // 送信完亁Eーにチャティングーをクリア
-        await clearChatHistory();
+        // 送信後の選択ダイアログを表示
+        const shouldContinue = await new Promise<boolean>((resolve) => {
+          const dialog = document.createElement('div');
+          dialog.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:24px;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,0.1);z-index:9999;min-width:400px';
+          dialog.innerHTML = `
+            <h3 style="font-size:18px;font-weight:bold;margin-bottom:16px">チャット送信完了</h3>
+            <p style="margin-bottom:24px;color:#666">チャットを継続しますか？</p>
+            <div style="display:flex;gap:12px;justify-content:flex-end">
+              <button id="continue-btn" style="padding:8px 16px;background:#3B82F6;color:white;border:none;border-radius:4px;cursor:pointer;font-weight:500">継続する（上書き保存）</button>
+              <button id="clear-btn" style="padding:8px 16px;background:#EF4444;color:white;border:none;border-radius:4px;cursor:pointer;font-weight:500">クリアして新規</button>
+            </div>
+          `;
+          document.body.appendChild(dialog);
 
-        // 機種と機械番号の選択状態�Eみリセティングー�E�選択肢シューティングは保持�E�E
-        setSelectedMachineType('');
-        selectedMachineTypeRef.current = '';
-        setSelectedMachineNumber('');
-        selectedMachineNumberRef.current = '';
-        setMachineTypeInput('');
-        setMachineNumberInput('');
-        // 選択肢シューティングは保持するため、filteredMachineTypes と filteredMachines はクリアしなぁE
-        // setFilteredMachineTypes([]); // コメントアウティング
-        // setFilteredMachines([]);     // コメントアウティング
+          document.getElementById('continue-btn')!.onclick = () => {
+            document.body.removeChild(dialog);
+            resolve(true);
+          };
+          document.getElementById('clear-btn')!.onclick = () => {
+            document.body.removeChild(dialog);
+            resolve(false);
+          };
+        });
 
-        // 機械番号は機種選択後に再取得されるため、一旦クリア
+        if (!shouldContinue) {
+          // クリアを選択した場合
+          await clearChatHistory();
+          setSelectedMachineType('');
+          selectedMachineTypeRef.current = '';
+          setSelectedMachineNumber('');
+          selectedMachineNumberRef.current = '';
+          setMachineTypeInput('');
+          setMachineNumberInput('');
+        }
+        // 継続を選択した場合は何もしない（チャットIDとメッセージを保持）
         setMachines([]);
         setFilteredMachines([]);
         lastWarningMessageRef.current = null;
@@ -2620,7 +2691,7 @@ export default function ChatPage() {
             className='border-2 border-blue-500 bg-blue-50 hover:bg-blue-100 text-blue-700'
           >
             <Upload className='w-4 h-4 mr-2' />
-            チャット履歴送信
+            サーバーへ送信
           </Button>
 
           <Button
@@ -2810,8 +2881,8 @@ export default function ChatPage() {
                   onExit={() => setSelectedGuideId(null)}
                   backButtonText='一覧に戻る'
                   onSendToChat={() => {
-                    console.log('応急処置ガイドをチャットに送信');
-                    setShowEmergencyGuide(false);
+                    console.log('応急処置ガイドをチャットに送信 - 継続可能');
+                    // マニュアルは閉じずに継続できるようにする（EmergencyGuideDisplay側で制御）
                   }}
                 />
               </div>

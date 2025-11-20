@@ -2,7 +2,7 @@
 
 // Azure App Service専用サーバー
 // Windows/Linux環境で確実に動作する最小限のサーバー
-// Version: 2024-11-17
+// Version: 2025-11-20 (Deployment verification)
 
 // 環境変数読み込み（ローカル開発のみ、本番では不要）
 import dotenv from 'dotenv';
@@ -100,10 +100,10 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'tiny' : 'dev'));
 const allowedOrigins = [
   FRONTEND_URL,
   STATIC_WEB_APP_URL,
-  'https://witty-river-012f39e00.1.azurestaticapps.net', // 明示的なStatic Web Apps URL
-  'http://localhost:5173', // 開発用
-  'http://localhost:8080', // 開発用
-  'https://localhost:5173', // 開発用（HTTPS）
+  // 開発環境用のみハードコード（本番環境は環境変数で制御）
+  'http://localhost:5173',
+  'http://localhost:8080',
+  'https://localhost:5173',
   ...(process.env.CORS_ALLOW_ORIGINS?.split(',').map(url => url.trim()) || [])
 ].filter(Boolean);
 
@@ -4359,7 +4359,7 @@ app.delete('/api/history/:id', async (req, res) => {
         for await (const blob of containerClient.listBlobsFlat({ prefix: imagePrefix })) {
           const imageFileName = blob.name.split('/').pop();
           if (imagesToDelete.includes(imageFileName) ||
-              (imageFileName.includes(id) && (imageFileName.endsWith('.jpg') || imageFileName.endsWith('.jpeg') || imageFileName.endsWith('.png')))) {
+            (imageFileName.includes(id) && (imageFileName.endsWith('.jpg') || imageFileName.endsWith('.jpeg') || imageFileName.endsWith('.png')))) {
             try {
               const blobClient = containerClient.getBlobClient(blob.name);
               await blobClient.delete();

@@ -1,56 +1,13 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.extractComponentKeywords = extractComponentKeywords;
-exports.extractSymptomKeywords = extractSymptomKeywords;
-exports.detectPossibleModels = detectPossibleModels;
-exports.formatChatHistoryForHistoryUI = formatChatHistoryForHistoryUI;
-exports.formatChatHistoryForExternalSystem = formatChatHistoryForExternalSystem;
-const openai_1 = __importDefault(require("openai"));
-const path = __importStar(require("path"));
-const url_1 = require("url");
+import OpenAI from 'openai';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
 // ESM用__dirname定義
-const __filename = (0, url_1.fileURLToPath)(import.meta.url);
+const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 // OpenAIクライアントの初期化（環境変数が存在する場合のみ）
 let openai = null;
 if (process.env.OPENAI_API_KEY) {
-    openai = new openai_1.default({ apiKey: process.env.OPENAI_API_KEY });
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 }
 else {
     console.warn('[DEV] OpenAI client not initialized - API key not available');
@@ -307,7 +264,7 @@ const components = [
 /**
  * テキストからコンポーネント関連のキーワードを抽出する
  */
-function extractComponentKeywords(text) {
+export function extractComponentKeywords(text) {
     const foundComponents = [];
     for (const component of components) {
         for (const keyword of component.keywords) {
@@ -322,7 +279,7 @@ function extractComponentKeywords(text) {
 /**
  * テキストから症状関連のキーワードを抽出する
  */
-function extractSymptomKeywords(text) {
+export function extractSymptomKeywords(text) {
     const foundSymptoms = [];
     for (const symptom of symptoms) {
         for (const keyword of symptom.keywords) {
@@ -338,7 +295,7 @@ function extractSymptomKeywords(text) {
 /**
  * テキストから可能性のある機種モデルを判別する
  */
-function detectPossibleModels(text) {
+export function detectPossibleModels(text) {
     const foundModels = [];
     for (const model of vehicleModels) {
         for (const keyword of model.keywords) {
@@ -552,7 +509,7 @@ async function generateJapaneseTitle(userMessages, allMessages) {
 /**
  * チャット履歴を履歴管理UI用にフォーマットする
  */
-async function formatChatHistoryForHistoryUI(chat, messages, messageMedia, machineInfo) {
+export async function formatChatHistoryForHistoryUI(chat, messages, messageMedia, machineInfo) {
     // ユーザーメッセージからテキストのみを抽出（画像を除外）
     const userMessages = messages.filter((m) => !m.isAiResponse);
     const userTextMessages = userMessages
@@ -630,7 +587,7 @@ async function formatChatHistoryForHistoryUI(chat, messages, messageMedia, machi
 /**
  * チャット履歴を外部システム用にフォーマットする（従来の形式）
  */
-async function formatChatHistoryForExternalSystem(chat, messages, messageMedia, lastExport) {
+export async function formatChatHistoryForExternalSystem(chat, messages, messageMedia, lastExport) {
     const allText = messages.map((m) => m.content).join(' ');
     const extractedComponents = extractComponentKeywords(allText);
     const extractedSymptoms = extractSymptomKeywords(allText);

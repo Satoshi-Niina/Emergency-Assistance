@@ -135,6 +135,7 @@ jobs:
             STORAGE_MODE=hybrid \
             LOCAL_EXPORT_DIR=/app/knowledge-base/exports \
             FAULT_HISTORY_IMAGES_DIR=/app/knowledge-base/images/chat-exports \
+            DATABASE_BACKUP=false \
             WEBSITES_PORT=8080 \
             WEBSITES_CONTAINER_START_TIME_LIMIT=600 \
             WEBSITES_ENABLE_APP_SERVICE_STORAGE=false \

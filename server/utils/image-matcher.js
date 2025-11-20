@@ -1,23 +1,17 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.findRelevantImages = findRelevantImages;
-const openai_1 = __importDefault(require("openai"));
-const index_js_1 = require("../db/index.js");
-const schema_js_1 = require("../db/schema.js");
-const openai = new openai_1.default({
+import OpenAI from 'openai';
+import { db } from '../db/index.js';
+import { images } from '../db/schema.js';
+const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
-async function findRelevantImages(text) {
+export async function findRelevantImages(text) {
     try {
         const embeddingResponse = await openai.embeddings.create({
             model: 'text-embedding-3-small',
             input: text,
         });
         const textEmbedding = embeddingResponse.data[0].embedding;
-        const allImages = await index_js_1.db.select().from(schema_js_1.images);
+        const allImages = await db.select().from(images);
         const imagesWithSimilarity = allImages.map(image => ({
             ...image,
             similarity: image.embedding

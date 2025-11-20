@@ -40,6 +40,7 @@ export default function CameraModal() {
   const [isVideoMode, setIsVideoMode] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   // 常に背面カメラを使用する（切替機能なし）
   const [useBackCamera] = useState(true);
@@ -266,50 +267,52 @@ export default function CameraModal() {
       canvas.height = videoHeight;
 
       const ctx = canvas.getContext('2d');
-      if (ctx && video) {
+      if (!ctx || !video) {
+        console.error('❌ Canvas contextまたはvideoが取得できません');
+        return;
+      }
+
+      // videoが有効な画像を持っているか確認
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        console.error('❌ Video要素に有効な画像がありません');
+        return;
+      }
+
+      try {
+        // canvasに画像を描画
         ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
 
-        try {
-          // より高い圧縮率でファイルサイズを最小化（品質0.4）
-          const imageData = canvas.toDataURL('image/jpeg', 0.4);
+        // Blobに変換（Base64は使用しない）
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              console.error('❌ Blob変換に失敗しました');
+              return;
+            }
 
-          // Base64データが正しい形式になっているかチェック
-          if (!imageData.startsWith('data:image/')) {
-            console.error(
-              'Base64データの形式が不正です:',
-              imageData.substring(0, 50)
-            );
-            console.error(
-              'canvas.toDataURL()の結果:',
-              typeof imageData,
-              imageData.length
-            );
-            return;
-          }
+            // Blobオブジェクトとプレビュー用URLの両方を保存
+            const blobUrl = URL.createObjectURL(blob);
+            console.log('✅ 撮影画像をBlob形式で生成成功:', {
+              format: 'image/jpeg',
+              quality: 0.7,
+              originalSize: `${video.videoWidth}x${video.videoHeight}`,
+              compressedSize: `${videoWidth}x${videoHeight}`,
+              blobSize: blob.size,
+              blobSizeMB: (blob.size / 1024 / 1024).toFixed(2),
+              blobUrl: blobUrl.substring(0, 50) + '...',
+            });
 
-          console.log('✅ 撮影画像をBase64形式で生成成功:', {
-            format: 'image/jpeg',
-            quality: 0.4,
-            resolution: '150dpi相当',
-            originalSize: `${video.videoWidth}x${video.videoHeight}`,
-            compressedSize: `${videoWidth}x${videoHeight}`,
-            maxResolution: `${maxWidth}x${maxHeight}`,
-            dataLength: imageData.length,
-            dataSizeMB: (imageData.length / 1024 / 1024).toFixed(2),
-            isValidBase64: imageData.startsWith('data:image/jpeg;base64,'),
-            mimeType: imageData.split(';')[0],
-            preview: imageData.substring(0, 50) + '...',
-          });
-
-          setCapturedImage(imageData);
-        } catch (error) {
-          console.error('canvas.toDataURL()でエラーが発生:', error);
-        }
+            setCapturedImage(blobUrl);
+            setCapturedBlob(blob);
+          },
+          'image/jpeg',
+          0.7
+        );
+      } catch (error) {
+        console.error('❌ 画像キャプチャでエラーが発生:', error);
       }
     }
-  };
-
-  const startRecording = () => {
+  }; const startRecording = () => {
     recordedChunksRef.current = [];
 
     if (stream) {
@@ -341,42 +344,55 @@ export default function CameraModal() {
   };
 
   const handleSend = async () => {
-    if (capturedImage) {
+    if (capturedImage && capturedBlob) {
       try {
-        console.log('撮影した画像をチャットに送信します');
+        console.log('📤 撮影した画像をアップロード・送信します');
 
-        // capturedImageが既にBase64形式かチェック
-        let finalImageData = capturedImage;
+        // FormDataを作成してサーバーにアップロード
+        const formData = new FormData();
+        const fileName = `camera_${Date.now()}.jpg`;
+        formData.append('image', capturedBlob, fileName);
 
-        if (!capturedImage.startsWith('data:image/')) {
-          console.log(
-            '画像データがBase64形式ではありません。変換します:',
-            typeof capturedImage
-          );
-          // もしObjectやBlobの場合は、ここで変換処理を追加
-          if (typeof capturedImage === 'object') {
-            console.error(
-              '画像データがオブジェクト形式です。Base64変換が必要です。'
-            );
-            return;
-          }
-          finalImageData = `data:image/jpeg;base64,${capturedImage}`;
-        }
-
-        console.log('送信する画像データ:', {
-          isBase64: finalImageData.startsWith('data:image/'),
-          urlLength: finalImageData.length,
-          mimeType: finalImageData.split(';')[0],
-          preview: finalImageData.substring(0, 50) + '...',
+        console.log('📤 画像アップロード開始:', {
+          fileName,
+          blobSize: capturedBlob.size,
+          blobType: capturedBlob.type,
         });
 
-        // 完全なBase64データURLを直接contentに格納して送信
-        await sendMessage(finalImageData);
+        // サーバーに画像をアップロード
+        const uploadResponse = await fetch('/api/history/upload-image', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error('画像のアップロードに失敗しました');
+        }
+
+        const uploadData = await uploadResponse.json();
+        console.log('✅ 画像アップロード成功:', uploadData);
+
+        // アップロードされた画像のURLをメッセージとして送信
+        await sendMessage(uploadData.imageUrl);
+
+        // BlobURLをクリーンアップ
+        URL.revokeObjectURL(capturedImage);
 
         setIsOpen(false);
         setCapturedImage(null);
+        setCapturedBlob(null);
+
+        toast({
+          title: '画像を送信しました',
+          description: '画像がチャットに追加されました。',
+        });
       } catch (error) {
-        console.error('画像送信エラー:', error);
+        console.error('❌ 画像送信エラー:', error);
+        toast({
+          title: '画像送信エラー',
+          description: error instanceof Error ? error.message : '画像の送信に失敗しました',
+          variant: 'destructive',
+        });
       }
     }
   };

@@ -311,4 +311,93 @@ router.get('/stats', async (req, res) => {
         });
     }
 });
+/**
+ * DELETE /api/fault-history/:id
+ * 故障履歴を削除
+ */
+router.delete('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                error: 'IDが必要です',
+            });
+        }
+        // 故障履歴を取得
+        const item = await fault_history_service_js_1.faultHistoryService.getFaultHistoryById(id);
+        if (!item) {
+            return res.status(404).json({
+                success: false,
+                error: '故障履歴が見つかりません',
+            });
+        }
+        console.log(`🗑️ 故障履歴削除開始: ${id}`);
+        // 関連する画像を削除（savedImages または images から取得）
+        const images = item.images || item.savedImages || [];
+        if (images.length > 0) {
+            for (const image of images) {
+                try {
+                    const fileName = image.fileName || image.originalFileName;
+                    if (fileName) {
+                        const imagePath = path_1.default.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports', fileName);
+                        if (fs_1.default.existsSync(imagePath)) {
+                            fs_1.default.unlinkSync(imagePath);
+                            console.log(`🗑️ 画像削除: ${fileName}`);
+                        }
+                        else {
+                            console.warn(`⚠️ 画像ファイルが見つかりません: ${imagePath}`);
+                        }
+                    }
+                }
+                catch (imageError) {
+                    console.warn(`⚠️ 画像削除エラー:`, imageError);
+                }
+            }
+        }
+        // JSONファイルを削除（ファイル名からパスを構築）
+        const exportDir = process.env.LOCAL_EXPORT_DIR ||
+            path_1.default.join(process.cwd(), 'knowledge-base', 'exports');
+        // UUIDでファイル名を検索
+        let jsonFilePath = path_1.default.join(exportDir, `${id}.json`);
+        // 複合IDの場合、UUIDを抽出してファイルを検索
+        const uuidMatch = id.match(/_([a-f0-9-]{36})_/);
+        if (uuidMatch) {
+            const uuid = uuidMatch[1];
+            const files = fs_1.default.readdirSync(exportDir);
+            const matchingFile = files.find(file => file.includes(uuid) && file.endsWith('.json'));
+            if (matchingFile) {
+                jsonFilePath = path_1.default.join(exportDir, matchingFile);
+            }
+        }
+        try {
+            if (fs_1.default.existsSync(jsonFilePath)) {
+                fs_1.default.unlinkSync(jsonFilePath);
+                console.log(`🗑️ JSONファイル削除: ${jsonFilePath}`);
+            }
+            else {
+                console.warn(`⚠️ JSONファイルが見つかりません: ${jsonFilePath}`);
+            }
+        }
+        catch (fileError) {
+            console.warn(`⚠️ JSONファイル削除エラー:`, fileError);
+        }
+        // データベースから削除（データベースモードの場合）
+        // TODO: データベースから削除する処理を実装
+        console.log(`✅ 故障履歴削除完了: ${id}`);
+        res.json({
+            success: true,
+            message: '故障履歴を削除しました',
+            id,
+        });
+    }
+    catch (error) {
+        console.error('❌ 故障履歴削除エラー:', error);
+        res.status(500).json({
+            success: false,
+            error: '故障履歴の削除に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
 exports.default = router;

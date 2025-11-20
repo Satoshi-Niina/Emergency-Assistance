@@ -12,6 +12,7 @@ import { faultHistoryService } from '../services/fault-history-service.js';
 import { summarizeText } from '../lib/openai.js';
 import sharp from 'sharp';
 import { upload } from '../utils/image-uploader.js';
+import { azureStorage } from '../lib/azure-storage.js';
 
 // ESM用__dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -415,7 +416,10 @@ router.put('/update-item/:chatId', async (req, res) => {
     }
 
     // JSONファイルの更新（後方互換性のため）
-    const exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+    const exportsDir = process.env.LOCAL_EXPORT_DIR ||
+      path.join(process.cwd(), 'knowledge-base', 'exports');
+
+    console.log('📂 エクスポートディレクトリ:', exportsDir);
 
     if (!fs.existsSync(exportsDir)) {
       return res.status(404).json({
@@ -450,8 +454,8 @@ router.put('/update-item/:chatId', async (req, res) => {
       updatedBy: updatedBy || 'user',
     };
 
-    // 更新されたJSONファイルを保存
-    fs.writeFileSync(filePath, JSON.stringify(updatedJsonData, null, 2));
+    // 更新されたJSONファイルを保存（UTF-8 BOMなし）
+    fs.writeFileSync(filePath, JSON.stringify(updatedJsonData, null, 2), { encoding: 'utf8' });
 
     console.log('✅ JSONファイル更新完了:', {
       chatId,
@@ -495,7 +499,10 @@ router.get('/file', async (req, res) => {
     console.log('📋 ファイル取得リクエスト:', name);
 
     // knowledge-base/exports フォルダ内のJSONファイルを検索
-    const exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+    const exportsDir = process.env.LOCAL_EXPORT_DIR ||
+      path.join(process.cwd(), 'knowledge-base', 'exports');
+
+    console.log('📂 エクスポートディレクトリ:', exportsDir);
 
     if (!fs.existsSync(exportsDir)) {
       return res.status(404).json({
@@ -1269,19 +1276,23 @@ router.put('/:sessionId', async (_req, res) => {
 
 /**
  * PUT /api/history/update-item
- * 履歴アイテムの更新（JSONファイルに差分で上書き保存）
+ * 履歴アイテムの更新（データベースまたはJSONファイルに保存）
+ * ローカル環境: ファイルシステムに保存
+ * 本番環境: DATABASE_URLがあればデータベースに保存
  */
 router.put('/update-item/:id', async (_req, res) => {
   try {
     const { id } = req.params;
     const { updatedData, updatedBy = 'user' } = req.body;
 
-    console.log('📝 履歴アイテム更新リクエスト:', {
+    console.log('📝 履歴アイテム更新リクエスト（統一サーバー）:', {
       id,
       updatedDataType: typeof updatedData,
       updatedDataKeys: updatedData ? Object.keys(updatedData) : [],
       updatedBy,
     });
+
+    // 標準はファイルシステムのみ（DBはバックアップ用）
 
     // IDを正規化（export_プレフィックス除去など）
     let normalizedId = id;
@@ -1300,22 +1311,11 @@ router.put('/update-item/:id', async (_req, res) => {
 
     console.log('📝 正規化されたID:', normalizedId, '元のID:', id);
 
-    // 元のJSONファイルを検索
-    let exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+    // ファイルシステムから検索
+    const exportsDir = process.env.LOCAL_EXPORT_DIR ||
+      path.join(process.cwd(), 'knowledge-base', 'exports');
 
-    // サーバーディレクトリから起動されている場合の代替パス
-    if (!fs.existsSync(exportsDir)) {
-      const alternativePath = path.join(
-        process.cwd(),
-        '..',
-        'knowledge-base',
-        'exports'
-      );
-      if (fs.existsSync(alternativePath)) {
-        exportsDir = alternativePath;
-        console.log('🔄 代替パスを使用:', alternativePath);
-      }
-    }
+    console.log('📂 エクスポートディレクトリ:', exportsDir);
 
     // ディレクトリが存在しない場合は作成
     if (!fs.existsSync(exportsDir)) {
@@ -1381,16 +1381,32 @@ router.put('/update-item/:id', async (_req, res) => {
     if (!targetFile || !originalData) {
       console.log('❌ 対象ファイルが見つかりません:', {
         id,
+        normalizedId,
         exportsDir,
         filesFound: files.length,
-        jsonFiles: files.filter(f => f.endsWith('.json')).length,
       });
+
+      // ファイル名の詳細をログ出力
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+      console.log('📂 検索対象ファイル数:', jsonFiles.length);
+      for (const file of jsonFiles) {
+        const filePath = path.join(exportsDir, file);
+        try {
+          const content = fs.readFileSync(filePath, 'utf8');
+          const data = JSON.parse(content);
+          console.log(`📄 ${file}: chatId=${data.chatId}, id=${data.id}`);
+        } catch (err) {
+          console.warn(`⚠️ ${file}: 読み込みエラー`);
+        }
+      }
 
       return res.status(404).json({
         error: '対象の履歴ファイルが見つかりません',
         id: id,
+        normalizedId,
         searchedDirectory: exportsDir,
-        availableFiles: files.filter(f => f.endsWith('.json')),
+        availableFiles: jsonFiles,
+        note: 'ローカル環境ではファイルシステムのみ対応しています。本番環境ではデータベースを使用します。',
       });
     }
 
@@ -2309,7 +2325,9 @@ router.post('/summarize', async (req, res) => {
 
 /**
  * POST /api/history/upload-image
- * 編集画面から画像をアップロード（120pxにリサイズしてknowledge-base/images/chat-exportsに保存）
+ * 編集画面から画像をアップロード
+ * ローカル: ファイルシステムに保存（120pxにリサイズ）
+ * 本番: Azure BLOB Storageに保存（STORAGE_MODE=hybrid時）
  */
 router.post('/upload-image', upload.single('image'), async (req, res) => {
   try {
@@ -2350,20 +2368,11 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
       });
     }
 
-    // 保存先ディレクトリのパス
-    let imagesDir = path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
-    if (!fs.existsSync(imagesDir)) {
-      const alternativePath = path.join(
-        process.cwd(),
-        '..',
-        'knowledge-base',
-        'images',
-        'chat-exports'
-      );
-      if (fs.existsSync(alternativePath)) {
-        imagesDir = alternativePath;
-      }
-    }
+    // 保存先ディレクトリのパス（環境変数を優先）
+    const imagesDir = process.env.FAULT_HISTORY_IMAGES_DIR ||
+      path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
+
+    console.log('📂 画像保存ディレクトリ:', imagesDir);
 
     // ディレクトリが存在しない場合は作成
     if (!fs.existsSync(imagesDir)) {
@@ -2388,10 +2397,24 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
         .jpeg({ quality: 85 })
         .toBuffer();
 
+      // ローカルファイルシステムに保存
       fs.writeFileSync(filePath, resizedBuffer);
       console.log('✅ 画像ファイルを保存しました（120pxにリサイズ）:', filePath);
 
+      // 常にローカルファイルURLを返す（標準）
       const imageUrl = `/api/images/chat-exports/${fileName}`;
+
+      // STORAGE_MODE=hybridの場合はAzure Storageにもバックアップアップロード
+      if (process.env.STORAGE_MODE === 'hybrid' && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+        try {
+          const blobName = `images/chat-exports/${fileName}`;
+          await azureStorage.uploadFile(filePath, blobName);
+          console.log('☁️ Azure Storageバックアップ完了:', blobName);
+        } catch (uploadError) {
+          console.error('⚠️ Azure Storageアップロードエラー（ローカルファイルは保存済み）:', uploadError);
+          // バックアップ失敗でもローカル保存は成功しているのでエラーにしない
+        }
+      }
 
       res.json({
         success: true,
@@ -2403,8 +2426,20 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
       console.error('❌ 画像リサイズエラー:', resizeError);
       // リサイズに失敗した場合は元の画像を保存
       fs.writeFileSync(filePath, req.file.buffer);
+
+      // 常にローカルファイルURLを返す（標準）
       const imageUrl = `/api/images/chat-exports/${fileName}`;
-      res.json({
+
+      // STORAGE_MODE=hybridの場合はAzure Storageにもバックアップアップロード
+      if (process.env.STORAGE_MODE === 'hybrid' && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+        try {
+          const blobName = `images/chat-exports/${fileName}`;
+          await azureStorage.uploadFile(filePath, blobName);
+          console.log('☁️ Azure Storageバックアップ完了:', blobName);
+        } catch (uploadError) {
+          console.error('⚠️ Azure Storageアップロードエラー:', uploadError);
+        }
+      } res.json({
         success: true,
         imageUrl,
         fileName,

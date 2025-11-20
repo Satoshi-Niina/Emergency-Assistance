@@ -1,13 +1,10 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.storage = void 0;
-const database_storage_js_1 = require("./database-storage.js");
-const index_js_1 = require("./db/index.js");
-const schema_js_1 = require("./db/schema.js");
+import { DatabaseStorage } from './database-storage.js';
+import { db } from './db/index.js';
+import { schema } from './db/schema.js';
 // データベース接続テスト
 const testDatabaseConnection = async () => {
     try {
-        await index_js_1.db.select().from(schema_js_1.schema.users).limit(1);
+        await db.select().from(schema.users).limit(1);
         console.log('データベース接続OK');
         return true;
     }
@@ -16,8 +13,8 @@ const testDatabaseConnection = async () => {
         return false;
     }
 };
-const dbStorage = new database_storage_js_1.DatabaseStorage();
-exports.storage = {
+const dbStorage = new DatabaseStorage();
+export const storage = {
     testConnection: testDatabaseConnection,
     // Session store
     sessionStore: dbStorage.sessionStore,

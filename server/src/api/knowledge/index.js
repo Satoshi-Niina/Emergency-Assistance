@@ -2,16 +2,10 @@ module.exports = async (context, request) => {
   try {
     context.log('Knowledge HTTP trigger function processed a request.');
 
-    // OPTIONSリクエストの処理
+    // OPTIONSリクエストの処理（CORSはazure-server.mjsで一元管理）
     if (request.method === 'OPTIONS') {
       return {
         status: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie',
-          'Access-Control-Max-Age': '86400',
-        },
         body: '',
       };
     }
@@ -26,9 +20,6 @@ module.exports = async (context, request) => {
         status: 200,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie',
         },
         body: JSON.stringify({
           success: true,
@@ -70,9 +61,6 @@ module.exports = async (context, request) => {
         status: 200,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie',
         },
         body: JSON.stringify({
           success: true,
@@ -98,9 +86,6 @@ module.exports = async (context, request) => {
         status: 201,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie',
         },
         body: JSON.stringify({
           success: true,
@@ -126,9 +111,6 @@ module.exports = async (context, request) => {
         status: 200,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie',
         },
         body: JSON.stringify({
           success: true,
@@ -143,9 +125,6 @@ module.exports = async (context, request) => {
         status: 200,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie',
         },
         body: JSON.stringify({
           success: true,
@@ -158,7 +137,6 @@ module.exports = async (context, request) => {
       status: 405,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
       },
       body: JSON.stringify({
         success: false,
@@ -171,7 +149,6 @@ module.exports = async (context, request) => {
       status: 500,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
       },
       body: JSON.stringify({
         success: false,

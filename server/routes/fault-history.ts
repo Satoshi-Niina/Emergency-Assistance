@@ -8,7 +8,7 @@ const router = Router();
 
 // 画像アップロード設定
 const storage = multer.memoryStorage();
-const upload = multer({ 
+const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (_req, file, cb) => {
@@ -27,7 +27,7 @@ const upload = multer({
 router.post('/', upload.array('images', 10), async (req, res) => {
   try {
     const { jsonData, title, description, extractImages = 'true' } = req.body;
-    
+
     if (!jsonData) {
       return res.status(400).json({
         success: false,
@@ -52,7 +52,7 @@ router.post('/', upload.array('images', 10), async (req, res) => {
     });
 
     console.log(`✅ 故障履歴保存完了: ${result.id}`);
-    
+
     res.json({
       success: true,
       message: '故障履歴を保存しました',
@@ -125,7 +125,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     if (!id) {
       return res.status(400).json({
         success: false,
@@ -165,29 +165,34 @@ router.get('/:id', async (req, res) => {
 router.get('/images/:filename', async (req, res) => {
   try {
     const { filename } = req.params;
-    
-    if (!filename || !filename.match(/^[a-zA-Z0-9_-]+\.(jpg|jpeg|png|gif|webp)$/)) {
+
+    // ファイル名のバリデーション（chat_image_を含む形式に対応）
+    if (!filename || !filename.match(/^[a-zA-Z0-9_-]+\.(jpg|jpeg|png|gif|webp)$/i)) {
       return res.status(400).json({
         success: false,
         error: '無効なファイル名です',
       });
     }
 
-    const imagesDir = process.env.FAULT_HISTORY_IMAGES_DIR || 
+    const imagesDir = process.env.FAULT_HISTORY_IMAGES_DIR ||
       path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
     const filePath = path.join(imagesDir, filename);
 
+    console.log(`📷 画像リクエスト: ${filename}`);
+    console.log(`📁 画像ディレクトリ: ${imagesDir}`);
+    console.log(`📄 画像パス: ${filePath}`);
+    console.log(`✅ ファイル存在: ${fs.existsSync(filePath)}`);
+
     if (!fs.existsSync(filePath)) {
+      console.log(`❌ 画像が見つかりません: ${filePath}`);
       return res.status(404).json({
         success: false,
         error: '画像ファイルが見つかりません',
       });
-    }
-
-    // ファイルの統計情報を取得
+    }    // ファイルの統計情報を取得
     const stats = fs.statSync(filePath);
     const ext = path.extname(filename).toLowerCase();
-    
+
     // MIMEタイプを設定
     let mimeType = 'image/jpeg';
     switch (ext) {
@@ -223,12 +228,12 @@ router.get('/images/:filename', async (req, res) => {
 router.post('/import-from-exports', async (req, res) => {
   try {
     const { force = false } = req.body;
-    
+
     console.log('📥 exportsディレクトリからの移行開始');
-    
-    const exportDir = process.env.LOCAL_EXPORT_DIR || 
+
+    const exportDir = process.env.LOCAL_EXPORT_DIR ||
       path.join(process.cwd(), 'knowledge-base', 'exports');
-    
+
     if (!fs.existsSync(exportDir)) {
       return res.json({
         success: true,
@@ -300,7 +305,7 @@ router.post('/import-from-exports', async (req, res) => {
 router.get('/stats', async (req, res) => {
   try {
     const result = await faultHistoryService.getFaultHistoryList({ limit: 10000 });
-    
+
     const stats = {
       total: result.total,
       byMachineType: {} as Record<string, number>,
@@ -320,7 +325,7 @@ router.get('/stats', async (req, res) => {
       if (item.office) {
         stats.byOffice[item.office] = (stats.byOffice[item.office] || 0) + 1;
       }
-      
+
       // 30日以内の件数
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -334,10 +339,107 @@ router.get('/stats', async (req, res) => {
       data: stats,
     });
   } catch (error) {
-    console.error('❌ 統計情報取得エラー:', error);  
+    console.error('❌ 統計情報取得エラー:', error);
     res.status(500).json({
       success: false,
       error: '統計情報の取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * DELETE /api/fault-history/:id
+ * 故障履歴を削除
+ */
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        error: 'IDが必要です',
+      });
+    }
+
+    // 故障履歴を取得
+    const item = await faultHistoryService.getFaultHistoryById(id);
+
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        error: '故障履歴が見つかりません',
+      });
+    }
+
+    console.log(`🗑️ 故障履歴削除開始: ${id}`);
+
+    // 関連する画像を削除（savedImages または images から取得）
+    const images = item.images || item.savedImages || [];
+    if (images.length > 0) {
+      for (const image of images) {
+        try {
+          const fileName = image.fileName || image.originalFileName;
+          if (fileName) {
+            const imagePath = path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports', fileName);
+            if (fs.existsSync(imagePath)) {
+              fs.unlinkSync(imagePath);
+              console.log(`🗑️ 画像削除: ${fileName}`);
+            } else {
+              console.warn(`⚠️ 画像ファイルが見つかりません: ${imagePath}`);
+            }
+          }
+        } catch (imageError) {
+          console.warn(`⚠️ 画像削除エラー:`, imageError);
+        }
+      }
+    }
+
+    // JSONファイルを削除（ファイル名からパスを構築）
+    const exportDir = process.env.LOCAL_EXPORT_DIR ||
+      path.join(process.cwd(), 'knowledge-base', 'exports');
+
+    // UUIDでファイル名を検索
+    let jsonFilePath = path.join(exportDir, `${id}.json`);
+
+    // 複合IDの場合、UUIDを抽出してファイルを検索
+    const uuidMatch = id.match(/_([a-f0-9-]{36})_/);
+    if (uuidMatch) {
+      const uuid = uuidMatch[1];
+      const files = fs.readdirSync(exportDir);
+      const matchingFile = files.find(file => file.includes(uuid) && file.endsWith('.json'));
+      if (matchingFile) {
+        jsonFilePath = path.join(exportDir, matchingFile);
+      }
+    }
+
+    try {
+      if (fs.existsSync(jsonFilePath)) {
+        fs.unlinkSync(jsonFilePath);
+        console.log(`🗑️ JSONファイル削除: ${jsonFilePath}`);
+      } else {
+        console.warn(`⚠️ JSONファイルが見つかりません: ${jsonFilePath}`);
+      }
+    } catch (fileError) {
+      console.warn(`⚠️ JSONファイル削除エラー:`, fileError);
+    }
+
+    // データベースから削除（データベースモードの場合）
+    // TODO: データベースから削除する処理を実装
+
+    console.log(`✅ 故障履歴削除完了: ${id}`);
+
+    res.json({
+      success: true,
+      message: '故障履歴を削除しました',
+      id,
+    });
+  } catch (error) {
+    console.error('❌ 故障履歴削除エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '故障履歴の削除に失敗しました',
       details: error instanceof Error ? error.message : 'Unknown error',
     });
   }

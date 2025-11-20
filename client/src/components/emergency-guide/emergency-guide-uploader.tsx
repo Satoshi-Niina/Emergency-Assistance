@@ -9,7 +9,6 @@ import {
 } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Loader2, FileText, CheckCircle, Sparkles, Wand2 } from 'lucide-react';
-import { Progress } from '../../components/ui/progress';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
@@ -20,13 +19,16 @@ import {
   TabsTrigger,
 } from '../../components/ui/tabs';
 import { Separator } from '../../components/ui/separator';
+import { buildApiUrl } from '../../lib/api/config';
 
-interface mergencyGuideUploaderProps {
+interface EmergencyGuideUploaderProps {
   onUploadSuccess?: (guideId: string) => void;
+  onGeneratingChange?: (isGenerating: boolean) => void;
 }
 
-const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
+const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({
   onUploadSuccess,
+  onGeneratingChange,
 }) => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -55,6 +57,7 @@ const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
 
     try {
       setIsGeneratingFlow(true);
+      onGeneratingChange?.(true);
 
       toast({
         title: 'フロー生成中',
@@ -65,7 +68,7 @@ const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
       let response;
       try {
         response = await fetch(
-          `${import.meta.env.VIT_API_BAS_URL}/api/chatgpt`,
+          buildApiUrl('/chatgpt'),
           {
             method: 'POST',
             headers: {
@@ -83,7 +86,7 @@ const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
           '高度なフロー生成が失敗、基本的なフロー生成にフォールバック'
         );
         response = await fetch(
-          `${import.meta.env.VIT_API_BAS_URL}/api/flow-generator/keywords`,
+          buildApiUrl('/flow-generator/keywords'),
           {
             method: 'POST',
             headers: {
@@ -117,7 +120,7 @@ const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
           // 基本的なフロー生成にフォールバック
           try {
             const fallbackResponse = await fetch(
-              `${import.meta.env.VIT_API_BAS_URL}/api/chatgpt`,
+              buildApiUrl('/chatgpt'),
               {
                 method: 'POST',
                 headers: {
@@ -169,9 +172,11 @@ const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
       }
 
       if (data.success && data.flowData) {
+        // 生成完了の目立つ通知
         toast({
-          title: 'フロー生成完了',
-          description: `「${data.flowData.title || 'タイトルなし'}」が生成されました。`,
+          title: '✅ フロー生成完了！',
+          description: `「${data.flowData.title || 'タイトルなし'}」の生成が完了しました。`,
+          duration: 5000,
         });
 
         // 生成されたフローの詳細ページに移動するためのイベントを発火
@@ -194,6 +199,7 @@ const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
       });
     } finally {
       setIsGeneratingFlow(false);
+      onGeneratingChange?.(false);
     }
   };
 
@@ -257,7 +263,7 @@ const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
       }, 500);
 
       const response = await fetch(
-        `${import.meta.env.VIT_API_BAS_URL}/api/emergency-guide/process`,
+        buildApiUrl('/emergency-guide/process'),
         {
           method: 'POST',
           body: formData,
@@ -320,8 +326,12 @@ const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
       <CardContent>
         <Tabs defaultValue='keywords' className='w-full'>
           <TabsList className='grid w-full grid-cols-2 mb-6'>
-            <TabsTrigger value='keywords'>キーワードから生成</TabsTrigger>
-            <TabsTrigger value='file'>ファイルから生成</TabsTrigger>
+            <TabsTrigger value='keywords'>
+              キーワードから甞成
+            </TabsTrigger>
+            <TabsTrigger value='file'>
+              ファイルから生成
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value='keywords' className='space-y-4'>
@@ -343,7 +353,7 @@ const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
                 className='w-full'
                 variant='default'
                 onClick={generateFlowFromKeywords}
-                disabled={isGeneratingFlow || !keywordsInput.trim()}
+                disabled={!keywordsInput.trim()}
               >
                 {isGeneratingFlow ? (
                   <>
@@ -357,6 +367,16 @@ const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
                   </>
                 )}
               </Button>
+
+              {/* 生成中の状態表示 */}
+              {isGeneratingFlow && (
+                <div className='flex items-center justify-center space-x-2 p-3 bg-blue-50 rounded-md border border-blue-200'>
+                  <Loader2 className='h-4 w-4 animate-spin text-blue-600' />
+                  <p className='text-sm font-medium text-blue-900'>
+                    AIが「{keywordsInput}」のフローを生成中です...
+                  </p>
+                </div>
+              )}
 
               <div className='flex items-center space-x-2 p-3 bg-blue-50 rounded-md border border-blue-200'>
                 <Sparkles className='h-5 w-5 text-blue-500 flex-shrink-0' />
@@ -428,21 +448,6 @@ const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
                 </div>
               )}
 
-              {/* アップロード進捗 */}
-              {(isUploading || uploadSuccess) && (
-                <div className='mb-4'>
-                  <div className='flex justify-between items-center mb-1'>
-                    <span className='text-sm font-medium text-gray-700'>
-                      {uploadSuccess ? '完了' : '処理中...'}
-                    </span>
-                    <span className='text-sm font-medium text-gray-700'>
-                      {uploadProgress}%
-                    </span>
-                  </div>
-                  <Progress value={uploadProgress} className='h-2' />
-                </div>
-              )}
-
               {/* データ保存オプション */}
               <div className='flex mb-4'>
                 <div className='flex items-center space-x-2'>
@@ -474,7 +479,7 @@ const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
               <Button
                 className='w-full'
                 onClick={handleUpload}
-                disabled={!selectedFile || isUploading || uploadSuccess}
+                disabled={!selectedFile || uploadSuccess}
               >
                 {isUploading ? (
                   <>
@@ -498,4 +503,4 @@ const mergencyGuideUploader: React.FC<mergencyGuideUploaderProps> = ({
   );
 };
 
-export default mergencyGuideUploader;
+export default EmergencyGuideUploader;

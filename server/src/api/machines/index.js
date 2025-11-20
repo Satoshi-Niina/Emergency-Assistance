@@ -6,7 +6,7 @@ module.exports = async (context, request) => {
 
     // 生のSQLクエリで直接データを取得
     const machines = await db.execute(`
-                SELECT m.id, m.machine_number, m.machine_type_id, 
+                SELECT m.id, m.machine_number, m.machine_type_id,
                        mt.machine_type_name, m.created_at
                 FROM machines m
                 LEFT JOIN machine_types mt ON m.machine_type_id = mt.id
@@ -22,9 +22,6 @@ module.exports = async (context, request) => {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       },
       body: JSON.stringify({
         success: true,
@@ -39,7 +36,6 @@ module.exports = async (context, request) => {
       status: 500,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
       },
       body: JSON.stringify({
         success: false,

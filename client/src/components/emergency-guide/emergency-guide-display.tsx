@@ -264,8 +264,9 @@ export default function mergencyGuideDisplay({
     };
 
     // カスタムイベントで履歴保存データを送信
-    window.dispatchvent(
-      new Customvent('emergency-guide-completed', {
+    console.log('📤 応急復旧マニュアル履歴をチャットに送信:', chatData);
+    window.dispatchEvent(
+      new CustomEvent('emergency-guide-completed', {
         detail: chatData,
       })
     );

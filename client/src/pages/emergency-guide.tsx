@@ -60,6 +60,9 @@ const EmergencyGuidePage: React.FC = () => {
   // 検索機能の状態
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  // フロー生成中の状態
+  const [isGeneratingFlow, setIsGeneratingFlow] = useState<boolean>(false);
+
   // タブ切り替えイベントリスナー
   useEffect(() => {
     const handleSwitchToFlowTab = (event: Event) => {
@@ -310,7 +313,10 @@ const EmergencyGuidePage: React.FC = () => {
           value='upload'
           className='flex-1 flex flex-col min-h-0 px-4 pb-8'
         >
-          <EmergencyGuideUploader onUploadSuccess={handleUploadSuccess} />
+          <EmergencyGuideUploader
+            onUploadSuccess={handleUploadSuccess}
+            onGeneratingChange={setIsGeneratingFlow}
+          />
         </TabsContent>
 
         <TabsContent
