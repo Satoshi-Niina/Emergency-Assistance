@@ -4325,7 +4325,7 @@ app.post('/api/chats/:chatId/send', async (req, res) => {
 
           const imageTimestamp = Date.now();
           const imageFileName = `chat_image_${chatId}_${imageTimestamp}.jpg`;
-          
+
           const containerClient = blobServiceClient.getContainerClient(containerName);
           const blobName = norm(`images/chat-exports/${imageFileName}`);
           const blockBlobClient = containerClient.getBlockBlobClient(blobName);
