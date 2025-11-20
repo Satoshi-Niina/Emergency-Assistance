@@ -66,16 +66,6 @@ export default function SettingsPage() {
   const [autoSave, setAutoSave] = useState(true);
   const [useOnlyKnowledgeBase, setUseOnlyKnowledgeBase] = useState(true);
 
-  // Debug: Log card visibility
-  useEffect(() => {
-    console.log('🔍 [Settings Page Debug]');
-    console.log('  User:', user);
-    console.log('  User role:', user?.role);
-    console.log('  Security card should be visible: true (always)');
-    console.log('  Maintenance card should be visible: true (always)');
-  }, [user]);
-
-
   // システム健全性チェック
   // System health state removed - integrated into system diagnostic page
 
@@ -263,29 +253,6 @@ export default function SettingsPage() {
     }
   };
 
-  // Force render cards - debug
-  useEffect(() => {
-    console.log('🔍 [Settings Page Render Debug]');
-    console.log('  Cards should be rendered: Security and Maintenance');
-    console.log('  Grid container exists:', document.querySelector('.grid.grid-cols-1.md\\:grid-cols-2'));
-    setTimeout(() => {
-      const securityCard = document.querySelector('[key="security-monitoring-card"]') || 
-                          document.querySelector('.border.border-red-200');
-      const maintenanceCard = document.querySelector('[key="maintenance-management-card"]') || 
-                             document.querySelector('.border.border-amber-200');
-      console.log('  Security card in DOM:', !!securityCard);
-      console.log('  Maintenance card in DOM:', !!maintenanceCard);
-      if (securityCard) {
-        console.log('  Security card display:', window.getComputedStyle(securityCard).display);
-        console.log('  Security card visibility:', window.getComputedStyle(securityCard).visibility);
-      }
-      if (maintenanceCard) {
-        console.log('  Maintenance card display:', window.getComputedStyle(maintenanceCard).display);
-        console.log('  Maintenance card visibility:', window.getComputedStyle(maintenanceCard).visibility);
-      }
-    }, 1000);
-  }, []);
-
   return (
     <div className='flex-1 overflow-y-auto p-4 md:p-6 max-w-5xl mx-auto w-full bg-gradient-to-br from-blue-50 to-indigo-50'>
       <div className='mb-6'>
@@ -296,7 +263,7 @@ export default function SettingsPage() {
         <p className='text-blue-400'>アプリケーションの設定を管理します</p>
       </div>
 
-      <div className='grid grid-cols-1 md:grid-cols-2 gap-6' data-testid="settings-grid">
+      <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
         {/* User Profile */}
         <Card className='border border-blue-200 shadow-md overflow-hidden'>
           <CardHeader className='pb-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white'>
@@ -474,177 +441,155 @@ export default function SettingsPage() {
           </Card>
         )}
 
-        {/* Security Monitoring - Mock UI - Always visible - NO CONDITIONAL RENDERING */}
-        <Card 
-          key="security-monitoring-card" 
-          className='border border-red-200 shadow-md overflow-hidden'
-          data-testid="security-monitoring-card"
-          style={{ display: 'block', visibility: 'visible' }}
-        >
-            <CardHeader className='pb-2 bg-gradient-to-r from-red-500 to-orange-500 text-white'>
-              <CardTitle className='text-lg flex items-center'>
-                <Lock className='mr-2 h-5 w-5' />
-                セキュリティー監視
-                <Badge variant='destructive' className='ml-2'>3</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className='bg-white'>
-              <div className='space-y-4'>
-                {/* アラートサマリー */}
-                <div className='bg-red-50 border border-red-200 rounded-lg p-3'>
-                  <div className='flex items-center justify-between mb-2'>
-                    <div className='flex items-center'>
-                      <AlertTriangle className='h-5 w-5 text-red-600 mr-2' />
-                      <p className='font-medium text-red-900 text-sm'>今日のアラート</p>
-                    </div>
-                    <span className='text-red-700 font-bold'>3件</span>
+        {/* セキュリティー監視カード - 新規作成 */}
+        <Card className='border border-red-200 shadow-md overflow-hidden'>
+          <CardHeader className='pb-2 bg-gradient-to-r from-red-500 to-orange-500 text-white'>
+            <CardTitle className='text-lg flex items-center'>
+              <Lock className='mr-2 h-5 w-5' />
+              セキュリティー監視
+              <Badge variant='destructive' className='ml-2'>3</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className='bg-white'>
+            <div className='space-y-4'>
+              <div className='bg-red-50 border border-red-200 rounded-lg p-3'>
+                <div className='flex items-center justify-between mb-2'>
+                  <div className='flex items-center'>
+                    <AlertTriangle className='h-5 w-5 text-red-600 mr-2' />
+                    <p className='font-medium text-red-900 text-sm'>今日のアラート</p>
                   </div>
-                  <div className='text-xs text-red-700 space-y-1'>
-                    <p>• 不正アクセス試行: 2回</p>
-                    <p>• 未登録デバイス: 1台</p>
+                  <span className='text-red-700 font-bold'>3件</span>
+                </div>
+                <div className='text-xs text-red-700 space-y-1'>
+                  <p>• 不正アクセス試行: 2回</p>
+                  <p>• 未登録デバイス: 1台</p>
+                </div>
+              </div>
+              <div className='border-t border-blue-100 pt-3'>
+                <p className='font-medium text-blue-800 mb-2 text-sm'>ブロックされたアクセス</p>
+                <div className='space-y-2 text-xs'>
+                  <div className='flex justify-between items-center bg-gray-50 p-2 rounded'>
+                    <span className='text-gray-700'>192.168.1.100 (中国)</span>
+                    <Badge variant='outline' className='text-xs'>5回試行</Badge>
+                  </div>
+                  <div className='flex justify-between items-center bg-gray-50 p-2 rounded'>
+                    <span className='text-gray-700'>203.0.113.50 (未登録)</span>
+                    <Badge variant='outline' className='text-xs'>2回試行</Badge>
                   </div>
                 </div>
-
-                {/* 外部アクセス検知 */}
-                <div className='border-t border-blue-100 pt-3'>
-                  <p className='font-medium text-blue-800 mb-2 text-sm'>ブロックされたアクセス</p>
-                  <div className='space-y-2 text-xs'>
-                    <div className='flex justify-between items-center bg-gray-50 p-2 rounded'>
-                      <span className='text-gray-700'>192.168.1.100 (中国)</span>
-                      <Badge variant='outline' className='text-xs'>5回試行</Badge>
+              </div>
+              <div className='border-t border-blue-100 pt-3'>
+                <p className='font-medium text-blue-800 mb-2 text-sm'>登録デバイス</p>
+                <div className='space-y-2 text-xs'>
+                  <div className='flex justify-between items-center'>
+                    <div>
+                      <p className='text-gray-700 font-medium'>iPad-001 (山田太郎)</p>
+                      <p className='text-gray-400'>最終アクセス: 2時間前</p>
                     </div>
-                    <div className='flex justify-between items-center bg-gray-50 p-2 rounded'>
-                      <span className='text-gray-700'>203.0.113.50 (未登録)</span>
-                      <Badge variant='outline' className='text-xs'>2回試行</Badge>
+                    <Badge className='bg-green-500'>稼働中</Badge>
+                  </div>
+                  <div className='flex justify-between items-center'>
+                    <div>
+                      <p className='text-gray-700 font-medium'>Tablet-002 (佐藤花子)</p>
+                      <p className='text-gray-400'>最終アクセス: 5分前</p>
                     </div>
+                    <Badge className='bg-green-500'>稼働中</Badge>
                   </div>
                 </div>
+              </div>
+              <Button variant='outline' className='w-full mt-2' size='sm'>
+                詳細を表示
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
-                {/* 登録デバイス */}
-                <div className='border-t border-blue-100 pt-3'>
-                  <p className='font-medium text-blue-800 mb-2 text-sm'>登録デバイス</p>
-                  <div className='space-y-2 text-xs'>
-                    <div className='flex justify-between items-center'>
-                      <div>
-                        <p className='text-gray-700 font-medium'>iPad-001 (山田太郎)</p>
-                        <p className='text-gray-400'>最終アクセス: 2時間前</p>
-                      </div>
-                      <Badge className='bg-green-500'>稼働中</Badge>
-                    </div>
-                    <div className='flex justify-between items-center'>
-                      <div>
-                        <p className='text-gray-700 font-medium'>Tablet-002 (佐藤花子)</p>
-                        <p className='text-gray-400'>最終アクセス: 5分前</p>
-                      </div>
-                      <Badge className='bg-green-500'>稼働中</Badge>
-                    </div>
+        {/* 保守管理カード - 新規作成 */}
+        <Card className='border border-amber-200 shadow-md overflow-hidden'>
+          <CardHeader className='pb-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white'>
+            <CardTitle className='text-lg flex items-center'>
+              <Wrench className='mr-2 h-5 w-5' />
+              保守管理
+            </CardTitle>
+          </CardHeader>
+          <CardContent className='bg-white'>
+            <div className='space-y-4'>
+              <div className='bg-amber-50 border border-amber-200 rounded-lg p-3'>
+                <div className='flex items-center justify-between mb-2'>
+                  <div className='flex items-center'>
+                    <Package className='h-5 w-5 text-amber-600 mr-2' />
+                    <p className='font-medium text-amber-900 text-sm'>モジュール更新</p>
                   </div>
                 </div>
-
-                <Button variant='outline' className='w-full mt-2' size='sm'>
-                  詳細を表示
+                <div className='text-xs text-amber-700 space-y-1'>
+                  <p className='flex justify-between'>
+                    <span>⚠️ 脆弱性あり:</span>
+                    <span className='font-bold'>2個 (重大:1, 高:1)</span>
+                  </p>
+                  <p className='flex justify-between'>
+                    <span>⏰ 更新可能:</span>
+                    <span className='font-bold'>12パッケージ</span>
+                  </p>
+                </div>
+                <Button variant='outline' size='sm' className='w-full mt-2 border-amber-300 text-amber-700'>
+                  更新を確認
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-
-        {/* Maintenance Management - Mock UI - Always visible - NO CONDITIONAL RENDERING */}
-        <Card 
-          key="maintenance-management-card" 
-          className='border border-amber-200 shadow-md overflow-hidden'
-          data-testid="maintenance-management-card"
-          style={{ display: 'block', visibility: 'visible' }}
-        >
-            <CardHeader className='pb-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white'>
-              <CardTitle className='text-lg flex items-center'>
-                <Wrench className='mr-2 h-5 w-5' />
-                保守管理
-              </CardTitle>
-            </CardHeader>
-            <CardContent className='bg-white'>
-              <div className='space-y-4'>
-                {/* モジュール更新 */}
-                <div className='bg-amber-50 border border-amber-200 rounded-lg p-3'>
-                  <div className='flex items-center justify-between mb-2'>
-                    <div className='flex items-center'>
-                      <Package className='h-5 w-5 text-amber-600 mr-2' />
-                      <p className='font-medium text-amber-900 text-sm'>モジュール更新</p>
-                    </div>
+              <div className='border-t border-blue-100 pt-3'>
+                <p className='font-medium text-blue-800 mb-2 text-sm flex items-center'>
+                  <Calendar className='h-4 w-4 mr-2' />
+                  期限管理
+                </p>
+                <div className='space-y-2 text-xs'>
+                  <div className='flex justify-between items-center bg-red-50 p-2 rounded'>
+                    <span className='text-red-700 font-medium'>SSL証明書</span>
+                    <Badge variant='destructive' className='text-xs'>15日後</Badge>
                   </div>
-                  <div className='text-xs text-amber-700 space-y-1'>
-                    <p className='flex justify-between'>
-                      <span>⚠️ 脆弱性あり:</span>
-                      <span className='font-bold'>2個 (重大:1, 高:1)</span>
-                    </p>
-                    <p className='flex justify-between'>
-                      <span>⏰ 更新可能:</span>
-                      <span className='font-bold'>12パッケージ</span>
-                    </p>
+                  <div className='flex justify-between items-center bg-yellow-50 p-2 rounded'>
+                    <span className='text-yellow-700 font-medium'>APIキー</span>
+                    <Badge className='bg-yellow-500 text-xs'>45日後</Badge>
                   </div>
-                  <Button variant='outline' size='sm' className='w-full mt-2 border-amber-300 text-amber-700'>
-                    更新を確認
-                  </Button>
-                </div>
-
-                {/* 期限管理 */}
-                <div className='border-t border-blue-100 pt-3'>
-                  <p className='font-medium text-blue-800 mb-2 text-sm flex items-center'>
-                    <Calendar className='h-4 w-4 mr-2' />
-                    期限管理
-                  </p>
-                  <div className='space-y-2 text-xs'>
-                    <div className='flex justify-between items-center bg-red-50 p-2 rounded'>
-                      <span className='text-red-700 font-medium'>SSL証明書</span>
-                      <Badge variant='destructive' className='text-xs'>15日後</Badge>
-                    </div>
-                    <div className='flex justify-between items-center bg-yellow-50 p-2 rounded'>
-                      <span className='text-yellow-700 font-medium'>APIキー</span>
-                      <Badge className='bg-yellow-500 text-xs'>45日後</Badge>
-                    </div>
-                    <div className='flex justify-between items-center bg-green-50 p-2 rounded'>
-                      <span className='text-green-700 font-medium'>データ保持</span>
-                      <Badge className='bg-green-500 text-xs'>問題なし</Badge>
-                    </div>
+                  <div className='flex justify-between items-center bg-green-50 p-2 rounded'>
+                    <span className='text-green-700 font-medium'>データ保持</span>
+                    <Badge className='bg-green-500 text-xs'>問題なし</Badge>
                   </div>
                 </div>
-
-                {/* ストレージ使用状況 */}
-                <div className='border-t border-blue-100 pt-3'>
-                  <p className='font-medium text-blue-800 mb-2 text-sm flex items-center'>
-                    <HardDrive className='h-4 w-4 mr-2' />
-                    ストレージ使用状況
-                  </p>
-                  <div className='space-y-2'>
-                    <div className='flex justify-between text-xs'>
-                      <span className='text-gray-600'>使用中: 3.4GB / 5GB</span>
-                      <span className='font-bold text-amber-600'>68%</span>
-                    </div>
-                    <div className='w-full bg-gray-200 rounded-full h-2'>
-                      <div className='bg-gradient-to-r from-blue-500 to-amber-500 h-2 rounded-full' style={{ width: '68%' }}></div>
-                    </div>
-                    <div className='text-xs space-y-1 text-gray-600'>
-                      <p className='flex justify-between'>
-                        <span>• アップロード:</span>
-                        <span>1.2GB</span>
-                      </p>
-                      <p className='flex justify-between'>
-                        <span>• ログファイル:</span>
-                        <span>0.8GB</span>
-                      </p>
-                      <p className='flex justify-between'>
-                        <span>• 一時ファイル:</span>
-                        <span className='text-amber-600 font-bold'>1.4GB ⚠️</span>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <Button variant='outline' className='w-full mt-2' size='sm'>
-                  詳細を表示
-                </Button>
               </div>
-            </CardContent>
-          </Card>
+              <div className='border-t border-blue-100 pt-3'>
+                <p className='font-medium text-blue-800 mb-2 text-sm flex items-center'>
+                  <HardDrive className='h-4 w-4 mr-2' />
+                  ストレージ使用状況
+                </p>
+                <div className='space-y-2'>
+                  <div className='flex justify-between text-xs'>
+                    <span className='text-gray-600'>使用中: 3.4GB / 5GB</span>
+                    <span className='font-bold text-amber-600'>68%</span>
+                  </div>
+                  <div className='w-full bg-gray-200 rounded-full h-2'>
+                    <div className='bg-gradient-to-r from-blue-500 to-amber-500 h-2 rounded-full' style={{ width: '68%' }}></div>
+                  </div>
+                  <div className='text-xs space-y-1 text-gray-600'>
+                    <p className='flex justify-between'>
+                      <span>• アップロード:</span>
+                      <span>1.2GB</span>
+                    </p>
+                    <p className='flex justify-between'>
+                      <span>• ログファイル:</span>
+                      <span>0.8GB</span>
+                    </p>
+                    <p className='flex justify-between'>
+                      <span>• 一時ファイル:</span>
+                      <span className='text-amber-600 font-bold'>1.4GB ⚠️</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <Button variant='outline' className='w-full mt-2' size='sm'>
+                詳細を表示
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* App Settings */}
         <Card className='border border-blue-200 shadow-md overflow-hidden'>
