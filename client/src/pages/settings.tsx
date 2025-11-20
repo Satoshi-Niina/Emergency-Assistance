@@ -49,6 +49,7 @@ import { Label } from '../components/ui/label';
 import { Link } from 'react-router-dom';
 
 // SystemHealth interface is removed - integrated into system diagnostic page
+// Settings page updated: removed permission checks for maintenance and security cards
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
