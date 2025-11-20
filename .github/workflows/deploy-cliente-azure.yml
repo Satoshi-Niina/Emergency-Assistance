@@ -289,19 +289,27 @@ jobs:
           npm cache clean --force || true
 
       - name: Verify Files Before Deploy
+        working-directory: ./
         run: |
           echo "📋 Verifying files before deployment..."
           echo "Current directory: $(pwd)"
-          echo "Checking client/dist directory:"
-          ls -lah client/dist/ || echo "❌ client/dist directory not found!"
+          echo "Working directory: ${{ github.workspace }}"
           
-          if [ ! -d "client/dist" ]; then
-            echo "❌ ERROR: client/dist directory does not exist!"
+          # 絶対パスで確認
+          if [ ! -d "${{ github.workspace }}/client/dist" ]; then
+            echo "❌ ERROR: client/dist directory does not exist at ${{ github.workspace }}/client/dist"
+            echo "Listing client directory:"
+            ls -lah client/ || echo "client directory not found"
             exit 1
           fi
           
+          echo "Checking client/dist directory:"
+          ls -lah client/dist/ || echo "❌ client/dist directory not found!"
+          
           if [ ! -f "client/dist/index.html" ]; then
             echo "❌ ERROR: client/dist/index.html not found!"
+            echo "Files in client/dist:"
+            ls -lah client/dist/ || echo "Cannot list files"
             exit 1
           fi
           
@@ -325,6 +333,7 @@ jobs:
         continue-on-error: false
         env:
           DEBUG: '*'
+        working-directory: ${{ github.workspace }}
 
       - name: Verify Deployment
         if: success()
