@@ -64,20 +64,24 @@ export default function SettingsPage() {
   const [useOnlyKnowledgeBase, setUseOnlyKnowledgeBase] = useState(true);
 
   // セキュリティー監視・保守管理アクセス権限チェック
-  // 特定のユーザー名のみに表示（厳格な管理）
-  const SECURITY_ADMINS = ['super_admin', 'security_admin', 'niina']; // ← ここに許可するユーザー名を追加
+  // 管理者権限（admin または employee）のユーザーに表示
 
   // デバッグ: 現在のユーザー情報をコンソールに表示
   console.log('現在のユーザー:', user?.username, 'ロール:', user?.role);
-  console.log('セキュリティーアクセス許可リスト:', SECURITY_ADMINS);
 
-  // ユーザー名チェック
-  const hasSecurityAccess = user?.username && SECURITY_ADMINS.includes(user.username);
+  // 管理者権限チェック（admin または employee）
+  const hasSecurityAccess = user?.role === 'admin' || user?.role === 'employee';
 
   console.log('セキュリティーカード表示:', hasSecurityAccess);
 
+  // 特定のユーザー名のみに制限する場合は、以下のコードを使用
+  // const SECURITY_ADMINS = ['super_admin', 'security_admin', 'niina'];
+  // const hasSecurityAccess = user?.username && SECURITY_ADMINS.includes(user.username);
+
   // または、データベースのフラグで管理する場合
-  // const hasSecurityAccess = user?.securityAccess === true;  // システム健全性チェック
+  // const hasSecurityAccess = user?.securityAccess === true;
+
+  // システム健全性チェック
   // System health state removed - integrated into system diagnostic page
 
   // LocalStorageからの設定読み込み
