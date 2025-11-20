@@ -2458,7 +2458,7 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
       fileName: req.file?.originalname,
       imagesDir: process.env.FAULT_HISTORY_IMAGES_DIR || path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports')
     });
-    
+
     res.status(500).json({
       success: false,
       error: '画像のアップロードに失敗しました',

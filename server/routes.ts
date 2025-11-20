@@ -172,10 +172,10 @@ export function registerRoutes(app: Express): void {
       recommendations: hasApiKey
         ? []
         : [
-            'OPENAI_API_KEY環境変数を設定してください',
-            'env.exampleファイルを参考に.envファイルを作成してください',
-            "開発環境では'dev-mock-key'を使用できます",
-          ],
+          'OPENAI_API_KEY環境変数を設定してください',
+          'env.exampleファイルを参考に.envファイルを作成してください',
+          "開発環境では'dev-mock-key'を使用できます",
+        ],
     });
   });
 

@@ -400,7 +400,7 @@ router.put('/:id', async (req, res) => {
         if (!step.images) {
           step.images = [];
         }
-        
+
         // 画像配列が存在する場合の処理
         if (step.images && step.images.length > 0) {
           console.log(`🖼️ ステップ[${index}]の画像情報:`, {
@@ -415,14 +415,14 @@ router.put('/:id', async (req, res) => {
               fileNameValid: img.fileName && img.fileName.trim() !== ''
             }))
           });
-          
+
           // 画像情報の検証と修正
           step.images = step.images.filter((img: any) => {
             if (!img || !img.url || img.url.trim() === '') {
               console.log(`❌ 無効な画像情報を除外:`, img);
               return false;
             }
-            
+
             // ファイル名が無い場合はURLから抽出
             if (!img.fileName || img.fileName.trim() === '') {
               if (img.url.includes('/')) {
@@ -434,7 +434,7 @@ router.put('/:id', async (req, res) => {
               }
               console.log(`📁 ファイル名を補完:`, { url: img.url, fileName: img.fileName });
             }
-            
+
             return true;
           });
         } else {
@@ -471,12 +471,12 @@ router.put('/:id', async (req, res) => {
               console.log(`❌ 無効な画像オブジェクトを除外:`, img);
               return false;
             }
-            
+
             if (!img.url || typeof img.url !== 'string' || img.url.trim() === '') {
               console.log(`❌ URLが無効な画像を除外:`, img);
               return false;
             }
-            
+
             // ファイル名が無い場合はURLから抽出
             if (!img.fileName || img.fileName.trim() === '') {
               if (img.url.includes('/')) {
@@ -488,10 +488,10 @@ router.put('/:id', async (req, res) => {
               }
               console.log(`📁 ファイル名を補完:`, { url: img.url, fileName: img.fileName });
             }
-            
+
             return true;
           });
-          
+
           console.log(`🖼️ ステップ[${index}]の最終画像データ:`, {
             stepId: step.id,
             stepTitle: step.title,
@@ -558,7 +558,7 @@ router.get('/', async (_req, res) => {
       'knowledge-base',
       'troubleshooting'
     );
-    
+
     // サーバーディレクトリから起動されている場合の代替パス
     const alternativeDir = path.join(
       process.cwd(),
@@ -660,12 +660,12 @@ async function loadFromDirectory(dirPath: string) {
         }
 
         // タイトルを複数のソースから取得
-        let title = flowData.title || 
-                   flowData.metadata?.title || 
-                   flowData.metadata?.タイトル ||
-                   flowData.name ||
-                   flowData.problemDescription ||
-                   'タイトルなし';
+        let title = flowData.title ||
+          flowData.metadata?.title ||
+          flowData.metadata?.タイトル ||
+          flowData.name ||
+          flowData.problemDescription ||
+          'タイトルなし';
 
         const result = {
           id: flowData.id || file.replace('.json', ''),
@@ -691,11 +691,11 @@ async function loadFromDirectory(dirPath: string) {
           message: error instanceof Error ? error.message : 'Unknown error',
           stack: error instanceof Error ? error.stack : undefined,
         });
-        
+
         // JSONファイルが破損している場合は、バックアップファイルを作成
         if (error instanceof SyntaxError && error.message.includes('JSON')) {
           console.log(`🔄 破損したJSONファイルを検出: ${file}`);
-          
+
           // バックアップファイルを作成
           const backupPath = path.join(dirPath, `${file}.backup.${Date.now()}`);
           try {
@@ -705,18 +705,18 @@ async function loadFromDirectory(dirPath: string) {
             console.error(`❌ バックアップファイル作成失敗:`, backupError);
           }
         }
-        
+
         continue; // エラーファイルをスキップして続行
       }
     }
 
     console.log(`📋 有効なファイル数: ${fileList.length}/${jsonFiles.length}`);
-    
+
     // 有効なファイルがない場合は警告を出力
     if (fileList.length === 0) {
       console.warn(`⚠️ 有効なフローファイルが見つかりませんでした: ${dirPath}`);
     }
-    
+
     return fileList;
   } catch (error) {
     console.error(`❌ ディレクトリ ${dirPath} からの読み込みエラー:`, error);
@@ -847,7 +847,7 @@ router.get('/detail/:id', async (req, res) => {
     // IDに一致するファイルを検索
     console.log(`🔍 検索対象ファイル数: ${jsonFiles.length}`);
     console.log(`🔍 検索対象ファイル一覧:`, jsonFiles);
-    
+
     for (const file of jsonFiles) {
       try {
         const filePath = path.join(troubleshootingDir, file);
@@ -856,7 +856,7 @@ router.get('/detail/:id', async (req, res) => {
         const data = JSON.parse(fileContent);
 
         console.log(`🔍 ファイル ${file} のID: ${data.id}, 検索ID: ${id}`);
-        
+
         if (data.id === id || file.replace('.json', '') === id) {
           flowData = data;
           fileName = file;
@@ -870,7 +870,7 @@ router.get('/detail/:id', async (req, res) => {
 
     if (!flowData) {
       console.log(`❌ フローが見つかりません: ${id}`);
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
         error: 'フローが見つかりません',
         details: `ID: ${id} のフローデータが見つかりませんでした`,
@@ -981,7 +981,7 @@ router.get('/detail/:id', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ フロー詳細取得エラー:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'フロー詳細の取得に失敗しました',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -999,7 +999,7 @@ router.delete('/:id', async (req, res) => {
     // 複数のパス候補を試す（他のエンドポイントと同様の方法）
     const cwd = process.cwd();
     const projectRoot = path.resolve(__dirname, '..', '..');
-    
+
     // トラブルシューティングディレクトリのパス候補
     const troubleshootingPaths = [
       // プロジェクトルートから
@@ -1011,7 +1011,7 @@ router.delete('/:id', async (req, res) => {
       // __dirnameから
       path.join(__dirname, '..', '..', 'knowledge-base', 'troubleshooting'),
     ].map(p => path.resolve(p));
-    
+
     console.log('🔍 troubleshooting パス候補:', troubleshootingPaths);
     console.log('📁 現在の作業ディレクトリ:', cwd);
     console.log('📁 プロジェクトルート:', projectRoot);
@@ -1784,12 +1784,12 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
       'emergency-flows'
     );
     console.log('📁 アップロードディレクトリ:', uploadDir);
-    
+
     if (!fs.existsSync(uploadDir)) {
       console.log('📁 ディレクトリを作成中:', uploadDir);
       fs.mkdirSync(uploadDir, { recursive: true });
     }
-    
+
     console.log('📁 ディレクトリ確認:', {
       exists: fs.existsSync(uploadDir),
       isDirectory: fs.statSync(uploadDir).isDirectory(),
@@ -1829,14 +1829,14 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
         fileName,
         uploadDirExists: fs.existsSync(uploadDir)
       });
-      
+
       try {
         // ディレクトリが存在しない場合は作成
         if (!fs.existsSync(uploadDir)) {
           console.log('📁 ディレクトリを作成中:', uploadDir);
           fs.mkdirSync(uploadDir, { recursive: true });
         }
-        
+
         fs.writeFileSync(filePath, req.file.buffer);
         console.log('✅ ファイル保存成功:', filePath);
       } catch (writeError) {
@@ -1876,7 +1876,7 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
       fileSize: req.file?.size,
       fileName: req.file?.originalname
     });
-    
+
     res.status(500).json({
       success: false,
       error: '応急処置フローの処理中にエラーが発生しました',
@@ -1893,17 +1893,17 @@ function encryptUri(fileName: string): string {
   console.log('🔐 暗号化開始:', { fileName });
   const secret = process.env.ENCRYPTION_SECRET || 'default-secret-key';
   console.log('🔐 暗号化キー:', { secretLength: secret.length, secretPrefix: secret.substring(0, 10) + '...' });
-  
+
   const cipher = crypto.createCipher('aes-256-cbc', secret);
   let encrypted = cipher.update(fileName, 'utf8', 'hex');
   encrypted += cipher.final('hex');
-  
-  console.log('🔐 暗号化完了:', { 
-    originalFileName: fileName, 
+
+  console.log('🔐 暗号化完了:', {
+    originalFileName: fileName,
     encryptedFileName: encrypted,
-    encryptedLength: encrypted.length 
+    encryptedLength: encrypted.length
   });
-  
+
   return encrypted;
 }
 */
@@ -1935,15 +1935,15 @@ router.get('/image/:fileName', async (req, res) => {
       if (!fs.existsSync(dir)) {
         return null;
       }
-      
+
       const files = fs.readdirSync(dir);
       const lowerTarget = targetFileName.toLowerCase();
-      
+
       // 完全一致を優先
       if (files.includes(targetFileName)) {
         return path.join(dir, targetFileName);
       }
-      
+
       // 大文字小文字を区別しない検索
       const foundFile = files.find(file => file.toLowerCase() === lowerTarget);
       if (foundFile) {
@@ -1953,14 +1953,14 @@ router.get('/image/:fileName', async (req, res) => {
         });
         return path.join(dir, foundFile);
       }
-      
+
       return null;
     };
 
     // 複数のパス候補を試す（他のエンドポイントと同様の方法）
     const cwd = process.cwd();
     const projectRoot = path.resolve(__dirname, '..', '..');
-    
+
     // emergency-flowsディレクトリのパス候補
     const emergencyFlowsPaths = [
       // プロジェクトルートから
@@ -1972,7 +1972,7 @@ router.get('/image/:fileName', async (req, res) => {
       // __dirnameから
       path.join(__dirname, '..', '..', 'knowledge-base', 'images', 'emergency-flows'),
     ].map(p => path.resolve(p));
-    
+
     console.log('🔍 emergency-flows パス候補:', emergencyFlowsPaths);
     console.log('📁 現在の作業ディレクトリ:', cwd);
     console.log('📁 プロジェクトルート:', projectRoot);
@@ -2008,12 +2008,12 @@ router.get('/image/:fileName', async (req, res) => {
         path.join(cwd, '..', 'knowledge-base', 'images', 'chat-exports'),
         path.join(__dirname, '..', '..', 'knowledge-base', 'images', 'chat-exports'),
       ].map(p => path.resolve(p));
-      
+
       console.log('🔄 emergency-flows にファイルが見つからないため、chat-exports を確認:', {
         fileName,
         chatExportsPaths,
       });
-      
+
       for (const testDir of chatExportsPaths) {
         if (!fs.existsSync(testDir)) {
           continue;
@@ -2064,7 +2064,7 @@ router.get('/image/:fileName', async (req, res) => {
       };
 
       console.error('❌ 画像ファイルが見つかりません:', debugInfo);
-      
+
       return res.status(404).json(debugInfo);
     }
 
@@ -2126,7 +2126,7 @@ function findExistingImageByHash(
 
     const files = fs.readdirSync(uploadDir);
     console.log(`🔍 ディレクトリ内のファイル数: ${files.length}`, { uploadDir, files });
-    
+
     for (const file of files) {
       if (
         file.endsWith('.jpg') ||
@@ -2167,9 +2167,9 @@ router.get('/:id', async (req, res) => {
       'knowledge-base',
       'troubleshooting'
     );
-    
+
     console.log(`📁 トラブルシューティングディレクトリ: ${troubleshootingDir}`);
-    
+
     if (!fs.existsSync(troubleshootingDir)) {
       console.log(`❌ トラブルシューティングディレクトリが見つかりません: ${troubleshootingDir}`);
       return res.status(404).json({ error: 'トラブルシューティングディレクトリが見つかりません' });
@@ -2177,7 +2177,7 @@ router.get('/:id', async (req, res) => {
 
     const files = fs.readdirSync(troubleshootingDir);
     const jsonFiles = files.filter(file => file.endsWith('.json'));
-    
+
     console.log(`🔍 利用可能なJSONファイル:`, jsonFiles);
 
     let flowData = null;
@@ -2205,7 +2205,7 @@ router.get('/:id', async (req, res) => {
 
     if (!flowData) {
       console.log(`❌ フローが見つかりません: ${id}`);
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'フローファイルが見つかりません',
         details: `ID: ${id} のフローデータが見つかりませんでした`,
         availableFiles: jsonFiles
