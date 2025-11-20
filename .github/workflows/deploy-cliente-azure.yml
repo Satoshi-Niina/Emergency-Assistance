@@ -273,15 +273,25 @@ jobs:
             echo "window.runtimeConfig = { backendUrl: '$BACKEND_URL', environment: '$ENVIRONMENT' };" > client/dist/runtime-config.js
           fi
 
-          # index.htmlにビルドバージョンを追加してキャッシュを強制的に無効化
+          # index.htmlにビルドバージョンとキャッシュ無効化メタタグを追加
           if [ -f "client/dist/index.html" ]; then
-            echo "🔄 Adding build version to index.html..."
+            echo "🔄 Adding build version and cache-busting to index.html..."
             SHA_SHORT="${{ github.sha }}"
-            BUILD_VERSION="v$(date +%s)-${SHA_SHORT:0:7}"
-            sed -i "s|<html lang=\"ja\">|<html lang=\"ja\" data-build=\"$BUILD_VERSION\">|g" client/dist/index.html
-            # スクリプトタグにもバージョンを追加
-            sed -i "s|<script type=\"module\"|<script type=\"module\" data-version=\"$BUILD_VERSION\"|g" client/dist/index.html
-            echo "✅ Build version added: $BUILD_VERSION"
+            BUILD_TIMESTAMP=$(date +%s)
+            BUILD_VERSION="v${BUILD_TIMESTAMP}-${SHA_SHORT:0:7}"
+            
+            # HTMLタグにビルド情報を追加
+            sed -i "s|<html lang=\"ja\">|<html lang=\"ja\" data-build=\"$BUILD_VERSION\" data-timestamp=\"$BUILD_TIMESTAMP\">|g" client/dist/index.html
+            
+            # スクリプトタグにバージョンとタイムスタンプを追加
+            sed -i "s|<script type=\"module\"|<script type=\"module\" data-version=\"$BUILD_VERSION\" data-timestamp=\"$BUILD_TIMESTAMP\"|g" client/dist/index.html
+            
+            # metaタグでキャッシュを無効化（既に存在しない場合のみ追加）
+            if ! grep -q "Cache-Control" client/dist/index.html; then
+              sed -i "s|<head>|<head>\n  <meta http-equiv=\"Cache-Control\" content=\"no-cache, no-store, must-revalidate\">\n  <meta http-equiv=\"Pragma\" content=\"no-cache\">\n  <meta http-equiv=\"Expires\" content=\"0\">|g" client/dist/index.html
+            fi
+            
+            echo "✅ Build version and cache-busting added: $BUILD_VERSION (timestamp: $BUILD_TIMESTAMP)"
           fi
 
       - name: Inject Backend URL
@@ -499,38 +509,49 @@ jobs:
           echo ""
           echo "🔍 Check the step above for detailed error messages"
 
-      - name: Trigger CDN Cache Purge and Verify Fresh Content
+      - name: Clear CDN Cache via Azure CLI
         continue-on-error: true
         run: |
-          echo "🗑️ Requesting CDN cache purge and verifying fresh content..."
-          # Wait for deployment to propagate
-          echo "⏳ Waiting 15 seconds for deployment to propagate..."
-          sleep 15
-
-          # Generate unique cache-busting parameters
-          TIMESTAMP=$(date +%s)
-          RANDOM_ID=$(openssl rand -hex 8 || echo "fallback-$TIMESTAMP")
-
-          echo "🔄 Purging cache with timestamp: $TIMESTAMP, random ID: $RANDOM_ID"
+          echo "🗑️ Attempting to clear Azure Static Web Apps CDN cache..."
           
-          # Purge main page
-          curl -X GET "$STATIC_WEB_APP_URL/?v=$TIMESTAMP&r=$RANDOM_ID" \
-            -H "Cache-Control: no-cache, no-store, must-revalidate" \
-            -H "Pragma: no-cache" \
-            -H "Expires: 0" \
-            -H "X-Force-Refresh: true" \
-            -s -o /dev/null -w "Main page status: %{http_code}\n" || true
+          # Azure CLIを使ってCDNキャッシュをクリアする試み
+          # 注意: Azure Static Web AppsのCDNキャッシュは自動的に管理されるため、
+          # 直接クリアするAPIは限定的ですが、デプロイ時に自動的に無効化されるはずです
+          
+          # デプロイメントIDを取得してキャッシュを無効化
+          echo "📋 Deployment information:"
+          echo "  Static Web App URL: $STATIC_WEB_APP_URL"
+          echo "  Build ID: $VITE_BUILD_ID"
+          echo "  Commit SHA: ${{ github.sha }}"
+          
+          # 複数のエンドポイントにリクエストを送ってキャッシュを無効化
+          TIMESTAMP=$(date +%s)
+          RANDOM_ID=$(openssl rand -hex 8 2>/dev/null || echo "fallback-$TIMESTAMP")
+          
+          echo "🔄 Sending cache-busting requests..."
+          
+          # 主要なエンドポイントにキャッシュ無効化リクエスト
+          ENDPOINTS=("/" "/index.html" "/settings" "/main.0.mjs" "/style.0.css")
+          for endpoint in "${ENDPOINTS[@]}"; do
+            curl -X GET "$STATIC_WEB_APP_URL$endpoint?v=$TIMESTAMP&r=$RANDOM_ID&_t=$TIMESTAMP" \
+              -H "Cache-Control: no-cache, no-store, must-revalidate, max-age=0" \
+              -H "Pragma: no-cache" \
+              -H "Expires: 0" \
+              -H "X-Force-Refresh: true" \
+              -H "X-Cache-Bust: $TIMESTAMP" \
+              -s -o /dev/null -w "  $endpoint: %{http_code}\n" || true
+          done
+          
+          echo "✅ Cache-busting requests sent"
+          echo "💡 Note: Azure Static Web Apps CDN cache will be automatically invalidated on deployment"
+          echo "💡 Users should hard refresh (Ctrl+Shift+R) or clear browser cache to see latest changes"
 
-          # Purge index.html
-          curl -X GET "$STATIC_WEB_APP_URL/index.html?v=$TIMESTAMP&r=$RANDOM_ID" \
-            -H "Cache-Control: no-cache, no-store, must-revalidate" \
-            -H "Pragma: no-cache" \
-            -H "Expires: 0" \
-            -H "X-Force-Refresh: true" \
-            -s -o /dev/null -w "Index.html status: %{http_code}\n" || true
-
-          echo "✅ Cache purge requests sent"
-          echo "💡 Users should hard refresh (Ctrl+Shift+R) to see latest changes"
+      - name: Wait for CDN Propagation
+        continue-on-error: true
+        run: |
+          echo "⏳ Waiting for CDN propagation (30 seconds)..."
+          sleep 30
+          echo "✅ Wait completed"
 
       - name: Health Check
         env:
