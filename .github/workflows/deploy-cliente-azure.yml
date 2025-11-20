@@ -104,8 +104,8 @@ jobs:
           echo "   API Base URL: $VITE_API_BASE_URL"
           echo "   Build ID: $VITE_BUILD_ID"
 
-          # Build with no cache
-          npm run build -- --force
+          # Build (npm run build already includes clean step via prebuild)
+          npm run build
 
           # ビルド結果検証
           if [ ! -f "dist/index.html" ]; then
@@ -276,11 +276,11 @@ jobs:
           echo "🗑️ Requesting CDN cache purge..."
           # Wait a bit for deployment to propagate
           sleep 10
-          
+
           # Try to purge Azure CDN cache by making requests with cache-busting headers
           # Use timestamp query parameter to force cache miss
           TIMESTAMP=$(date +%s)
-          
+
           curl -X GET "$STATIC_WEB_APP_URL/?v=$TIMESTAMP" \
             -H "Cache-Control: no-cache, no-store, must-revalidate" \
             -H "Pragma: no-cache" \
