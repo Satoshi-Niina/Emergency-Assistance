@@ -245,6 +245,41 @@ jobs:
             echo "✅ File count ($file_count_after) is optimal"
           fi
 
+      - name: Verify Build Output Before Deploy
+        working-directory: ./client
+        run: |
+          echo "📦 Verifying build output before deployment..."
+          
+          # distフォルダの存在確認
+          if [ ! -d "dist" ]; then
+            echo "❌ ERROR: dist directory not found!"
+            exit 1
+          fi
+          
+          # 必須ファイルの確認
+          required_files=("index.html" "main.*.mjs" "style.*.css")
+          for pattern in "${required_files[@]}"; do
+            if ! ls dist/$pattern 1> /dev/null 2>&1; then
+              echo "❌ ERROR: Required file not found: dist/$pattern"
+              ls -la dist/ || echo "dist directory listing failed"
+              exit 1
+            fi
+          done
+          
+          # settings.tsxの変更が反映されているか確認（ビルドされたファイルにhasSecurityAccessが含まれていないか）
+          echo "🔍 Checking if settings page changes are in build..."
+          if find dist -name "*.mjs" -exec grep -l "hasSecurityAccess" {} \; 2>/dev/null | grep -q .; then
+            echo "⚠️ WARNING: hasSecurityAccess found in built files - old code may be cached"
+          else
+            echo "✅ hasSecurityAccess not found in built files - changes are included"
+          fi
+          
+          # ファイル一覧を表示
+          echo "📊 Build output files:"
+          ls -lah dist/ | head -20
+          
+          echo "✅ Build output verification completed"
+
       - name: Clear Azure Static Web Apps Cache
         run: |
           echo "🗑️ Clearing deployment cache..."
@@ -266,6 +301,7 @@ jobs:
           skip_api_build: true
           production_branch: main
           deployment_environment: production
+        continue-on-error: false
 
       - name: Verify Deployment
         run: |
