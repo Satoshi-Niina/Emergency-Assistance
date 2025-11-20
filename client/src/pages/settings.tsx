@@ -67,6 +67,12 @@ export default function SettingsPage() {
   // 管理者権限（admin）のユーザーに表示
   const hasSecurityAccess = user?.role === 'admin';
 
+  // デバッグ情報（本番環境でも確認）
+  console.log('🔍 [Settings Debug]');
+  console.log('  user:', user);
+  console.log('  user?.role:', user?.role);
+  console.log('  hasSecurityAccess:', hasSecurityAccess);
+
   // システム健全性チェック
   // System health state removed - integrated into system diagnostic page
 
