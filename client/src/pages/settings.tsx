@@ -263,6 +263,29 @@ export default function SettingsPage() {
     }
   };
 
+  // Force render cards - debug
+  useEffect(() => {
+    console.log('🔍 [Settings Page Render Debug]');
+    console.log('  Cards should be rendered: Security and Maintenance');
+    console.log('  Grid container exists:', document.querySelector('.grid.grid-cols-1.md\\:grid-cols-2'));
+    setTimeout(() => {
+      const securityCard = document.querySelector('[key="security-monitoring-card"]') || 
+                          document.querySelector('.border.border-red-200');
+      const maintenanceCard = document.querySelector('[key="maintenance-management-card"]') || 
+                             document.querySelector('.border.border-amber-200');
+      console.log('  Security card in DOM:', !!securityCard);
+      console.log('  Maintenance card in DOM:', !!maintenanceCard);
+      if (securityCard) {
+        console.log('  Security card display:', window.getComputedStyle(securityCard).display);
+        console.log('  Security card visibility:', window.getComputedStyle(securityCard).visibility);
+      }
+      if (maintenanceCard) {
+        console.log('  Maintenance card display:', window.getComputedStyle(maintenanceCard).display);
+        console.log('  Maintenance card visibility:', window.getComputedStyle(maintenanceCard).visibility);
+      }
+    }, 1000);
+  }, []);
+
   return (
     <div className='flex-1 overflow-y-auto p-4 md:p-6 max-w-5xl mx-auto w-full bg-gradient-to-br from-blue-50 to-indigo-50'>
       <div className='mb-6'>
@@ -273,7 +296,7 @@ export default function SettingsPage() {
         <p className='text-blue-400'>アプリケーションの設定を管理します</p>
       </div>
 
-      <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+      <div className='grid grid-cols-1 md:grid-cols-2 gap-6' data-testid="settings-grid">
         {/* User Profile */}
         <Card className='border border-blue-200 shadow-md overflow-hidden'>
           <CardHeader className='pb-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white'>
@@ -451,8 +474,13 @@ export default function SettingsPage() {
           </Card>
         )}
 
-        {/* Security Monitoring - Mock UI - Always visible */}
-        <Card key="security-monitoring-card" className='border border-red-200 shadow-md overflow-hidden'>
+        {/* Security Monitoring - Mock UI - Always visible - NO CONDITIONAL RENDERING */}
+        <Card 
+          key="security-monitoring-card" 
+          className='border border-red-200 shadow-md overflow-hidden'
+          data-testid="security-monitoring-card"
+          style={{ display: 'block', visibility: 'visible' }}
+        >
             <CardHeader className='pb-2 bg-gradient-to-r from-red-500 to-orange-500 text-white'>
               <CardTitle className='text-lg flex items-center'>
                 <Lock className='mr-2 h-5 w-5' />
@@ -520,8 +548,13 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-        {/* Maintenance Management - Mock UI - Always visible */}
-        <Card key="maintenance-management-card" className='border border-amber-200 shadow-md overflow-hidden'>
+        {/* Maintenance Management - Mock UI - Always visible - NO CONDITIONAL RENDERING */}
+        <Card 
+          key="maintenance-management-card" 
+          className='border border-amber-200 shadow-md overflow-hidden'
+          data-testid="maintenance-management-card"
+          style={{ display: 'block', visibility: 'visible' }}
+        >
             <CardHeader className='pb-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white'>
               <CardTitle className='text-lg flex items-center'>
                 <Wrench className='mr-2 h-5 w-5' />

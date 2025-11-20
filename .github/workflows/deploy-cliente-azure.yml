@@ -483,8 +483,18 @@ jobs:
       - name: Verify Deployment
         if: always()
         run: |
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ Deployment completed successfully"
+          DEPLOY_STATUS="${{ steps.deploy.outcome }}"
+          CDN_CACHE_STATUS="${{ steps.cdn-cache.outcome }}"
+          CDN_WAIT_STATUS="${{ steps.cdn-wait.outcome }}"
+          
+          echo "📊 Deployment Status Summary:"
+          echo "  Deploy step: $DEPLOY_STATUS"
+          echo "  CDN cache step: $CDN_CACHE_STATUS"
+          echo "  CDN wait step: $CDN_WAIT_STATUS"
+          echo ""
+          
+          if [ "$DEPLOY_STATUS" == "success" ]; then
+            echo "✅ Deployment completed successfully!"
             echo "🔗 Deployed to: $STATIC_WEB_APP_URL"
             echo "⏰ Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
             echo "🔢 Build ID: $VITE_BUILD_ID"
@@ -498,18 +508,26 @@ jobs:
             echo "🔍 To verify cards are visible:"
             echo "   - Open: $STATIC_WEB_APP_URL/settings"
             echo "   - Check for 'セキュリティー監視' and '保守管理' cards"
+            
+            if [ "$CDN_CACHE_STATUS" != "success" ] || [ "$CDN_WAIT_STATUS" != "success" ]; then
+              echo ""
+              echo "⚠️ Warning: Some non-critical steps failed (CDN cache clearing)"
+              echo "   This does not affect the deployment itself"
+            fi
           else
-            echo "⚠️ Deployment completed with warnings/errors"
-            echo "   Check the steps above for details"
-            echo "   Deployment may still be successful despite warnings"
+            echo "❌ Deployment step failed!"
+            echo "   Check the 'Deploy to Azure Static Web Apps' step above for details"
+            echo "   This is a critical failure - deployment did not complete"
           fi
 
       - name: Deployment Error Details
-        if: failure()
+        if: failure() || steps.deploy.outcome == 'failure'
         run: |
-          echo "❌ Deployment failed!"
+          echo "❌ Deployment failed or encountered errors!"
           echo "📋 Debug information:"
           echo "  Working directory: $(pwd)"
+          echo "  Job status: ${{ job.status }}"
+          echo "  Deploy step outcome: ${{ steps.deploy.outcome }}"
           echo "  Client dist exists: $([ -d 'client/dist' ] && echo 'yes' || echo 'no')"
           echo "  Index.html exists: $([ -f 'client/dist/index.html' ] && echo 'yes' || echo 'no')"
           echo "  Token set: $([ -n '${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}' ] && echo 'yes' || echo 'no')"
@@ -517,29 +535,50 @@ jobs:
           echo "📁 Contents of client/dist:"
           ls -lah client/dist/ || echo "Directory not found"
           echo ""
+          echo "📄 Checking main build file:"
+          MAIN_FILE=$(ls client/dist/main.*.mjs 2>/dev/null | head -1)
+          if [ -n "$MAIN_FILE" ]; then
+            echo "  Main file: $MAIN_FILE"
+            echo "  File size: $(wc -c < "$MAIN_FILE" 2>/dev/null || echo 'unknown') bytes"
+            if grep -q "セキュリティー監視" "$MAIN_FILE" 2>/dev/null; then
+              echo "  ✅ Security card found in build"
+            else
+              echo "  ❌ Security card NOT found in build"
+            fi
+            if grep -q "保守管理" "$MAIN_FILE" 2>/dev/null; then
+              echo "  ✅ Maintenance card found in build"
+            else
+              echo "  ❌ Maintenance card NOT found in build"
+            fi
+          else
+            echo "  ❌ Main build file not found!"
+          fi
+          echo ""
           echo "🔍 Check the step above for detailed error messages"
+          echo "💡 If deploy step succeeded but job failed, check non-critical steps (CDN cache, etc.)"
 
       - name: Clear CDN Cache via Azure CLI
+        id: cdn-cache
         continue-on-error: true
         run: |
           echo "🗑️ Attempting to clear Azure Static Web Apps CDN cache..."
-          
+
           # Azure CLIを使ってCDNキャッシュをクリアする試み
           # 注意: Azure Static Web AppsのCDNキャッシュは自動的に管理されるため、
           # 直接クリアするAPIは限定的ですが、デプロイ時に自動的に無効化されるはずです
-          
+
           # デプロイメントIDを取得してキャッシュを無効化
           echo "📋 Deployment information:"
           echo "  Static Web App URL: $STATIC_WEB_APP_URL"
           echo "  Build ID: $VITE_BUILD_ID"
           echo "  Commit SHA: ${{ github.sha }}"
-          
+
           # 複数のエンドポイントにリクエストを送ってキャッシュを無効化
           TIMESTAMP=$(date +%s)
           RANDOM_ID=$(openssl rand -hex 8 2>/dev/null || echo "fallback-$TIMESTAMP")
-          
+
           echo "🔄 Sending cache-busting requests..."
-          
+
           # 主要なエンドポイントにキャッシュ無効化リクエスト
           ENDPOINTS=("/" "/index.html" "/settings")
           ERROR_COUNT=0
@@ -558,17 +597,18 @@ jobs:
               ERROR_COUNT=$((ERROR_COUNT + 1))
             fi
           done
-          
+
           if [ $ERROR_COUNT -gt 0 ]; then
             echo "⚠️ Some cache-busting requests failed (this is non-critical)"
           else
             echo "✅ All cache-busting requests sent successfully"
           fi
-          
+
           echo "💡 Note: Azure Static Web Apps CDN cache will be automatically invalidated on deployment"
           echo "💡 Users should hard refresh (Ctrl+Shift+R) or clear browser cache to see latest changes"
 
       - name: Wait for CDN Propagation
+        id: cdn-wait
         continue-on-error: true
         run: |
           echo "⏳ Waiting for CDN propagation (30 seconds)..."
