@@ -10,7 +10,7 @@ on:
     inputs:
       environment:
         description: 'Deployment environment'
-        required: true
+        required: false
         default: 'production'
         type: choice
         options:
@@ -37,24 +37,40 @@ jobs:
 
       - name: Set Environment Variables
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.event.inputs.environment }}" == "production" ]]; then
+          # 環境判定: プッシュイベントの場合はブランチ名、workflow_dispatchの場合は入力値を使用
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            ENV_INPUT="${{ github.event.inputs.environment }}"
+            if [[ "$ENV_INPUT" == "production" ]] || [[ -z "$ENV_INPUT" ]]; then
+              ENV_TYPE="production"
+            else
+              ENV_TYPE="staging"
+            fi
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            ENV_TYPE="production"
+          else
+            ENV_TYPE="staging"
+          fi
+          
+          if [[ "$ENV_TYPE" == "production" ]]; then
             echo "ENVIRONMENT=production" >> $GITHUB_ENV
             echo "STATIC_WEB_APP_TOKEN=${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}" >> $GITHUB_ENV
             echo "BACKEND_URL=https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net" >> $GITHUB_ENV
             echo "STATIC_WEB_APP_URL=https://witty-river-012f39e00.1.azurestaticapps.net" >> $GITHUB_ENV
+            echo "✅ Environment: production"
+            echo "🔗 Backend: https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net"
           else
             echo "ENVIRONMENT=staging" >> $GITHUB_ENV
-            if [ -n "${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_STAGING }}" ]; then
-              echo "STATIC_WEB_APP_TOKEN=${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_STAGING }}" >> $GITHUB_ENV
+            STAGING_TOKEN="${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_STAGING }}"
+            if [ -n "$STAGING_TOKEN" ] && [ "$STAGING_TOKEN" != "" ]; then
+              echo "STATIC_WEB_APP_TOKEN=$STAGING_TOKEN" >> $GITHUB_ENV
             else
               echo "STATIC_WEB_APP_TOKEN=${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}" >> $GITHUB_ENV
             fi
             echo "BACKEND_URL=https://emergency-assistance-staging.japanwest-01.azurewebsites.net" >> $GITHUB_ENV
             echo "STATIC_WEB_APP_URL=https://staging.witty-river-012f39e00.1.azurestaticapps.net" >> $GITHUB_ENV
+            echo "✅ Environment: staging"
+            echo "🔗 Backend: https://emergency-assistance-staging.japanwest-01.azurewebsites.net"
           fi
-
-          echo "✅ Environment: $ENVIRONMENT"
-          echo "🔗 Backend: $BACKEND_URL"
 
       - name: Validate Secrets
         run: |
@@ -189,7 +205,8 @@ jobs:
           # index.htmlにビルドバージョンを追加してキャッシュを強制的に無効化
           if [ -f "client/dist/index.html" ]; then
             echo "🔄 Adding build version to index.html..."
-            BUILD_VERSION="v$(date +%s)-${{ github.sha:0:7 }}"
+            SHA_SHORT="${{ github.sha }}"
+            BUILD_VERSION="v$(date +%s)-${SHA_SHORT:0:7}"
             sed -i "s|<html lang=\"ja\">|<html lang=\"ja\" data-build=\"$BUILD_VERSION\">|g" client/dist/index.html
             # スクリプトタグにもバージョンを追加
             sed -i "s|<script type=\"module\"|<script type=\"module\" data-version=\"$BUILD_VERSION\"|g" client/dist/index.html
