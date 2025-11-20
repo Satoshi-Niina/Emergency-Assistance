@@ -63,15 +63,6 @@ export default function SettingsPage() {
   const [autoSave, setAutoSave] = useState(true);
   const [useOnlyKnowledgeBase, setUseOnlyKnowledgeBase] = useState(true);
 
-  // セキュリティー監視・保守管理アクセス権限チェック
-  // 管理者権限（admin）のユーザーに表示
-  const hasSecurityAccess = user?.role === 'admin';
-
-  // デバッグ情報（本番環境でも確認）
-  console.log('🔍 [Settings Debug]');
-  console.log('  user:', user);
-  console.log('  user?.role:', user?.role);
-  console.log('  hasSecurityAccess:', hasSecurityAccess);
 
   // システム健全性チェック
   // System health state removed - integrated into system diagnostic page
@@ -448,9 +439,8 @@ export default function SettingsPage() {
           </Card>
         )}
 
-        {/* Security Monitoring - Mock UI (特定ユーザーのみ表示) */}
-        {hasSecurityAccess && (
-          <Card className='border border-red-200 shadow-md overflow-hidden'>
+        {/* Security Monitoring - Mock UI */}
+        <Card className='border border-red-200 shadow-md overflow-hidden'>
             <CardHeader className='pb-2 bg-gradient-to-r from-red-500 to-orange-500 text-white'>
               <CardTitle className='text-lg flex items-center'>
                 <Lock className='mr-2 h-5 w-5' />
@@ -517,11 +507,9 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
-        )}
 
         {/* Maintenance Management - Mock UI */}
-        {hasSecurityAccess && (
-          <Card className='border border-amber-200 shadow-md overflow-hidden'>
+        <Card className='border border-amber-200 shadow-md overflow-hidden'>
             <CardHeader className='pb-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white'>
               <CardTitle className='text-lg flex items-center'>
                 <Wrench className='mr-2 h-5 w-5' />
@@ -612,7 +600,6 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
-        )}
 
         {/* App Settings */}
         <Card className='border border-blue-200 shadow-md overflow-hidden'>
