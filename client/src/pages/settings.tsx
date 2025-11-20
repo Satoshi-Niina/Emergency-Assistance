@@ -67,12 +67,16 @@ export default function SettingsPage() {
   // 管理者権限（admin または employee）のユーザーに表示
 
   // デバッグ: 現在のユーザー情報をコンソールに表示
-  console.log('現在のユーザー:', user?.username, 'ロール:', user?.role);
+  console.log('🔍 [Settings] 現在のユーザー:', user?.username, 'ロール:', user?.role);
+  console.log('🔍 [Settings] user オブジェクト全体:', JSON.stringify(user, null, 2));
 
   // 管理者権限チェック（admin または employee）
   const hasSecurityAccess = user?.role === 'admin' || user?.role === 'employee';
 
-  console.log('セキュリティーカード表示:', hasSecurityAccess);
+  console.log('🔍 [Settings] セキュリティーカード表示フラグ:', hasSecurityAccess);
+  console.log('🔍 [Settings] user?.role:', user?.role);
+  console.log('🔍 [Settings] user?.role === "admin":', user?.role === 'admin');
+  console.log('🔍 [Settings] user?.role === "employee":', user?.role === 'employee');
 
   // 特定のユーザー名のみに制限する場合は、以下のコードを使用
   // const SECURITY_ADMINS = ['super_admin', 'security_admin', 'niina'];
