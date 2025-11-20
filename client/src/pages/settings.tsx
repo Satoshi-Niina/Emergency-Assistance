@@ -51,6 +51,7 @@ import { Link } from 'react-router-dom';
 // SystemHealth interface is removed - integrated into system diagnostic page
 // Settings page updated: removed permission checks for maintenance and security cards
 // Build: 2025-01-27 - Fixed card visibility issue by removing dist from git tracking
+// Trigger: Force workflow execution
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
