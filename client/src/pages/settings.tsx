@@ -64,6 +64,15 @@ export default function SettingsPage() {
   const [autoSave, setAutoSave] = useState(true);
   const [useOnlyKnowledgeBase, setUseOnlyKnowledgeBase] = useState(true);
 
+  // Debug: Log card visibility
+  useEffect(() => {
+    console.log('🔍 [Settings Page Debug]');
+    console.log('  User:', user);
+    console.log('  User role:', user?.role);
+    console.log('  Security card should be visible: true (always)');
+    console.log('  Maintenance card should be visible: true (always)');
+  }, [user]);
+
 
   // システム健全性チェック
   // System health state removed - integrated into system diagnostic page
@@ -440,8 +449,8 @@ export default function SettingsPage() {
           </Card>
         )}
 
-        {/* Security Monitoring - Mock UI */}
-        <Card className='border border-red-200 shadow-md overflow-hidden'>
+        {/* Security Monitoring - Mock UI - Always visible */}
+        <Card key="security-monitoring-card" className='border border-red-200 shadow-md overflow-hidden'>
             <CardHeader className='pb-2 bg-gradient-to-r from-red-500 to-orange-500 text-white'>
               <CardTitle className='text-lg flex items-center'>
                 <Lock className='mr-2 h-5 w-5' />
@@ -509,8 +518,8 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-        {/* Maintenance Management - Mock UI */}
-        <Card className='border border-amber-200 shadow-md overflow-hidden'>
+        {/* Maintenance Management - Mock UI - Always visible */}
+        <Card key="maintenance-management-card" className='border border-amber-200 shadow-md overflow-hidden'>
             <CardHeader className='pb-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white'>
               <CardTitle className='text-lg flex items-center'>
                 <Wrench className='mr-2 h-5 w-5' />
