@@ -70,8 +70,11 @@ export default function SettingsPage() {
   console.log('🔍 [Settings] 現在のユーザー:', user?.username, 'ロール:', user?.role);
   console.log('🔍 [Settings] user オブジェクト全体:', JSON.stringify(user, null, 2));
 
-  // 管理者権限チェック（admin または employee）
-  const hasSecurityAccess = user?.role === 'admin' || user?.role === 'employee';
+  // 🚨 テスト用: 全員に表示（デバッグ後に元に戻す）
+  const hasSecurityAccess = true; // ← テスト用に一時的に true
+
+  // 本来のチェック（テスト後に戻す）
+  // const hasSecurityAccess = user?.role === 'admin' || user?.role === 'employee';
 
   console.log('🔍 [Settings] セキュリティーカード表示フラグ:', hasSecurityAccess);
   console.log('🔍 [Settings] user?.role:', user?.role);
