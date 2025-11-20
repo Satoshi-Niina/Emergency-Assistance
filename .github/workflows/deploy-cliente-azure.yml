@@ -89,6 +89,10 @@ jobs:
           echo "🔨 Building client for $ENVIRONMENT environment..."
           echo "   Backend URL: $BACKEND_URL"
 
+          # Clear build cache to ensure fresh build
+          echo "🧹 Clearing build cache..."
+          rm -rf dist node_modules/.vite .vite || true
+
           # Set environment variables for Vite build
           export NODE_ENV=production
           export VITE_BACKEND_SERVICE_URL="$BACKEND_URL"
@@ -100,7 +104,8 @@ jobs:
           echo "   API Base URL: $VITE_API_BASE_URL"
           echo "   Build ID: $VITE_BUILD_ID"
 
-          npm run build
+          # Build with no cache
+          npm run build -- --force
 
           # ビルド結果検証
           if [ ! -f "dist/index.html" ]; then
@@ -235,6 +240,8 @@ jobs:
           echo "🗑️ Clearing deployment cache..."
           # Force fresh deployment by removing any cache markers
           rm -rf ~/.azure-static-web-apps-cli || true
+          # Clear npm cache
+          npm cache clean --force || true
 
       - name: Deploy to Azure Static Web Apps
         id: deploy
