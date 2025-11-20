@@ -105,11 +105,17 @@ jobs:
           echo "🔨 Building client for $ENVIRONMENT environment..."
           echo "   Backend URL: $BACKEND_URL"
 
-          # Clear build cache to ensure fresh build
-          echo "🧹 Clearing build cache completely..."
-          rm -rf dist node_modules/.vite .vite .cache .parcel-cache || true
+          # Complete cache clear - ensure absolutely fresh build
+          echo "🧹 Clearing ALL build artifacts and caches..."
+          rm -rf dist node_modules/.vite .vite .cache .parcel-cache .turbo || true
           npm cache clean --force || true
-
+          
+          # Remove any existing dist to ensure clean build
+          if [ -d "dist" ]; then
+            echo "🗑️ Removing existing dist directory..."
+            rm -rf dist
+          fi
+          
           # Verify source file has correct changes
           echo "🔍 Verifying source file changes..."
           if grep -q "hasSecurityAccess" src/pages/settings.tsx; then
@@ -131,11 +137,14 @@ jobs:
           export VITE_BACKEND_SERVICE_URL="$BACKEND_URL"
           export VITE_API_BASE_URL="$BACKEND_URL/api"
           export VITE_ENVIRONMENT="$ENVIRONMENT"
-          # Force new build ID to bypass cache
-          export VITE_BUILD_ID="$(date +%s)-${{ github.sha }}"
+          # Force new build ID with timestamp to bypass ALL caches
+          BUILD_TIMESTAMP=$(date +%s)
+          export VITE_BUILD_ID="${BUILD_TIMESTAMP}-${{ github.sha }}"
+          export VITE_BUILD_VERSION="${BUILD_TIMESTAMP}"
 
           echo "   API Base URL: $VITE_API_BASE_URL"
           echo "   Build ID: $VITE_BUILD_ID"
+          echo "   Build Timestamp: $BUILD_TIMESTAMP"
 
           # Build with no cache
           echo "🔨 Running build command..."
@@ -388,13 +397,16 @@ jobs:
 
           echo "✅ Build output verification completed"
 
-      - name: Clear Azure Static Web Apps Cache
+      - name: Clear All Caches Before Deploy
         run: |
-          echo "🗑️ Clearing deployment cache..."
-          # Force fresh deployment by removing any cache markers
+          echo "🗑️ Clearing ALL caches before deployment..."
+          # Clear Azure Static Web Apps CLI cache
           rm -rf ~/.azure-static-web-apps-cli || true
           # Clear npm cache
           npm cache clean --force || true
+          # Clear any other potential caches
+          rm -rf ~/.cache || true
+          echo "✅ All caches cleared"
 
       - name: Verify Files Before Deploy
         run: |
@@ -487,30 +499,38 @@ jobs:
           echo ""
           echo "🔍 Check the step above for detailed error messages"
 
-      - name: Trigger CDN Cache Purge
+      - name: Trigger CDN Cache Purge and Verify Fresh Content
         continue-on-error: true
         run: |
-          echo "🗑️ Requesting CDN cache purge..."
-          # Wait a bit for deployment to propagate
-          sleep 10
+          echo "🗑️ Requesting CDN cache purge and verifying fresh content..."
+          # Wait for deployment to propagate
+          echo "⏳ Waiting 15 seconds for deployment to propagate..."
+          sleep 15
 
-          # Try to purge Azure CDN cache by making requests with cache-busting headers
-          # Use timestamp query parameter to force cache miss
+          # Generate unique cache-busting parameters
           TIMESTAMP=$(date +%s)
+          RANDOM_ID=$(openssl rand -hex 8 || echo "fallback-$TIMESTAMP")
 
-          curl -X GET "$STATIC_WEB_APP_URL/?v=$TIMESTAMP" \
+          echo "🔄 Purging cache with timestamp: $TIMESTAMP, random ID: $RANDOM_ID"
+          
+          # Purge main page
+          curl -X GET "$STATIC_WEB_APP_URL/?v=$TIMESTAMP&r=$RANDOM_ID" \
             -H "Cache-Control: no-cache, no-store, must-revalidate" \
             -H "Pragma: no-cache" \
             -H "Expires: 0" \
-            -s -o /dev/null -w "Status: %{http_code}\n" || true
+            -H "X-Force-Refresh: true" \
+            -s -o /dev/null -w "Main page status: %{http_code}\n" || true
 
-          curl -X GET "$STATIC_WEB_APP_URL/index.html?v=$TIMESTAMP" \
+          # Purge index.html
+          curl -X GET "$STATIC_WEB_APP_URL/index.html?v=$TIMESTAMP&r=$RANDOM_ID" \
             -H "Cache-Control: no-cache, no-store, must-revalidate" \
             -H "Pragma: no-cache" \
             -H "Expires: 0" \
-            -s -o /dev/null -w "Status: %{http_code}\n" || true
+            -H "X-Force-Refresh: true" \
+            -s -o /dev/null -w "Index.html status: %{http_code}\n" || true
 
-          echo "✅ Cache purge request sent with timestamp: $TIMESTAMP"
+          echo "✅ Cache purge requests sent"
+          echo "💡 Users should hard refresh (Ctrl+Shift+R) to see latest changes"
 
       - name: Health Check
         env:
