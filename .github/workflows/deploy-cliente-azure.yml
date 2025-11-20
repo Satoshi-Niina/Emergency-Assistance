@@ -274,20 +274,26 @@ jobs:
         continue-on-error: true
         run: |
           echo "🗑️ Requesting CDN cache purge..."
+          # Wait a bit for deployment to propagate
+          sleep 10
+          
           # Try to purge Azure CDN cache by making requests with cache-busting headers
-          curl -X GET "$STATIC_WEB_APP_URL/" \
+          # Use timestamp query parameter to force cache miss
+          TIMESTAMP=$(date +%s)
+          
+          curl -X GET "$STATIC_WEB_APP_URL/?v=$TIMESTAMP" \
             -H "Cache-Control: no-cache, no-store, must-revalidate" \
             -H "Pragma: no-cache" \
             -H "Expires: 0" \
             -s -o /dev/null -w "Status: %{http_code}\n" || true
 
-          curl -X GET "$STATIC_WEB_APP_URL/index.html" \
+          curl -X GET "$STATIC_WEB_APP_URL/index.html?v=$TIMESTAMP" \
             -H "Cache-Control: no-cache, no-store, must-revalidate" \
             -H "Pragma: no-cache" \
             -H "Expires: 0" \
             -s -o /dev/null -w "Status: %{http_code}\n" || true
 
-          echo "✅ Cache purge request sent"
+          echo "✅ Cache purge request sent with timestamp: $TIMESTAMP"
 
       - name: Health Check
         env:
