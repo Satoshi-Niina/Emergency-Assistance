@@ -65,13 +65,19 @@ export default function SettingsPage() {
 
   // セキュリティー監視・保守管理アクセス権限チェック
   // 特定のユーザー名のみに表示（厳格な管理）
-  const SECURITY_ADMINS = ['super_admin', 'security_admin']; // ← ここに許可するユーザー名を追加
+  const SECURITY_ADMINS = ['super_admin', 'security_admin', 'niina']; // ← ここに許可するユーザー名を追加
+
+  // デバッグ: 現在のユーザー情報をコンソールに表示
+  console.log('現在のユーザー:', user?.username, 'ロール:', user?.role);
+  console.log('セキュリティーアクセス許可リスト:', SECURITY_ADMINS);
+
+  // ユーザー名チェック
   const hasSecurityAccess = user?.username && SECURITY_ADMINS.includes(user.username);
 
-  // または、データベースのフラグで管理する場合
-  // const hasSecurityAccess = user?.securityAccess === true;
+  console.log('セキュリティーカード表示:', hasSecurityAccess);
 
-  // システム健全性チェック
+  // または、データベースのフラグで管理する場合
+  // const hasSecurityAccess = user?.securityAccess === true;  // システム健全性チェック
   // System health state removed - integrated into system diagnostic page
 
   // LocalStorageからの設定読み込み

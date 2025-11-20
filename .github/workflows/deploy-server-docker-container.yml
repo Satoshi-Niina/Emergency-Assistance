@@ -9,7 +9,7 @@ on:
       - 'Dockerfile'
       - 'docker-compose.yml'
       - '.dockerignore'
-      - '.github/workflows/server-azure-docker.yml'
+      - '.github/workflows/deploy-server-docker-container.yml'
   workflow_dispatch:
     inputs:
       environment:
