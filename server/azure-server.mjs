@@ -4962,10 +4962,28 @@ server = app.listen(PORT, '0.0.0.0', async () => {
 
   // BLOB接続のテスト（起動時）
   console.log('🔍 Testing BLOB connection...');
+  
+  // 接続文字列からAccountNameを抽出してログ出力
+  if (connectionString) {
+    try {
+      const accountNameMatch = connectionString.match(/AccountName=([^;]+)/);
+      if (accountNameMatch) {
+        const accountName = accountNameMatch[1];
+        console.log(`🔍 Storage Account Name from connection string: ${accountName}`);
+        console.log(`🔍 Expected BLOB URL: https://${accountName}.blob.core.windows.net`);
+      } else {
+        console.warn('⚠️ Could not extract AccountName from connection string');
+      }
+    } catch (parseError) {
+      console.warn('⚠️ Error parsing connection string:', parseError.message);
+    }
+  }
+  
   const blobServiceClient = getBlobServiceClient();
   if (blobServiceClient) {
     try {
       const containerClient = blobServiceClient.getContainerClient(containerName);
+      console.log(`🔍 Attempting to check container: ${containerName}`);
       const exists = await containerClient.exists();
       if (exists) {
         console.log(`✅ BLOB Storage: Connected (container: ${containerName})`);
@@ -4977,10 +4995,28 @@ server = app.listen(PORT, '0.0.0.0', async () => {
           console.log(`✅ BLOB Storage: Container '${containerName}' created successfully`);
         } catch (createError) {
           console.error(`❌ BLOB Storage: Failed to create container: ${createError.message}`);
+          console.error(`❌ Error details:`, createError instanceof Error ? createError.stack : createError);
         }
       }
     } catch (testError) {
       console.error(`❌ BLOB Storage: Connection test failed: ${testError.message}`);
+      console.error(`❌ Error type: ${testError.constructor.name}`);
+      console.error(`❌ Error details:`, testError instanceof Error ? testError.stack : testError);
+      
+      // DNSエラーの場合、接続文字列のAccountNameを確認
+      if (testError.message && testError.message.includes('ENOTFOUND')) {
+        console.error('❌ DNS resolution failed - this usually means:');
+        console.error('   1. The storage account name in the connection string is incorrect');
+        console.error('   2. The storage account does not exist');
+        console.error('   3. Network connectivity issues');
+        if (connectionString) {
+          const accountNameMatch = connectionString.match(/AccountName=([^;]+)/);
+          if (accountNameMatch) {
+            console.error(`   Current AccountName in connection string: ${accountNameMatch[1]}`);
+            console.error(`   Please verify this matches your actual Azure Storage account name`);
+          }
+        }
+      }
     }
   } else {
     console.warn('⚠️ BLOB Storage: Not configured or connection failed');
