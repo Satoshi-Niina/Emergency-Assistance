@@ -1,15 +1,22 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-} from 'react';
-import {
-  login as authLogin,
-  logout as authLogout,
-  getCurrentUser,
-} from '../lib/auth-unified';
+<<<<<<< HEAD
+// ...existing code...
+{ children }
+    </AuthContext.Provider >
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
+=======
+
+
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { login as authLogin, logout as authLogout, getCurrentUser } from '../lib/auth';
 
 interface User {
   id: string;
@@ -24,7 +31,6 @@ interface AuthContextType {
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
-  authMode: 'safe' | 'jwt-bypass' | 'jwt' | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,74 +39,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
-  const [authMode, setAuthMode] = useState<'safe' | 'jwt-bypass' | 'jwt' | null>(null);
-
-  // AUTH_BYPASS設定を確認
-  const authBypass = import.meta.env.VITE_AUTH_BYPASS === 'true';
 
   // 初期認証状態チェック
   useEffect(() => {
     const checkAuthStatus = async () => {
-      // バイパスモード時は仮ユーザーで初期化
-      if (authBypass) {
-        setUser({
-          id: 'demo',
-          username: 'demo',
-          displayName: 'Demo User',
-          role: 'employee'
-        });
-        setIsLoading(false);
-        setAuthChecked(true);
-        return;
-      }
-      
       try {
+        console.log('🔍 認証状態確認開始');
         setIsLoading(true);
-        
-        // 開発時は強制的にログイン画面を表示（認証状態をリセット）
-        // console.log('🔐 開発モード: ログイン画面を強制表示');
-        // localStorage.removeItem('authToken');
-        // sessionStorage.removeItem('authToken');
-        // クッキーもクリア
-        // document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-        // setUser(null);
-        
-        // localStorageからトークンを確認
-        const token = localStorage.getItem('authToken');
-        if (token) {
-          console.log('🔐 トークンが見つかりました、認証状態を確認中...');
-          try {
-            // トークンが有効かどうか確認
-            const userData = await getCurrentUser();
-            if (userData && userData.success && userData.user) {
-              console.log('✅ トークンが有効、ユーザー情報を復元');
-              setUser({
-                id: userData.user.id,
-                username: userData.user.username,
-                displayName: userData.user.displayName || userData.user.display_name,
-                role: userData.user.role,
-                department: userData.user.department,
-              });
-            } else {
-              console.log('❌ トークンが無効、クリア');
-              localStorage.removeItem('authToken');
-              setUser(null);
-            }
-          } catch (error) {
-            console.log('❌ トークン検証エラー、クリア:', error);
-            localStorage.removeItem('authToken');
+
+        // プロキシ経由でAPIにアクセス
+        const apiUrl = '/api/auth/me';
+        console.log('🔗 認証確認URL:', apiUrl);
+
+        const response = await fetch(apiUrl, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          credentials: "include"
+        });
+
+        console.log('📡 認証確認レスポンス:', {
+          status: response.status,
+          ok: response.ok
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          console.log('📦 認証確認データ:', userData);
+
+          if (userData && userData.success && userData.user) {
+            console.log('✅ 認証済みユーザー:', userData.user);
+            setUser({
+              id: userData.user.id,
+              username: userData.user.username,
+              displayName: userData.user.displayName,
+              role: userData.user.role,
+              department: userData.user.department
+            });
+          } else {
+            console.log('❌ 無効な認証データ:', userData);
             setUser(null);
           }
+        } else if (response.status === 401) {
+          console.log('❌ 未認証状態:', response.status);
+          setUser(null);
         } else {
-          console.log('ℹ️ トークンが見つかりません、ログイン画面を表示');
+          console.log('❌ 認証確認失敗:', response.status);
           setUser(null);
         }
       } catch (error) {
-        console.warn('⚠️ 認証状態確認エラー:', error);
+        console.error('❌ 認証確認エラー:', error);
+        console.error('❌ 認証確認エラー詳細:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+          timestamp: new Date().toISOString()
+        });
         setUser(null);
       } finally {
         setIsLoading(false);
         setAuthChecked(true);
+        console.log('✅ 認証状態確認完了 - authChecked:', true);
       }
     };
 
@@ -110,45 +109,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (username: string, password: string): Promise<void> => {
     console.log('🔐 ログイン試行開始:', { username });
 
-    // バイパスモード時は仮ログイン
-    if (authBypass) {
-      setUser({
-        id: 'demo',
-        username: username,
-        displayName: username,
-        role: 'employee'
-      });
-      return;
-    }
-
     try {
       setIsLoading(true);
 
-      // 直接APIを呼び出してログイン
-      const userData = await authLogin({ username, password });
-      console.log('🔍 ログインレスポンス:', userData);
+      // 直接サーバーにアクセス（デバッグ用）
+      const apiUrl = 'http://localhost:3001/api/auth/login';
+      console.log('🔗 ログインURL:', apiUrl);
+      console.log('📤 送信データ:', { username, password });
+
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify({ username, password })
+      });
+
+      console.log('📡 ログインレスポンス:', {
+        status: response.status,
+        ok: response.ok,
+        statusText: response.statusText
+      });
+
+      // レスポンスが200以外の場合はエラーをthrow
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ ログインAPIエラー:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText
+        });
+
+        let errorMessage = 'ログインに失敗しました';
+        if (response.status === 401) {
+          errorMessage = 'ユーザー名またはパスワードが違います';
+        } else if (response.status === 500) {
+          errorMessage = 'サーバーエラーが発生しました';
+        } else if (response.status === 0 || response.statusText === 'Failed to fetch') {
+          errorMessage = 'サーバーに接続できません';
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      const userData = await response.json();
+      console.log('📦 ログインレスポンスデータ:', userData);
 
       if (userData && userData.success && userData.user) {
-        // トークンをlocalStorageに保存（tokenまたはaccessTokenのいずれかを使用）
-        const token = userData.token || userData.accessToken;
-        if (token) {
-          localStorage.setItem('authToken', token);
-          console.log('✅ トークンをlocalStorageに保存');
-        }
-        
+        console.log('✅ ログイン成功:', userData.user);
         setUser({
           id: userData.user.id,
           username: userData.user.username,
-          displayName: userData.user.displayName || userData.user.display_name,
+          displayName: userData.user.displayName,
           role: userData.user.role,
-          department: userData.user.department,
+          department: userData.user.department
         });
       } else {
-        console.log('❌ ログインレスポンスが無効:', userData);
-        throw new Error('ログインに失敗しました');
+        throw new Error('ログインレスポンスが無効です');
       }
     } catch (error) {
-      console.error('❌ ログインエラー:', error);
+      console.error('❌ ログインエラー:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
       setUser(null);
       throw error;
     } finally {
@@ -165,39 +190,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('❌ ログアウトエラー:', error);
     } finally {
-      // トークンをlocalStorageから削除
-      localStorage.removeItem('authToken');
-      console.log('✅ トークンをlocalStorageから削除');
       setUser(null);
     }
   };
 
-  // console.log('🔧 AuthProvider レンダリング:', {
-  //   user: user ? user.username : null,
-  //   isLoading,
-  //   authChecked,
-  //   authMode,
-  //   timestamp: new Date().toISOString(),
-  // });
+  console.log('🔧 AuthProvider レンダリング:', {
+    user: user ? user.username : null,
+    isLoading,
+    authChecked,
+    timestamp: new Date().toISOString()
+  });
 
   // 認証状態確認中は常にローディング画面を表示（nullレンダリング禁止）
   if (isLoading) {
-    // console.log('⏳ AuthProvider: 認証状態確認中、ローディング画面を表示');
+    console.log('⏳ AuthProvider: 認証状態確認中、ローディング画面を表示');
     return (
-      <AuthContext.Provider value={{ user, isLoading, login, logout, authMode }}>
-        <div className='flex justify-center items-center h-screen'>
-          <div className='text-center'>
-            <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4'></div>
-            <p className='text-gray-600'>認証状態を確認中...</p>
+      <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+        <div className="flex justify-center items-center h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-gray-600">認証状態を確認中...</p>
           </div>
         </div>
       </AuthContext.Provider>
     );
   }
 
-  // console.log('✅ AuthProvider: 認証状態確認完了、子コンポーネントを表示');
+  console.log('✅ AuthProvider: 認証状態確認完了、子コンポーネントを表示');
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, authMode }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -210,3 +231,4 @@ export function useAuth() {
   }
   return context;
 }
+>>>>>>> Niina

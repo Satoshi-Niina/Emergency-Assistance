@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/auth-context';
 import { useToast } from '../hooks/use-toast';
@@ -30,6 +31,34 @@ import {
   Info,
   Plus,
   Database,
+=======
+import { useState, useEffect } from "react";
+import { useAuth } from "../context/auth-context";
+import { useToast } from "../hooks/use-toast";
+import { API_BASE_URL } from "../lib/api/config";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
+import { Switch } from "../components/ui/switch";
+import { Slider } from "../components/ui/slider";
+import { Badge } from "../components/ui/badge";
+import { 
+  Settings, 
+  Volume2, 
+  Mic, 
+  Monitor, 
+  Smartphone, 
+  LogOut, 
+  User, 
+  Shield, 
+  Save, 
+  Trash2, 
+  FileX, 
+  UserPlus, 
+  FileType, 
+  Info, 
+  Plus, 
+  Database, 
+>>>>>>> Niina
   X,
   Wrench,
   CheckCircle,
@@ -78,6 +107,100 @@ export default function SettingsPage() {
   // システム健全性チェック
   // System health state removed - integrated into system diagnostic page
 
+<<<<<<< HEAD
+=======
+
+
+  // Q&A質問管理用の状態・関数は削除
+
+  // 機種と機械番号管理用の状態
+  const [machineTypes, setMachineTypes] = useState<Array<{id: string, machine_type_name: string}>>([]);
+  const [machines, setMachines] = useState<Array<{id: string, machine_number: string, machine_type_id: string}>>([]);
+  const [newMachineType, setNewMachineType] = useState('');
+  const [newMachineNumber, setNewMachineNumber] = useState('');
+  const [selectedMachineType, setSelectedMachineType] = useState('');
+  const [isLoadingMachineData, setIsLoadingMachineData] = useState(false);
+
+  // 機種データを初期読み込み
+  useEffect(() => {
+    fetchMachineData();
+  }, []);
+
+  // 機種と機械番号のデータを取得
+  const fetchMachineData = async () => {
+    try {
+      setIsLoadingMachineData(true);
+      const typesResponse = await fetch(`${API_BASE_URL}/api/machines/machine-types`);
+      if (typesResponse.ok) {
+        const typesResult = await typesResponse.json();
+        if (typesResult.success) {
+          setMachineTypes(typesResult.data);
+        }
+      }
+      const machinesResponse = await fetch(`${API_BASE_URL}/api/machines/all-machines`);
+      if (machinesResponse.ok) {
+        const machinesResult = await machinesResponse.json();
+        if (machinesResult.success) {
+          const flatMachines: Array<{id: string, machine_number: string, machine_type_id: string}> = [];
+          machinesResult.data.forEach((typeGroup: any) => {
+            if (typeGroup.machines && Array.isArray(typeGroup.machines)) {
+              typeGroup.machines.forEach((machine: any) => {
+                flatMachines.push({
+                  id: machine.id,
+                  machine_number: machine.machine_number,
+                  machine_type_id: typeGroup.type_id
+                });
+              });
+            }
+          });
+          setMachines(flatMachines);
+        }
+      }
+    } finally {
+      setIsLoadingMachineData(false);
+    }
+  };
+
+  const addMachineType = async () => {
+    if (!newMachineType.trim()) return;
+    const response = await fetch(`/api/machines/machine-types`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ machine_type_name: newMachineType.trim() })
+    });
+    if (response.ok) {
+      setNewMachineType('');
+      fetchMachineData();
+    }
+  };
+
+  const addMachineNumber = async () => {
+    if (!selectedMachineType || !newMachineNumber.trim()) return;
+    const response = await fetch(`/api/machines/machines`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ machine_number: newMachineNumber.trim(), machine_type_id: selectedMachineType })
+    });
+    if (response.ok) {
+      setNewMachineNumber('');
+      setSelectedMachineType('');
+      fetchMachineData();
+    }
+  };
+
+  const deleteMachineType = async (typeId: string, typeName: string) => {
+    if (!confirm(`機種「${typeName}」を削除してもよろしいですか？\n関連する機械番号も削除されます。`)) return;
+    const response = await fetch(`/api/machines/machine-types/${typeId}`, { method: 'DELETE' });
+    if (response.ok) fetchMachineData();
+  };
+
+  const deleteMachineNumber = async (machineId: string, machineNumber: string) => {
+    if (!confirm(`機械番号「${machineNumber}」を削除してもよろしいですか？`)) return;
+    const response = await fetch(`/api/machines/machines/${machineId}`, { method: 'DELETE' });
+    if (response.ok) fetchMachineData();
+  };
+
+>>>>>>> Niina
   // LocalStorageからの設定読み込み
   useEffect(() => {
     const loadSettings = () => {
@@ -86,6 +209,7 @@ export default function SettingsPage() {
         if (savedSettings) {
           const settings = JSON.parse(savedSettings);
 
+<<<<<<< HEAD
           if (settings.notifications !== undefined)
             setNotifications(settings.notifications);
           if (settings.textToSpeech !== undefined)
@@ -96,6 +220,15 @@ export default function SettingsPage() {
           if (settings.autoSave !== undefined) setAutoSave(settings.autoSave);
           if (settings.useOnlyKnowledgeBase !== undefined)
             setUseOnlyKnowledgeBase(settings.useOnlyKnowledgeBase);
+=======
+                  if (settings.notifications !== undefined) setNotifications(settings.notifications);
+        if (settings.textToSpeech !== undefined) setTextToSpeech(settings.textToSpeech);
+        if (settings.speechVolume !== undefined) setSpeechVolume(settings.speechVolume);
+        if (settings.darkMode !== undefined) setDarkMode(settings.darkMode);
+        if (settings.autoSave !== undefined) setAutoSave(settings.autoSave);
+        if (settings.useOnlyKnowledgeBase !== undefined) setUseOnlyKnowledgeBase(settings.useOnlyKnowledgeBase);
+  // Q&A質問管理用の設定は削除
+>>>>>>> Niina
         }
       } catch (error) {
         console.error('設定の読み込みに失敗しました:', error);
@@ -115,6 +248,10 @@ export default function SettingsPage() {
         darkMode,
         autoSave,
         useOnlyKnowledgeBase,
+<<<<<<< HEAD
+=======
+  // Q&A質問管理用の設定は削除
+>>>>>>> Niina
       };
       localStorage.setItem(
         'emergencyRecoverySettings',
@@ -135,6 +272,7 @@ export default function SettingsPage() {
   // 設定変更時の自動保存
   useEffect(() => {
     saveSettings();
+<<<<<<< HEAD
   }, [
     notifications,
     textToSpeech,
@@ -143,6 +281,10 @@ export default function SettingsPage() {
     autoSave,
     useOnlyKnowledgeBase,
   ]);
+=======
+  }, [notifications, textToSpeech, speechVolume, darkMode, autoSave, useOnlyKnowledgeBase]);
+
+>>>>>>> Niina
 
   const handleLogout = async () => {
     setShowWarningDialog(true);
@@ -262,6 +404,11 @@ export default function SettingsPage() {
     }
   };
 
+<<<<<<< HEAD
+=======
+  // Q&A質問管理用の関数は削除
+
+>>>>>>> Niina
   return (
     <div className='flex-1 overflow-y-auto p-4 md:p-6 max-w-5xl mx-auto w-full bg-gradient-to-br from-blue-50 to-indigo-50'>
       <div className='mb-6'>
@@ -450,6 +597,7 @@ export default function SettingsPage() {
           </Card>
         )}
 
+<<<<<<< HEAD
         {/* セキュリティー監視カード - 常に表示 */}
         <Card className='border border-red-200 shadow-md overflow-hidden' style={{ display: 'block' }}>
           <CardHeader className='pb-2 bg-gradient-to-r from-red-500 to-orange-500 text-white'>
@@ -512,6 +660,9 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+=======
+  {/* Q&A質問管理UIは削除済み */}
+>>>>>>> Niina
 
         {/* 保守管理カード - 常に表示 */}
         <Card className='border border-amber-200 shadow-md overflow-hidden' style={{ display: 'block' }}>
