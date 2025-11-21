@@ -4902,7 +4902,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // サーバー起動（これが必須！）
-server = app.listen(PORT, '0.0.0.0', () => {
+server = app.listen(PORT, '0.0.0.0', async () => {
   console.log('');
   console.log('🎉 ================================================');
   console.log('🚀 Azure Production Server Started Successfully!');
@@ -4914,6 +4914,34 @@ server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`📦 Node Version: ${process.version}`);
   console.log(`⏰ Started at: ${new Date().toISOString()}`);
   console.log('');
+  
+  // BLOB接続のテスト（起動時）
+  console.log('🔍 Testing BLOB connection...');
+  const blobServiceClient = getBlobServiceClient();
+  if (blobServiceClient) {
+    try {
+      const containerClient = blobServiceClient.getContainerClient(containerName);
+      const exists = await containerClient.exists();
+      if (exists) {
+        console.log(`✅ BLOB Storage: Connected (container: ${containerName})`);
+      } else {
+        console.warn(`⚠️ BLOB Storage: Connected but container '${containerName}' does not exist`);
+        console.warn('⚠️ Attempting to create container...');
+        try {
+          await containerClient.createIfNotExists();
+          console.log(`✅ BLOB Storage: Container '${containerName}' created successfully`);
+        } catch (createError) {
+          console.error(`❌ BLOB Storage: Failed to create container: ${createError.message}`);
+        }
+      }
+    } catch (testError) {
+      console.error(`❌ BLOB Storage: Connection test failed: ${testError.message}`);
+    }
+  } else {
+    console.warn('⚠️ BLOB Storage: Not configured or connection failed');
+  }
+  console.log('');
+  
   console.log('📋 Available Endpoints:');
   console.log('   GET  /health - ヘルスチェック');
   console.log('   GET  /api/ping - Ping');
