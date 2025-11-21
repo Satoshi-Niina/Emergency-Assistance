@@ -2598,7 +2598,7 @@ app.get('/api/history/export-files', async (req, res) => {
         const containerClient = blobServiceClient.getContainerClient(containerName);
         const prefix = norm('exports/');
 
-        console.log(`🔍 BLOBストレージからエクスポート取得: prefix=${prefix}`);
+        console.log(`🔍 BLOBストレージからエクスポート取得: prefix=${prefix}, container=${containerName}`);
 
         for await (const blob of containerClient.listBlobsFlat({ prefix })) {
           if (blob.name.endsWith('.json')) {
@@ -2615,7 +2615,11 @@ app.get('/api/history/export-files', async (req, res) => {
         console.log(`✅ BLOBから ${items.length} 件のエクスポート取得`);
       } catch (error) {
         console.error('❌ BLOB読み込みエラー:', error);
+        console.error('❌ エラー詳細:', error instanceof Error ? error.stack : error);
+        // BLOBエラーでも空配列を返す（フォールバック）
       }
+    } else {
+      console.warn('⚠️ BLOBサービスクライアントが利用できません');
     }
 
     res.json({
@@ -2626,10 +2630,11 @@ app.get('/api/history/export-files', async (req, res) => {
     });
   } catch (error) {
     console.error('[api/history/export-files] エラー:', error);
+    console.error('[api/history/export-files] エラー詳細:', error instanceof Error ? error.stack : error);
     res.status(500).json({
       success: false,
       error: 'エクスポートファイル一覧の取得に失敗しました',
-      details: error.message,
+      details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
   }
