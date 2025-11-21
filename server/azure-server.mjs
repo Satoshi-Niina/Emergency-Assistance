@@ -2462,32 +2462,54 @@ app.get('/api/emergency-flows', async (req, res) => {
 // 19. 応急処置フローAPI（単数形 - クライアント互換性のため）
 // 20. RAG設定API
 app.get('/api/settings/rag', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      enabled: false,
-      model: 'gpt-3.5-turbo',
-      temperature: 0.7,
-      maxTokens: 1000,
-      message: 'RAG設定は本番環境では無効です'
-    },
-    timestamp: new Date().toISOString()
-  });
+  try {
+    console.log('[api/settings/rag] リクエスト受信');
+    res.json({
+      success: true,
+      data: {
+        enabled: false,
+        model: 'gpt-3.5-turbo',
+        temperature: 0.7,
+        maxTokens: 1000,
+        message: 'RAG設定は本番環境では無効です'
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/settings/rag] エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'RAG設定の取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // AI支援設定API
 app.get('/api/ai-assist/settings', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      enabled: true,
-      autoSuggestions: true,
-      model: 'gpt-3.5-turbo',
-      temperature: 0.7,
-      maxTokens: 1000
-    },
-    timestamp: new Date().toISOString()
-  });
+  try {
+    console.log('[api/ai-assist/settings] リクエスト受信');
+    res.json({
+      success: true,
+      data: {
+        enabled: true,
+        autoSuggestions: true,
+        model: 'gpt-3.5-turbo',
+        temperature: 0.7,
+        maxTokens: 1000
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/ai-assist/settings] エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'AI支援設定の取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 app.post('/api/ai-assist/settings', (req, res) => {
@@ -2517,6 +2539,7 @@ app.get('/api/config/rag', (req, res) => {
 // ナレッジベース統計API
 app.get('/api/knowledge-base/stats', async (req, res) => {
   try {
+    console.log('[api/knowledge-base/stats] リクエスト受信');
     res.json({
       success: true,
       data: {
@@ -2527,9 +2550,11 @@ app.get('/api/knowledge-base/stats', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
+    console.error('[api/knowledge-base/stats] エラー:', error);
     res.status(500).json({
       success: false,
       error: 'ナレッジベース統計の取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
   }
@@ -2538,6 +2563,7 @@ app.get('/api/knowledge-base/stats', async (req, res) => {
 // 管理画面ダッシュボードAPI
 app.get('/api/admin/dashboard', async (req, res) => {
   try {
+    console.log('[api/admin/dashboard] リクエスト受信');
     res.json({
       success: true,
       data: {
@@ -2549,9 +2575,11 @@ app.get('/api/admin/dashboard', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
+    console.error('[api/admin/dashboard] エラー:', error);
     res.status(500).json({
       success: false,
       error: 'ダッシュボードデータの取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
   }
@@ -4914,7 +4942,7 @@ server = app.listen(PORT, '0.0.0.0', async () => {
   console.log(`📦 Node Version: ${process.version}`);
   console.log(`⏰ Started at: ${new Date().toISOString()}`);
   console.log('');
-  
+
   // BLOB接続のテスト（起動時）
   console.log('🔍 Testing BLOB connection...');
   const blobServiceClient = getBlobServiceClient();
@@ -4941,7 +4969,7 @@ server = app.listen(PORT, '0.0.0.0', async () => {
     console.warn('⚠️ BLOB Storage: Not configured or connection failed');
   }
   console.log('');
-  
+
   console.log('📋 Available Endpoints:');
   console.log('   GET  /health - ヘルスチェック');
   console.log('   GET  /api/ping - Ping');
