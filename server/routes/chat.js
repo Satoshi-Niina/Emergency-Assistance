@@ -205,9 +205,9 @@ export function registerChatRoutes(app) {
                 // オブジェクト型の場合、適切なプロパティから文字列を抽出
                 responseContent =
                     aiResponse.content ||
-                        aiResponse.text ||
-                        aiResponse.message ||
-                        JSON.stringify(aiResponse);
+                    aiResponse.text ||
+                    aiResponse.message ||
+                    JSON.stringify(aiResponse);
             }
             else {
                 responseContent = 'AI応答の処理中にエラーが発生しました。';
@@ -228,12 +228,12 @@ export function registerChatRoutes(app) {
             const [aiMessage] = await db
                 .insert(messages)
                 .values({
-                chatId: chatId,
-                senderId: 'ai',
-                content: aiResponse,
-                isAiResponse: true,
-                createdAt: new Date(),
-            })
+                    chatId: chatId,
+                    senderId: 'ai',
+                    content: aiResponse,
+                    isAiResponse: true,
+                    createdAt: new Date(),
+                })
                 .returning();
             // クライアントに送信するレスポンス構造を統一化
             const responseMessage = {
@@ -554,9 +554,9 @@ export function registerChatRoutes(app) {
                         try {
                             const resizedBuffer = await sharp(buffer)
                                 .resize(120, 120, {
-                                fit: 'inside', // アスペクト比を維持しながら、120x120以内に収める
-                                withoutEnlargement: true, // 拡大しない
-                            })
+                                    fit: 'inside', // アスペクト比を維持しながら、120x120以内に収める
+                                    withoutEnlargement: true, // 拡大しない
+                                })
                                 .jpeg({ quality: 85 })
                                 .toBuffer();
                             fs.writeFileSync(imagePath, resizedBuffer);
@@ -598,25 +598,25 @@ export function registerChatRoutes(app) {
             const textMessages = userMessages
                 .map((m) => m.content)
                 .filter((content) => {
-                if (!content) {
-                    console.log('🔍 フィルタ - 空のコンテンツ');
-                    return false;
-                }
-                const trimmed = content.trim();
-                console.log('🔍 フィルタ - チェック中:', {
-                    content: trimmed.substring(0, 50),
-                    isDataImage: trimmed.startsWith('data:image/'),
-                    isApiImages: trimmed.startsWith('/api/images/'),
-                    includesChatExports: trimmed.includes('/api/images/chat-exports/'),
-                    isDeleted: trimmed === '[画像データ削除]',
-                });
-                const result = !trimmed.startsWith('data:image/') &&
-                    !trimmed.startsWith('/api/images/') &&
-                    !trimmed.includes('/api/images/chat-exports/') &&
-                    trimmed !== '[画像データ削除]';
-                console.log('🔍 フィルタ - 結果:', result ? 'テキストとして採用' : '画像として除外');
-                return result;
-            })
+                    if (!content) {
+                        console.log('🔍 フィルタ - 空のコンテンツ');
+                        return false;
+                    }
+                    const trimmed = content.trim();
+                    console.log('🔍 フィルタ - チェック中:', {
+                        content: trimmed.substring(0, 50),
+                        isDataImage: trimmed.startsWith('data:image/'),
+                        isApiImages: trimmed.startsWith('/api/images/'),
+                        includesChatExports: trimmed.includes('/api/images/chat-exports/'),
+                        isDeleted: trimmed === '[画像データ削除]',
+                    });
+                    const result = !trimmed.startsWith('data:image/') &&
+                        !trimmed.startsWith('/api/images/') &&
+                        !trimmed.includes('/api/images/chat-exports/') &&
+                        trimmed !== '[画像データ削除]';
+                    console.log('🔍 フィルタ - 結果:', result ? 'テキストとして採用' : '画像として除外');
+                    return result;
+                })
                 .join('\n')
                 .trim();
             console.log('🔍 事象抽出 - テキストメッセージ:', textMessages);
@@ -736,25 +736,25 @@ export function registerChatRoutes(app) {
                 .readdirSync(exportsDir)
                 .filter(file => file.endsWith('.json'))
                 .map(file => {
-                const filePath = path.join(exportsDir, file);
-                const stats = fs.statSync(filePath);
-                const content = fs.readFileSync(filePath, 'utf8');
-                const data = JSON.parse(content);
-                return {
-                    fileName: file,
-                    filePath: filePath,
-                    chatId: data.chatId,
-                    userId: data.userId,
-                    exportType: data.exportType,
-                    exportTimestamp: data.exportTimestamp,
-                    messageCount: data.chatData?.messages?.length || 0,
-                    machineInfo: data.chatData?.machineInfo,
-                    fileSize: stats.size,
-                    lastModified: stats.mtime,
-                };
-            })
+                    const filePath = path.join(exportsDir, file);
+                    const stats = fs.statSync(filePath);
+                    const content = fs.readFileSync(filePath, 'utf8');
+                    const data = JSON.parse(content);
+                    return {
+                        fileName: file,
+                        filePath: filePath,
+                        chatId: data.chatId,
+                        userId: data.userId,
+                        exportType: data.exportType,
+                        exportTimestamp: data.exportTimestamp,
+                        messageCount: data.chatData?.messages?.length || 0,
+                        machineInfo: data.chatData?.machineInfo,
+                        fileSize: stats.size,
+                        lastModified: stats.mtime,
+                    };
+                })
                 .sort((a, b) => new Date(b.exportTimestamp).getTime() -
-                new Date(a.exportTimestamp).getTime());
+                    new Date(a.exportTimestamp).getTime());
             res.json(files);
         }
         catch (error) {
@@ -922,9 +922,9 @@ export function registerChatRoutes(app) {
                         try {
                             const resizedBuffer = await sharp(buffer)
                                 .resize(120, 120, {
-                                fit: 'inside', // アスペクト比を維持しながら、120x120以内に収める
-                                withoutEnlargement: true, // 拡大しない
-                            })
+                                    fit: 'inside', // アスペクト比を維持しながら、120x120以内に収める
+                                    withoutEnlargement: true, // 拡大しない
+                                })
                                 .jpeg({ quality: 85 })
                                 .toBuffer();
                             fs.writeFileSync(imagePath, resizedBuffer);
@@ -971,26 +971,26 @@ export function registerChatRoutes(app) {
             const textMessages = userMessages
                 .map((m) => m.content)
                 .filter((content) => {
-                if (!content) {
-                    console.log('🔍 /send フィルタ - 空のコンテンツ');
-                    return false;
-                }
-                const trimmed = content.trim();
-                console.log('🔍 /send フィルタ - チェック中:', {
-                    content: trimmed.substring(0, 50),
-                    isDataImage: trimmed.startsWith('data:image/'),
-                    isApiImages: trimmed.startsWith('/api/images/'),
-                    includesChatExports: trimmed.includes('/api/images/chat-exports/'),
-                    isDeleted: trimmed === '[画像データ削除]',
-                });
-                // Base64画像、画像URL、画像削除マーカーを除外
-                const result = !trimmed.startsWith('data:image/') &&
-                    !trimmed.startsWith('/api/images/') &&
-                    !trimmed.includes('/api/images/chat-exports/') &&
-                    trimmed !== '[画像データ削除]';
-                console.log('🔍 /send フィルタ - 結果:', result ? 'テキストとして採用' : '画像として除外');
-                return result;
-            })
+                    if (!content) {
+                        console.log('🔍 /send フィルタ - 空のコンテンツ');
+                        return false;
+                    }
+                    const trimmed = content.trim();
+                    console.log('🔍 /send フィルタ - チェック中:', {
+                        content: trimmed.substring(0, 50),
+                        isDataImage: trimmed.startsWith('data:image/'),
+                        isApiImages: trimmed.startsWith('/api/images/'),
+                        includesChatExports: trimmed.includes('/api/images/chat-exports/'),
+                        isDeleted: trimmed === '[画像データ削除]',
+                    });
+                    // Base64画像、画像URL、画像削除マーカーを除外
+                    const result = !trimmed.startsWith('data:image/') &&
+                        !trimmed.startsWith('/api/images/') &&
+                        !trimmed.includes('/api/images/chat-exports/') &&
+                        trimmed !== '[画像データ削除]';
+                    console.log('🔍 /send フィルタ - 結果:', result ? 'テキストとして採用' : '画像として除外');
+                    return result;
+                })
                 .join('\n')
                 .trim();
             console.log('🔍 抽出されたテキストメッセージ:', textMessages);
@@ -1285,12 +1285,16 @@ export function registerChatRoutes(app) {
     app.get('/api/images/chat-exports/:fileName', async (req, res) => {
         try {
             const fileName = req.params.fileName;
-            const imagePath = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports', fileName);
-            if (!fs.existsSync(imagePath)) {
-                return res.status(404).json({ message: 'Image not found' });
-            }
-            // 画像ファイルを読み込んで送信
-            const imageBuffer = fs.readFileSync(imagePath);
+            // Azure BLOB Storageから画像を取得
+            const { BlobServiceClient } = require('@azure/storage-blob');
+            const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+            const containerName = process.env.AZURE_STORAGE_CONTAINER || 'chat-images';
+            const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+            const containerClient = blobServiceClient.getContainerClient(containerName);
+            const blobName = `images/chat-exports/${fileName}`;
+            const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+            const downloadBlockBlobResponse = await blockBlobClient.download(0);
+            const imageBuffer = await streamToBuffer(downloadBlockBlobResponse.readableStreamBody);
             const ext = path.extname(fileName).toLowerCase();
             let contentType = 'image/jpeg';
             if (ext === '.png')
@@ -1302,10 +1306,22 @@ export function registerChatRoutes(app) {
             res.setHeader('Content-Type', contentType);
             res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1年間キャッシュ
             res.send(imageBuffer);
+        } catch (error) {
+            console.error('Error serving chat export image from BLOB:', error);
+            res.status(500).json({ error: 'Failed to serve image from BLOB' });
         }
-        catch (error) {
-            console.error('Error serving chat export image:', error);
-            res.status(500).json({ error: 'Failed to serve image' });
+        // BLOBのストリームをBufferに変換するヘルパー関数
+        async function streamToBuffer(readableStream) {
+            return new Promise((resolve, reject) => {
+                const chunks = [];
+                readableStream.on('data', (data) => {
+                    chunks.push(data instanceof Buffer ? data : Buffer.from(data));
+                });
+                readableStream.on('end', () => {
+                    resolve(Buffer.concat(chunks));
+                });
+                readableStream.on('error', reject);
+            });
         }
     });
     console.log('✅ チャットルート登録完了');
