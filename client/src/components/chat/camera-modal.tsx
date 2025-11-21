@@ -378,7 +378,7 @@ export default function CameraModal() {
 
         const uploadData = await uploadResponse.json();
         console.log('✅ 画像アップロード成功:', uploadData);
-        
+
         if (!uploadData.success || !uploadData.imageUrl) {
           throw new Error('画像のアップロードは成功しましたが、画像URLが取得できませんでした');
         }

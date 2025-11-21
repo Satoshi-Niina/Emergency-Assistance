@@ -2272,6 +2272,7 @@ app.get('/api/knowledge-base', async (req, res) => {
     console.log('[api/knowledge-base] ナレッジベース取得リクエスト');
 
     if (!connectionString) {
+      console.warn('[api/knowledge-base] Azure Storage connection string not configured');
       return res.json({
         success: true,
         data: [],
@@ -2282,6 +2283,7 @@ app.get('/api/knowledge-base', async (req, res) => {
 
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
+      console.warn('[api/knowledge-base] Blob service client unavailable');
       return res.json({
         success: true,
         data: [],
@@ -2290,18 +2292,30 @@ app.get('/api/knowledge-base', async (req, res) => {
       });
     }
 
-    const containerClient = blobServiceClient.getContainerClient(containerName);
+    let containerClient;
+    try {
+      containerClient = blobServiceClient.getContainerClient(containerName);
+    } catch (containerError) {
+      console.error('[api/knowledge-base] Container client creation failed:', containerError);
+      return res.status(503).json({
+        success: false,
+        error: 'BLOBストレージコンテナへの接続に失敗しました',
+        details: containerError instanceof Error ? containerError.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
+    }
 
     const listOptions = {
       prefix: norm('documents/')
     };
 
     const documents = [];
-    for await (const blob of containerClient.listBlobsFlat(listOptions)) {
-      if (blob.name.endsWith('.json')) {
-        try {
-          const blockBlobClient = containerClient.getBlockBlobClient(blob.name);
-          const downloadResponse = await blockBlobClient.download();
+    try {
+      for await (const blob of containerClient.listBlobsFlat(listOptions)) {
+        if (blob.name.endsWith('.json')) {
+          try {
+            const blockBlobClient = containerClient.getBlockBlobClient(blob.name);
+            const downloadResponse = await blockBlobClient.download();
 
           if (downloadResponse.readableStreamBody) {
             const chunks = [];
@@ -2321,10 +2335,23 @@ app.get('/api/knowledge-base', async (req, res) => {
               size: blob.properties.contentLength
             });
           }
-        } catch (error) {
-          console.warn(`⚠️ Failed to parse document ${blob.name}:`, error.message);
+          } catch (error) {
+            console.warn(`⚠️ Failed to parse document ${blob.name}:`, error.message);
+          }
         }
       }
+    } catch (blobListError) {
+      console.error('[api/knowledge-base] BLOB一覧取得エラー:', blobListError);
+      const isDnsError = blobListError.message && blobListError.message.includes('ENOTFOUND');
+      return res.status(503).json({
+        success: false,
+        error: 'BLOBストレージへの接続に失敗しました',
+        details: isDnsError
+          ? 'ストレージアカウント名が正しくないか、ストレージアカウントが存在しません。Azure Portalでストレージアカウント名を確認してください。'
+          : blobListError.message,
+        errorType: isDnsError ? 'DNS_ERROR' : 'BLOB_ERROR',
+        timestamp: new Date().toISOString()
+      });
     }
 
     console.log('[api/knowledge-base] ナレッジベース取得成功:', documents.length + '件');
@@ -2337,10 +2364,15 @@ app.get('/api/knowledge-base', async (req, res) => {
     });
   } catch (error) {
     console.error('[api/knowledge-base] ナレッジベース取得エラー:', error);
+    const isDnsError = error.message && error.message.includes('ENOTFOUND');
+    const isBlobError = error.message && (error.message.includes('BLOB') || error.message.includes('blob'));
     res.status(500).json({
       success: false,
       error: 'ナレッジベースの取得に失敗しました',
-      details: error.message,
+      details: isDnsError
+        ? 'ストレージアカウント名が正しくないか、ストレージアカウントが存在しません。Azure Portalでストレージアカウント名を確認してください。'
+        : error.message,
+      errorType: isDnsError ? 'DNS_ERROR' : isBlobError ? 'BLOB_ERROR' : 'UNKNOWN_ERROR',
       timestamp: new Date().toISOString()
     });
   }
@@ -4300,74 +4332,120 @@ app.post('/api/emergency-flow/upload-image', upload.single('image'), async (req,
   }
 });
 
-// チャット画像アップロードAPI
+// チャット画像アップロードAPI（リトライロジック付き）
 app.post('/api/history/upload-image', upload.single('image'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        error: '画像ファイルが見つかりません'
-      });
-    }
+  const maxRetries = 3;
+  let lastError = null;
 
-    console.log('[api/history/upload-image] 画像アップロード:', {
-      fileName: req.file.originalname,
-      size: req.file.size,
-      mimetype: req.file.mimetype
-    });
-
-    const blobServiceClient = getBlobServiceClient();
-    if (!blobServiceClient) {
-      return res.status(503).json({
-        success: false,
-        error: 'BLOBストレージが利用できません'
-      });
-    }
-
-    // ファイル名を生成（タイムスタンプ付き）
-    const timestamp = Date.now();
-    const ext = path.extname(req.file.originalname);
-    const baseName = path.basename(req.file.originalname, ext);
-    const fileName = `chat_image_${timestamp}${ext}`;
-
-    const containerClient = blobServiceClient.getContainerClient(containerName);
-    const blobName = norm(`images/chat-exports/${fileName}`);
-    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-
-    // 画像をBLOBにアップロード
-    await blockBlobClient.uploadData(req.file.buffer, {
-      blobHTTPHeaders: {
-        blobContentType: req.file.mimetype
-      },
-      metadata: {
-        originalName: req.file.originalname,
-        uploadedAt: new Date().toISOString()
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          error: '画像ファイルが見つかりません'
+        });
       }
-    });
 
-    console.log(`✅ チャット画像アップロード成功: ${blobName}`);
+      console.log(`[api/history/upload-image] 画像アップロード試行 ${attempt}/${maxRetries}:`, {
+        fileName: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      });
 
-    const imageUrl = blockBlobClient.url;
+      const blobServiceClient = getBlobServiceClient();
+      if (!blobServiceClient) {
+        console.error('[api/history/upload-image] BLOB service client is not available');
+        return res.status(503).json({
+          success: false,
+          error: 'BLOBストレージが利用できません',
+          details: 'BLOB接続が設定されていません。サーバーログを確認してください。'
+        });
+      }
 
-    res.json({
-      success: true,
-      imageUrl: imageUrl,
-      fileName: fileName,
-      blobName: blobName,
-      size: req.file.size
-    });
-  } catch (error) {
-    console.error('[api/history/upload-image] エラー:', error);
-    if (error && error.stack) {
-      console.error('[api/history/upload-image] エラー詳細:', error.stack);
+      // ファイル名を生成（タイムスタンプ付き）
+      const timestamp = Date.now();
+      const ext = path.extname(req.file.originalname);
+      const baseName = path.basename(req.file.originalname, ext);
+      const fileName = `chat_image_${timestamp}${ext}`;
+
+      const containerClient = blobServiceClient.getContainerClient(containerName);
+      const blobName = norm(`images/chat-exports/${fileName}`);
+      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+      // コンテナの存在確認（必要に応じて作成）
+      const containerExists = await containerClient.exists();
+      if (!containerExists) {
+        console.log(`[api/history/upload-image] コンテナ '${containerName}' が存在しないため作成します...`);
+        await containerClient.createIfNotExists();
+        console.log(`[api/history/upload-image] コンテナ '${containerName}' を作成しました`);
+      }
+
+      // 画像をBLOBにアップロード（タイムアウト付き）
+      const uploadPromise = blockBlobClient.uploadData(req.file.buffer, {
+        blobHTTPHeaders: {
+          blobContentType: req.file.mimetype
+        },
+        metadata: {
+          originalName: req.file.originalname,
+          uploadedAt: new Date().toISOString()
+        }
+      });
+
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('BLOB upload timeout (30s)')), 30000);
+      });
+
+      await Promise.race([uploadPromise, timeoutPromise]);
+
+      console.log(`✅ チャット画像アップロード成功: ${blobName}`);
+
+      const imageUrl = blockBlobClient.url;
+
+      return res.json({
+        success: true,
+        imageUrl: imageUrl,
+        fileName: fileName,
+        blobName: blobName,
+        size: req.file.size
+      });
+    } catch (error) {
+      lastError = error;
+      console.error(`[api/history/upload-image] 試行 ${attempt}/${maxRetries} エラー:`, error.message);
+
+      // DNSエラーの場合は詳細情報をログ出力
+      if (error.message && error.message.includes('ENOTFOUND')) {
+        console.error('[api/history/upload-image] DNS解決エラー:', {
+          message: error.message,
+          connectionString: connectionString ? `Set (length: ${connectionString.length})` : 'Not set',
+          accountName: process.env.AZURE_STORAGE_ACCOUNT_NAME || 'Not set',
+          containerName: containerName
+        });
+      }
+
+      // 最後の試行でない場合、リトライ
+      if (attempt < maxRetries) {
+        const retryDelay = attempt * 1000; // 1秒、2秒、3秒...
+        console.log(`[api/history/upload-image] ${retryDelay}ms後にリトライします...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        continue;
+      }
     }
-    res.status(500).json({
-      success: false,
-      error: '画像のアップロードに失敗しました',
-      details: error.message,
-      stack: error.stack || null
-    });
   }
+
+  // すべてのリトライが失敗した場合
+  console.error('[api/history/upload-image] すべてのリトライが失敗しました:', lastError);
+  const errorMessage = lastError?.message || 'Unknown error';
+  const isDnsError = errorMessage.includes('ENOTFOUND');
+
+  return res.status(500).json({
+    success: false,
+    error: '画像のアップロードに失敗しました',
+    details: isDnsError
+      ? 'BLOBストレージへの接続に失敗しました。ストレージアカウント名を確認してください。'
+      : errorMessage,
+    retries: maxRetries,
+    errorType: isDnsError ? 'DNS_ERROR' : 'BLOB_ERROR'
+  });
 });
 
 // チャット送信API（本番用 - 認証付き）

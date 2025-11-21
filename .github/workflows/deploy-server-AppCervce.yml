@@ -348,6 +348,54 @@ jobs:
 
         echo "✅ Environment variables configured"
 
+        # 設定された環境変数を確認（機密情報はマスク）
+        echo ""
+        echo "🔍 Verifying configured environment variables..."
+        az webapp config appsettings list \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.WEBAPP_NAME }} \
+          --query "[?name=='AZURE_STORAGE_CONNECTION_STRING' || name=='AZURE_STORAGE_ACCOUNT_NAME' || name=='AZURE_STORAGE_CONTAINER_NAME' || name=='BLOB_PREFIX'].{name:name, value:value}" \
+          --output table || echo "⚠️ Could not verify environment variables"
+
+        # 環境変数の存在確認
+        STORAGE_CONN_STR=$(az webapp config appsettings list \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.WEBAPP_NAME }} \
+          --query "[?name=='AZURE_STORAGE_CONNECTION_STRING'].value" \
+          --output tsv 2>/dev/null || echo "")
+
+        if [ -z "$STORAGE_CONN_STR" ]; then
+          echo "❌ ERROR: AZURE_STORAGE_CONNECTION_STRING is not set in App Service!"
+          exit 1
+        else
+          CONN_STR_LENGTH=${#STORAGE_CONN_STR}
+          echo "✅ AZURE_STORAGE_CONNECTION_STRING is set (length: $CONN_STR_LENGTH)"
+        fi
+
+        STORAGE_ACCOUNT=$(az webapp config appsettings list \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.WEBAPP_NAME }} \
+          --query "[?name=='AZURE_STORAGE_ACCOUNT_NAME'].value" \
+          --output tsv 2>/dev/null || echo "")
+
+        if [ -n "$STORAGE_ACCOUNT" ]; then
+          echo "✅ AZURE_STORAGE_ACCOUNT_NAME is set: $STORAGE_ACCOUNT"
+        else
+          echo "⚠️ AZURE_STORAGE_ACCOUNT_NAME is not set"
+        fi
+
+        STORAGE_CONTAINER=$(az webapp config appsettings list \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.WEBAPP_NAME }} \
+          --query "[?name=='AZURE_STORAGE_CONTAINER_NAME'].value" \
+          --output tsv 2>/dev/null || echo "")
+
+        if [ -n "$STORAGE_CONTAINER" ]; then
+          echo "✅ AZURE_STORAGE_CONTAINER_NAME is set: $STORAGE_CONTAINER"
+        else
+          echo "⚠️ AZURE_STORAGE_CONTAINER_NAME is not set"
+        fi
+
     - name: Deploy Docker Container to App Service
       run: |
         echo "🐳 Deploying Docker container to Azure App Service..."

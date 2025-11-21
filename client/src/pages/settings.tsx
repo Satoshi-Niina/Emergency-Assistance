@@ -58,6 +58,15 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const [showWarningDialog, setShowWarningDialog] = useState(false);
 
+  // デバッグ: カードが表示されることを確認
+  useEffect(() => {
+    console.log('🔍 SettingsPage rendered:', {
+      user: user?.username,
+      role: user?.role,
+      timestamp: new Date().toISOString()
+    });
+  }, [user]);
+
   // Settings state
   const [notifications, setNotifications] = useState(true);
   const [textToSpeech, setTextToSpeech] = useState(true);
@@ -441,8 +450,8 @@ export default function SettingsPage() {
           </Card>
         )}
 
-        {/* セキュリティー監視カード */}
-        <Card className='border border-red-200 shadow-md overflow-hidden'>
+        {/* セキュリティー監視カード - 常に表示 */}
+        <Card className='border border-red-200 shadow-md overflow-hidden' style={{ display: 'block' }}>
           <CardHeader className='pb-2 bg-gradient-to-r from-red-500 to-orange-500 text-white'>
             <CardTitle className='text-lg flex items-center'>
               <Lock className='mr-2 h-5 w-5' />
@@ -504,8 +513,8 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* 保守管理カード */}
-        <Card className='border border-amber-200 shadow-md overflow-hidden'>
+        {/* 保守管理カード - 常に表示 */}
+        <Card className='border border-amber-200 shadow-md overflow-hidden' style={{ display: 'block' }}>
           <CardHeader className='pb-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white'>
             <CardTitle className='text-lg flex items-center'>
               <Wrench className='mr-2 h-5 w-5' />
