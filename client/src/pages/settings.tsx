@@ -441,8 +441,9 @@ export default function SettingsPage() {
           </Card>
         )}
 
-        {/* セキュリティー監視カード - 新規作成 */}
-        <Card className='border border-red-200 shadow-md overflow-hidden'>
+        {/* セキュリティー監視カード - 管理者・従業員向け */}
+        {(user?.role === 'admin' || user?.role === 'employee') && (
+          <Card className='border border-red-200 shadow-md overflow-hidden'>
           <CardHeader className='pb-2 bg-gradient-to-r from-red-500 to-orange-500 text-white'>
             <CardTitle className='text-lg flex items-center'>
               <Lock className='mr-2 h-5 w-5' />
@@ -503,9 +504,11 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+        )}
 
-        {/* 保守管理カード - 新規作成 */}
-        <Card className='border border-amber-200 shadow-md overflow-hidden'>
+        {/* 保守管理カード - 管理者・従業員向け */}
+        {(user?.role === 'admin' || user?.role === 'employee') && (
+          <Card className='border border-amber-200 shadow-md overflow-hidden'>
           <CardHeader className='pb-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white'>
             <CardTitle className='text-lg flex items-center'>
               <Wrench className='mr-2 h-5 w-5' />
@@ -590,6 +593,7 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         {/* App Settings */}
         <Card className='border border-blue-200 shadow-md overflow-hidden'>
