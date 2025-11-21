@@ -244,31 +244,29 @@ const getBlobServiceClient = () => {
   console.log('🔍 getBlobServiceClient called');
   console.log('🔍 connectionString exists:', !!connectionString);
   console.log('🔍 connectionString length:', connectionString ? connectionString.length : 0);
+  console.log('🔍 connectionString preview:', connectionString ? connectionString.substring(0, 50) + '...' : 'N/A');
 
-  if (!connectionString) {
+  if (!connectionString || !connectionString.trim()) {
     console.warn('⚠️ AZURE_STORAGE_CONNECTION_STRING is not configured');
     console.warn('⚠️ BLOB storage features will be disabled');
     return null;
   }
 
-  // 接続文字列の基本的な形式チェック
-  if (connectionString.length < 50 || !connectionString.includes('AccountName=') || !connectionString.includes('AccountKey=')) {
-    console.warn('⚠️ AZURE_STORAGE_CONNECTION_STRING appears to be invalid or incomplete');
-    console.warn('⚠️ Expected format: AccountName=...;AccountKey=...;EndpointSuffix=...');
-    console.warn('⚠️ Current string length:', connectionString.length);
-    console.warn('⚠️ BLOB storage features will be disabled');
-    return null;
+  // 接続文字列の基本的な形式チェック（警告のみ、エラーはthrowしない）
+  const trimmedConnectionString = connectionString.trim();
+  if (trimmedConnectionString.length < 20) {
+    console.warn('⚠️ AZURE_STORAGE_CONNECTION_STRING appears to be too short');
+    console.warn('⚠️ Current string length:', trimmedConnectionString.length);
+    console.warn('⚠️ Attempting to initialize anyway...');
   }
 
-  console.log('🔍 connectionString format check passed');
-
   try {
-    const client = BlobServiceClient.fromConnectionString(connectionString);
+    const client = BlobServiceClient.fromConnectionString(trimmedConnectionString);
     console.log('✅ BLOB service client initialized successfully');
     return client;
   } catch (error) {
     console.error('❌ BLOB service client initialization failed:', error);
-    console.error('❌ Connection string format issue. Expected: AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net');
+    console.error('❌ Error details:', error instanceof Error ? error.message : 'Unknown error');
     console.error('⚠️ BLOB storage features will be disabled');
     return null;
   }
@@ -576,6 +574,7 @@ app.use(session({
 }));
 
 // ===== ヘルスエンドポイント =====
+// BLOBストレージ単体テストAPI
 const ok = (_req, res) => res.status(200).send('ok');
 
 // liveness：軽量・常に200
