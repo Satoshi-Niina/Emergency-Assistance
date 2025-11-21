@@ -264,47 +264,86 @@ jobs:
       run: |
         echo "🔧 Configuring App Service environment variables..."
 
-        echo "🔧 Building app settings string..."
-        SETTINGS_STRING="NODE_ENV=${{ env.ENVIRONMENT }} \
-          PORT=8080 \
-          DATABASE_URL=\"${{ secrets.DATABASE_URL }}\" \
-          PG_SSL=require \
-          SESSION_SECRET=\"${{ secrets.SESSION_SECRET }}\" \
-          JWT_SECRET=\"${{ secrets.JWT_SECRET }}\" \
-          OPENAI_API_KEY=\"${{ secrets.OPENAI_API_KEY }}\" \
-          FRONTEND_URL=\"${{ env.STATIC_WEB_APP_URL }}\" \
-          STATIC_WEB_APP_URL=\"${{ env.STATIC_WEB_APP_URL }}\" \
-          CORS_ALLOW_ORIGINS=\"${{ env.STATIC_WEB_APP_URL }},http://localhost:5173,http://localhost:8080\" \
-          AZURE_STORAGE_CONNECTION_STRING=\"${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}\" \
-          AZURE_STORAGE_CONTAINER_NAME=\"${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}\" \
-          STORAGE_MODE=hybrid \
-          LOCAL_EXPORT_DIR=/app/knowledge-base/exports \
-          FAULT_HISTORY_IMAGES_DIR=/app/knowledge-base/images/chat-exports \
-          DATABASE_BACKUP=false \
-          WEBSITES_PORT=8080 \
-          WEBSITES_CONTAINER_START_TIME_LIMIT=600 \
-          WEBSITES_ENABLE_APP_SERVICE_STORAGE=false"
-        
-        # AZURE_STORAGE_ACCOUNT_NAMEが設定されている場合は追加
-        if [ -n "${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" ]; then
-          SETTINGS_STRING+=" AZURE_STORAGE_ACCOUNT_NAME=\"${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}\""
-          echo "✅ AZURE_STORAGE_ACCOUNT_NAME will be set"
-        else
-          echo "⚠️ AZURE_STORAGE_ACCOUNT_NAME not set (using connection string only)"
+        # DATABASE_URLの検証（長さのみ、内容は表示しない）
+        if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+          echo "❌ ERROR: DATABASE_URL secret is empty!"
+          exit 1
         fi
+        DB_URL_LENGTH=${#{{ secrets.DATABASE_URL }}}
+        echo "✅ DATABASE_URL length: $DB_URL_LENGTH characters"
+
+        # Azure CLIのappsettings setコマンドでは、各設定を個別に設定する方が安全
+        echo "🔧 Setting environment variables individually..."
         
-        # BLOB_PREFIXが設定されている場合は追加
-        if [ -n "${{ secrets.BLOB_PREFIX }}" ]; then
-          SETTINGS_STRING+=" BLOB_PREFIX=\"${{ secrets.BLOB_PREFIX }}\""
-          echo "✅ BLOB_PREFIX will be set"
-        fi
-        
-        echo "🔧 Configuring App Service with environment variables..."
         az webapp config appsettings set \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --name ${{ env.WEBAPP_NAME }} \
-          --settings $SETTINGS_STRING \
+          --settings \
+            NODE_ENV=${{ env.ENVIRONMENT }} \
+            PORT=8080 \
+            PG_SSL=require \
+            STORAGE_MODE=hybrid \
+            LOCAL_EXPORT_DIR=/app/knowledge-base/exports \
+            FAULT_HISTORY_IMAGES_DIR=/app/knowledge-base/images/chat-exports \
+            DATABASE_BACKUP=false \
+            WEBSITES_PORT=8080 \
+            WEBSITES_CONTAINER_START_TIME_LIMIT=600 \
+            WEBSITES_ENABLE_APP_SERVICE_STORAGE=false \
           --output none
+
+        # 機密情報は個別に設定（引用符で囲む）
+        az webapp config appsettings set \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.WEBAPP_NAME }} \
+          --settings \
+            DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+            SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
+            JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+            AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
+          --output none
+
+        # フロントエンドURL設定
+        az webapp config appsettings set \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.WEBAPP_NAME }} \
+          --settings \
+            FRONTEND_URL="${{ env.STATIC_WEB_APP_URL }}" \
+            STATIC_WEB_APP_URL="${{ env.STATIC_WEB_APP_URL }}" \
+            CORS_ALLOW_ORIGINS="${{ env.STATIC_WEB_APP_URL }},http://localhost:5173,http://localhost:8080" \
+          --output none
+
+        # コンテナ名設定
+        az webapp config appsettings set \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.WEBAPP_NAME }} \
+          --settings \
+            AZURE_STORAGE_CONTAINER_NAME="${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}" \
+          --output none
+
+        # AZURE_STORAGE_ACCOUNT_NAMEが設定されている場合は追加
+        if [ -n "${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" ]; then
+          az webapp config appsettings set \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.WEBAPP_NAME }} \
+            --settings \
+              AZURE_STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
+            --output none
+          echo "✅ AZURE_STORAGE_ACCOUNT_NAME set"
+        else
+          echo "⚠️ AZURE_STORAGE_ACCOUNT_NAME not set (using connection string only)"
+        fi
+
+        # BLOB_PREFIXが設定されている場合は追加
+        if [ -n "${{ secrets.BLOB_PREFIX }}" ]; then
+          az webapp config appsettings set \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.WEBAPP_NAME }} \
+            --settings \
+              BLOB_PREFIX="${{ secrets.BLOB_PREFIX }}" \
+            --output none
+          echo "✅ BLOB_PREFIX set"
+        fi
 
         echo "✅ Environment variables configured"
 

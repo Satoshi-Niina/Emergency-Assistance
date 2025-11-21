@@ -305,6 +305,16 @@ function initializeDatabase() {
     console.log('🔗 Initializing database connection...');
     console.log('📊 Database URL source:', databaseUrl === process.env.DATABASE_URL ? 'DATABASE_URL' :
       databaseUrl === process.env.POSTGRES_URL ? 'POSTGRES_URL' : 'AZURE_POSTGRESQL_CONNECTIONSTRING');
+    console.log('📊 Database URL length:', databaseUrl ? databaseUrl.length : 0);
+    // 接続文字列の一部を表示（機密情報をマスク）
+    if (databaseUrl) {
+      const urlParts = databaseUrl.split('@');
+      if (urlParts.length > 1) {
+        console.log('📊 Database host:', urlParts[urlParts.length - 1].split('/')[0]);
+      } else {
+        console.log('📊 Database URL preview:', databaseUrl.substring(0, 30) + '...');
+      }
+    }
     console.log('🔒 PG_SSL:', process.env.PG_SSL || 'not set');
 
     const sslConfig = process.env.PG_SSL === 'require'
@@ -885,6 +895,14 @@ app.post('/api/auth/login', async (req, res) => {
 
     } catch (dbError) {
       console.error('[auth/login] Database error:', dbError);
+      console.error('[auth/login] Error details:', {
+        message: dbError.message,
+        code: dbError.code,
+        stack: dbError.stack?.split('\n').slice(0, 3).join('\n'),
+        dbPoolStatus: !!dbPool,
+        databaseUrlSet: !!process.env.DATABASE_URL,
+        databaseUrlLength: process.env.DATABASE_URL ? process.env.DATABASE_URL.length : 0
+      });
       return res.status(500).json({
         success: false,
         error: 'database_error',
@@ -4962,7 +4980,7 @@ server = app.listen(PORT, '0.0.0.0', async () => {
 
   // BLOB接続のテスト（起動時）
   console.log('🔍 Testing BLOB connection...');
-  
+
   // 接続文字列からAccountNameを抽出してログ出力
   if (connectionString) {
     try {
@@ -4978,7 +4996,7 @@ server = app.listen(PORT, '0.0.0.0', async () => {
       console.warn('⚠️ Error parsing connection string:', parseError.message);
     }
   }
-  
+
   const blobServiceClient = getBlobServiceClient();
   if (blobServiceClient) {
     try {
@@ -5002,7 +5020,7 @@ server = app.listen(PORT, '0.0.0.0', async () => {
       console.error(`❌ BLOB Storage: Connection test failed: ${testError.message}`);
       console.error(`❌ Error type: ${testError.constructor.name}`);
       console.error(`❌ Error details:`, testError instanceof Error ? testError.stack : testError);
-      
+
       // DNSエラーの場合、接続文字列のAccountNameを確認
       if (testError.message && testError.message.includes('ENOTFOUND')) {
         console.error('❌ DNS resolution failed - this usually means:');
