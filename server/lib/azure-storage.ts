@@ -20,19 +20,29 @@ export class AzureStorageService {
     this.containerName =
       process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
 
+    // 環境変数のログ出力（デバッグ用）
+    console.log('🔍 BLOB Storage Environment Variables:');
+    console.log('   AZURE_STORAGE_CONNECTION_STRING:', connectionString ? `[SET] (length: ${connectionString.length})` : '[NOT SET]');
+    console.log('   AZURE_STORAGE_CONTAINER_NAME:', this.containerName);
+    console.log('   AZURE_STORAGE_ACCOUNT_NAME:', accountName ? '[SET]' : '[NOT SET]');
+    console.log('   AZURE_STORAGE_ACCOUNT_KEY:', accountKey ? '[SET]' : '[NOT SET]');
+    console.log('   BLOB_PREFIX:', process.env.BLOB_PREFIX || '[NOT SET]');
+
     // BLOB_PREFIXの正規化（末尾スラッシュ付与、空文字はそのまま）
-    let prefix = process.env.BLOB_PREFIX || '';
+    // 空文字列やundefinedの場合は空文字列として扱う
+    let prefix = (process.env.BLOB_PREFIX && process.env.BLOB_PREFIX.trim()) || '';
     if (prefix && !prefix.endsWith('/')) {
       prefix += '/';
     }
     this.blobPrefix = prefix;
 
-    if (connectionString) {
-      // 接続文字列の基本的な検証
+    // 接続文字列が存在し、空文字列でない場合
+    if (connectionString && connectionString.trim()) {
+      // 接続文字列の基本的な検証（警告のみ、エラーはthrowしない）
       if (connectionString.length < 50 || !connectionString.includes('AccountName=') || !connectionString.includes('AccountKey=')) {
-        console.error('❌ AZURE_STORAGE_CONNECTION_STRING appears to be invalid');
-        console.error('⚠️ Expected format: AccountName=...;AccountKey=...;EndpointSuffix=...');
-        throw new Error('Invalid AZURE_STORAGE_CONNECTION_STRING format');
+        console.warn('⚠️ AZURE_STORAGE_CONNECTION_STRING appears to be invalid');
+        console.warn('⚠️ Expected format: AccountName=...;AccountKey=...;EndpointSuffix=...');
+        console.warn('⚠️ Attempting to initialize anyway...');
       }
       try {
         this.blobServiceClient =
@@ -42,7 +52,7 @@ export class AzureStorageService {
         console.error('❌ Failed to initialize BLOB service client:', error);
         throw new Error(`Failed to initialize Azure Blob Storage: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
-    } else if (accountName && accountKey) {
+    } else if (accountName && accountKey && accountName.trim() && accountKey.trim()) {
       const credential = new StorageSharedKeyCredential(
         accountName,
         accountKey
@@ -51,17 +61,25 @@ export class AzureStorageService {
         `https://${accountName}.blob.core.windows.net`,
         credential
       );
-    } else {
+    } else if (accountName && accountName.trim()) {
       // Managed Identityを使用（Azure App Service上で動作）
-      if (!accountName) {
-        console.error('❌ AZURE_STORAGE_ACCOUNT_NAME is required when using Managed Identity');
-        throw new Error('AZURE_STORAGE_ACCOUNT_NAME environment variable is required for Azure Blob Storage connection');
+      // connectionStringがない場合のみaccountNameが必要
+      try {
+        const credential = new DefaultAzureCredential();
+        this.blobServiceClient = new BlobServiceClient(
+          `https://${accountName.trim()}.blob.core.windows.net`,
+          credential
+        );
+        console.log('✅ BLOB service client initialized with Managed Identity');
+      } catch (error) {
+        console.error('❌ Failed to initialize BLOB service client with Managed Identity:', error);
+        throw new Error(`Failed to initialize Azure Blob Storage with Managed Identity: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
-      const credential = new DefaultAzureCredential();
-      this.blobServiceClient = new BlobServiceClient(
-        `https://${accountName}.blob.core.windows.net`,
-        credential
-      );
+    } else {
+      // すべての接続方法が失敗した場合
+      console.error('❌ No valid BLOB storage configuration found');
+      console.error('❌ Required: AZURE_STORAGE_CONNECTION_STRING or (AZURE_STORAGE_ACCOUNT_NAME + AZURE_STORAGE_ACCOUNT_KEY) or AZURE_STORAGE_ACCOUNT_NAME (for Managed Identity)');
+      throw new Error('AZURE_STORAGE_CONNECTION_STRING or AZURE_STORAGE_ACCOUNT_NAME is required for Azure Blob Storage connection');
     }
 
     this.containerClient = this.blobServiceClient.getContainerClient(

@@ -134,8 +134,6 @@ jobs:
             CORS_ALLOW_ORIGINS="${{ env.STATIC_WEB_APP_URL }},http://localhost:5173,http://localhost:8080" \
             AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
             AZURE_STORAGE_CONTAINER_NAME="${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}" \
-            AZURE_STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
-            BLOB_PREFIX="${{ secrets.BLOB_PREFIX }}" \
             STORAGE_MODE=hybrid \
             LOCAL_EXPORT_DIR=/app/knowledge-base/exports \
             FAULT_HISTORY_IMAGES_DIR=/app/knowledge-base/images/chat-exports \
