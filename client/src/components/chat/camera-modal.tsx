@@ -366,11 +366,22 @@ export default function CameraModal() {
         });
 
         if (!uploadResponse.ok) {
-          throw new Error('画像のアップロードに失敗しました');
+          const errorData = await uploadResponse.json().catch(() => ({}));
+          const errorMessage = errorData.details || errorData.error || '画像のアップロードに失敗しました';
+          console.error('❌ 画像アップロードエラー:', {
+            status: uploadResponse.status,
+            statusText: uploadResponse.statusText,
+            error: errorMessage
+          });
+          throw new Error(errorMessage);
         }
 
         const uploadData = await uploadResponse.json();
         console.log('✅ 画像アップロード成功:', uploadData);
+        
+        if (!uploadData.success || !uploadData.imageUrl) {
+          throw new Error('画像のアップロードは成功しましたが、画像URLが取得できませんでした');
+        }
 
         // アップロードされた画像のURLをメッセージとして送信
         await sendMessage(uploadData.imageUrl);
