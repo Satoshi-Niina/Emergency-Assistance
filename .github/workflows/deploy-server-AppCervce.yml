@@ -265,16 +265,17 @@ jobs:
         echo "🔧 Configuring App Service environment variables..."
 
         # DATABASE_URLの検証（長さのみ、内容は表示しない）
-        if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+        DB_URL="${{ secrets.DATABASE_URL }}"
+        if [ -z "$DB_URL" ]; then
           echo "❌ ERROR: DATABASE_URL secret is empty!"
           exit 1
         fi
-        DB_URL_LENGTH=${#{{ secrets.DATABASE_URL }}}
+        DB_URL_LENGTH=${#DB_URL}
         echo "✅ DATABASE_URL length: $DB_URL_LENGTH characters"
 
         # Azure CLIのappsettings setコマンドでは、各設定を個別に設定する方が安全
         echo "🔧 Setting environment variables individually..."
-        
+
         az webapp config appsettings set \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --name ${{ env.WEBAPP_NAME }} \
