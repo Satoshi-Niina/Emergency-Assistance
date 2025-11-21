@@ -107,8 +107,13 @@ jobs:
 
           # Complete cache clear - ensure absolutely fresh build
           echo "🧹 Clearing ALL build artifacts and caches..."
-          rm -rf dist node_modules/.vite .vite .cache .parcel-cache .turbo || true
+          rm -rf dist node_modules/.vite .vite .cache .parcel-cache .turbo .next .nuxt || true
           npm cache clean --force || true
+          # Clear Vite cache specifically
+          rm -rf node_modules/.cache || true
+          # Clear any build artifacts
+          find . -name "*.map" -delete || true
+          find . -name ".DS_Store" -delete || true
 
           # Remove any existing dist to ensure clean build
           if [ -d "dist" ]; then

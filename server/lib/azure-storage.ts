@@ -28,8 +28,20 @@ export class AzureStorageService {
     this.blobPrefix = prefix;
 
     if (connectionString) {
-      this.blobServiceClient =
-        BlobServiceClient.fromConnectionString(connectionString);
+      // 接続文字列の基本的な検証
+      if (connectionString.length < 50 || !connectionString.includes('AccountName=') || !connectionString.includes('AccountKey=')) {
+        console.error('❌ AZURE_STORAGE_CONNECTION_STRING appears to be invalid');
+        console.error('⚠️ Expected format: AccountName=...;AccountKey=...;EndpointSuffix=...');
+        throw new Error('Invalid AZURE_STORAGE_CONNECTION_STRING format');
+      }
+      try {
+        this.blobServiceClient =
+          BlobServiceClient.fromConnectionString(connectionString);
+        console.log('✅ BLOB service client initialized with connection string');
+      } catch (error) {
+        console.error('❌ Failed to initialize BLOB service client:', error);
+        throw new Error(`Failed to initialize Azure Blob Storage: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     } else if (accountName && accountKey) {
       const credential = new StorageSharedKeyCredential(
         accountName,
@@ -41,9 +53,13 @@ export class AzureStorageService {
       );
     } else {
       // Managed Identityを使用（Azure App Service上で動作）
+      if (!accountName) {
+        console.error('❌ AZURE_STORAGE_ACCOUNT_NAME is required when using Managed Identity');
+        throw new Error('AZURE_STORAGE_ACCOUNT_NAME environment variable is required for Azure Blob Storage connection');
+      }
       const credential = new DefaultAzureCredential();
       this.blobServiceClient = new BlobServiceClient(
-        `https://${accountName || 'your-storage-account'}.blob.core.windows.net`,
+        `https://${accountName}.blob.core.windows.net`,
         credential
       );
     }
