@@ -87,7 +87,7 @@ const FRONTEND_URL = cleanEnvValue(
 ) || 'http://localhost:5173';
 
 const STATIC_WEB_APP_URL = cleanEnvValue(
-  process.env.STATIC_WEB_APP_URL || 
+  process.env.STATIC_WEB_APP_URL ||
   process.env.FRONTEND_URL ||
   (process.env.NODE_ENV === 'production' ? DEFAULT_STATIC_WEB_APP_URL : 'http://localhost:5173')
 ) || 'http://localhost:5173';
@@ -261,11 +261,33 @@ const getBlobServiceClient = () => {
   console.log('🔍 connectionString exists:', !!connectionString);
   console.log('🔍 connectionString length:', connectionString ? connectionString.length : 0);
   console.log('🔍 connectionString preview:', connectionString ? connectionString.substring(0, 50) + '...' : 'N/A');
+  console.log('🔍 AZURE_STORAGE_ACCOUNT_NAME:', process.env.AZURE_STORAGE_ACCOUNT_NAME || 'not set');
 
   if (!connectionString || !connectionString.trim()) {
-    console.warn('⚠️ AZURE_STORAGE_CONNECTION_STRING is not configured');
-    console.warn('⚠️ BLOB storage features will be disabled');
-    return null;
+    // 接続文字列がない場合、AZURE_STORAGE_ACCOUNT_NAMEを使用してManaged Identityで接続を試みる
+    const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
+    if (accountName && accountName.trim()) {
+      console.log('⚠️ AZURE_STORAGE_CONNECTION_STRING is not configured, trying Managed Identity...');
+      try {
+        const { DefaultAzureCredential } = require('@azure/identity');
+        const credential = new DefaultAzureCredential();
+        const client = new BlobServiceClient(
+          `https://${accountName.trim()}.blob.core.windows.net`,
+          credential
+        );
+        console.log('✅ BLOB service client initialized with Managed Identity');
+        return client;
+      } catch (error) {
+        console.error('❌ Failed to initialize BLOB service client with Managed Identity:', error);
+        console.warn('⚠️ BLOB storage features will be disabled');
+        return null;
+      }
+    } else {
+      console.warn('⚠️ AZURE_STORAGE_CONNECTION_STRING is not configured');
+      console.warn('⚠️ AZURE_STORAGE_ACCOUNT_NAME is also not set');
+      console.warn('⚠️ BLOB storage features will be disabled');
+      return null;
+    }
   }
 
   // 接続文字列の基本的な形式チェック（警告のみ、エラーはthrowしない）
@@ -5013,48 +5035,64 @@ server = app.listen(PORT, '0.0.0.0', async () => {
     }
   }
 
-  const blobServiceClient = getBlobServiceClient();
-  if (blobServiceClient) {
+  // BLOB接続テストを非同期で実行（サーバー起動をブロックしない）
+  (async () => {
     try {
-      const containerClient = blobServiceClient.getContainerClient(containerName);
-      console.log(`🔍 Attempting to check container: ${containerName}`);
-      const exists = await containerClient.exists();
-      if (exists) {
-        console.log(`✅ BLOB Storage: Connected (container: ${containerName})`);
-      } else {
-        console.warn(`⚠️ BLOB Storage: Connected but container '${containerName}' does not exist`);
-        console.warn('⚠️ Attempting to create container...');
+      console.log('🔍 Starting BLOB connection test...');
+      const blobServiceClient = getBlobServiceClient();
+      if (blobServiceClient) {
         try {
-          await containerClient.createIfNotExists();
-          console.log(`✅ BLOB Storage: Container '${containerName}' created successfully`);
-        } catch (createError) {
-          console.error(`❌ BLOB Storage: Failed to create container: ${createError.message}`);
-          console.error(`❌ Error details:`, createError instanceof Error ? createError.stack : createError);
-        }
-      }
-    } catch (testError) {
-      console.error(`❌ BLOB Storage: Connection test failed: ${testError.message}`);
-      console.error(`❌ Error type: ${testError.constructor.name}`);
-      console.error(`❌ Error details:`, testError instanceof Error ? testError.stack : testError);
+          const containerClient = blobServiceClient.getContainerClient(containerName);
+          console.log(`🔍 Attempting to check container: ${containerName}`);
+          const exists = await containerClient.exists();
+          if (exists) {
+            console.log(`✅ BLOB Storage: Connected (container: ${containerName})`);
+          } else {
+            console.warn(`⚠️ BLOB Storage: Connected but container '${containerName}' does not exist`);
+            console.warn('⚠️ Attempting to create container...');
+            try {
+              await containerClient.createIfNotExists();
+              console.log(`✅ BLOB Storage: Container '${containerName}' created successfully`);
+            } catch (createError) {
+              console.error(`❌ BLOB Storage: Failed to create container: ${createError.message}`);
+              console.error(`❌ Error details:`, createError instanceof Error ? createError.stack : createError);
+            }
+          }
+        } catch (testError) {
+          console.error(`❌ BLOB Storage: Connection test failed: ${testError.message}`);
+          console.error(`❌ Error type: ${testError.constructor.name}`);
+          console.error(`❌ Error details:`, testError instanceof Error ? testError.stack : testError);
 
-      // DNSエラーの場合、接続文字列のAccountNameを確認
-      if (testError.message && testError.message.includes('ENOTFOUND')) {
-        console.error('❌ DNS resolution failed - this usually means:');
-        console.error('   1. The storage account name in the connection string is incorrect');
-        console.error('   2. The storage account does not exist');
-        console.error('   3. Network connectivity issues');
-        if (connectionString) {
-          const accountNameMatch = connectionString.match(/AccountName=([^;]+)/);
-          if (accountNameMatch) {
-            console.error(`   Current AccountName in connection string: ${accountNameMatch[1]}`);
-            console.error(`   Please verify this matches your actual Azure Storage account name`);
+          // DNSエラーの場合、接続文字列のAccountNameを確認
+          if (testError.message && testError.message.includes('ENOTFOUND')) {
+            console.error('❌ DNS resolution failed - this usually means:');
+            console.error('   1. The storage account name in the connection string is incorrect');
+            console.error('   2. The storage account does not exist');
+            console.error('   3. Network connectivity issues');
+            if (connectionString) {
+              const accountNameMatch = connectionString.match(/AccountName=([^;]+)/);
+              if (accountNameMatch) {
+                console.error(`   Current AccountName in connection string: ${accountNameMatch[1]}`);
+                console.error(`   Please verify this matches your actual Azure Storage account name`);
+              }
+            }
+            // AZURE_STORAGE_ACCOUNT_NAME環境変数も確認
+            if (process.env.AZURE_STORAGE_ACCOUNT_NAME) {
+              console.error(`   AZURE_STORAGE_ACCOUNT_NAME env var: ${process.env.AZURE_STORAGE_ACCOUNT_NAME}`);
+            } else {
+              console.error('   AZURE_STORAGE_ACCOUNT_NAME env var: not set');
+            }
           }
         }
+      } else {
+        console.warn('⚠️ BLOB Storage: Not configured or connection failed');
+        console.warn('⚠️ getBlobServiceClient() returned null');
+        console.warn('⚠️ Connection string:', connectionString ? `Set (length: ${connectionString.length})` : 'Not set');
       }
+    } catch (error) {
+      console.error('❌ BLOB connection test error:', error);
     }
-  } else {
-    console.warn('⚠️ BLOB Storage: Not configured or connection failed');
-  }
+  })();
   console.log('');
 
   console.log('📋 Available Endpoints:');
