@@ -92,7 +92,25 @@ app.disable('x-powered-by');
 app.set('trust proxy', true);
 
 // 本番ミドルウェア群
-app.use(helmet({ contentSecurityPolicy: false })); // 必要に応じてCSPを調整
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        "default-src": ["'self'"],
+        "img-src": [
+          "'self'",
+          "data:",
+          "blob:",
+          "https://rgemergencyassistanb25b.blob.core.windows.net"
+        ],
+        "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        "style-src": ["'self'", "'unsafe-inline'"],
+        "connect-src": ["'self'", "https://rgemergencyassistanb25b.blob.core.windows.net"],
+      },
+    },
+  })
+);
 app.use(compression());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'tiny' : 'dev'));
 
@@ -4247,10 +4265,14 @@ app.post('/api/history/upload-image', upload.single('image'), async (req, res) =
     });
   } catch (error) {
     console.error('[api/history/upload-image] エラー:', error);
+    if (error && error.stack) {
+      console.error('[api/history/upload-image] エラー詳細:', error.stack);
+    }
     res.status(500).json({
       success: false,
       error: '画像のアップロードに失敗しました',
-      details: error.message
+      details: error.message,
+      stack: error.stack || null
     });
   }
 });

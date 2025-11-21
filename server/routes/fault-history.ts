@@ -174,43 +174,30 @@ router.get('/images/:filename', async (req, res) => {
       });
     }
 
-    const imagesDir = process.env.FAULT_HISTORY_IMAGES_DIR ||
-      path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
-    const filePath = path.join(imagesDir, filename);
-
-    console.log(`📷 画像リクエスト: ${filename}`);
-    console.log(`📁 画像ディレクトリ: ${imagesDir}`);
-    console.log(`📄 画像パス: ${filePath}`);
-    console.log(`✅ ファイル存在: ${fs.existsSync(filePath)}`);
-
-    if (!fs.existsSync(filePath)) {
-      console.log(`❌ 画像が見つかりません: ${filePath}`);
-      return res.status(404).json({
-        success: false,
-        error: '画像ファイルが見つかりません',
+    // BLOBストレージから画像取得
+    try {
+      const { AzureStorageService } = require('../azure-storage.js');
+      const azureStorage = process.env.AZURE_STORAGE_CONNECTION_STRING ? new AzureStorageService() : null;
+      if (!azureStorage) {
+        return res.status(503).json({ success: false, error: 'BLOBストレージが利用できません' });
+      }
+      const blobName = `images/chat-exports/${filename}`;
+      const blockBlobClient = azureStorage.containerClient.getBlockBlobClient(blobName);
+      const exists = await blockBlobClient.exists();
+      if (!exists) {
+        return res.status(404).json({ success: false, error: '画像ファイルが見つかりません' });
+      }
+      const downloadResponse = await blockBlobClient.download();
+      res.set({
+        'Content-Type': downloadResponse.contentType || 'image/jpeg',
+        'Cache-Control': 'public, max-age=86400',
+        'Last-Modified': downloadResponse.lastModified?.toUTCString() || new Date().toUTCString(),
       });
-    }    // ファイルの統計情報を取得
-    const stats = fs.statSync(filePath);
-    const ext = path.extname(filename).toLowerCase();
-
-    // MIMEタイプを設定
-    let mimeType = 'image/jpeg';
-    switch (ext) {
-      case '.png': mimeType = 'image/png'; break;
-      case '.gif': mimeType = 'image/gif'; break;
-      case '.webp': mimeType = 'image/webp'; break;
+      downloadResponse.readableStreamBody.pipe(res);
+    } catch (error) {
+      console.error('❌ BLOB画像取得エラー:', error);
+      res.status(500).json({ success: false, error: '画像の取得に失敗しました', details: error instanceof Error ? error.message : 'Unknown error' });
     }
-
-    // キャッシュヘッダーを設定
-    res.set({
-      'Content-Type': mimeType,
-      'Content-Length': stats.size,
-      'Cache-Control': 'public, max-age=86400', // 24時間キャッシュ
-      'Last-Modified': stats.mtime.toUTCString(),
-    });
-
-    // ファイルを送信
-    res.sendFile(filePath);
   } catch (error) {
     console.error('❌ 画像ファイル取得エラー:', error);
     res.status(500).json({
@@ -231,27 +218,20 @@ router.post('/import-from-exports', async (req, res) => {
 
     console.log('📥 exportsディレクトリからの移行開始');
 
-    const exportDir = process.env.LOCAL_EXPORT_DIR ||
-      path.join(process.cwd(), 'knowledge-base', 'exports');
-
-    if (!fs.existsSync(exportDir)) {
-      return res.json({
-        success: true,
-        message: 'exportsディレクトリが存在しません',
-        imported: 0,
-        skipped: 0,
-      });
+    // BLOBストレージからエクスポートファイル一覧取得
+    const { AzureStorageService } = require('../azure-storage.js');
+    const azureStorage = process.env.AZURE_STORAGE_CONNECTION_STRING ? new AzureStorageService() : null;
+    if (!azureStorage) {
+      return res.json({ success: false, error: 'BLOBストレージが利用できません', imported: 0, skipped: 0 });
     }
-
-    const files = fs.readdirSync(exportDir).filter(file => file.endsWith('.json'));
+    const files = (await azureStorage.listFiles('exports/')).filter(file => file.endsWith('.json'));
     let imported = 0;
     let skipped = 0;
     const errors: string[] = [];
 
     for (const file of files) {
       try {
-        const filePath = path.join(exportDir, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await azureStorage.readFileAsString(`exports/${file}`);
         const jsonData = JSON.parse(content);
 
         // 既存チェック（forceが有効でない場合）
