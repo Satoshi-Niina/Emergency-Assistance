@@ -72,15 +72,25 @@ import multer from 'multer';
 // Azure Static Web Apps のデフォルトURL
 const DEFAULT_STATIC_WEB_APP_URL = 'https://witty-river-012f39e00.1.azurestaticapps.net';
 
-const FRONTEND_URL =
+// 環境変数から引用符を削除するヘルパー関数
+const cleanEnvValue = (value) => {
+  if (!value) return null;
+  return value.trim().replace(/^["']|["']$/g, '').trim();
+};
+
+const FRONTEND_URL = cleanEnvValue(
   process.env.FRONTEND_URL ||
   process.env.STATIC_WEB_APP_URL ||
   (process.env.NODE_ENV === 'production'
     ? DEFAULT_STATIC_WEB_APP_URL
-    : 'http://localhost:5173');
+    : 'http://localhost:5173')
+) || 'http://localhost:5173';
 
-const STATIC_WEB_APP_URL = process.env.STATIC_WEB_APP_URL || process.env.FRONTEND_URL ||
-  (process.env.NODE_ENV === 'production' ? DEFAULT_STATIC_WEB_APP_URL : 'http://localhost:5173');
+const STATIC_WEB_APP_URL = cleanEnvValue(
+  process.env.STATIC_WEB_APP_URL || 
+  process.env.FRONTEND_URL ||
+  (process.env.NODE_ENV === 'production' ? DEFAULT_STATIC_WEB_APP_URL : 'http://localhost:5173')
+) || 'http://localhost:5173';
 const HEALTH_TOKEN = process.env.HEALTH_TOKEN || ''; // 任意。設定時は /ready に x-health-token を要求
 const PORT = process.env.PORT || 3000;
 
@@ -115,14 +125,20 @@ app.use(compression());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'tiny' : 'dev'));
 
 // 簡素化されたCORS設定 - Azure Static Web Apps対応
+// 環境変数から引用符を削除するヘルパー関数
+const cleanUrl = (url) => {
+  if (!url) return null;
+  return url.trim().replace(/^["']|["']$/g, '').trim();
+};
+
 const allowedOrigins = [
-  FRONTEND_URL,
-  STATIC_WEB_APP_URL,
+  cleanUrl(FRONTEND_URL),
+  cleanUrl(STATIC_WEB_APP_URL),
   // 開発環境用のみハードコード（本番環境は環境変数で制御）
   'http://localhost:5173',
   'http://localhost:8080',
   'https://localhost:5173',
-  ...(process.env.CORS_ALLOW_ORIGINS?.split(',').map(url => url.trim()) || [])
+  ...(process.env.CORS_ALLOW_ORIGINS?.split(',').map(url => cleanUrl(url)) || [])
 ].filter(Boolean);
 
 console.log('✅ CORS Allowed Origins:', allowedOrigins);

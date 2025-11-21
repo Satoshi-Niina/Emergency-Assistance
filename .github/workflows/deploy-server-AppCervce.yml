@@ -304,14 +304,14 @@ jobs:
             AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
           --output none
 
-        # フロントエンドURL設定
+        # フロントエンドURL設定（引用符なしで設定）
         az webapp config appsettings set \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --name ${{ env.WEBAPP_NAME }} \
           --settings \
-            FRONTEND_URL="${{ env.STATIC_WEB_APP_URL }}" \
-            STATIC_WEB_APP_URL="${{ env.STATIC_WEB_APP_URL }}" \
-            CORS_ALLOW_ORIGINS="${{ env.STATIC_WEB_APP_URL }},http://localhost:5173,http://localhost:8080" \
+            FRONTEND_URL=${{ env.STATIC_WEB_APP_URL }} \
+            STATIC_WEB_APP_URL=${{ env.STATIC_WEB_APP_URL }} \
+            CORS_ALLOW_ORIGINS=${{ env.STATIC_WEB_APP_URL }},http://localhost:5173,http://localhost:8080 \
           --output none
 
         # コンテナ名設定
