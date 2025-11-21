@@ -47,14 +47,14 @@ jobs:
         echo "📋 Commit SHA: ${{ github.sha }}"
         echo "📋 Branch: ${{ github.ref }}"
         echo ""
-        
+
         # 重要なファイルの存在確認
         CRITICAL_FILES=(
           "server/azure-server.mjs"
           "server/lib/azure-storage.ts"
           "Dockerfile"
         )
-        
+
         for file in "${CRITICAL_FILES[@]}"; do
           if [ -f "$file" ]; then
             FILE_SIZE=$(wc -c < "$file" 2>/dev/null || echo "0")
@@ -65,7 +65,7 @@ jobs:
             exit 1
           fi
         done
-        
+
         # サーバーファイルの内容確認
         echo ""
         echo "🔍 Verifying server/azure-server.mjs content..."
@@ -75,13 +75,13 @@ jobs:
           echo "❌ ERROR: getBlobServiceClient function not found!"
           exit 1
         fi
-        
+
         if grep -q "Testing BLOB connection" server/azure-server.mjs; then
           echo "✅ BLOB connection test found"
         else
           echo "⚠️ WARNING: BLOB connection test not found"
         fi
-        
+
         echo ""
         echo "✅ All critical files verified - Docker build will use these files"
 
@@ -144,18 +144,18 @@ jobs:
         echo "🔍 Verifying Docker build context..."
         echo "📁 Build context: . (repository root)"
         echo ""
-        
+
         # Dockerfileが存在するか確認
         if [ ! -f "Dockerfile" ]; then
           echo "❌ ERROR: Dockerfile not found!"
           exit 1
         fi
-        
+
         # Dockerfileの内容を確認（COPYコマンドが正しいか）
         echo "📋 Dockerfile COPY commands:"
         grep -E "^COPY|^ADD" Dockerfile || echo "No COPY/ADD commands found"
         echo ""
-        
+
         # コピーされるファイルが存在するか確認
         echo "🔍 Verifying files that will be copied into Docker image:"
         if [ -d "server" ]; then
@@ -165,7 +165,7 @@ jobs:
           echo "❌ ERROR: server directory not found!"
           exit 1
         fi
-        
+
         if [ -f "server/azure-server.mjs" ]; then
           FILE_SIZE=$(wc -c < server/azure-server.mjs)
           echo "✅ server/azure-server.mjs exists (size: $FILE_SIZE bytes)"
@@ -173,7 +173,7 @@ jobs:
           echo "❌ ERROR: server/azure-server.mjs not found!"
           exit 1
         fi
-        
+
         echo ""
         echo "✅ Docker build context verified - all required files are present"
 
@@ -201,7 +201,7 @@ jobs:
         IMAGE_TAG="${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
         echo "📦 Image: $IMAGE_TAG"
         echo ""
-        
+
         # Dockerイメージを一時的に実行してファイルを確認
         echo "🔍 Checking files in Docker image..."
         docker run --rm --entrypoint sh "$IMAGE_TAG" -c "
@@ -212,7 +212,7 @@ jobs:
           if [ -f /app/server/azure-server.mjs ]; then
             FILE_SIZE=\$(wc -c < /app/server/azure-server.mjs)
             echo '✅ azure-server.mjs found (size: '\$FILE_SIZE' bytes)'
-            
+
             # ファイルの内容を確認
             if grep -q 'getBlobServiceClient' /app/server/azure-server.mjs; then
               echo '✅ getBlobServiceClient function found'
@@ -220,7 +220,7 @@ jobs:
               echo '❌ ERROR: getBlobServiceClient function not found!'
               exit 1
             fi
-            
+
             if grep -q 'Testing BLOB connection' /app/server/azure-server.mjs; then
               echo '✅ BLOB connection test found'
             else
@@ -230,13 +230,13 @@ jobs:
             echo '❌ ERROR: azure-server.mjs not found in image!'
             exit 1
           fi
-          
+
           if [ -f /app/server/lib/azure-storage.ts ]; then
             echo '✅ azure-storage.ts found'
           else
             echo '⚠️ WARNING: azure-storage.ts not found (may be compiled)'
           fi
-          
+
           echo ''
           echo '=== Client dist files ==='
           if [ -d /app/client/dist ]; then
@@ -249,7 +249,7 @@ jobs:
           echo "⚠️ Could not verify image contents directly (this is non-critical)"
           echo "💡 Image was built successfully, verification will happen at runtime"
         }
-        
+
         echo ""
         echo "✅ Docker image verification completed"
         echo "📋 Image tag: $IMAGE_TAG"

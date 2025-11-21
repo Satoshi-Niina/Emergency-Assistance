@@ -41,14 +41,14 @@ jobs:
           echo "📋 Commit SHA: ${{ github.sha }}"
           echo "📋 Branch: ${{ github.ref }}"
           echo ""
-          
+
           # 重要なファイルの存在確認
           CRITICAL_FILES=(
             "client/src/pages/settings.tsx"
             "client/package.json"
             "client/vite.config.js"
           )
-          
+
           for file in "${CRITICAL_FILES[@]}"; do
             if [ -f "$file" ]; then
               FILE_SIZE=$(wc -c < "$file" 2>/dev/null || echo "0")
@@ -59,7 +59,7 @@ jobs:
               exit 1
             fi
           done
-          
+
           # settings.tsxの内容確認
           echo ""
           echo "🔍 Verifying client/src/pages/settings.tsx content..."
@@ -70,7 +70,7 @@ jobs:
             echo "❌ ERROR: Security card (セキュリティー監視) not found!"
             exit 1
           fi
-          
+
           if grep -q "保守管理" client/src/pages/settings.tsx; then
             MAINTENANCE_COUNT=$(grep -o "保守管理" client/src/pages/settings.tsx | wc -l)
             echo "✅ Maintenance card found ($MAINTENANCE_COUNT occurrences)"
@@ -78,7 +78,7 @@ jobs:
             echo "❌ ERROR: Maintenance card (保守管理) not found!"
             exit 1
           fi
-          
+
           # 古いコードが残っていないか確認
           if grep -q "hasSecurityAccess" client/src/pages/settings.tsx; then
             echo "❌ ERROR: hasSecurityAccess found in source file (old code!)"
@@ -86,7 +86,7 @@ jobs:
           else
             echo "✅ hasSecurityAccess removed (good)"
           fi
-          
+
           echo ""
           echo "✅ All critical files verified - build will use these files"
 
@@ -653,7 +653,7 @@ jobs:
           echo "📋 Commit SHA used for deployment: ${{ github.sha }}"
           echo "📋 Build ID: $VITE_BUILD_ID"
           echo ""
-          
+
           if [ -d "client/dist" ]; then
             echo "📋 Files that were deployed:"
             MAIN_FILE=$(ls client/dist/main.*.mjs 2>/dev/null | head -1)
@@ -662,7 +662,7 @@ jobs:
               FILE_SIZE=$(wc -c < "$MAIN_FILE" 2>/dev/null || echo "unknown")
               echo "   File size: $FILE_SIZE bytes"
               echo ""
-              
+
               echo "   🔍 Checking for cards in deployed file:"
               if grep -q "セキュリティー監視" "$MAIN_FILE" 2>/dev/null; then
                 SECURITY_COUNT=$(grep -o "セキュリティー監視" "$MAIN_FILE" | wc -l)
@@ -672,7 +672,7 @@ jobs:
                 echo "   This means the build did not include the latest changes!"
                 exit 1
               fi
-              
+
               if grep -q "保守管理" "$MAIN_FILE" 2>/dev/null; then
                 MAINTENANCE_COUNT=$(grep -o "保守管理" "$MAIN_FILE" | wc -l)
                 echo "   ✅ Maintenance card found ($MAINTENANCE_COUNT occurrences)"
@@ -681,7 +681,7 @@ jobs:
                 echo "   This means the build did not include the latest changes!"
                 exit 1
               fi
-              
+
               if grep -q "hasSecurityAccess" "$MAIN_FILE" 2>/dev/null; then
                 echo "   ❌ ERROR: hasSecurityAccess found in deployed file (old code!)"
                 echo "   This means old code is still present in the build!"
@@ -689,7 +689,7 @@ jobs:
               else
                 echo "   ✅ hasSecurityAccess removed (good)"
               fi
-              
+
               echo ""
               echo "   ✅ All verification checks passed - deployed files are correct"
             else
@@ -700,7 +700,7 @@ jobs:
             echo "   ❌ ERROR: dist directory not found!"
             exit 1
           fi
-          
+
           echo ""
           echo "💡 Deployment Verification Summary:"
           echo "   ✅ Files verified: Cards are present, old code removed"
