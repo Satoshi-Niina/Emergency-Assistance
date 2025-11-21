@@ -557,6 +557,24 @@ jobs:
             exit 1
           fi
 
+      - name: Force Clean Deployment - Remove Old Files
+        run: |
+          echo "🗑️ Force cleaning deployment directory..."
+          # Azure Static Web Appsのデプロイメントディレクトリを完全にクリア
+          # これにより古いファイルが確実に削除される
+          if [ -d "client/dist" ]; then
+            echo "📋 Current files in dist before deployment:"
+            find client/dist -type f -name "*.mjs" -o -name "*.js" -o -name "*.html" | head -20
+            echo ""
+            echo "🧹 Ensuring clean state..."
+            # 既存のビルドファイルを確認
+            OLD_MAIN_FILES=$(find client/dist -name "main.*.mjs" 2>/dev/null | wc -l)
+            echo "   Old main.*.mjs files found: $OLD_MAIN_FILES"
+            if [ "$OLD_MAIN_FILES" -gt 0 ]; then
+              echo "   ⚠️ Old build files detected - they will be replaced by new build"
+            fi
+          fi
+
       - name: Deploy to Azure Static Web Apps
         id: deploy
         uses: Azure/static-web-apps-deploy@v1
@@ -573,6 +591,55 @@ jobs:
         continue-on-error: false
         env:
           DEBUG: '*'
+
+      - name: Verify Deployed Files After Deployment
+        run: |
+          echo "🔍 Verifying deployed files after deployment..."
+          echo "⚠️ Note: This verification checks local files, not Azure Static Web Apps"
+          echo "   To verify actual deployment, check Azure Static Web Apps portal"
+          echo ""
+          
+          if [ -d "client/dist" ]; then
+            echo "📋 Files that were deployed:"
+            MAIN_FILE=$(ls client/dist/main.*.mjs 2>/dev/null | head -1)
+            if [ -n "$MAIN_FILE" ]; then
+              echo "   Main file: $MAIN_FILE"
+              echo "   File size: $(wc -c < "$MAIN_FILE" 2>/dev/null || echo 'unknown') bytes"
+              echo ""
+              echo "   Checking for cards in deployed file:"
+              if grep -q "セキュリティー監視" "$MAIN_FILE" 2>/dev/null; then
+                SECURITY_COUNT=$(grep -o "セキュリティー監視" "$MAIN_FILE" | wc -l)
+                echo "   ✅ Security card found ($SECURITY_COUNT occurrences)"
+              else
+                echo "   ❌ Security card NOT found in deployed file!"
+              fi
+              
+              if grep -q "保守管理" "$MAIN_FILE" 2>/dev/null; then
+                MAINTENANCE_COUNT=$(grep -o "保守管理" "$MAIN_FILE" | wc -l)
+                echo "   ✅ Maintenance card found ($MAINTENANCE_COUNT occurrences)"
+              else
+                echo "   ❌ Maintenance card NOT found in deployed file!"
+              fi
+              
+              if grep -q "hasSecurityAccess" "$MAIN_FILE" 2>/dev/null; then
+                echo "   ❌ ERROR: hasSecurityAccess found in deployed file (old code!)"
+                exit 1
+              else
+                echo "   ✅ hasSecurityAccess removed (good)"
+              fi
+            else
+              echo "   ❌ Main file not found!"
+            fi
+          else
+            echo "   ❌ dist directory not found!"
+          fi
+          
+          echo ""
+          echo "💡 To verify actual deployment on Azure Static Web Apps:"
+          echo "   1. Go to Azure Portal > Static Web Apps > Deployment History"
+          echo "   2. Check the latest deployment"
+          echo "   3. Verify the deployment contains the latest commit: ${{ github.sha }}"
+          echo "   4. If old files are deployed, try purging CDN cache in Azure Portal"
 
       - name: Verify Deployment
         if: always()
@@ -700,6 +767,13 @@ jobs:
 
           echo "💡 Note: Azure Static Web Apps CDN cache will be automatically invalidated on deployment"
           echo "💡 Users should hard refresh (Ctrl+Shift+R) or clear browser cache to see latest changes"
+          echo ""
+          echo "⚠️ IMPORTANT: If old files are still being served after deployment:"
+          echo "   1. Check Azure Portal > Static Web Apps > Deployment History"
+          echo "   2. Verify the latest deployment contains commit: ${{ github.sha }}"
+          echo "   3. If old deployment is active, manually trigger a new deployment"
+          echo "   4. Check if there are multiple deployment environments (production/staging)"
+          echo "   5. Verify the correct API token is being used for the correct environment"
 
       - name: Wait for CDN Propagation
         id: cdn-wait
