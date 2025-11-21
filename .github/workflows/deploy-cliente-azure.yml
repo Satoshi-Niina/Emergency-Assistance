@@ -35,6 +35,61 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Verify GitHub Repository Files
+        run: |
+          echo "🔍 Verifying GitHub repository files before build..."
+          echo "📋 Commit SHA: ${{ github.sha }}"
+          echo "📋 Branch: ${{ github.ref }}"
+          echo ""
+          
+          # 重要なファイルの存在確認
+          CRITICAL_FILES=(
+            "client/src/pages/settings.tsx"
+            "client/package.json"
+            "client/vite.config.js"
+          )
+          
+          for file in "${CRITICAL_FILES[@]}"; do
+            if [ -f "$file" ]; then
+              FILE_SIZE=$(wc -c < "$file" 2>/dev/null || echo "0")
+              LAST_MODIFIED=$(git log -1 --format="%ai" -- "$file" 2>/dev/null || echo "unknown")
+              echo "✅ $file exists (size: $FILE_SIZE bytes, last modified: $LAST_MODIFIED)"
+            else
+              echo "❌ ERROR: $file not found in repository!"
+              exit 1
+            fi
+          done
+          
+          # settings.tsxの内容確認
+          echo ""
+          echo "🔍 Verifying client/src/pages/settings.tsx content..."
+          if grep -q "セキュリティー監視" client/src/pages/settings.tsx; then
+            SECURITY_COUNT=$(grep -o "セキュリティー監視" client/src/pages/settings.tsx | wc -l)
+            echo "✅ Security card found ($SECURITY_COUNT occurrences)"
+          else
+            echo "❌ ERROR: Security card (セキュリティー監視) not found!"
+            exit 1
+          fi
+          
+          if grep -q "保守管理" client/src/pages/settings.tsx; then
+            MAINTENANCE_COUNT=$(grep -o "保守管理" client/src/pages/settings.tsx | wc -l)
+            echo "✅ Maintenance card found ($MAINTENANCE_COUNT occurrences)"
+          else
+            echo "❌ ERROR: Maintenance card (保守管理) not found!"
+            exit 1
+          fi
+          
+          # 古いコードが残っていないか確認
+          if grep -q "hasSecurityAccess" client/src/pages/settings.tsx; then
+            echo "❌ ERROR: hasSecurityAccess found in source file (old code!)"
+            exit 1
+          else
+            echo "✅ hasSecurityAccess removed (good)"
+          fi
+          
+          echo ""
+          echo "✅ All critical files verified - build will use these files"
+
       - name: Set Environment Variables
         run: |
           # 環境判定: プッシュイベントの場合はブランチ名、workflow_dispatchの場合は入力値を使用
@@ -595,8 +650,8 @@ jobs:
       - name: Verify Deployed Files After Deployment
         run: |
           echo "🔍 Verifying deployed files after deployment..."
-          echo "⚠️ Note: This verification checks local files, not Azure Static Web Apps"
-          echo "   To verify actual deployment, check Azure Static Web Apps portal"
+          echo "📋 Commit SHA used for deployment: ${{ github.sha }}"
+          echo "📋 Build ID: $VITE_BUILD_ID"
           echo ""
           
           if [ -d "client/dist" ]; then
@@ -604,42 +659,58 @@ jobs:
             MAIN_FILE=$(ls client/dist/main.*.mjs 2>/dev/null | head -1)
             if [ -n "$MAIN_FILE" ]; then
               echo "   Main file: $MAIN_FILE"
-              echo "   File size: $(wc -c < "$MAIN_FILE" 2>/dev/null || echo 'unknown') bytes"
+              FILE_SIZE=$(wc -c < "$MAIN_FILE" 2>/dev/null || echo "unknown")
+              echo "   File size: $FILE_SIZE bytes"
               echo ""
-              echo "   Checking for cards in deployed file:"
+              
+              echo "   🔍 Checking for cards in deployed file:"
               if grep -q "セキュリティー監視" "$MAIN_FILE" 2>/dev/null; then
                 SECURITY_COUNT=$(grep -o "セキュリティー監視" "$MAIN_FILE" | wc -l)
                 echo "   ✅ Security card found ($SECURITY_COUNT occurrences)"
               else
-                echo "   ❌ Security card NOT found in deployed file!"
+                echo "   ❌ ERROR: Security card NOT found in deployed file!"
+                echo "   This means the build did not include the latest changes!"
+                exit 1
               fi
               
               if grep -q "保守管理" "$MAIN_FILE" 2>/dev/null; then
                 MAINTENANCE_COUNT=$(grep -o "保守管理" "$MAIN_FILE" | wc -l)
                 echo "   ✅ Maintenance card found ($MAINTENANCE_COUNT occurrences)"
               else
-                echo "   ❌ Maintenance card NOT found in deployed file!"
+                echo "   ❌ ERROR: Maintenance card NOT found in deployed file!"
+                echo "   This means the build did not include the latest changes!"
+                exit 1
               fi
               
               if grep -q "hasSecurityAccess" "$MAIN_FILE" 2>/dev/null; then
                 echo "   ❌ ERROR: hasSecurityAccess found in deployed file (old code!)"
+                echo "   This means old code is still present in the build!"
                 exit 1
               else
                 echo "   ✅ hasSecurityAccess removed (good)"
               fi
+              
+              echo ""
+              echo "   ✅ All verification checks passed - deployed files are correct"
             else
-              echo "   ❌ Main file not found!"
+              echo "   ❌ ERROR: Main file not found!"
+              exit 1
             fi
           else
-            echo "   ❌ dist directory not found!"
+            echo "   ❌ ERROR: dist directory not found!"
+            exit 1
           fi
           
           echo ""
+          echo "💡 Deployment Verification Summary:"
+          echo "   ✅ Files verified: Cards are present, old code removed"
+          echo "   ✅ Commit SHA: ${{ github.sha }}"
+          echo "   ✅ Build ID: $VITE_BUILD_ID"
+          echo ""
           echo "💡 To verify actual deployment on Azure Static Web Apps:"
           echo "   1. Go to Azure Portal > Static Web Apps > Deployment History"
-          echo "   2. Check the latest deployment"
-          echo "   3. Verify the deployment contains the latest commit: ${{ github.sha }}"
-          echo "   4. If old files are deployed, try purging CDN cache in Azure Portal"
+          echo "   2. Check the latest deployment contains commit: ${{ github.sha }}"
+          echo "   3. If old files are deployed, try purging CDN cache in Azure Portal"
 
       - name: Verify Deployment
         if: always()
