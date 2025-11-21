@@ -4035,7 +4035,7 @@ app.get('/api/emergency-flow/list', async (req, res) => {
         const containerClient = blobServiceClient.getContainerClient(containerName);
         const prefix = norm('troubleshooting/');
 
-        console.log(`🔍 BLOBストレージからフロー取得: prefix=${prefix}`);
+        console.log(`🔍 BLOBストレージからフロー取得: prefix=${prefix}, container=${containerName}`);
 
         for await (const blob of containerClient.listBlobsFlat({ prefix })) {
           if (blob.name.endsWith('.json')) {
@@ -4052,7 +4052,11 @@ app.get('/api/emergency-flow/list', async (req, res) => {
         console.log(`✅ BLOBから ${flows.length} 件のフロー取得`);
       } catch (error) {
         console.error('❌ BLOB読み込みエラー:', error);
+        console.error('❌ エラー詳細:', error instanceof Error ? error.stack : error);
+        // BLOBエラーでも空配列を返す（フォールバック）
       }
+    } else {
+      console.warn('⚠️ BLOBサービスクライアントが利用できません - フロー一覧は空です');
     }
 
     res.json({
@@ -4062,10 +4066,11 @@ app.get('/api/emergency-flow/list', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ フロー一覧取得エラー:', error);
+    console.error('❌ エラー詳細:', error instanceof Error ? error.stack : error);
     res.status(500).json({
       success: false,
       error: 'フロー一覧の取得に失敗しました',
-      details: error.message,
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -4474,6 +4479,7 @@ app.get('/api/emergency-flow/detail/:id', async (req, res) => {
 
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
+      console.error(`❌ BLOBサービスクライアントが利用できません: ${id}`);
       return res.status(503).json({
         success: false,
         error: 'BLOBストレージが利用できません'
@@ -4482,6 +4488,7 @@ app.get('/api/emergency-flow/detail/:id', async (req, res) => {
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
     const blobName = norm(`troubleshooting/${id}.json`);
+    console.log(`🔍 BLOB取得試行: ${blobName}, container=${containerName}`);
     const blobClient = containerClient.getBlobClient(blobName);
 
     try {
@@ -4497,18 +4504,20 @@ app.get('/api/emergency-flow/detail/:id', async (req, res) => {
       });
     } catch (blobError) {
       console.error(`❌ BLOB取得エラー: ${blobName}`, blobError);
+      console.error(`❌ エラー詳細:`, blobError instanceof Error ? blobError.stack : blobError);
       res.status(404).json({
         success: false,
         error: 'フロー詳細が見つかりません',
-        details: blobError.message
+        details: blobError instanceof Error ? blobError.message : 'Unknown error'
       });
     }
   } catch (error) {
     console.error('[api/emergency-flow/detail] エラー:', error);
+    console.error('[api/emergency-flow/detail] エラー詳細:', error instanceof Error ? error.stack : error);
     res.status(500).json({
       success: false,
       error: 'フロー詳細の取得に失敗しました',
-      details: error.message
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -4767,6 +4776,7 @@ app.get('/api/emergency-flow/:fileName', async (req, res) => {
 
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
+      console.error(`❌ BLOBサービスクライアントが利用できません: ${fileName}`);
       return res.status(503).json({
         success: false,
         error: 'BLOBストレージが利用できません',
@@ -4775,6 +4785,7 @@ app.get('/api/emergency-flow/:fileName', async (req, res) => {
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
     const blobName = norm(`troubleshooting/${fileName}`);
+    console.log(`🔍 BLOB取得試行: ${blobName}, container=${containerName}`);
     const blobClient = containerClient.getBlobClient(blobName);
 
     const downloadResponse = await blobClient.download();
@@ -4784,10 +4795,11 @@ app.get('/api/emergency-flow/:fileName', async (req, res) => {
     downloadResponse.readableStreamBody.pipe(res);
   } catch (error) {
     console.error('❌ ファイル取得エラー:', error);
+    console.error('❌ エラー詳細:', error instanceof Error ? error.stack : error);
     res.status(404).json({
       success: false,
       error: 'ファイルが見つかりません',
-      details: error.message,
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
