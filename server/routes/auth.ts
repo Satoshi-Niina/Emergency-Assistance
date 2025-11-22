@@ -4,8 +4,6 @@ import jwt from 'jsonwebtoken';
 import { db } from '../db/index';
 import { users } from '../db/schema';
 import { eq } from 'drizzle-orm';
-<<<<<<< HEAD
-import { authenticateToken } from '../middleware/auth';
 // Type definitions are loaded automatically by TypeScript
 
 // JWT発行ユーティリティ
@@ -17,9 +15,6 @@ const issueJwt = (userId: string, options: { exp?: number } = {}) => {
   }
   return jwt.sign(payload, process.env.JWT_SECRET!, jwtOptions);
 };
-=======
-import { sql } from 'drizzle-orm';
->>>>>>> Niina
 
 const router = express.Router();
 
@@ -76,7 +71,7 @@ router.use((req, res, next) => {
 });
 
 // デバッグ用エンドポイント - 環境変数とセッション状態を確認
-router.get('/debug/env', (_req, res) => {
+router.get('/debug/env', (req, res) => {
   console.log('🔍 デバッグエンドポイント呼び出し');
 
   const debugInfo = {
@@ -114,7 +109,7 @@ router.get('/debug/env', (_req, res) => {
 });
 
 // セッション状態確認用エンドポイント
-router.get('/debug/session', (_req, res) => {
+router.get('/debug/session', (req, res) => {
   console.log('🔍 セッション状態確認エンドポイント呼び出し');
 
   res.json({
@@ -128,36 +123,6 @@ router.get('/debug/session', (_req, res) => {
     },
     timestamp: new Date().toISOString(),
   });
-});
-
-// データベース接続状態確認エンドポイント
-router.get('/debug/db', async (req, res) => {
-  try {
-    console.log('🔍 データベース接続確認エンドポイント呼び出し');
-    
-    // データベース接続テスト
-    const result = await db.execute(sql`SELECT NOW() as db_time, version() as db_version`);
-    
-    res.json({
-      success: true,
-      database: {
-        connected: true,
-        time: result[0].db_time,
-        version: result[0].db_version,
-        timestamp: new Date().toISOString()
-      }
-    });
-  } catch (error) {
-    console.error('❌ データベース接続確認エラー:', error);
-    res.status(500).json({
-      success: false,
-      database: {
-        connected: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
-      }
-    });
-  }
 });
 
 // ログインエンドポイント
@@ -290,40 +255,17 @@ router.post('/login', async (req, res) => {
     }
 
   } catch (error) {
-<<<<<<< HEAD
     console.error('[auth/login] Unexpected error:', error);
     return res.status(503).json({
       success: false,
       error: 'auth_internal_error',
       message: '認証処理中にエラーが発生しました'
-=======
-    console.error('❌ Login error:', error);
-    console.error('❌ Login error details:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-      timestamp: new Date().toISOString()
-    });
-    
-    // データベース接続エラーの場合
-    if (error instanceof Error && error.message.includes('connection')) {
-      return res.status(503).json({
-        success: false,
-        error: 'データベース接続エラーが発生しました'
-      });
-    }
-    
-    // その他のエラーの場合
-    return res.status(500).json({
-      success: false,
-      error: 'サーバーエラーが発生しました',
-      details: process.env.NODE_ENV === 'development' ? error instanceof Error ? error.message : 'Unknown error' : undefined
->>>>>>> Niina
     });
   }
 });
 
 // ログアウトエンドポイント
-router.post('/logout', (_req, res) => {
+router.post('/logout', (req, res) => {
   req.session.destroy(() => {
     res.clearCookie('sid', { path: '/' });
     res.json({ success: true });
@@ -405,7 +347,7 @@ router.get('/me', (req, res) => {
 });
 
 // サーバ設定ヒント取得（段階的移行対応）
-router.get('/handshake', (_req, res) => {
+router.get('/handshake', (req, res) => {
   console.log('🔍 /api/auth/handshake 呼び出し');
 
   // 段階的移行モード判定
@@ -468,7 +410,7 @@ router.get('/handshake', (_req, res) => {
 });
 
 // DB readiness チェックエンドポイント
-router.get('/readiness', async (_req, res) => {
+router.get('/readiness', async (req, res) => {
   console.log('🔍 /api/auth/readiness 呼び出し');
 
   try {
@@ -537,7 +479,7 @@ router.post('/cookie-probe', (_req, res) => {
 });
 
 // Cookieプローブ確認
-router.get('/cookie-probe-check', (_req, res) => {
+router.get('/cookie-probe-check', (req, res) => {
   const cookieOk = !!req.cookies['auth-probe'];
 
   // プローブCookieを削除
@@ -549,7 +491,7 @@ router.get('/cookie-probe-check', (_req, res) => {
 });
 
 // トークンリフレッシュ
-router.post('/refresh', async (_req, res) => {
+router.post('/refresh', async (req, res) => {
   try {
     // セッションが有効な場合
     if (req.session?.userId) {
