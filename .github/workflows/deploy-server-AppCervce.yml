@@ -2,14 +2,9 @@ name: Deploy Server (Docker Container)
 
 on:
   push:
-    branches: [ main, develop ]
-    paths:
-      - 'server/**'
-      - 'shared/**'
-      - 'Dockerfile'
-      - 'docker-compose.yml'
-      - '.dockerignore'
-      - '.github/workflows/deploy-server-AppCervce.yml'
+    branches:
+      - main
+      - develop
   workflow_dispatch:
     inputs:
       environment:
@@ -86,22 +81,41 @@ jobs:
         echo "✅ All critical files verified - Docker build will use these files"
 
     - name: Set Environment Variables
+      id: configure-env
       run: |
         if [[ "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.event.inputs.environment }}" == "production" ]]; then
-          echo "ENVIRONMENT=production" >> $GITHUB_ENV
-          echo "WEBAPP_NAME=Emergency-Assistance" >> $GITHUB_ENV
-          echo "RESOURCE_GROUP=${{ secrets.AZURE_RESOURCE_GROUP }}" >> $GITHUB_ENV
-          echo "APP_URL=https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net" >> $GITHUB_ENV
-          echo "STATIC_WEB_APP_URL=https://witty-river-012f39e00.1.azurestaticapps.net" >> $GITHUB_ENV
-          echo "✅ Environment: production"
+          ENVIRONMENT="production"
+          WEBAPP_NAME="Emergency-Assistance"
+          RESOURCE_GROUP="${{ secrets.AZURE_RESOURCE_GROUP }}"
+          APP_URL="https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net"
+          STATIC_WEB_APP_URL="https://witty-river-012f39e00.1.azurestaticapps.net"
         else
-          echo "ENVIRONMENT=staging" >> $GITHUB_ENV
-          echo "WEBAPP_NAME=Emergency-Assistance-Staging" >> $GITHUB_ENV
-          echo "RESOURCE_GROUP=${{ secrets.AZURE_RESOURCE_GROUP_STAGING }}" >> $GITHUB_ENV
-          echo "APP_URL=https://emergency-assistance-staging.azurewebsites.net" >> $GITHUB_ENV
-          echo "STATIC_WEB_APP_URL=https://witty-river-012f39e00-staging.azurestaticapps.net" >> $GITHUB_ENV
-          echo "✅ Environment: staging"
+          ENVIRONMENT="staging"
+          WEBAPP_NAME="Emergency-Assistance-Staging"
+          RESOURCE_GROUP="${{ secrets.AZURE_RESOURCE_GROUP_STAGING }}"
+          APP_URL="https://emergency-assistance-staging.azurewebsites.net"
+          STATIC_WEB_APP_URL="https://witty-river-012f39e00-staging.azurestaticapps.net"
         fi
+
+        export ENVIRONMENT WEBAPP_NAME RESOURCE_GROUP APP_URL STATIC_WEB_APP_URL
+
+        {
+          echo "ENVIRONMENT=$ENVIRONMENT"
+          echo "WEBAPP_NAME=$WEBAPP_NAME"
+          echo "RESOURCE_GROUP=$RESOURCE_GROUP"
+          echo "APP_URL=$APP_URL"
+          echo "STATIC_WEB_APP_URL=$STATIC_WEB_APP_URL"
+        } >> "$GITHUB_ENV"
+
+        {
+          echo "environment=$ENVIRONMENT"
+          echo "webapp-name=$WEBAPP_NAME"
+          echo "resource-group=$RESOURCE_GROUP"
+          echo "app-url=$APP_URL"
+          echo "static-web-app-url=$STATIC_WEB_APP_URL"
+        } >> "$GITHUB_OUTPUT"
+
+        echo "✅ Environment: $ENVIRONMENT"
         echo "🔗 Backend: $APP_URL"
         echo "🔗 Frontend: $STATIC_WEB_APP_URL"
 
@@ -116,7 +130,7 @@ jobs:
         fi
 
         # Azure Resource Group
-        if [ -z "${{ env.RESOURCE_GROUP }}" ]; then
+        if [ -z "$RESOURCE_GROUP" ]; then
           echo "❌ AZURE_RESOURCE_GROUP secret is missing"
           exit 1
         fi
@@ -187,9 +201,9 @@ jobs:
         no-cache: true
         tags: |
           ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.ENVIRONMENT }}-latest
+          ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ steps.configure-env.outputs.environment }}-latest
         build-args: |
-          NODE_ENV=${{ env.ENVIRONMENT }}
+          NODE_ENV=${{ steps.configure-env.outputs.environment }}
           BUILDKIT_INLINE_CACHE=0
         cache-from: type=registry,ref=${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:buildcache
         cache-to: type=inline
@@ -277,10 +291,10 @@ jobs:
         echo "🔧 Setting environment variables individually..."
 
         az webapp config appsettings set \
-          --resource-group ${{ env.RESOURCE_GROUP }} \
-          --name ${{ env.WEBAPP_NAME }} \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
           --settings \
-            NODE_ENV=${{ env.ENVIRONMENT }} \
+            NODE_ENV=$ENVIRONMENT \
             PORT=8080 \
             PG_SSL=require \
             STORAGE_MODE=hybrid \
@@ -294,8 +308,8 @@ jobs:
 
         # 機密情報は個別に設定（引用符で囲む）
         az webapp config appsettings set \
-          --resource-group ${{ env.RESOURCE_GROUP }} \
-          --name ${{ env.WEBAPP_NAME }} \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
           --settings \
             DATABASE_URL="${{ secrets.DATABASE_URL }}" \
             SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
@@ -306,18 +320,18 @@ jobs:
 
         # フロントエンドURL設定（引用符なしで設定）
         az webapp config appsettings set \
-          --resource-group ${{ env.RESOURCE_GROUP }} \
-          --name ${{ env.WEBAPP_NAME }} \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
           --settings \
-            FRONTEND_URL=${{ env.STATIC_WEB_APP_URL }} \
-            STATIC_WEB_APP_URL=${{ env.STATIC_WEB_APP_URL }} \
-            CORS_ALLOW_ORIGINS=${{ env.STATIC_WEB_APP_URL }},http://localhost:5173,http://localhost:8080 \
+            FRONTEND_URL=$STATIC_WEB_APP_URL \
+            STATIC_WEB_APP_URL=$STATIC_WEB_APP_URL \
+            CORS_ALLOW_ORIGINS=$STATIC_WEB_APP_URL,http://localhost:5173,http://localhost:8080 \
           --output none
 
         # コンテナ名設定
         az webapp config appsettings set \
-          --resource-group ${{ env.RESOURCE_GROUP }} \
-          --name ${{ env.WEBAPP_NAME }} \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
           --settings \
             AZURE_STORAGE_CONTAINER_NAME="${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}" \
           --output none
@@ -325,8 +339,8 @@ jobs:
         # AZURE_STORAGE_ACCOUNT_NAMEが設定されている場合は追加
         if [ -n "${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" ]; then
           az webapp config appsettings set \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --name ${{ env.WEBAPP_NAME }} \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$WEBAPP_NAME" \
             --settings \
               AZURE_STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
             --output none
@@ -338,8 +352,8 @@ jobs:
         # BLOB_PREFIXが設定されている場合は追加
         if [ -n "${{ secrets.BLOB_PREFIX }}" ]; then
           az webapp config appsettings set \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --name ${{ env.WEBAPP_NAME }} \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$WEBAPP_NAME" \
             --settings \
               BLOB_PREFIX="${{ secrets.BLOB_PREFIX }}" \
             --output none
@@ -352,15 +366,15 @@ jobs:
         echo ""
         echo "🔍 Verifying configured environment variables..."
         az webapp config appsettings list \
-          --resource-group ${{ env.RESOURCE_GROUP }} \
-          --name ${{ env.WEBAPP_NAME }} \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
           --query "[?name=='AZURE_STORAGE_CONNECTION_STRING' || name=='AZURE_STORAGE_ACCOUNT_NAME' || name=='AZURE_STORAGE_CONTAINER_NAME' || name=='BLOB_PREFIX'].{name:name, value:value}" \
           --output table || echo "⚠️ Could not verify environment variables"
 
         # 環境変数の存在確認
         STORAGE_CONN_STR=$(az webapp config appsettings list \
-          --resource-group ${{ env.RESOURCE_GROUP }} \
-          --name ${{ env.WEBAPP_NAME }} \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
           --query "[?name=='AZURE_STORAGE_CONNECTION_STRING'].value" \
           --output tsv 2>/dev/null || echo "")
 
@@ -373,8 +387,8 @@ jobs:
         fi
 
         STORAGE_ACCOUNT=$(az webapp config appsettings list \
-          --resource-group ${{ env.RESOURCE_GROUP }} \
-          --name ${{ env.WEBAPP_NAME }} \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
           --query "[?name=='AZURE_STORAGE_ACCOUNT_NAME'].value" \
           --output tsv 2>/dev/null || echo "")
 
@@ -385,8 +399,8 @@ jobs:
         fi
 
         STORAGE_CONTAINER=$(az webapp config appsettings list \
-          --resource-group ${{ env.RESOURCE_GROUP }} \
-          --name ${{ env.WEBAPP_NAME }} \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
           --query "[?name=='AZURE_STORAGE_CONTAINER_NAME'].value" \
           --output tsv 2>/dev/null || echo "")
 
@@ -401,8 +415,8 @@ jobs:
         echo "🐳 Deploying Docker container to Azure App Service..."
 
         az webapp config container set \
-          --name ${{ env.WEBAPP_NAME }} \
-          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name "$WEBAPP_NAME" \
+          --resource-group "$RESOURCE_GROUP" \
           --docker-custom-image-name ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
           --docker-registry-server-url https://${{ secrets.ACR_LOGIN_SERVER }} \
           --docker-registry-server-user ${{ secrets.ACR_USERNAME }} \
@@ -413,8 +427,8 @@ jobs:
         # Clear appCommandLine to use Dockerfile's CMD
         echo "🔧 Clearing appCommandLine to use Dockerfile CMD..."
         az webapp config set \
-          --name ${{ env.WEBAPP_NAME }} \
-          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name "$WEBAPP_NAME" \
+          --resource-group "$RESOURCE_GROUP" \
           --generic-configurations '{"appCommandLine":""}'
 
         echo "✅ appCommandLine cleared - Dockerfile CMD will be used"
@@ -424,8 +438,8 @@ jobs:
         echo "🔄 Restarting App Service to pull new Docker image..."
 
         az webapp restart \
-          --name ${{ env.WEBAPP_NAME }} \
-          --resource-group ${{ env.RESOURCE_GROUP }}
+          --name "$WEBAPP_NAME" \
+          --resource-group "$RESOURCE_GROUP"
 
         echo "✅ App Service restart initiated"
 
@@ -463,14 +477,14 @@ jobs:
           echo "🔍 Health check attempt $attempt/$MAX_RETRIES..."
 
           # シンプルな /health エンドポイントをチェック
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${{ env.APP_URL }}/health" || echo "000")
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL/health" || echo "000")
 
           if [ "$HTTP_CODE" = "200" ]; then
             echo "✅ Health check passed (HTTP $HTTP_CODE)"
 
             # 詳細なヘルスチェックも実行
             echo "📊 Fetching detailed health info..."
-            curl -s "${{ env.APP_URL }}/api/health/detailed" | head -n 20
+            curl -s "$APP_URL/api/health/detailed" | head -n 20
 
             echo "🎉 Deployment successful and server is responding"
             exit 0
@@ -481,7 +495,7 @@ jobs:
         done
 
         echo "⚠️ Health check timeout after $MAX_RETRIES attempts"
-        echo "📋 Check logs: az webapp log tail --name ${{ env.WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}"
+        echo "📋 Check logs: az webapp log tail --name $WEBAPP_NAME --resource-group $RESOURCE_GROUP"
         exit 1
 
     - name: Deployment Summary
@@ -491,11 +505,11 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
         echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
-        echo "| Environment | ${{ env.ENVIRONMENT }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Environment | ${ENVIRONMENT} |" >> $GITHUB_STEP_SUMMARY
         echo "| Docker Image | \`${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
-        echo "| Web App | ${{ env.WEBAPP_NAME }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Backend URL | ${{ env.APP_URL }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Frontend URL | ${{ env.STATIC_WEB_APP_URL }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Web App | ${WEBAPP_NAME} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Backend URL | ${APP_URL} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Frontend URL | ${STATIC_WEB_APP_URL} |" >> $GITHUB_STEP_SUMMARY
         echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
 
@@ -505,24 +519,24 @@ jobs:
           echo "**Verification Commands:**" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
           echo "# Health check" >> $GITHUB_STEP_SUMMARY
-          echo "curl ${{ env.APP_URL }}/health" >> $GITHUB_STEP_SUMMARY
+          echo "curl ${APP_URL}/health" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "# Detailed health" >> $GITHUB_STEP_SUMMARY
-          echo "curl ${{ env.APP_URL }}/api/health/detailed | jq" >> $GITHUB_STEP_SUMMARY
+          echo "curl ${APP_URL}/api/health/detailed | jq" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "# CORS test from frontend" >> $GITHUB_STEP_SUMMARY
-          echo 'curl -i -X OPTIONS ${{ env.APP_URL }}/api/auth/login \' >> $GITHUB_STEP_SUMMARY
-          echo '  -H "Origin: ${{ env.STATIC_WEB_APP_URL }}" \' >> $GITHUB_STEP_SUMMARY
+          echo "curl -i -X OPTIONS ${APP_URL}/api/auth/login \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -H \"Origin: ${STATIC_WEB_APP_URL}\" \\" >> $GITHUB_STEP_SUMMARY
           echo '  -H "Access-Control-Request-Method: POST"' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "# View logs" >> $GITHUB_STEP_SUMMARY
-          echo "az webapp log tail --name ${{ env.WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}" >> $GITHUB_STEP_SUMMARY
+          echo "az webapp log tail --name ${WEBAPP_NAME} --resource-group ${RESOURCE_GROUP}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
         else
           echo "### ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Troubleshooting:**" >> $GITHUB_STEP_SUMMARY
           echo "1. Check workflow logs above" >> $GITHUB_STEP_SUMMARY
-          echo "2. View container logs: \`az webapp log tail --name ${{ env.WEBAPP_NAME }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "3. Check App Service status: \`az webapp show --name ${{ env.WEBAPP_NAME }} --query state\`" >> $GITHUB_STEP_SUMMARY
+          echo "2. View container logs: \`az webapp log tail --name ${WEBAPP_NAME}\`" >> $GITHUB_STEP_SUMMARY
+          echo "3. Check App Service status: \`az webapp show --name ${WEBAPP_NAME} --query state\`" >> $GITHUB_STEP_SUMMARY
         fi
