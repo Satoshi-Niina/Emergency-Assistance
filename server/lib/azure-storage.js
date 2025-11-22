@@ -1,4 +1,4 @@
-import { BlobServiceClient, StorageSharedKeyCredential, } from '@azure/storage-blob';
+import { BlobServiceClient, StorageSharedKeyCredential, BlobSASPermissions, generateBlobSASQueryParameters, } from '@azure/storage-blob';
 import { DefaultAzureCredential } from '@azure/identity';
 import * as fs from 'fs-extra';
 import * as path from 'path';
@@ -10,25 +10,63 @@ export class AzureStorageService {
         this.containerName =
             process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
         // BLOB_PREFIXの正規化（末尾スラッシュ付与、空文字はそのまま）
-        let prefix = process.env.BLOB_PREFIX || '';
+        let prefix = (process.env.BLOB_PREFIX && process.env.BLOB_PREFIX.trim()) || '';
         if (prefix && !prefix.endsWith('/')) {
             prefix += '/';
         }
         this.blobPrefix = prefix;
-        if (connectionString) {
-            this.blobServiceClient =
-                BlobServiceClient.fromConnectionString(connectionString);
+        this.sharedKeyCredential = undefined;
+        if (connectionString && connectionString.trim()) {
+            const parsed = this.parseConnectionString(connectionString);
+            if ((parsed === null || parsed === void 0 ? void 0 : parsed.accountName) && (parsed === null || parsed === void 0 ? void 0 : parsed.accountKey)) {
+                this.sharedKeyCredential = new StorageSharedKeyCredential(parsed.accountName, parsed.accountKey);
+                this.blobServiceClient = new BlobServiceClient(`https://${parsed.accountName}.blob.core.windows.net`, this.sharedKeyCredential);
+            }
+            else {
+                this.blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+                const credential = this.blobServiceClient.credential;
+                if (credential instanceof StorageSharedKeyCredential) {
+                    this.sharedKeyCredential = credential;
+                }
+            }
         }
-        else if (accountName && accountKey) {
-            const credential = new StorageSharedKeyCredential(accountName, accountKey);
-            this.blobServiceClient = new BlobServiceClient(`https://${accountName}.blob.core.windows.net`, credential);
+        else if (accountName && accountKey && accountName.trim() && accountKey.trim()) {
+            const credential = new StorageSharedKeyCredential(accountName.trim(), accountKey.trim());
+            this.sharedKeyCredential = credential;
+            this.blobServiceClient = new BlobServiceClient(`https://${accountName.trim()}.blob.core.windows.net`, credential);
         }
-        else {
+        else if (accountName && accountName.trim()) {
             // Managed Identityを使用（Azure App Service上で動作）
             const credential = new DefaultAzureCredential();
-            this.blobServiceClient = new BlobServiceClient(`https://${accountName || 'your-storage-account'}.blob.core.windows.net`, credential);
+            this.blobServiceClient = new BlobServiceClient(`https://${accountName.trim()}.blob.core.windows.net`, credential);
+        }
+        else {
+            throw new Error('AZURE_STORAGE_CONNECTION_STRING or AZURE_STORAGE_ACCOUNT_NAME is required for Azure Blob Storage connection');
         }
         this.containerClient = this.blobServiceClient.getContainerClient(this.containerName);
+    }
+    parseConnectionString(connectionString) {
+        return connectionString
+            .split(';')
+            .map(part => part.trim())
+            .filter(Boolean)
+            .reduce((acc, part) => {
+                const [key, ...rest] = part.split('=');
+                if (!key || rest.length === 0) {
+                    return acc;
+                }
+                const value = rest.join('=');
+                if (key === 'AccountName') {
+                    acc.accountName = value;
+                }
+                else if (key === 'AccountKey') {
+                    acc.accountKey = value;
+                }
+                return acc;
+            }, {});
+    }
+    getFullBlobName(blobName) {
+        return this.blobPrefix + blobName.replace(/^\/+/u, '');
     }
     // コンテナの初期化
     async initializeContainer() {
@@ -44,7 +82,7 @@ export class AzureStorageService {
     // ファイルをアップロード
     async uploadFile(localPath, blobName) {
         try {
-            const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
+            const fullBlobName = this.getFullBlobName(blobName);
             const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
             const fileBuffer = await fs.readFile(localPath);
             await blockBlobClient.upload(fileBuffer, fileBuffer.length, {
@@ -64,7 +102,7 @@ export class AzureStorageService {
     // ファイルをダウンロード
     async downloadFile(blobName, localPath) {
         try {
-            const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
+            const fullBlobName = this.getFullBlobName(blobName);
             const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
             const downloadResponse = await blockBlobClient.download();
             // ディレクトリを作成
@@ -85,7 +123,7 @@ export class AzureStorageService {
     // ファイルの存在確認
     async fileExists(blobName) {
         try {
-            const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
+            const fullBlobName = this.getFullBlobName(blobName);
             const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
             await blockBlobClient.getProperties();
             return true;
@@ -97,7 +135,7 @@ export class AzureStorageService {
     // ファイルを削除
     async deleteFile(blobName) {
         try {
-            const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
+            const fullBlobName = this.getFullBlobName(blobName);
             const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
             await blockBlobClient.delete();
             console.log(`✅ File deleted: ${fullBlobName}`);
@@ -129,9 +167,26 @@ export class AzureStorageService {
     }
     // ファイルのURLを取得
     getFileUrl(blobName) {
-        const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
+        const fullBlobName = this.getFullBlobName(blobName);
         const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
         return blockBlobClient.url;
+    }
+    generateBlobSasUrl(blobName, expiresInMs = 60 * 60 * 1000) {
+        if (!this.sharedKeyCredential) {
+            throw new Error('Shared key credential is required to generate SAS URLs. Ensure AccountName and AccountKey are configured.');
+        }
+        const fullBlobName = this.getFullBlobName(blobName);
+        const startsOn = new Date();
+        const expiresOn = new Date(startsOn.getTime() + expiresInMs);
+        const sasToken = generateBlobSASQueryParameters({
+            containerName: this.containerName,
+            blobName: fullBlobName,
+            permissions: BlobSASPermissions.parse('r'),
+            startsOn,
+            expiresOn,
+        }, this.sharedKeyCredential).toString();
+        const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
+        return `${blockBlobClient.url}?${sasToken}`;
     }
     // ローカルディレクトリ全体をアップロード
     async uploadDirectory(localDir, remotePrefix = '') {

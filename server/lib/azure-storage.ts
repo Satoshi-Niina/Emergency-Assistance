@@ -2,6 +2,8 @@ import {
   BlobServiceClient,
   ContainerClient,
   StorageSharedKeyCredential,
+  BlobSASPermissions,
+  generateBlobSASQueryParameters,
 } from '@azure/storage-blob';
 import { DefaultAzureCredential } from '@azure/identity';
 import * as fs from 'fs-extra';
@@ -12,6 +14,7 @@ export class AzureStorageService {
   private containerClient: ContainerClient;
   private containerName: string;
   private blobPrefix: string;
+  private sharedKeyCredential?: StorageSharedKeyCredential;
 
   constructor() {
     const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
@@ -45,20 +48,41 @@ export class AzureStorageService {
         console.warn('⚠️ Attempting to initialize anyway...');
       }
       try {
-        this.blobServiceClient =
-          BlobServiceClient.fromConnectionString(connectionString);
-        console.log('✅ BLOB service client initialized with connection string');
+        const parsed = this.parseConnectionString(connectionString);
+
+        if (parsed.accountName && parsed.accountKey) {
+          this.sharedKeyCredential = new StorageSharedKeyCredential(
+            parsed.accountName,
+            parsed.accountKey
+          );
+          this.blobServiceClient = new BlobServiceClient(
+            `https://${parsed.accountName}.blob.core.windows.net`,
+            this.sharedKeyCredential
+          );
+          console.log('✅ BLOB service client initialized with connection string (shared key)');
+        } else {
+          this.blobServiceClient =
+            BlobServiceClient.fromConnectionString(connectionString);
+          const credential = this.blobServiceClient.credential;
+          if (credential instanceof StorageSharedKeyCredential) {
+            this.sharedKeyCredential = credential;
+          } else {
+            console.warn('⚠️ Unable to derive shared key credential from connection string; SAS generation disabled');
+          }
+          console.log('✅ BLOB service client initialized with connection string');
+        }
       } catch (error) {
         console.error('❌ Failed to initialize BLOB service client:', error);
         throw new Error(`Failed to initialize Azure Blob Storage: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     } else if (accountName && accountKey && accountName.trim() && accountKey.trim()) {
       const credential = new StorageSharedKeyCredential(
-        accountName,
-        accountKey
+        accountName.trim(),
+        accountKey.trim()
       );
+      this.sharedKeyCredential = credential;
       this.blobServiceClient = new BlobServiceClient(
-        `https://${accountName}.blob.core.windows.net`,
+        `https://${accountName.trim()}.blob.core.windows.net`,
         credential
       );
     } else if (accountName && accountName.trim()) {
@@ -87,6 +111,36 @@ export class AzureStorageService {
     );
   }
 
+  private parseConnectionString(connectionString: string): {
+    accountName?: string;
+    accountKey?: string;
+  } {
+    return connectionString
+      .split(';')
+      .map(part => part.trim())
+      .filter(Boolean)
+      .reduce(
+        (acc, part) => {
+          const [key, ...rest] = part.split('=');
+          if (!key || rest.length === 0) {
+            return acc;
+          }
+          const value = rest.join('=');
+          if (key === 'AccountName') {
+            acc.accountName = value;
+          } else if (key === 'AccountKey') {
+            acc.accountKey = value;
+          }
+          return acc;
+        },
+        {} as { accountName?: string; accountKey?: string }
+      );
+  }
+
+  private getFullBlobName(blobName: string): string {
+    return this.blobPrefix + blobName.replace(/^\/+/u, '');
+  }
+
   // コンテナの初期化
   async initializeContainer(): Promise<void> {
     try {
@@ -103,7 +157,7 @@ export class AzureStorageService {
   // ファイルをアップロード
   async uploadFile(localPath: string, blobName: string): Promise<string> {
     try {
-      const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
+      const fullBlobName = this.getFullBlobName(blobName);
       const blockBlobClient =
         this.containerClient.getBlockBlobClient(fullBlobName);
       const fileBuffer = await fs.readFile(localPath);
@@ -126,7 +180,7 @@ export class AzureStorageService {
   // ファイルをダウンロード
   async downloadFile(blobName: string, localPath: string): Promise<void> {
     try {
-      const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
+      const fullBlobName = this.getFullBlobName(blobName);
       const blockBlobClient =
         this.containerClient.getBlockBlobClient(fullBlobName);
       const downloadResponse = await blockBlobClient.download();
@@ -151,7 +205,7 @@ export class AzureStorageService {
   // ファイルの存在確認
   async fileExists(blobName: string): Promise<boolean> {
     try {
-      const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
+      const fullBlobName = this.getFullBlobName(blobName);
       const blockBlobClient =
         this.containerClient.getBlockBlobClient(fullBlobName);
       await blockBlobClient.getProperties();
@@ -164,7 +218,7 @@ export class AzureStorageService {
   // ファイルを削除
   async deleteFile(blobName: string): Promise<void> {
     try {
-      const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
+      const fullBlobName = this.getFullBlobName(blobName);
       const blockBlobClient =
         this.containerClient.getBlockBlobClient(fullBlobName);
       await blockBlobClient.delete();
@@ -201,10 +255,41 @@ export class AzureStorageService {
 
   // ファイルのURLを取得
   getFileUrl(blobName: string): string {
-    const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
+    const fullBlobName = this.getFullBlobName(blobName);
     const blockBlobClient =
       this.containerClient.getBlockBlobClient(fullBlobName);
     return blockBlobClient.url;
+  }
+
+  generateBlobSasUrl(
+    blobName: string,
+    expiresInMs: number = 60 * 60 * 1000
+  ): string {
+    if (!this.sharedKeyCredential) {
+      throw new Error(
+        'Shared key credential is required to generate SAS URLs. Ensure AccountName and AccountKey are configured.'
+      );
+    }
+
+    const fullBlobName = this.getFullBlobName(blobName);
+    const startsOn = new Date();
+    const expiresOn = new Date(startsOn.getTime() + expiresInMs);
+
+    const sasToken = generateBlobSASQueryParameters(
+      {
+        containerName: this.containerName,
+        blobName: fullBlobName,
+        permissions: BlobSASPermissions.parse('r'),
+        startsOn,
+        expiresOn,
+      },
+      this.sharedKeyCredential
+    ).toString();
+
+    const blockBlobClient =
+      this.containerClient.getBlockBlobClient(fullBlobName);
+
+    return `${blockBlobClient.url}?${sasToken}`;
   }
 
   // ローカルディレクトリ全体をアップロード
