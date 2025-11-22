@@ -11,7 +11,7 @@ COPY server/package*.json ./server/
 COPY client/package*.json ./client/
 
 # Install production dependencies for server
-RUN npm ci --only=production --no-audit --no-fund --ignore-scripts && \
+RUN npm install --omit=dev --no-audit --no-fund --ignore-scripts && \
     cd server && npm ci --only=production --no-audit --no-fund --ignore-scripts
 
 # Install all dependencies for client (needed for build)
