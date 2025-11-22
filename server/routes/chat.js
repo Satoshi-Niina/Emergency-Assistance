@@ -803,7 +803,9 @@ export function registerChatRoutes(app) {
                 console.log('exports フォルダを作成しました:', exportsDir);
             }
             const isProduction = process.env.NODE_ENV === 'production';
-            const azureBlobPrefix = 'knowledge-base/exports/';
+            const rawBlobPrefix = process.env.BLOB_PREFIX?.trim();
+            const azureJsonPrefix = rawBlobPrefix ? 'exports/' : 'knowledge-base/exports/';
+            const azureImagePrefix = rawBlobPrefix ? 'images/chat-exports/' : 'knowledge-base/images/chat-exports/';
             const localImageBaseUrl = ensureTrailingSlash(process.env.DEV_CHAT_EXPORT_IMAGE_BASE_URL || process.env.LOCAL_IMAGE_BASE_URL || '/api/images/chat-exports/');
             const configuredImagesDir = process.env.FAULT_HISTORY_IMAGES_DIR
                 ? resolveRelativePath(process.env.FAULT_HISTORY_IMAGES_DIR)
@@ -838,7 +840,7 @@ export function registerChatRoutes(app) {
                 let url = `${localImageBaseUrl}${normalizedFileName}`;
                 let storageType = 'local-file';
                 if (shouldUseAzure && fs.existsSync(absolutePath)) {
-                    const blobName = `${azureBlobPrefix}${normalizedFileName}`;
+                    const blobName = `${azureImagePrefix}${normalizedFileName}`;
                     try {
                         await azureStorageService.uploadFile(absolutePath, blobName);
                         try {
@@ -1154,7 +1156,7 @@ export function registerChatRoutes(app) {
             const cleanedExportData = exportData;
             // UTF-8エンコーディングでJSONファイルを保存（BOMなし）
             const jsonString = JSON.stringify(cleanedExportData, null, 2);
-            let jsonBlobName = shouldUseAzure ? `${azureBlobPrefix}${fileName}` : null;
+            let jsonBlobName = shouldUseAzure ? `${azureJsonPrefix}${fileName}` : null;
             try {
                 // UTF-8 BOMなしで保存
                 fs.writeFileSync(filePath, jsonString, 'utf8');
