@@ -177,7 +177,7 @@ function AppContent() {
             <Route
               path='/settings'
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireAdmin>
                   <SettingsPage />
                 </ProtectedRoute>
               }
@@ -185,7 +185,7 @@ function AppContent() {
             <Route
               path='/system-diagnostic'
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireAdmin>
                   <SystemDiagnosticPage />
                 </ProtectedRoute>
               }
@@ -193,7 +193,7 @@ function AppContent() {
             <Route
               path='/history'
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireAdmin>
                   <HistoryPage />
                 </ProtectedRoute>
               }
@@ -201,7 +201,7 @@ function AppContent() {
             <Route
               path='/documents'
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireAdmin>
                   <DocumentsPage />
                 </ProtectedRoute>
               }
@@ -209,7 +209,7 @@ function AppContent() {
             <Route
               path='/troubleshooting'
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireAdmin>
                   <TroubleshootingPage />
                 </ProtectedRoute>
               }
@@ -217,7 +217,7 @@ function AppContent() {
             <Route
               path='/emergency-guide'
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireAdmin>
                   <EmergencyGuidePage />
                 </ProtectedRoute>
               }
