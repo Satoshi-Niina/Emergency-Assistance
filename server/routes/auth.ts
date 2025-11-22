@@ -19,6 +19,15 @@ const issueJwt = (userId: string, options: { exp?: number } = {}) => {
 
 const router = express.Router();
 
+const normalizeRole = (role?: string | null): 'admin' | 'employee' => {
+  if (!role) return 'employee';
+  const normalized = role.toString().trim().toLowerCase();
+  if (normalized === 'admin') return 'admin';
+  if (normalized === 'employee') return 'employee';
+  if (normalized === 'user') return 'employee';
+  return 'employee';
+};
+
 // CORSミドルウェア（認証ルート用）
 router.use((req, res, next) => {
   const origin = req.headers.origin;
@@ -121,11 +130,11 @@ router.get('/debug/session', (_req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body || {};
-    
+
     // 入力検証
     if (!username || !password) {
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         error: 'bad_request',
         message: 'ユーザー名とパスワードが必要です'
       });
@@ -133,9 +142,9 @@ router.post('/login', async (req, res) => {
 
     // バイパスフラグ確認
     const bypassDb = process.env.BYPASS_DB_FOR_LOGIN === 'true';
-    
-    console.log('[auth/login] Login attempt:', { 
-      username, 
+
+    console.log('[auth/login] Login attempt:', {
+      username,
       bypassDb,
       timestamp: new Date().toISOString()
     });
@@ -143,23 +152,27 @@ router.post('/login', async (req, res) => {
     // バイパスモード時は仮ログイン
     if (bypassDb) {
       console.log('[auth/login] Bypass mode: Creating demo session');
-      
+      const normalizedRole = normalizeRole('user');
+
       // セッションにユーザー情報を設定
-      req.session.user = { 
-        id: 'demo', 
+      req.session.user = {
+        id: 'demo',
         name: username,
-        role: 'user'
+        username,
+        role: normalizedRole
       };
-      
+      req.session.userRole = normalizedRole;
+
       // JWTトークンも生成（オプション）
+      const tokenPayload = { id: 'demo', username, role: normalizedRole };
       const token = jwt.sign(
-        { id: 'demo', username, role: 'user' }, 
+        tokenPayload,
         process.env.JWT_SECRET || 'fallback-secret',
         { expiresIn: '1d' }
       );
-      
-      return res.json({ 
-        success: true, 
+
+      return res.json({
+        success: true,
         mode: 'session',
         user: req.session.user,
         token,
@@ -178,8 +191,8 @@ router.post('/login', async (req, res) => {
         .limit(1);
 
       if (foundUsers.length === 0) {
-        return res.status(401).json({ 
-          success: false, 
+        return res.status(401).json({
+          success: false,
           error: 'invalid_credentials',
           message: 'ユーザー名またはパスワードが正しくありません'
         });
@@ -190,8 +203,8 @@ router.post('/login', async (req, res) => {
       // パスワード比較（bcryptjs）
       const isPasswordValid = await bcrypt.compare(password, foundUser.password);
       if (!isPasswordValid) {
-        return res.status(401).json({ 
-          success: false, 
+        return res.status(401).json({
+          success: false,
           error: 'invalid_credentials',
           message: 'ユーザー名またはパスワードが正しくありません'
         });
@@ -204,32 +217,35 @@ router.post('/login', async (req, res) => {
       req.session.regenerate(err => {
         if (err) {
           console.error('[auth/login] Session regenerate error:', err);
-          return res.status(503).json({ 
-            success: false, 
+          return res.status(503).json({
+            success: false,
             error: 'session_error',
             message: 'セッション作成に失敗しました'
           });
         }
-        
+
         req.session.userId = foundUser.id;
-        req.session.user = { 
-          id: foundUser.id, 
+        const normalizedRole = normalizeRole(foundUser.role);
+        req.session.user = {
+          id: foundUser.id,
           name: foundUser.username,
-          role: foundUser.role || 'user'
+          username: foundUser.username,
+          role: normalizedRole
         };
-        
+        req.session.userRole = normalizedRole;
+
         req.session.save(() => {
           console.log('[auth/login] Login success for user:', foundUser.username);
-          res.json({ 
-            success: true, 
-            token, 
-            accessToken: token, 
+          res.json({
+            success: true,
+            token,
+            accessToken: token,
             expiresIn: '1d',
             user: req.session.user
           });
         });
       });
-      
+
     } catch (dbError) {
       console.error('[auth/login] Database error:', dbError);
       return res.status(503).json({
@@ -238,7 +254,7 @@ router.post('/login', async (req, res) => {
         message: '認証サービスが一時的に利用できません'
       });
     }
-    
+
   } catch (error) {
     console.error('[auth/login] Unexpected error:', error);
     return res.status(503).json({
@@ -263,9 +279,16 @@ router.get('/me', (req, res) => {
     // セッションベースの認証をチェック
     if (req.session?.user) {
       console.log('[auth/me] Session-based auth:', req.session.user);
-      return res.json({ 
-        success: true, 
-        user: req.session.user,
+      const normalizedRole = normalizeRole((req.session.user as any).role);
+      const normalizedUser = {
+        ...req.session.user,
+        role: normalizedRole
+      };
+      req.session.user = normalizedUser;
+      req.session.userRole = normalizedRole;
+      return res.json({
+        success: true,
+        user: normalizedUser,
         authenticated: true
       });
     }
@@ -277,15 +300,29 @@ router.get('/me', (req, res) => {
         const token = auth.slice(7);
         const payload = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
         console.log('[auth/me] Token-based auth:', payload);
-        return res.json({ 
-          success: true, 
-          user: { id: payload.sub || payload.id, ...payload },
+
+        const payloadObject: jwt.JwtPayload =
+          typeof payload === 'object' ? (payload as jwt.JwtPayload) : {};
+        const normalizedRole = normalizeRole(
+          typeof payloadObject.role === 'string' ? payloadObject.role : undefined
+        );
+        const userFromToken = {
+          id: typeof payloadObject.sub === 'string'
+            ? payloadObject.sub
+            : (typeof payloadObject.id === 'string' ? payloadObject.id : undefined),
+          ...payloadObject,
+          role: normalizedRole
+        };
+
+        return res.json({
+          success: true,
+          user: userFromToken,
           authenticated: true
         });
       } catch (tokenError) {
         console.log('[auth/me] Invalid token:', tokenError.message);
-        return res.status(401).json({ 
-          success: false, 
+        return res.status(401).json({
+          success: false,
           error: 'invalid_token',
           message: '無効なトークンです'
         });
@@ -294,16 +331,16 @@ router.get('/me', (req, res) => {
 
     // 未認証
     console.log('[auth/me] No authentication found');
-    return res.status(401).json({ 
-      success: false, 
+    return res.status(401).json({
+      success: false,
       error: 'authentication_required',
       message: '認証が必要です'
     });
-    
+
   } catch (error) {
     console.error('[auth/me] Unexpected error:', error);
-    return res.status(401).json({ 
-      success: false, 
+    return res.status(401).json({
+      success: false,
       error: 'authentication_required',
       message: '認証が必要です'
     });
@@ -405,7 +442,7 @@ router.get('/readiness', async (_req, res) => {
     // データベース接続テスト
     console.log('[auth/readiness] Testing database connection...');
     const result = await db.execute('SELECT 1 as test');
-    
+
     console.log('[auth/readiness] Database connection successful');
     return res.json({
       ok: true,

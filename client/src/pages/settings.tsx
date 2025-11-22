@@ -319,136 +319,134 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Admin Settings (shown for both admins and employees) */}
-        {(user?.role === 'admin' || user?.role === 'employee') && (
-          <Card className='border border-blue-200 shadow-md overflow-hidden'>
-            <CardHeader className='pb-2 bg-gradient-to-r from-blue-700 to-indigo-700 text-white'>
-              <CardTitle className='text-lg flex items-center'>
-                <Shield className='mr-2 h-5 w-5' />
-                管理者設定
-              </CardTitle>
-            </CardHeader>
-            <CardContent className='bg-white'>
-              <div className='space-y-4'>
-                <div className='flex items-center justify-between py-2 border-t border-blue-100 pt-3'>
-                  <div>
-                    <p className='font-medium text-blue-800'>ユーザー管理</p>
-                    <p className='text-sm text-blue-400'>
-                      ユーザーアカウントを管理する
-                    </p>
-                  </div>
-                  <Link to='/users'>
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      className='border-blue-300 text-blue-700 hover:bg-blue-50'
-                    >
-                      <UserPlus className='mr-2 h-4 w-4 text-blue-500' />
-                      管理
-                    </Button>
-                  </Link>
+        {/* Admin Settings */}
+        <Card className='border border-blue-200 shadow-md overflow-hidden'>
+          <CardHeader className='pb-2 bg-gradient-to-r from-blue-700 to-indigo-700 text-white'>
+            <CardTitle className='text-lg flex items-center'>
+              <Shield className='mr-2 h-5 w-5' />
+              管理者設定
+            </CardTitle>
+          </CardHeader>
+          <CardContent className='bg-white'>
+            <div className='space-y-4'>
+              <div className='flex items-center justify-between py-2 border-t border-blue-100 pt-3'>
+                <div>
+                  <p className='font-medium text-blue-800'>ユーザー管理</p>
+                  <p className='text-sm text-blue-400'>
+                    ユーザーアカウントを管理する
+                  </p>
+                </div>
+                <Link to='/users'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    className='border-blue-300 text-blue-700 hover:bg-blue-50'
+                  >
+                    <UserPlus className='mr-2 h-4 w-4 text-blue-500' />
+                    管理
+                  </Button>
+                </Link>
+              </div>
+
+              <div className='flex items-center justify-between py-2 border-t border-blue-100 pt-3'>
+                <div>
+                  <p className='font-medium text-blue-800'>システム診断</p>
+                  <p className='text-sm text-blue-400'>
+                    DB接続とGPT接続の状態を確認
+                  </p>
+                </div>
+                <Link to='/system-diagnostic'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    className='border-blue-300 text-blue-700 hover:bg-blue-50'
+                  >
+                    <CheckCircle className='mr-2 h-4 w-4 text-blue-500' />
+                    診断
+                  </Button>
+                </Link>
+              </div>
+
+              <div className='flex items-center justify-between py-2 border-t border-blue-100 pt-3'>
+                <div>
+                  <p className='font-medium text-blue-800'>
+                    機種・機械番号管理
+                  </p>
+                  <p className='text-sm text-blue-400'>
+                    機種と機械番号の詳細管理
+                  </p>
+                </div>
+                <Link to='/machine-management'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    className='border-blue-300 text-blue-700 hover:bg-blue-50'
+                  >
+                    <Wrench className='mr-2 h-4 w-4 text-blue-500' />
+                    管理
+                  </Button>
+                </Link>
+              </div>
+
+              {/* システムメンテナンス */}
+              <div className='border-t border-blue-100 pt-4 space-y-3'>
+                <div className='text-sm font-medium text-blue-800 mb-3'>
+                  システムメンテナンス
                 </div>
 
-                <div className='flex items-center justify-between py-2 border-t border-blue-100 pt-3'>
-                  <div>
-                    <p className='font-medium text-blue-800'>システム診断</p>
-                    <p className='text-sm text-blue-400'>
-                      DB接続とGPT接続の状態を確認
-                    </p>
-                  </div>
-                  <Link to='/system-diagnostic'>
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      className='border-blue-300 text-blue-700 hover:bg-blue-50'
-                    >
-                      <CheckCircle className='mr-2 h-4 w-4 text-blue-500' />
-                      診断
-                    </Button>
-                  </Link>
-                </div>
-
-                <div className='flex items-center justify-between py-2 border-t border-blue-100 pt-3'>
-                  <div>
-                    <p className='font-medium text-blue-800'>
-                      機種・機械番号管理
-                    </p>
-                    <p className='text-sm text-blue-400'>
-                      機種と機械番号の詳細管理
-                    </p>
-                  </div>
-                  <Link to='/machine-management'>
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      className='border-blue-300 text-blue-700 hover:bg-blue-50'
-                    >
-                      <Wrench className='mr-2 h-4 w-4 text-blue-500' />
-                      管理
-                    </Button>
-                  </Link>
-                </div>
-
-                {/* システムメンテナンス */}
-                <div className='border-t border-blue-100 pt-4 space-y-3'>
-                  <div className='text-sm font-medium text-blue-800 mb-3'>
-                    システムメンテナンス
-                  </div>
-
-                  <div className='grid grid-cols-1 gap-3'>
-                    {/* 一時ファイル削除 */}
-                    <div className='bg-blue-50 border border-blue-200 rounded-lg p-3'>
-                      <div className='flex items-start justify-between mb-2'>
-                        <div className='flex-1'>
-                          <div className='flex items-center mb-1'>
-                            <Info className='h-4 w-4 text-blue-600 mr-2' />
-                            <p className='font-medium text-blue-900 text-sm'>一時ファイルとは？</p>
-                          </div>
-                          <p className='text-xs text-blue-700 mb-2'>
-                            ファイルアップロード時に作成される一時的なファイルです。
-                            処理完了後も残っている場合があり、ストレージ容量を圧迫します。
-                          </p>
+                <div className='grid grid-cols-1 gap-3'>
+                  {/* 一時ファイル削除 */}
+                  <div className='bg-blue-50 border border-blue-200 rounded-lg p-3'>
+                    <div className='flex items-start justify-between mb-2'>
+                      <div className='flex-1'>
+                        <div className='flex items-center mb-1'>
+                          <Info className='h-4 w-4 text-blue-600 mr-2' />
+                          <p className='font-medium text-blue-900 text-sm'>一時ファイルとは？</p>
                         </div>
+                        <p className='text-xs text-blue-700 mb-2'>
+                          ファイルアップロード時に作成される一時的なファイルです。
+                          処理完了後も残っている場合があり、ストレージ容量を圧迫します。
+                        </p>
                       </div>
-                      <Button
-                        onClick={handleCleanupUploads}
-                        variant='destructive'
-                        className='w-full'
-                      >
-                        <Trash2 className='mr-2 h-4 w-4' />
-                        一時ファイルを削除
-                      </Button>
                     </div>
+                    <Button
+                      onClick={handleCleanupUploads}
+                      variant='destructive'
+                      className='w-full'
+                    >
+                      <Trash2 className='mr-2 h-4 w-4' />
+                      一時ファイルを削除
+                    </Button>
+                  </div>
 
-                    {/* ログバックアップ */}
-                    <div className='bg-amber-50 border border-amber-200 rounded-lg p-3'>
-                      <div className='flex items-start justify-between mb-2'>
-                        <div className='flex-1'>
-                          <div className='flex items-center mb-1'>
-                            <Info className='h-4 w-4 text-amber-600 mr-2' />
-                            <p className='font-medium text-amber-900 text-sm'>ログファイルバックアップ</p>
-                          </div>
-                          <p className='text-xs text-amber-700 mb-2'>
-                            システムログファイルをZIP形式でアーカイブします。
-                            バックアップ後、ダウンロードボタンからローカルに保存できます。
-                          </p>
+                  {/* ログバックアップ */}
+                  <div className='bg-amber-50 border border-amber-200 rounded-lg p-3'>
+                    <div className='flex items-start justify-between mb-2'>
+                      <div className='flex-1'>
+                        <div className='flex items-center mb-1'>
+                          <Info className='h-4 w-4 text-amber-600 mr-2' />
+                          <p className='font-medium text-amber-900 text-sm'>ログファイルバックアップ</p>
                         </div>
+                        <p className='text-xs text-amber-700 mb-2'>
+                          システムログファイルをZIP形式でアーカイブします。
+                          バックアップ後、ダウンロードボタンからローカルに保存できます。
+                        </p>
                       </div>
-                      <Button
-                        onClick={handleBackupLogs}
-                        variant='outline'
-                        className='w-full border-amber-300 text-amber-700 hover:bg-amber-100'
-                      >
-                        <FileType className='mr-2 h-4 w-4' />
-                        ログファイルバックアップ
-                      </Button>
                     </div>
+                    <Button
+                      onClick={handleBackupLogs}
+                      variant='outline'
+                      className='w-full border-amber-300 text-amber-700 hover:bg-amber-100'
+                    >
+                      <FileType className='mr-2 h-4 w-4' />
+                      ログファイルバックアップ
+                    </Button>
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* セキュリティー監視カード - 常に表示 */}
         <Card className='border border-red-200 shadow-md overflow-hidden' style={{ display: 'block' }}>

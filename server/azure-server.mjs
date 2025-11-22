@@ -808,6 +808,16 @@ app.get('/api/_diag/env', (req, res) => {
   });
 });
 
+// 役割をフロントエンドの期待に合わせて正規化
+const normalizeUserRole = (rawRole) => {
+  if (!rawRole) return 'employee';
+  const normalized = String(rawRole).trim().toLowerCase();
+  if (normalized === 'admin') return 'admin';
+  if (normalized === 'employee') return 'employee';
+  if (normalized === 'user') return 'employee';
+  return 'employee';
+};
+
 // 認証エンドポイント（データベース認証）
 app.post('/api/auth/login', async (req, res) => {
   const origin = req.headers.origin;
@@ -877,10 +887,12 @@ app.post('/api/auth/login', async (req, res) => {
       }
 
       const foundUser = result.rows[0];
+      const normalizedRole = normalizeUserRole(foundUser.role);
       console.log('[auth/login] ユーザー情報取得:', {
         id: foundUser.id,
         username: foundUser.username,
-        role: foundUser.role
+        role: foundUser.role,
+        normalizedRole
       });
 
       // パスワード比較（bcryptjs）
@@ -907,27 +919,30 @@ app.post('/api/auth/login', async (req, res) => {
       }
 
       // 成功レスポンス
-      console.log('[auth/login] Login successful:', { username, role: foundUser.role });
+      console.log('[auth/login] Login successful:', { username, role: normalizedRole, originalRole: foundUser.role });
 
       // セッションにユーザー情報を保存
       req.session.user = {
         id: foundUser.id,
         username: foundUser.username,
-        role: foundUser.role,
+        role: normalizedRole,
         displayName: foundUser.display_name,
+        department: foundUser.department
+      };
+      req.session.userRole = normalizedRole;
+
+      const responseUser = {
+        id: foundUser.id,
+        username: foundUser.username,
+        role: normalizedRole,
+        displayName: foundUser.display_name,
+        display_name: foundUser.display_name,
         department: foundUser.department
       };
 
       res.json({
         success: true,
-        user: {
-          id: foundUser.id,
-          username: foundUser.username,
-          role: foundUser.role,
-          displayName: foundUser.display_name,
-          display_name: foundUser.display_name,
-          department: foundUser.department
-        },
+        user: responseUser,
         message: 'ログインに成功しました'
       });
 
@@ -982,13 +997,21 @@ app.get('/api/auth/me', (req, res) => {
   });
 
   if (req.session.user) {
+    const normalizedRole = normalizeUserRole(req.session.user.role);
+    const normalizedUser = {
+      ...req.session.user,
+      role: normalizedRole
+    };
+    req.session.user = normalizedUser;
+    req.session.userRole = normalizedRole;
+
     res.json({
       success: true,
-      user: req.session.user,
+      user: normalizedUser,
       message: 'セッションからユーザー情報を取得しました',
       debug: {
         sessionId: req.sessionID,
-        userRole: req.session.user.role,
+        userRole: normalizedRole,
         timestamp: new Date().toISOString()
       }
     });
@@ -1007,7 +1030,7 @@ app.get('/api/auth/me', (req, res) => {
 
 // 3. 管理者権限チェックエンドポイント
 app.get('/api/auth/check-admin', (req, res) => {
-  if (req.session.user && req.session.user.role === 'admin') {
+  if (req.session.user && normalizeUserRole(req.session.user.role) === 'admin') {
     res.json({
       success: true,
       message: '管理者権限が確認されました',
@@ -1023,7 +1046,7 @@ app.get('/api/auth/check-admin', (req, res) => {
 
 // 4. 一般ユーザー権限チェックエンドポイント
 app.get('/api/auth/check-employee', (req, res) => {
-  if (req.session.user && req.session.user.role === 'employee') {
+  if (req.session.user && normalizeUserRole(req.session.user.role) === 'employee') {
     res.json({
       success: true,
       message: '従業員権限が確認されました',
@@ -2317,24 +2340,24 @@ app.get('/api/knowledge-base', async (req, res) => {
             const blockBlobClient = containerClient.getBlockBlobClient(blob.name);
             const downloadResponse = await blockBlobClient.download();
 
-          if (downloadResponse.readableStreamBody) {
-            const chunks = [];
-            for await (const chunk of downloadResponse.readableStreamBody) {
-              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-            }
-            const content = Buffer.concat(chunks).toString('utf-8');
-            const cleanContent = content.replace(/^\uFEFF/, '');
-            const jsonData = JSON.parse(cleanContent);
+            if (downloadResponse.readableStreamBody) {
+              const chunks = [];
+              for await (const chunk of downloadResponse.readableStreamBody) {
+                chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+              }
+              const content = Buffer.concat(chunks).toString('utf-8');
+              const cleanContent = content.replace(/^\uFEFF/, '');
+              const jsonData = JSON.parse(cleanContent);
 
-            documents.push({
-              id: blob.name,
-              name: jsonData.title || jsonData.name || blob.name.split('/').pop(),
-              content: jsonData.content || jsonData.text || '',
-              type: jsonData.type || 'document',
-              createdAt: blob.properties.lastModified,
-              size: blob.properties.contentLength
-            });
-          }
+              documents.push({
+                id: blob.name,
+                name: jsonData.title || jsonData.name || blob.name.split('/').pop(),
+                content: jsonData.content || jsonData.text || '',
+                type: jsonData.type || 'document',
+                createdAt: blob.properties.lastModified,
+                size: blob.properties.contentLength
+              });
+            }
           } catch (error) {
             console.warn(`⚠️ Failed to parse document ${blob.name}:`, error.message);
           }

@@ -29,6 +29,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const normalizeRole = (role?: string | null): User['role'] => {
+  if (!role) return 'employee';
+  const normalized = role.toString().trim().toLowerCase();
+  if (normalized === 'admin') return 'admin';
+  if (normalized === 'employee') return 'employee';
+  if (normalized === 'user') return 'employee';
+  return 'employee';
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,16 +56,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: 'demo',
           username: 'demo',
           displayName: 'Demo User',
-          role: 'employee'
+          role: normalizeRole('employee')
         });
         setIsLoading(false);
         setAuthChecked(true);
         return;
       }
-      
+
       try {
         setIsLoading(true);
-        
+
         // 開発時は強制的にログイン画面を表示（認証状態をリセット）
         // console.log('🔐 開発モード: ログイン画面を強制表示');
         // localStorage.removeItem('authToken');
@@ -64,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // クッキーもクリア
         // document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
         // setUser(null);
-        
+
         // localStorageからトークンを確認
         const token = localStorage.getItem('authToken');
         if (token) {
@@ -78,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 id: userData.user.id,
                 username: userData.user.username,
                 displayName: userData.user.displayName || userData.user.display_name,
-                role: userData.user.role,
+                role: normalizeRole(userData.user.role),
                 department: userData.user.department,
               });
             } else {
@@ -116,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: 'demo',
         username: username,
         displayName: username,
-        role: 'employee'
+        role: normalizeRole('employee')
       });
       return;
     }
@@ -135,12 +144,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.setItem('authToken', token);
           console.log('✅ トークンをlocalStorageに保存');
         }
-        
+
         setUser({
           id: userData.user.id,
           username: userData.user.username,
           displayName: userData.user.displayName || userData.user.display_name,
-          role: userData.user.role,
+          role: normalizeRole(userData.user.role),
           department: userData.user.department,
         });
       } else {
