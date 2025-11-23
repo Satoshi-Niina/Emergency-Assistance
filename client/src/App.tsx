@@ -247,7 +247,8 @@ function AppContent() {
               }
             />
             <Route path='/not-found' element={<NotFoundPage />} />
-            <Route path='/' element={<RootRedirect />} />
+            {/* ルートパスではリダイレクトせずログイン画面を直接表示 */}
+            <Route path='/' element={<LoginPage />} />
             <Route path='*' element={<Navigate to='/not-found' replace />} />
           </Routes>
         </Suspense>
