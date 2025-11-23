@@ -4,17 +4,7 @@ on:
   push:
     branches:
       - main
-      - develop
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Deployment environment'
-        required: true
-        default: 'production'
-        type: choice
-        options:
-          - production
-          - staging
 
 concurrency:
   group: 'server-docker-deploy-${{ github.ref }}'
@@ -28,7 +18,7 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    environment: production
 
     steps:
     - name: Checkout code
@@ -83,19 +73,11 @@ jobs:
     - name: Set Environment Variables
       id: configure-env
       run: |
-        if [[ "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.event.inputs.environment }}" == "production" ]]; then
-          ENVIRONMENT="production"
-          WEBAPP_NAME="${{ secrets.WEBAPP_NAME }}"
-          RESOURCE_GROUP="${{ secrets.AZURE_RESOURCE_GROUP }}"
-          APP_URL="${{ secrets.APP_URL }}"
-          STATIC_WEB_APP_URL="${{ secrets.STATIC_WEB_APP_URL }}"
-        else
-          ENVIRONMENT="staging"
-          WEBAPP_NAME="${{ secrets.WEBAPP_NAME_STAGING }}"
-          RESOURCE_GROUP="${{ secrets.AZURE_RESOURCE_GROUP_STAGING }}"
-          APP_URL="${{ secrets.APP_URL_STAGING }}"
-          STATIC_WEB_APP_URL="${{ secrets.STATIC_WEB_APP_URL_STAGING }}"
-        fi
+        ENVIRONMENT="production"
+        WEBAPP_NAME="${{ secrets.WEBAPP_NAME }}"
+        RESOURCE_GROUP="${{ secrets.AZURE_RESOURCE_GROUP }}"
+        APP_URL="${{ secrets.APP_URL }}"
+        STATIC_WEB_APP_URL="${{ secrets.STATIC_WEB_APP_URL }}"
 
         export ENVIRONMENT WEBAPP_NAME RESOURCE_GROUP APP_URL STATIC_WEB_APP_URL
 
