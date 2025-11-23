@@ -85,16 +85,16 @@ jobs:
       run: |
         if [[ "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.event.inputs.environment }}" == "production" ]]; then
           ENVIRONMENT="production"
-          WEBAPP_NAME="Emergency-Assistance"
+          WEBAPP_NAME="${{ secrets.WEBAPP_NAME }}"
           RESOURCE_GROUP="${{ secrets.AZURE_RESOURCE_GROUP }}"
-          APP_URL="https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net"
-          STATIC_WEB_APP_URL="https://witty-river-012f39e00.1.azurestaticapps.net"
+          APP_URL="${{ secrets.APP_URL }}"
+          STATIC_WEB_APP_URL="${{ secrets.STATIC_WEB_APP_URL }}"
         else
           ENVIRONMENT="staging"
-          WEBAPP_NAME="Emergency-Assistance-Staging"
+          WEBAPP_NAME="${{ secrets.WEBAPP_NAME_STAGING }}"
           RESOURCE_GROUP="${{ secrets.AZURE_RESOURCE_GROUP_STAGING }}"
-          APP_URL="https://emergency-assistance-staging.azurewebsites.net"
-          STATIC_WEB_APP_URL="https://witty-river-012f39e00-staging.azurestaticapps.net"
+          APP_URL="${{ secrets.APP_URL_STAGING }}"
+          STATIC_WEB_APP_URL="${{ secrets.STATIC_WEB_APP_URL_STAGING }}"
         fi
 
         export ENVIRONMENT WEBAPP_NAME RESOURCE_GROUP APP_URL STATIC_WEB_APP_URL
