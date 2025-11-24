@@ -1,0 +1,100 @@
+﻿name: Deploy Client (Azure Static Web Apps)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'client/**'
+      - '.github/workflows/deploy-cliente-azure.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # Required for OIDC login
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    name: Build and Deploy Job
+    env:
+      # ========================================================
+      # GitHub Secrets と .env.production の対応関係
+      # ========================================================
+      # .env.production        <--  GitHub Secrets
+      # --------------------------------------------------------
+      VITE_API_BASE_URL:       ${{ secrets.VITE_API_BASE_URL }}
+      VITE_SERVER_URL:         ${{ secrets.VITE_SERVER_URL }}
+      VITE_DEV_MODE:           ${{ secrets.VITE_DEV_MODE }}
+      VITE_DEBUG_LEVEL:        ${{ secrets.VITE_DEBUG_LEVEL }}
+      # ========================================================
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+        working-directory: client
+
+      - name: Build Vite App
+        run: |
+          npm run build
+          # Copy SWA config to dist folder so it is included in deployment
+          cp staticwebapp.config.json dist/ || true
+        working-directory: client
+        env:
+          CI: true
+          # 環境変数は job レベルの env で定義されているため、ここで自動的に参照されます
+
+      - name: Deploy to Azure Static Web Apps
+        id: builddeploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: "upload"
+          app_location: "client/dist"
+          output_location: ""
+          skip_app_build: true
+          deployment_environment: ""
+
+      - name: Login to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Update SWA App Settings
+        run: |
+          # Try to get Resource ID from Vars, then Secrets
+          SWA_RESOURCE_ID="${{ vars.STATIC_WEB_APP_RESOURCE_ID }}"
+          if [ -z "$SWA_RESOURCE_ID" ]; then
+            SWA_RESOURCE_ID="${{ secrets.STATIC_WEB_APP_RESOURCE_ID }}"
+          fi
+
+          echo "Syncing App Settings to SWA Resource ID: $SWA_RESOURCE_ID"
+
+          if [ -z "$SWA_RESOURCE_ID" ]; then
+            echo "::error::STATIC_WEB_APP_RESOURCE_ID is missing. Please set it in GitHub Variables or Secrets."
+            echo "Format example: /subscriptions/<SUB_ID>/resourceGroups/<RG_NAME>/providers/Microsoft.Web/staticSites/<SWA_NAME>"
+            exit 1
+          fi
+
+          # Use --ids to target the resource directly using its ID
+          az staticwebapp appsettings set \
+            --ids "$SWA_RESOURCE_ID" \
+            --setting-names \
+              VITE_API_BASE_URL="${{ secrets.VITE_API_BASE_URL }}" \
+              VITE_SERVER_URL="${{ secrets.VITE_SERVER_URL }}" \
+              VITE_DEV_MODE="${{ secrets.VITE_DEV_MODE }}" \
+              VITE_DEBUG_LEVEL="${{ secrets.VITE_DEBUG_LEVEL }}"
