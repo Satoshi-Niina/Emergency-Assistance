@@ -26,7 +26,7 @@
     // バックエンドURLの設定（デプロイ時に埋め込まれる）
     // この値はデプロイワークフローで自動的に置換されます
     // PLACEHOLDER_BACKEND_SERVICE_URL はデプロイ時に実際のURLに置換されます
-    window.BACKEND_SERVICE_URL = 'https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net';
+    window.BACKEND_SERVICE_URL = '';
     console.log('🔧 Initial BACKEND_SERVICE_URL:', window.BACKEND_SERVICE_URL);
     // 動的環境設定（インライン）
     (function () {
@@ -54,7 +54,7 @@
         config = {
           "API_BASE_URL": (backendUrl && backendUrl !== 'PLACEHOLDER_BACKEND_SERVICE_URL')
             ? backendUrl + "/api"
-            : "https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net/api",
+            : "", // 空文字にして api.ts の環境変数フォールバックを利用させる
           "CORS_ALLOW_ORIGINS": window.location.origin,
           "ENVIRONMENT": "production"
         };
