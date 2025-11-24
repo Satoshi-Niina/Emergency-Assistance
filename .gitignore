@@ -24,6 +24,7 @@ frontend-trigger.txt
 trigger.txt
 # Environment variables (Local・Docker use)
 # Exclude ALL .env files by default
+# Exclude ALL .env files by default
 *.env
 *.env.*
 .env
