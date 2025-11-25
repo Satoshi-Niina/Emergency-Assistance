@@ -258,6 +258,14 @@ jobs:
       run: |
         echo "🚀 Deploying server application to Azure App Service..."
 
+        # WEBSITE_RUN_FROM_PACKAGE を削除（前のデプロイ方式の競合を避ける）
+        echo "🔧 Removing WEBSITE_RUN_FROM_PACKAGE setting..."
+        az webapp config appsettings delete \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
+          --setting-names "WEBSITE_RUN_FROM_PACKAGE" \
+          --output none 2>/dev/null || echo "⚠️ WEBSITE_RUN_FROM_PACKAGE not found (expected)"
+
         # デプロイパッケージの作成
         echo "📦 Creating deployment package..."
         mkdir -p /tmp/deploy
@@ -266,7 +274,7 @@ jobs:
         # server ディレクトリの内容をルートにコピー（App Service が server フォルダをスキップするため）
         echo "📂 Preparing application files..."
         cp -r "$GITHUB_WORKSPACE/server/"* .
-        
+
         # server/package*.json が存在することを確認
         if [ ! -f "package.json" ]; then
           echo "❌ ERROR: package.json not found after copying server files!"
