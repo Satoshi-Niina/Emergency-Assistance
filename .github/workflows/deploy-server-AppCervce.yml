@@ -280,6 +280,7 @@ jobs:
             PORT=8080 \
             PG_SSL=require \
             STORAGE_MODE=hybrid \
+            KNOWLEDGE_BASE_PATH=/app/knowledge-base \
             LOCAL_EXPORT_DIR=/app/knowledge-base/exports \
             FAULT_HISTORY_IMAGES_DIR=/app/knowledge-base/images/chat-exports \
             DATABASE_BACKUP=false \
@@ -298,6 +299,11 @@ jobs:
             JWT_SECRET="${{ secrets.JWT_SECRET }}" \
             OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
             AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
+            AZURE_STORAGE_CONTAINER_NAME="${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}" \
+            AZURE_STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
+            APPLICATIONINSIGHTS_CONNECTION_STRING="${{ secrets.APPLICATIONINSIGHTS_CONNECTION_STRING }}" \
+            ApplicationInsightsAgent_EXTENSION_VERSION="${{ secrets.ApplicationInsightsAgent_EXTENSION_VERSION }}" \
+            XDT_MicrosoftApplicationInsights_Mode="${{ secrets.XDT_MicrosoftApplicationInsights_Mode }}" \
           --output none
 
         # フロントエンドURL設定（引用符なしで設定）
@@ -310,26 +316,11 @@ jobs:
             CORS_ALLOW_ORIGINS=$STATIC_WEB_APP_URL,http://localhost:5173,http://localhost:8080 \
           --output none
 
-        # コンテナ名設定
-        az webapp config appsettings set \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --settings \
-            AZURE_STORAGE_CONTAINER_NAME="${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}" \
-          --output none
+        # コンテナ名設定（上記の機密情報セクションで設定済みのためスキップ）
+        echo "✅ AZURE_STORAGE_CONTAINER_NAME already set in credentials section"
 
-        # AZURE_STORAGE_ACCOUNT_NAMEが設定されている場合は追加
-        if [ -n "${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" ]; then
-          az webapp config appsettings set \
-            --resource-group "$RESOURCE_GROUP" \
-            --name "$WEBAPP_NAME" \
-            --settings \
-              AZURE_STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
-            --output none
-          echo "✅ AZURE_STORAGE_ACCOUNT_NAME set"
-        else
-          echo "⚠️ AZURE_STORAGE_ACCOUNT_NAME not set (using connection string only)"
-        fi
+        # AZURE_STORAGE_ACCOUNT_NAME（上記の機密情報セクションで設定済みのためスキップ）
+        echo "✅ AZURE_STORAGE_ACCOUNT_NAME already set in credentials section"
 
         # BLOB_PREFIXが設定されている場合は追加
         if [ -n "${{ secrets.BLOB_PREFIX }}" ]; then
