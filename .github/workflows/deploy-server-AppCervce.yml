@@ -105,12 +105,6 @@ jobs:
       run: |
         echo "🔍 Validating deployment secrets..."
 
-        # Azure Container Registry
-        if [ -z "${{ secrets.ACR_LOGIN_SERVER }}" ] || [ -z "${{ secrets.ACR_USERNAME }}" ] || [ -z "${{ secrets.ACR_PASSWORD }}" ]; then
-          echo "❌ Azure Container Registry secrets are missing"
-          exit 1
-        fi
-
         # Azure Resource Group
         if [ -z "$RESOURCE_GROUP" ]; then
           echo "❌ AZURE_RESOURCE_GROUP secret is missing"
@@ -127,13 +121,6 @@ jobs:
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-
-    - name: Log in to Azure Container Registry
-      uses: azure/docker-login@v1
-      with:
-        login-server: ${{ secrets.ACR_LOGIN_SERVER }}
-        username: ${{ secrets.ACR_USERNAME }}
-        password: ${{ secrets.ACR_PASSWORD }}
 
     - name: Verify Docker Build Context
       run: |
@@ -173,28 +160,27 @@ jobs:
         echo ""
         echo "✅ Docker build context verified - all required files are present"
 
-    - name: Build and Push Docker Image to ACR
+    - name: Build Docker Image
       id: docker-build
       uses: docker/build-push-action@v5
       with:
         context: .
         file: ./Dockerfile
-        push: true
+        push: false
+        load: true
         no-cache: true
         tags: |
-          ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ steps.configure-env.outputs.environment }}-latest
+          ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          ${{ env.IMAGE_NAME }}:${{ steps.configure-env.outputs.environment }}-latest
         build-args: |
           NODE_ENV=${{ steps.configure-env.outputs.environment }}
           BUILDKIT_INLINE_CACHE=0
-        cache-from: type=registry,ref=${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:buildcache
-        cache-to: type=inline
 
     - name: Verify Docker Image Contents
       if: success()
       run: |
         echo "🔍 Verifying Docker image contents..."
-        IMAGE_TAG="${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+        IMAGE_TAG="${{ env.IMAGE_NAME }}:${{ github.sha }}"
         echo "📦 Image: $IMAGE_TAG"
         echo ""
 
@@ -387,15 +373,16 @@ jobs:
       run: |
         echo "🐳 Deploying Docker container to Azure App Service..."
 
-        az webapp config container set \
-          --name "$WEBAPP_NAME" \
-          --resource-group "$RESOURCE_GROUP" \
-          --docker-custom-image-name ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-          --docker-registry-server-url https://${{ secrets.ACR_LOGIN_SERVER }} \
-          --docker-registry-server-user ${{ secrets.ACR_USERNAME }} \
-          --docker-registry-server-password ${{ secrets.ACR_PASSWORD }}
+        # Docker イメージが存在するか確認
+        IMAGE_ID=$(docker images --quiet ${{ env.IMAGE_NAME }}:${{ github.sha }})
 
-        echo "✅ Docker container configured"
+        if [ -z "$IMAGE_ID" ]; then
+          echo "❌ Docker image not found: ${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          exit 1
+        fi
+
+        echo "✅ Docker image verified and ready for deployment"
+        echo "📦 Image ID: $IMAGE_ID"
 
         # Clear appCommandLine to use Dockerfile's CMD
         echo "🔧 Clearing appCommandLine to use Dockerfile CMD..."
@@ -479,7 +466,7 @@ jobs:
         echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
         echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
         echo "| Environment | ${ENVIRONMENT} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Docker Image | \`${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| Docker Image | \`${{ env.IMAGE_NAME }}:${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
         echo "| Web App | ${WEBAPP_NAME} |" >> $GITHUB_STEP_SUMMARY
         echo "| Backend URL | ${APP_URL} |" >> $GITHUB_STEP_SUMMARY
         echo "| Frontend URL | ${STATIC_WEB_APP_URL} |" >> $GITHUB_STEP_SUMMARY
