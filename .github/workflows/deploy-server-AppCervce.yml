@@ -381,21 +381,52 @@ jobs:
           exit 1
         fi
 
-        echo "✅ Docker image verified and ready for deployment"
+        echo "✅ Docker image verified"
         echo "📦 Image ID: $IMAGE_ID"
 
-        # Clear appCommandLine to use Dockerfile's CMD
-        echo "🔧 Clearing appCommandLine to use Dockerfile CMD..."
-        az webapp config set \
-          --name "$WEBAPP_NAME" \
-          --resource-group "$RESOURCE_GROUP" \
-          --generic-configurations '{"appCommandLine":""}'
+        # デプロイパッケージの作成
+        echo "📦 Creating deployment package..."
+        mkdir -p /tmp/deploy
+        cd /tmp/deploy
+        
+        # Dockerfile をコピー
+        cp "$GITHUB_WORKSPACE/Dockerfile" .
+        
+        # server ディレクトリをコピー
+        cp -r "$GITHUB_WORKSPACE/server" .
+        
+        # client/dist をコピー (存在する場合)
+        if [ -d "$GITHUB_WORKSPACE/client/dist" ]; then
+          cp -r "$GITHUB_WORKSPACE/client/dist" ./client-dist
+        fi
+        
+        # .dockerignore をコピー (存在する場合)
+        if [ -f "$GITHUB_WORKSPACE/.dockerignore" ]; then
+          cp "$GITHUB_WORKSPACE/.dockerignore" .
+        fi
 
-        echo "✅ appCommandLine cleared - Dockerfile CMD will be used"
+        # package.json をコピー
+        cp "$GITHUB_WORKSPACE/package.json" . 2>/dev/null || echo "⚠️ package.json not in root"
+
+        echo "✅ Deployment package created"
+
+        # ZIP ファイルを作成してデプロイ
+        echo "📦 Creating ZIP archive..."
+        zip -r -q /tmp/deploy.zip .
+        echo "✅ ZIP archive created ($(du -h /tmp/deploy.zip | cut -f1))"
+
+        # App Service にデプロイ
+        echo "🚀 Deploying to App Service..."
+        az webapp deployment source config-zip \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
+          --src /tmp/deploy.zip
+
+        echo "✅ Deployment completed"
 
     - name: Restart App Service
       run: |
-        echo "🔄 Restarting App Service to pull new Docker image..."
+        echo "🔄 Restarting App Service..."
 
         az webapp restart \
           --name "$WEBAPP_NAME" \
