@@ -1,0 +1,85 @@
+name: Deploy to Azure App Service
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set Env
+      run: |
+        echo "RG=${{ secrets.AZURE_RESOURCE_GROUP }}" >> $GITHUB_ENV
+        echo "APP=${{ secrets.WEBAPP_NAME }}" >> $GITHUB_ENV
+        echo "URL=${{ secrets.APP_URL }}" >> $GITHUB_ENV
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Configure
+      run: |
+        az webapp config appsettings delete --resource-group "$RG" --name "$APP" --setting-names "WEBSITE_RUN_FROM_PACKAGE" --output none 2>/dev/null || true
+        
+        az webapp config appsettings set --resource-group "$RG" --name "$APP" --settings \
+          NODE_ENV=production PORT=8080 PG_SSL=require STORAGE_MODE=hybrid \
+          KNOWLEDGE_BASE_PATH=/app/knowledge-base LOCAL_EXPORT_DIR=/app/knowledge-base/exports \
+          FAULT_HISTORY_IMAGES_DIR=/app/knowledge-base/images/chat-exports \
+          DATABASE_BACKUP=false WEBSITES_PORT=8080 WEBSITES_CONTAINER_START_TIME_LIMIT=600 \
+          --output none
+        
+        az webapp config appsettings set --resource-group "$RG" --name "$APP" --settings \
+          DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+          SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
+          JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+          OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+          AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
+          AZURE_STORAGE_CONTAINER_NAME="${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}" \
+          AZURE_STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
+          FRONTEND_URL="${{ secrets.STATIC_WEB_APP_URL }}" \
+          STATIC_WEB_APP_URL="${{ secrets.STATIC_WEB_APP_URL }}" \
+          --output none
+
+    - name: Stop
+      run: az webapp stop --resource-group "$RG" --name "$APP"
+
+    - name: Package
+      run: |
+        mkdir deploy && cd deploy
+        cp -r ../server/* .
+        cp ../web.config .
+        zip -r -q ../app.zip .
+
+    - name: Deploy
+      run: az webapp deployment source config-zip --resource-group "$RG" --name "$APP" --src app.zip
+
+    - name: Start
+      run: |
+        az webapp start --resource-group "$RG" --name "$APP"
+        sleep 60
+
+    - name: Health
+      continue-on-error: true
+      run: |
+        for i in {1..10}; do
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" "$URL/health" || echo "000")
+          [ "$CODE" = "200" ] && echo "OK" && exit 0
+          echo "Attempt $i: $CODE"
+          sleep 10
+        done
+        exit 1
+
+    - name: Seed
+      if: github.ref == 'refs/heads/main'
+      continue-on-error: true
+      run: |
+        sudo apt-get update -qq && sudo apt-get install -y postgresql-client > /dev/null 2>&1
+        psql "${{ secrets.DATABASE_URL }}" -f scripts/seed-admin-user.sql || true
