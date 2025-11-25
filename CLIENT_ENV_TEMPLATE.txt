@@ -1,0 +1,112 @@
+# ================================================================
+# Emergency Assistance Client - Environment Variables Template
+# ================================================================
+# Viteクライアント用環境変数設定
+# すべての変数は VITE_ プレフィックスが必要
+# ================================================================
+
+# ================================================
+# API接続設定 (必須)
+# ================================================
+# バックエンドAPIベースURL
+VITE_API_BASE_URL=https://emergency-assistantapp-gwgscxcca5cahyb9.japanwest-01.azurewebsites.net/api
+
+# サーバーURL (バックエンドベースURL)
+VITE_SERVER_URL=https://emergency-assistantapp-gwgscxcca5cahyb9.japanwest-01.azurewebsites.net
+
+# バックエンドサービスURL (VITE_SERVER_URLと同じ値)
+VITE_BACKEND_SERVICE_URL=https://emergency-assistantapp-gwgscxcca5cahyb9.japanwest-01.azurewebsites.net
+
+# ================================================
+# アプリケーション情報
+# ================================================
+# アプリケーションタイトル
+VITE_APP_TITLE=Emergency Assistance System
+
+# アプリケーションバージョン
+VITE_APP_VERSION=1.0.2
+
+# アプリケーション説明
+VITE_APP_DESCRIPTION=緊急時支援・対応管理システム
+
+# ================================================
+# 機能フラグ
+# ================================================
+# プッシュ通知有効化
+VITE_ENABLE_NOTIFICATIONS=true
+
+# 位置情報機能有効化
+VITE_ENABLE_GEOLOCATION=true
+
+# オフラインモード有効化
+VITE_ENABLE_OFFLINE_MODE=true
+
+# AI支援機能有効化
+VITE_ENABLE_AI_ASSISTANCE=true
+
+# チャット履歴エクスポート有効化
+VITE_ENABLE_CHAT_EXPORT=true
+
+# 機械選択機能有効化
+VITE_ENABLE_MACHINE_SELECTION=true
+
+# ================================================
+# 外部サービス (オプショナル)
+# ================================================
+# Google Maps APIキー
+VITE_MAPS_API_KEY=
+
+# アナリティクスID
+VITE_ANALYTICS_ID=
+
+# ================================================
+# デバッグ設定
+# ================================================
+# 開発モード: 本番環境では false に設定
+VITE_DEV_MODE=false
+
+# デバッグレベル: error, warn, info, debug
+VITE_DEBUG_LEVEL=error
+
+# ================================================
+# ビルド設定
+# ================================================
+# ビルド出力ディレクトリ
+VITE_BUILD_OUTDIR=dist
+
+# ベースパス
+VITE_BASE_PATH=/
+
+# ================================================================
+# GitHub CI/CD用シークレット設定
+# ================================================================
+# 以下の変数はGitHubリポジトリのSecretsに設定してください
+# Settings > Secrets and variables > Actions で設定
+# ================================================================
+
+# ------------------------------------------------
+# 必須: クライアント環境変数
+# ------------------------------------------------
+# VITE_API_BASE_URL=https://your-backend.azurewebsites.net/api
+# VITE_SERVER_URL=https://your-backend.azurewebsites.net
+# VITE_DEV_MODE=false
+# VITE_DEBUG_LEVEL=error
+
+# ------------------------------------------------
+# 必須: Azure Static Web Apps
+# ------------------------------------------------
+# AZURE_STATIC_WEB_APPS_API_TOKEN=your-deployment-token
+
+# ================================================================
+# GitHubワークフロー設定
+# ================================================================
+# deploy-cliente-azure.yml で使用される環境変数
+#
+# Build ステップで設定される変数:
+#   - VITE_API_BASE_URL (GitHubシークレットから)
+#   - VITE_SERVER_URL (GitHubシークレットから)
+#   - VITE_DEV_MODE (GitHubシークレットから)
+#   - VITE_DEBUG_LEVEL (GitHubシークレットから)
+#
+# これらの値はビルド時にVite経由でクライアントコードに埋め込まれます
+# ================================================================

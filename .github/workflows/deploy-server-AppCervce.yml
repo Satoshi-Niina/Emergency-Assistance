@@ -263,24 +263,26 @@ jobs:
         mkdir -p /tmp/deploy
         cd /tmp/deploy
 
-        # サーバーファイルをコピー
-        cp -r "$GITHUB_WORKSPACE/server" .
-
-        # package.json をコピー
-        if [ -f "$GITHUB_WORKSPACE/package.json" ]; then
-          cp "$GITHUB_WORKSPACE/package.json" .
+        # server ディレクトリの内容をルートにコピー（App Service が server フォルダをスキップするため）
+        echo "📂 Preparing application files..."
+        cp -r "$GITHUB_WORKSPACE/server/"* .
+        
+        # server/package*.json が存在することを確認
+        if [ ! -f "package.json" ]; then
+          echo "❌ ERROR: package.json not found after copying server files!"
+          ls -la
+          exit 1
         fi
 
-        if [ -f "$GITHUB_WORKSPACE/package-lock.json" ]; then
-          cp "$GITHUB_WORKSPACE/package-lock.json" .
-        fi
-
-        echo "✅ Deployment package created"
+        echo "✅ Application files prepared"
+        echo "📋 Files in deploy directory:"
+        ls -la | head -20
 
         # ZIP ファイルを作成
         echo "📦 Creating ZIP archive..."
         zip -r -q /tmp/deploy.zip .
-        echo "✅ ZIP created ($(du -h /tmp/deploy.zip | cut -f1))"
+        DEPLOY_SIZE=$(du -h /tmp/deploy.zip | cut -f1)
+        echo "✅ ZIP created (${DEPLOY_SIZE})"
 
         # App Service にデプロイ
         echo "🚀 Uploading to App Service..."

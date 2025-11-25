@@ -1,0 +1,148 @@
+-- ================================================================
+-- Azure本番環境用 初期データ投入SQL
+-- ================================================================
+--
+-- 使用方法:
+-- 1. このファイルを .sql に変更してください
+--    seed-production-data.txt → seed-production-data.sql
+--
+-- 2. Azure Portal > PostgreSQL > クエリエディタ で実行
+-- 3. または、psqlコマンドで実行:
+--    psql <DATABASE_URL> -f seed-production-data.sql
+--
+-- 注意: このスクリプトは既存データを上書きします(ON CONFLICT DO UPDATE)
+-- ================================================================
+
+BEGIN;
+
+-- ================================================================
+-- 1. ユーザーデータの投入
+-- ================================================================
+
+-- takabeni2 ユーザーを追加/更新 (パスワード: Takabeni&2)
+-- bcryptハッシュ (saltラウンド: 10)
+INSERT INTO users (username, password, display_name, role, department)
+VALUES ('takabeni2', '$2b$10$vHq3ZXJhZF6YqKQqH8wVAeJPYE8cQXqp3ZUhHJGk0Kv9H8xVz8pYa', '高紅2', 'employee', '製造部')
+ON CONFLICT (username) DO UPDATE
+SET
+  password = EXCLUDED.password,
+  display_name = EXCLUDED.display_name,
+  role = EXCLUDED.role,
+  department = EXCLUDED.department;
+
+-- niinaユーザーを追加/更新 (パスワード: niina123)
+INSERT INTO users (username, password, display_name, role, department)
+VALUES ('niina', '$2b$10$N0p5mXHLzQH8xVYqF6wWFeJkXn5Y1Qw5Z8F9qH6Yx0Kp2Vz7Xx8Ya', '新井', 'admin', 'システム管理')
+ON CONFLICT (username) DO UPDATE
+SET
+  password = EXCLUDED.password,
+  display_name = EXCLUDED.display_name,
+  role = EXCLUDED.role,
+  department = EXCLUDED.department;
+
+-- adminユーザーを追加/更新 (パスワード: admin)
+INSERT INTO users (username, password, display_name, role, department)
+VALUES ('admin', '$2b$10$XDz6Z5qF9Q8H0xVYpF7wWeKkJn6Y2Rw6Z9F0qH7Yx1Kp3Vz8Xx9Ya', '管理者', 'admin', 'システム管理')
+ON CONFLICT (username) DO UPDATE
+SET
+  password = EXCLUDED.password,
+  display_name = EXCLUDED.display_name,
+  role = EXCLUDED.role,
+  department = EXCLUDED.department;
+
+SELECT '✅ ユーザーデータ投入完了' as status;
+
+-- ================================================================
+-- 2. 機種マスタデータの投入
+-- ================================================================
+
+INSERT INTO machine_types (machine_type_name) VALUES
+  ('プレス機'),
+  ('旋盤'),
+  ('フライス盤'),
+  ('CNC旋盤'),
+  ('マシニングセンタ'),
+  ('研削盤'),
+  ('ボール盤'),
+  ('放電加工機'),
+  ('レーザー加工機'),
+  ('溶接機')
+ON CONFLICT DO NOTHING;
+
+SELECT '✅ 機種マスタデータ投入完了' as status;
+
+-- ================================================================
+-- 3. 機械データの投入
+-- ================================================================
+
+DO $$
+DECLARE
+  press_id INTEGER;
+  lathe_id INTEGER;
+  cnc_id INTEGER;
+  mc_id INTEGER;
+BEGIN
+  SELECT id INTO press_id FROM machine_types WHERE machine_type_name = 'プレス機' LIMIT 1;
+  SELECT id INTO lathe_id FROM machine_types WHERE machine_type_name = '旋盤' LIMIT 1;
+  SELECT id INTO cnc_id FROM machine_types WHERE machine_type_name = 'CNC旋盤' LIMIT 1;
+  SELECT id INTO mc_id FROM machine_types WHERE machine_type_name = 'マシニングセンタ' LIMIT 1;
+
+  IF press_id IS NOT NULL THEN
+    INSERT INTO machines (machine_type_id, machine_number, status, location, notes)
+    VALUES
+      (press_id, 'PR-001', 'active', '工場A 1階', 'プレス機1号機'),
+      (press_id, 'PR-002', 'active', '工場A 1階', 'プレス機2号機'),
+      (press_id, 'PR-003', 'active', '工場A 2階', 'プレス機3号機')
+    ON CONFLICT DO NOTHING;
+  END IF;
+
+  IF lathe_id IS NOT NULL THEN
+    INSERT INTO machines (machine_type_id, machine_number, status, location, notes)
+    VALUES
+      (lathe_id, 'LT-001', 'active', '工場B 1階', '旋盤1号機'),
+      (lathe_id, 'LT-002', 'active', '工場B 1階', '旋盤2号機')
+    ON CONFLICT DO NOTHING;
+  END IF;
+
+  IF cnc_id IS NOT NULL THEN
+    INSERT INTO machines (machine_type_id, machine_number, status, location, notes)
+    VALUES
+      (cnc_id, 'CNC-001', 'active', '工場B 2階', 'CNC旋盤1号機'),
+      (cnc_id, 'CNC-002', 'maintenance', '工場B 2階', 'CNC旋盤2号機 - 定期メンテナンス中')
+    ON CONFLICT DO NOTHING;
+  END IF;
+
+  IF mc_id IS NOT NULL THEN
+    INSERT INTO machines (machine_type_id, machine_number, status, location, notes)
+    VALUES
+      (mc_id, 'MC-001', 'active', '工場C 1階', 'マシニングセンタ1号機'),
+      (mc_id, 'MC-002', 'active', '工場C 1階', 'マシニングセンタ2号機')
+    ON CONFLICT DO NOTHING;
+  END IF;
+END $$;
+
+SELECT '✅ 機械データ投入完了' as status;
+
+-- ================================================================
+-- 4. データ投入結果の確認
+-- ================================================================
+
+SELECT '======================================' as info;
+SELECT 'データ投入結果' as info;
+SELECT '======================================' as info;
+
+SELECT 'ユーザー' as category, COUNT(*) as count FROM users;
+SELECT username, display_name, role, department FROM users ORDER BY id;
+
+SELECT '機種マスタ' as category, COUNT(*) as count FROM machine_types;
+SELECT id, machine_type_name FROM machine_types ORDER BY id LIMIT 10;
+
+SELECT '機械' as category, COUNT(*) as count FROM machines;
+SELECT m.id, mt.machine_type_name, m.machine_number, m.status, m.location
+FROM machines m
+JOIN machine_types mt ON m.machine_type_id = mt.id
+ORDER BY m.id LIMIT 10;
+
+COMMIT;
+
+SELECT '✅✅✅ すべてのデータ投入が完了しました ✅✅✅' as completion_message;
