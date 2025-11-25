@@ -278,6 +278,45 @@ jobs:
         echo "📋 Files in deploy directory:"
         ls -la | head -20
 
+        # web.config を作成してNode.jsランタイム設定
+        cat > web.config << 'EOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <configuration>
+          <system.webServer>
+            <webSocket enabled="false" />
+            <handlers>
+              <add name="iisnode" path="azure-server.mjs" verb="*" modules="iisnode" />
+            </handlers>
+            <rewrite>
+              <rules>
+                <rule name="NodeInspector" patternSyntax="ECMAScript" stopProcessing="true">
+                  <match url="^\/debug[\/]?" />
+                  <action type="Rewrite" url="localhost:7071\/debug" />
+                </rule>
+                <rule name="StaticContent">
+                  <action type="CustomResponse" statusCode="404" subStatusCode="1001" statusReason="Managed by iisnode" statusDescription="Managed by iisnode" />
+                </rule>
+                <rule name="DynamicContent">
+                  <conditions>
+                    <add input="{REQUEST_FILENAME}" matchType="File" negate="True" />
+                  </conditions>
+                  <action type="Rewrite" url="azure-server.mjs" />
+                </rule>
+              </rules>
+            </rewrite>
+            <security>
+              <requestFiltering>
+                <hiddenSegments>
+                  <add segment="node_modules" />
+                </hiddenSegments>
+              </requestFiltering>
+            </security>
+            <httpErrors existingResponse="PassThrough" />
+            <iisnode nodeProcessCommandLine="&quot;$PROGRAMFILES\nodejs\node.exe&quot;" debuggingEnabled="false" />
+          </system.webServer>
+        </configuration>
+        EOF
+
         # ZIP ファイルを作成
         echo "📦 Creating ZIP archive..."
         zip -r -q /tmp/deploy.zip .
@@ -292,6 +331,71 @@ jobs:
           --src /tmp/deploy.zip
 
         echo "✅ Application deployed to App Service"
+
+    - name: Configure Node.js Runtime for App Service
+      run: |
+        echo "🔧 Configuring Node.js runtime..."
+
+        # Node.js ランタイム設定
+        az webapp config set \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
+          --linuxFxVersion "NODE|20-lts" \
+          --startup-file "npm start"
+
+        echo "✅ Runtime configured"
+
+        # ランタイム設定の確認
+        az webapp config show \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
+          --query "{linuxFxVersion:linuxFxVersion, startupCommand:appCommandLine}" \
+          --output table
+
+    - name: Check App Service Deployment Status
+      run: |
+        echo "🔍 Checking App Service deployment status..."
+
+        # デプロイ状態を確認
+        DEPLOYMENT_STATUS=$(az webapp deployment list \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
+          --query "[0].provisioningState" \
+          --output tsv)
+
+        echo "📊 Deployment Status: $DEPLOYMENT_STATUS"
+
+        # App Service の状態を確認
+        WEBAPP_STATE=$(az webapp show \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
+          --query "state" \
+          --output tsv)
+
+        echo "🔄 App Service State: $WEBAPP_STATE"
+
+        # リソースの存在確認
+        echo "📁 Checking if app files were deployed..."
+        az webapp deployment slot list \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
+          --output table || echo "⚠️  Could not list deployment slots"
+
+    - name: View App Service Logs
+      continue-on-error: true
+      run: |
+        echo "📋 Fetching App Service logs..."
+
+        # 簡単なログ取得を試みる
+        az webapp log show \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
+          || echo "⚠️ Could not fetch logs via az command"
+
+        # 代替方法: Kudu API を通じたログ取得情報を表示
+        echo ""
+        echo "📌 To view detailed logs, visit Kudu console at:"
+        echo "https://$WEBAPP_NAME-gwgscxcca5cahyb9.scm.japanwest-01.azurewebsites.net/api/logs/docker"
 
     - name: Wait for Container Startup
       run: |
