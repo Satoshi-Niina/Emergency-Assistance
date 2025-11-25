@@ -371,16 +371,15 @@ jobs:
 
     - name: Deploy Docker Container to App Service
       run: |
-        echo "🚀 Deploying application to Azure App Service..."
+        echo "🚀 Deploying server application to Azure App Service..."
 
         # デプロイパッケージの作成
         echo "📦 Creating deployment package..."
         mkdir -p /tmp/deploy
         cd /tmp/deploy
 
-        # すべてのファイルをコピー
+        # サーバーファイルをコピー
         cp -r "$GITHUB_WORKSPACE/server" .
-        cp -r "$GITHUB_WORKSPACE/client/dist" ./public 2>/dev/null || mkdir -p public
 
         # package.json をコピー
         if [ -f "$GITHUB_WORKSPACE/package.json" ]; then
@@ -390,27 +389,6 @@ jobs:
         if [ -f "$GITHUB_WORKSPACE/package-lock.json" ]; then
           cp "$GITHUB_WORKSPACE/package-lock.json" .
         fi
-
-        # Web config for Azure App Service
-        cat > web.config << 'EOF'
-        <?xml version="1.0" encoding="utf-8"?>
-        <configuration>
-          <system.webServer>
-            <rewrite>
-              <rules>
-                <rule name="SPA" stopProcessing="true">
-                  <match url="^(?!api).*$" />
-                  <conditions logicalGrouping="MatchAll">
-                    <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
-                    <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
-                  </conditions>
-                  <action type="Rewrite" url="/index.html" />
-                </rule>
-              </rules>
-            </rewrite>
-          </system.webServer>
-        </configuration>
-        EOF
 
         echo "✅ Deployment package created"
 
