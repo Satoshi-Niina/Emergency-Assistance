@@ -388,18 +388,18 @@ jobs:
         echo "📦 Creating deployment package..."
         mkdir -p /tmp/deploy
         cd /tmp/deploy
-        
+
         # Dockerfile をコピー
         cp "$GITHUB_WORKSPACE/Dockerfile" .
-        
+
         # server ディレクトリをコピー
         cp -r "$GITHUB_WORKSPACE/server" .
-        
+
         # client/dist をコピー (存在する場合)
         if [ -d "$GITHUB_WORKSPACE/client/dist" ]; then
           cp -r "$GITHUB_WORKSPACE/client/dist" ./client-dist
         fi
-        
+
         # .dockerignore をコピー (存在する場合)
         if [ -f "$GITHUB_WORKSPACE/.dockerignore" ]; then
           cp "$GITHUB_WORKSPACE/.dockerignore" .
@@ -422,17 +422,26 @@ jobs:
           --name "$WEBAPP_NAME" \
           --src /tmp/deploy.zip
 
-        echo "✅ Deployment completed"
+        echo "✅ Deployment package uploaded"
 
-    - name: Restart App Service
-      run: |
-        echo "🔄 Restarting App Service..."
+        # ⭐ 重要：App Service に Docker ビルド・実行を指示
+        echo "🔧 Configuring App Service to build and run from Dockerfile..."
+        az webapp config appsettings set \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
+          --settings \
+            DOCKER_REGISTRY_SERVER_URL="" \
+            DOCKER_ENABLE_CI=true \
+            WEBSITES_ENABLE_APP_SERVICE_STORAGE=false \
+          --output none
 
+        # App Service を再起動してビルド・デプロイを開始
+        echo "🔄 Triggering App Service build and deployment..."
         az webapp restart \
           --name "$WEBAPP_NAME" \
           --resource-group "$RESOURCE_GROUP"
 
-        echo "✅ App Service restart initiated"
+        echo "✅ Deployment command issued - App Service will now build from Dockerfile"
 
     - name: Wait for Container Startup
       run: |
