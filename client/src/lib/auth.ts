@@ -1,4 +1,4 @@
-import { apiRequest } from './queryClient';
+import { buildApiUrl } from './api';
 import { LoginCredentials } from '@shared/schema';
 import { AUTH_API } from './api/config';
 
@@ -9,9 +9,12 @@ import { AUTH_API } from './api/config';
  */
 export const login = async (credentials: LoginCredentials) => {
   try {
+    // buildApiUrlを使って正しいURLを構築
+    const loginUrl = buildApiUrl(AUTH_API.LOGIN);
+
     console.log('🔐 ログイン試行:', { username: credentials.username });
-    console.log('📡 リクエストURL:', AUTH_API.LOGIN);
-    console.log('🔗 ログインURL:', AUTH_API.LOGIN);
+    console.log('📡 リクエストURL:', loginUrl);
+    console.log('🔗 ログインURL:', loginUrl);
     console.log('📡 リクエスト設定:', {
       method: 'POST',
       headers: {
@@ -20,7 +23,7 @@ export const login = async (credentials: LoginCredentials) => {
       credentials: 'include',
       body: JSON.stringify(credentials)
     });
-    
+
     // リクエスト前のデバッグ情報
     console.log('🌐 現在のlocation:', {
       origin: window.location.origin,
@@ -28,8 +31,8 @@ export const login = async (credentials: LoginCredentials) => {
       protocol: window.location.protocol,
       port: window.location.port
     });
-    
-    const response = await fetch(AUTH_API.LOGIN, {
+
+    const response = await fetch(loginUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -37,19 +40,19 @@ export const login = async (credentials: LoginCredentials) => {
       credentials: 'include',
       body: JSON.stringify(credentials)
     });
-    
-    console.log('📡 ログインレスポンス:', { 
-      status: response.status, 
-      ok: response.ok 
+
+    console.log('📡 ログインレスポンス:', {
+      status: response.status,
+      ok: response.ok
     });
-    
-    console.log('📡 レスポンス受信:', { 
-      status: response.status, 
+
+    console.log('📡 レスポンス受信:', {
+      status: response.status,
       ok: response.ok,
       statusText: response.statusText,
       headers: Object.fromEntries(response.headers.entries())
     });
-    
+
     if (!response.ok) {
       let errorMessage = '認証エラー';
       try {
@@ -58,32 +61,32 @@ export const login = async (credentials: LoginCredentials) => {
       } catch (parseError) {
         errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       }
-      
+
       console.error('❌ ログインエラー:', {
         status: response.status,
         statusText: response.statusText,
         message: errorMessage
       });
-      
+
       // 503エラーの場合は特別なメッセージ
       if (response.status === 503) {
         throw new Error('バックエンドサーバーが利用できません。しばらく待ってから再試行してください。');
       }
-      
+
       throw new Error(errorMessage);
     }
-    
+
     const userData = await response.json();
     console.log('✅ ログイン成功:', userData);
     return userData;
   } catch (error) {
     console.error('❌ Login error:', error);
-    
+
     // ネットワークエラーの場合
     if (error instanceof TypeError && error.message.includes('fetch')) {
       throw new Error('バックエンドサーバーに接続できません。ネットワーク接続を確認してください。');
     }
-    
+
     if (error instanceof Error) {
       throw error;
     }
@@ -96,11 +99,11 @@ export const login = async (credentials: LoginCredentials) => {
  */
 export const logout = async () => {
   try {
-    // プロキシ経由でAPIにアクセス（相対パスを使用）
-    const logoutUrl = '/api/auth/logout';
-    
+    // buildApiUrlを使って正しいURLを構築
+    const logoutUrl = buildApiUrl(AUTH_API.LOGOUT);
+
     console.log('🔐 ログアウト試行:', logoutUrl);
-    
+
     const response = await fetch(logoutUrl, {
       method: 'POST',
       credentials: 'include'
@@ -117,17 +120,20 @@ export const logout = async () => {
  */
 export const getCurrentUser = async () => {
   try {
-    const response = await fetch(AUTH_API.ME, {
+    // buildApiUrlを使って正しいURLを構築
+    const meUrl = buildApiUrl(AUTH_API.ME);
+
+    const response = await fetch(meUrl, {
       credentials: 'include'
     });
-    
+
     if (!response.ok) {
       if (response.status === 401) {
         return null;
       }
       throw new Error('Failed to get current user');
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Get current user error:', error);

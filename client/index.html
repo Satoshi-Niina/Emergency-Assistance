@@ -51,10 +51,12 @@
         // 環境変数からバックエンドURLを取得（ビルド時に埋め込まれる）
         // API_BASE_URLには/apiを含める（完全なAPIエンドポイントURL）
         const backendUrl = window.BACKEND_SERVICE_URL || '';
+        // フォールバック: 正しいバックエンドURL（emergency-backend-apiが存在しない場合のフォールバック）
+        const fallbackBackendUrl = 'https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net';
         config = {
           "API_BASE_URL": (backendUrl && backendUrl !== 'PLACEHOLDER_BACKEND_SERVICE_URL')
             ? backendUrl + "/api"
-            : "", // 空文字にして api.ts の環境変数フォールバックを利用させる
+            : fallbackBackendUrl + "/api", // フォールバックURLを使用
           "CORS_ALLOW_ORIGINS": window.location.origin,
           "ENVIRONMENT": "production"
         };

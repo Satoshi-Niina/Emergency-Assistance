@@ -106,6 +106,30 @@ export const apiRequest = async <T = any>(
         return data;
     } catch (error) {
         console.error(`❌ API Request Failed: ${options.method || 'GET'} ${url}`, error);
+
+        // ネットワーク未解決等で失敗した場合のフォールバック（本番のみ）
+        // DNS未解決/TypeError: Failed to fetch 時に絶対URL→相対URLで再試行
+        try {
+            const base = getApiBaseUrl();
+            if (base && error instanceof TypeError) {
+                let cleanPath = path.startsWith('/') ? path : `/${path}`;
+                if (cleanPath.startsWith('/api/')) {
+                    cleanPath = cleanPath.substring(4);
+                }
+                const fallbackUrl = `/api${cleanPath}`;
+                console.warn(`⚠️ Fallback API retry: ${fallbackUrl} (original failed: ${url})`);
+                const retryResponse = await fetch(fallbackUrl, config);
+                if (retryResponse.ok) {
+                    const retryData = await retryResponse.json();
+                    console.log(`✅ Fallback API Response: ${options.method || 'GET'} ${fallbackUrl}`);
+                    return retryData;
+                } else {
+                    console.warn(`⚠️ Fallback API also failed: ${retryResponse.status} ${retryResponse.statusText}`);
+                }
+            }
+        } catch (fallbackError) {
+            console.warn('⚠️ Fallback attempt threw error:', fallbackError);
+        }
         throw error;
     }
 };
