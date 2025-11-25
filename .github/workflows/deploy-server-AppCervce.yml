@@ -514,15 +514,6 @@ jobs:
       run: |
         echo "🔍 Checking App Service deployment status..."
 
-        # デプロイ状態を確認
-        DEPLOYMENT_STATUS=$(az webapp deployment list \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --query "[0].provisioningState" \
-          --output tsv)
-
-        echo "📊 Deployment Status: $DEPLOYMENT_STATUS"
-
         # App Service の状態を確認
         WEBAPP_STATE=$(az webapp show \
           --resource-group "$RESOURCE_GROUP" \
@@ -532,12 +523,20 @@ jobs:
 
         echo "🔄 App Service State: $WEBAPP_STATE"
 
-        # リソースの存在確認
-        echo "📁 Checking if app files were deployed..."
-        az webapp deployment slot list \
+        # Dockerコンテナ設定を確認
+        echo "🐳 Docker Container Configuration:"
+        az webapp config container show \
           --resource-group "$RESOURCE_GROUP" \
           --name "$WEBAPP_NAME" \
-          --output table || echo "⚠️  Could not list deployment slots"
+          --query "{image: '[0].value', registryUrl: '[1].value'}" \
+          --output json || echo "⚠️  Could not retrieve container configuration"
+
+        # App Serviceが稼働中か確認
+        if [ "$WEBAPP_STATE" = "Running" ]; then
+          echo "✅ App Service is running"
+        else
+          echo "⚠️  App Service state: $WEBAPP_STATE"
+        fi
 
     - name: View App Service Logs
       continue-on-error: true
