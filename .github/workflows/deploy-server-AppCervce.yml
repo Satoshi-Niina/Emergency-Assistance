@@ -506,21 +506,9 @@ jobs:
       run: |
         echo "🔧 Configuring Node.js runtime..."
 
-        # Node.js ランタイム設定
-        az webapp config set \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --linuxFxVersion "NODE|20-lts" \
-          --startup-file "npm start"
-
-        echo "✅ Runtime configured"
-
-        # ランタイム設定の確認
-        az webapp config show \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --query "{linuxFxVersion:linuxFxVersion, startupCommand:appCommandLine}" \
-          --output table
+        # Docker コンテナデプロイの場合、ランタイム設定は不要
+        # ランタイムバージョンはDockerfileで指定済み
+        echo "✅ Using Docker container runtime (configured in Dockerfile)"
 
     - name: Check App Service Deployment Status
       run: |
