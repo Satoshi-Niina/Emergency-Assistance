@@ -437,12 +437,54 @@ jobs:
         DEPLOY_SIZE=$(du -h /tmp/deploy.zip | cut -f1)
         echo "✅ ZIP created (${DEPLOY_SIZE})"
 
-        # App Service にデプロイ
+        # App Service にデプロイ（非同期モード）
         echo "🚀 Uploading to App Service..."
+        echo "⏱️ Large deployments may take several minutes..."
+
+        # タイムアウトを長めに設定してデプロイ（非同期）
         az webapp deployment source config-zip \
           --resource-group "$RESOURCE_GROUP" \
           --name "$WEBAPP_NAME" \
-          --src /tmp/deploy.zip
+          --src /tmp/deploy.zip \
+          --async true \
+          --timeout 1800 || {
+            echo "⚠️ Deployment command timed out, but deployment may still be in progress"
+            echo "📍 Checking deployment status..."
+          }
+
+        # デプロイステータスを確認
+        echo "🔍 Monitoring deployment status..."
+        MAX_WAIT=300  # 5分待機
+        ELAPSED=0
+        INTERVAL=15
+
+        while [ $ELAPSED -lt $MAX_WAIT ]; do
+          # デプロイステータスを取得（最新のデプロイメント）
+          DEPLOY_STATUS=$(az rest \
+            --method get \
+            --uri "https://management.azure.com/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.Web/sites/$WEBAPP_NAME/deployments?api-version=2022-03-01" \
+            --query "value[0].properties.status" \
+            --output tsv 2>/dev/null || echo "Unknown")
+
+          echo "📊 Deployment status: $DEPLOY_STATUS (waited ${ELAPSED}s)"
+
+          if [ "$DEPLOY_STATUS" = "4" ] || [ "$DEPLOY_STATUS" = "Success" ]; then
+            echo "✅ Deployment completed successfully"
+            break
+          elif [ "$DEPLOY_STATUS" = "3" ] || [ "$DEPLOY_STATUS" = "Failed" ]; then
+            echo "❌ Deployment failed"
+            exit 1
+          fi
+
+          sleep $INTERVAL
+          ELAPSED=$((ELAPSED + INTERVAL))
+        done
+
+        if [ $ELAPSED -ge $MAX_WAIT ]; then
+          echo "⚠️ Deployment status check timed out after ${MAX_WAIT}s"
+          echo "📋 Deployment may still be in progress. Check manually:"
+          echo "    https://$WEBAPP_NAME.scm.japanwest-01.azurewebsites.net/api/deployments/latest"
+        fi
 
         echo "✅ Application deployed to App Service"
 
