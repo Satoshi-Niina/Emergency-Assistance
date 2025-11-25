@@ -384,64 +384,73 @@ jobs:
         echo "✅ Docker image verified"
         echo "📦 Image ID: $IMAGE_ID"
 
-        # デプロイパッケージの作成
-        echo "📦 Creating deployment package..."
+        # Docker イメージを tar 形式で保存
+        echo "💾 Saving Docker image to tar file..."
         mkdir -p /tmp/deploy
+        docker save ${{ env.IMAGE_NAME }}:${{ github.sha }} -o /tmp/deploy/app.tar
+        IMAGE_SIZE=$(du -h /tmp/deploy/app.tar | cut -f1)
+        echo "✅ Docker image saved: $IMAGE_SIZE"
+
+        # Deploy script を作成してアップロード
+        cat > /tmp/deploy/startup.sh << 'EOF'
+        #!/bin/bash
+        echo "🐳 App Service Docker startup script"
+        echo "Loading Docker image..."
+
+        # Docker イメージを読み込む
+        if [ -f "/home/site/wwwroot/app.tar" ]; then
+          docker load -i /home/site/wwwroot/app.tar
+          echo "✅ Docker image loaded"
+
+          # コンテナを実行
+          docker run -d \
+            --name emergency-app \
+            -p 8080:8080 \
+            --env-file /home/site/wwwroot/.env \
+            emergency-assistance:${{ github.sha }}
+
+          echo "✅ Container started"
+        else
+          echo "❌ app.tar not found!"
+          exit 1
+        fi
+        EOF
+
+        # Dockerfile と startup.sh をコピー
+        cp "$GITHUB_WORKSPACE/Dockerfile" /tmp/deploy/
+
+        # ZIP ファイルを作成
+        echo "📦 Creating deployment ZIP..."
         cd /tmp/deploy
-
-        # Dockerfile をコピー
-        cp "$GITHUB_WORKSPACE/Dockerfile" .
-
-        # server ディレクトリをコピー
-        cp -r "$GITHUB_WORKSPACE/server" .
-
-        # client/dist をコピー (存在する場合)
-        if [ -d "$GITHUB_WORKSPACE/client/dist" ]; then
-          cp -r "$GITHUB_WORKSPACE/client/dist" ./client-dist
-        fi
-
-        # .dockerignore をコピー (存在する場合)
-        if [ -f "$GITHUB_WORKSPACE/.dockerignore" ]; then
-          cp "$GITHUB_WORKSPACE/.dockerignore" .
-        fi
-
-        # package.json をコピー
-        cp "$GITHUB_WORKSPACE/package.json" . 2>/dev/null || echo "⚠️ package.json not in root"
-
-        echo "✅ Deployment package created"
-
-        # ZIP ファイルを作成してデプロイ
-        echo "📦 Creating ZIP archive..."
-        zip -r -q /tmp/deploy.zip .
-        echo "✅ ZIP archive created ($(du -h /tmp/deploy.zip | cut -f1))"
+        zip -r -q /tmp/app-deploy.zip .
+        echo "✅ ZIP created ($(du -h /tmp/app-deploy.zip | cut -f1))"
 
         # App Service にデプロイ
-        echo "🚀 Deploying to App Service..."
+        echo "🚀 Uploading to App Service..."
         az webapp deployment source config-zip \
           --resource-group "$RESOURCE_GROUP" \
           --name "$WEBAPP_NAME" \
-          --src /tmp/deploy.zip
+          --src /tmp/app-deploy.zip
 
         echo "✅ Deployment package uploaded"
 
-        # ⭐ 重要：App Service に Docker ビルド・実行を指示
-        echo "🔧 Configuring App Service to build and run from Dockerfile..."
+        # App Service の設定で Docker を有効化
+        echo "🔧 Configuring App Service for Docker..."
         az webapp config appsettings set \
           --resource-group "$RESOURCE_GROUP" \
           --name "$WEBAPP_NAME" \
           --settings \
-            DOCKER_REGISTRY_SERVER_URL="" \
             DOCKER_ENABLE_CI=true \
             WEBSITES_ENABLE_APP_SERVICE_STORAGE=false \
           --output none
 
-        # App Service を再起動してビルド・デプロイを開始
-        echo "🔄 Triggering App Service build and deployment..."
+        # 再起動
+        echo "🔄 Restarting App Service..."
         az webapp restart \
           --name "$WEBAPP_NAME" \
           --resource-group "$RESOURCE_GROUP"
 
-        echo "✅ Deployment command issued - App Service will now build from Dockerfile"
+        echo "✅ Deployment completed - waiting for startup"
 
     - name: Wait for Container Startup
       run: |
