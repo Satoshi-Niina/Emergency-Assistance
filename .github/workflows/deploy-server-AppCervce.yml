@@ -258,13 +258,54 @@ jobs:
       run: |
         echo "🧹 Cleaning App Service configuration for fresh deployment..."
 
-        # WEBSITE_RUN_FROM_PACKAGE を削除（前のデプロイ方式の競合を避ける）
-        echo "🔧 Removing WEBSITE_RUN_FROM_PACKAGE setting..."
-        az webapp config appsettings delete \
+        # 進行中のデプロイをチェック
+        echo "🔍 Checking for ongoing deployments..."
+        ONGOING_DEPLOYMENT=$(az webapp deployment list \
           --resource-group "$RESOURCE_GROUP" \
           --name "$WEBAPP_NAME" \
-          --setting-names "WEBSITE_RUN_FROM_PACKAGE" \
-          --output none 2>/dev/null || echo "⚠️ WEBSITE_RUN_FROM_PACKAGE not found (expected)"
+          --query "[?provisioningState=='InProgress' || provisioningState=='Running'].id" \
+          --output tsv 2>/dev/null || echo "")
+
+        if [ -n "$ONGOING_DEPLOYMENT" ]; then
+          echo "⚠️ WARNING: Ongoing deployment detected: $ONGOING_DEPLOYMENT"
+          echo "⏳ Waiting 30 seconds for deployment to complete..."
+          sleep 30
+        else
+          echo "✅ No ongoing deployments"
+        fi
+
+        # WEBSITE_RUN_FROM_PACKAGE設定の確認と削除
+        echo "🔍 Checking WEBSITE_RUN_FROM_PACKAGE setting..."
+        CURRENT_SETTING=$(az webapp config appsettings list \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
+          --query "[?name=='WEBSITE_RUN_FROM_PACKAGE'].value" \
+          --output tsv 2>/dev/null || echo "")
+
+        if [ -n "$CURRENT_SETTING" ]; then
+          echo "🔧 WEBSITE_RUN_FROM_PACKAGE found, removing..."
+          az webapp config appsettings delete \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$WEBAPP_NAME" \
+            --setting-names "WEBSITE_RUN_FROM_PACKAGE" \
+            --output none
+
+          # 削除を確認
+          VERIFY_SETTING=$(az webapp config appsettings list \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$WEBAPP_NAME" \
+            --query "[?name=='WEBSITE_RUN_FROM_PACKAGE'].value" \
+            --output tsv 2>/dev/null || echo "")
+
+          if [ -z "$VERIFY_SETTING" ]; then
+            echo "✅ WEBSITE_RUN_FROM_PACKAGE successfully removed"
+          else
+            echo "❌ ERROR: Failed to remove WEBSITE_RUN_FROM_PACKAGE"
+            exit 1
+          fi
+        else
+          echo "✅ WEBSITE_RUN_FROM_PACKAGE not set (expected)"
+        fi
 
         # App Service を停止
         echo "🛑 Stopping App Service..."
@@ -272,8 +313,60 @@ jobs:
           --resource-group "$RESOURCE_GROUP" \
           --name "$WEBAPP_NAME"
 
-        # 少し待機
-        sleep 3
+        # 停止完了を待つ
+        echo "⏳ Waiting for App Service to stop completely..."
+        sleep 10
+
+        # 停止を確認
+        WEBAPP_STATE=$(az webapp show \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
+          --query "state" \
+          --output tsv)
+
+        echo "📊 App Service State: $WEBAPP_STATE"
+
+    - name: Verify Clean State Before Deployment
+      run: |
+        echo "🔍 Verifying App Service is ready for deployment..."
+
+        # WEBSITE_RUN_FROM_PACKAGE が削除されていることを確認
+        SETTING_CHECK=$(az webapp config appsettings list \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
+          --query "[?name=='WEBSITE_RUN_FROM_PACKAGE'].value" \
+          --output tsv 2>/dev/null || echo "")
+
+        if [ -n "$SETTING_CHECK" ]; then
+          echo "❌ ERROR: WEBSITE_RUN_FROM_PACKAGE still exists!"
+          echo "⚠️ This should have been removed in the previous step"
+          exit 1
+        fi
+        echo "✅ WEBSITE_RUN_FROM_PACKAGE confirmed removed"
+
+        # 進行中のデプロイがないことを確認
+        ONGOING=$(az webapp deployment list \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
+          --query "[?provisioningState=='InProgress' || provisioningState=='Running'].id" \
+          --output tsv 2>/dev/null || echo "")
+
+        if [ -n "$ONGOING" ]; then
+          echo "❌ ERROR: Deployment still in progress: $ONGOING"
+          echo "⚠️ Cannot proceed with new deployment"
+          exit 1
+        fi
+        echo "✅ No ongoing deployments"
+
+        # App Service の状態を確認
+        STATE=$(az webapp show \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
+          --query "state" \
+          --output tsv)
+
+        echo "📊 App Service State: $STATE"
+        echo "✅ App Service is ready for deployment"
 
     - name: Deploy Docker Container to App Service
       run: |
