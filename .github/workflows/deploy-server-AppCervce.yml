@@ -33,7 +33,8 @@ jobs:
         echo "📋 Branch: ${{ github.ref }}"
         echo ""
 
-        # 重要なファイルの存在確誁E        CRITICAL_FILES=(
+        # 重要なファイルの存在確認
+        CRITICAL_FILES=(
           "server/azure-server.mjs"
           "server/lib/azure-storage.ts"
           "Dockerfile"
@@ -43,30 +44,31 @@ jobs:
           if [ -f "$file" ]; then
             FILE_SIZE=$(wc -c < "$file" 2>/dev/null || echo "0")
             LAST_MODIFIED=$(git log -1 --format="%ai" -- "$file" 2>/dev/null || echo "unknown")
-            echo "✁E$file exists (size: $FILE_SIZE bytes, last modified: $LAST_MODIFIED)"
+            echo "✅ $file exists (size: $FILE_SIZE bytes, last modified: $LAST_MODIFIED)"
           else
-            echo "❁EERROR: $file not found in repository!"
+            echo "❌ ERROR: $file not found in repository!"
             exit 1
           fi
         done
 
-        # サーバ�Eファイルの冁E��確誁E        echo ""
+        # サーバーファイルの内容確認
+        echo ""
         echo "🔍 Verifying server/azure-server.mjs content..."
         if grep -q "getBlobServiceClient" server/azure-server.mjs; then
-          echo "✁EgetBlobServiceClient function found"
+          echo "✅ getBlobServiceClient function found"
         else
-          echo "❁EERROR: getBlobServiceClient function not found!"
+          echo "❌ ERROR: getBlobServiceClient function not found!"
           exit 1
         fi
 
         if grep -q "Testing BLOB connection" server/azure-server.mjs; then
-          echo "✁EBLOB connection test found"
+          echo "✅ BLOB connection test found"
         else
-          echo "⚠�E�EWARNING: BLOB connection test not found"
+          echo "⚠️ WARNING: BLOB connection test not found"
         fi
 
         echo ""
-        echo "✁EAll critical files verified - Docker build will use these files"
+        echo "✅ All critical files verified - Docker build will use these files"
 
     - name: Set Environment Variables
       id: configure-env
@@ -95,7 +97,7 @@ jobs:
           echo "static-web-app-url=$STATIC_WEB_APP_URL"
         } >> "$GITHUB_OUTPUT"
 
-        echo "✁EEnvironment: $ENVIRONMENT"
+        echo "✅ Environment: $ENVIRONMENT"
         echo "🔗 Backend: $APP_URL"
         echo "🔗 Frontend: $STATIC_WEB_APP_URL"
 
@@ -105,23 +107,23 @@ jobs:
 
         # Azure Container Registry
         if [ -z "${{ secrets.ACR_LOGIN_SERVER }}" ] || [ -z "${{ secrets.ACR_USERNAME }}" ] || [ -z "${{ secrets.ACR_PASSWORD }}" ]; then
-          echo "❁EAzure Container Registry secrets are missing"
+          echo "❌ Azure Container Registry secrets are missing"
           exit 1
         fi
 
         # Azure Resource Group
         if [ -z "$RESOURCE_GROUP" ]; then
-          echo "❁EAZURE_RESOURCE_GROUP secret is missing"
+          echo "❌ AZURE_RESOURCE_GROUP secret is missing"
           exit 1
         fi
 
         # Application secrets
         if [ -z "${{ secrets.DATABASE_URL }}" ]; then
-          echo "❁EDATABASE_URL secret is missing"
+          echo "❌ DATABASE_URL secret is missing"
           exit 1
         fi
 
-        echo "✁EAll required secrets validated"
+        echo "✅ All required secrets validated"
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -139,34 +141,37 @@ jobs:
         echo "📁 Build context: . (repository root)"
         echo ""
 
-        # Dockerfileが存在するか確誁E        if [ ! -f "Dockerfile" ]; then
-          echo "❁EERROR: Dockerfile not found!"
+        # Dockerfileが存在するか確認
+        if [ ! -f "Dockerfile" ]; then
+          echo "❌ ERROR: Dockerfile not found!"
           exit 1
         fi
 
-        # Dockerfileの冁E��を確認！EOPYコマンドが正しいか！E        echo "📋 Dockerfile COPY commands:"
+        # Dockerfileの内容を確認（COPYコマンドが正しいか）
+        echo "📋 Dockerfile COPY commands:"
         grep -E "^COPY|^ADD" Dockerfile || echo "No COPY/ADD commands found"
         echo ""
 
-        # コピ�Eされるファイルが存在するか確誁E        echo "🔍 Verifying files that will be copied into Docker image:"
+        # コピーされるファイルが存在するか確認
+        echo "🔍 Verifying files that will be copied into Docker image:"
         if [ -d "server" ]; then
           SERVER_FILES=$(find server -type f -name "*.mjs" -o -name "*.ts" | wc -l)
-          echo "✁Eserver directory exists ($SERVER_FILES files)"
+          echo "✅ server directory exists ($SERVER_FILES files)"
         else
-          echo "❁EERROR: server directory not found!"
+          echo "❌ ERROR: server directory not found!"
           exit 1
         fi
 
         if [ -f "server/azure-server.mjs" ]; then
           FILE_SIZE=$(wc -c < server/azure-server.mjs)
-          echo "✁Eserver/azure-server.mjs exists (size: $FILE_SIZE bytes)"
+          echo "✅ server/azure-server.mjs exists (size: $FILE_SIZE bytes)"
         else
-          echo "❁EERROR: server/azure-server.mjs not found!"
+          echo "❌ ERROR: server/azure-server.mjs not found!"
           exit 1
         fi
 
         echo ""
-        echo "✁EDocker build context verified - all required files are present"
+        echo "✅ Docker build context verified - all required files are present"
 
     - name: Build and Push Docker Image to ACR
       id: docker-build
@@ -193,7 +198,8 @@ jobs:
         echo "📦 Image: $IMAGE_TAG"
         echo ""
 
-        # Dockerイメージを一時的に実行してファイルを確誁E        echo "🔍 Checking files in Docker image..."
+        # Dockerイメージを一時的に実行してファイルを確認
+        echo "🔍 Checking files in Docker image..."
         docker run --rm --entrypoint sh "$IMAGE_TAG" -c "
           echo '=== Server files in image ==='
           ls -la /app/server/ | head -20
@@ -201,46 +207,47 @@ jobs:
           echo '=== Checking critical server files ==='
           if [ -f /app/server/azure-server.mjs ]; then
             FILE_SIZE=\$(wc -c < /app/server/azure-server.mjs)
-            echo '✁Eazure-server.mjs found (size: '\$FILE_SIZE' bytes)'
+            echo '✅ azure-server.mjs found (size: '\$FILE_SIZE' bytes)'
 
-            # ファイルの冁E��を確誁E            if grep -q 'getBlobServiceClient' /app/server/azure-server.mjs; then
-              echo '✁EgetBlobServiceClient function found'
+            # ファイルの内容を確認
+            if grep -q 'getBlobServiceClient' /app/server/azure-server.mjs; then
+              echo '✅ getBlobServiceClient function found'
             else
-              echo '❁EERROR: getBlobServiceClient function not found!'
+              echo '❌ ERROR: getBlobServiceClient function not found!'
               exit 1
             fi
 
             if grep -q 'Testing BLOB connection' /app/server/azure-server.mjs; then
-              echo '✁EBLOB connection test found'
+              echo '✅ BLOB connection test found'
             else
-              echo '⚠�E�EWARNING: BLOB connection test not found'
+              echo '⚠️ WARNING: BLOB connection test not found'
             fi
           else
-            echo '❁EERROR: azure-server.mjs not found in image!'
+            echo '❌ ERROR: azure-server.mjs not found in image!'
             exit 1
           fi
 
           if [ -f /app/server/lib/azure-storage.ts ]; then
-            echo '✁Eazure-storage.ts found'
+            echo '✅ azure-storage.ts found'
           else
-            echo '⚠�E�EWARNING: azure-storage.ts not found (may be compiled)'
+            echo '⚠️ WARNING: azure-storage.ts not found (may be compiled)'
           fi
 
           echo ''
           echo '=== Client dist files ==='
           if [ -d /app/client/dist ]; then
-            echo '✁Eclient/dist directory found'
+            echo '✅ client/dist directory found'
             ls -la /app/client/dist/ | head -10
           else
-            echo '⚠�E�EWARNING: client/dist directory not found'
+            echo '⚠️ WARNING: client/dist directory not found'
           fi
         " || {
-          echo "⚠�E�ECould not verify image contents directly (this is non-critical)"
+          echo "⚠️ Could not verify image contents directly (this is non-critical)"
           echo "💡 Image was built successfully, verification will happen at runtime"
         }
 
         echo ""
-        echo "✁EDocker image verification completed"
+        echo "✅ Docker image verification completed"
         echo "📋 Image tag: $IMAGE_TAG"
         echo "📋 Commit SHA: ${{ github.sha }}"
 
@@ -253,15 +260,16 @@ jobs:
       run: |
         echo "🔧 Configuring App Service environment variables..."
 
-        # DATABASE_URLの検証�E�長さ�Eみ、�E容は表示しなぁE��E        DB_URL="${{ secrets.DATABASE_URL }}"
+        # DATABASE_URLの検証（長さのみ、内容は表示しない）
+        DB_URL="${{ secrets.DATABASE_URL }}"
         if [ -z "$DB_URL" ]; then
-          echo "❁EERROR: DATABASE_URL secret is empty!"
+          echo "❌ ERROR: DATABASE_URL secret is empty!"
           exit 1
         fi
         DB_URL_LENGTH=${#DB_URL}
-        echo "✁EDATABASE_URL length: $DB_URL_LENGTH characters"
+        echo "✅ DATABASE_URL length: $DB_URL_LENGTH characters"
 
-        # Azure CLIのappsettings setコマンドでは、各設定を個別に設定する方が安�E
+        # Azure CLIのappsettings setコマンドでは、各設定を個別に設定する方が安全
         echo "🔧 Setting environment variables individually..."
 
         az webapp config appsettings set \
@@ -280,7 +288,8 @@ jobs:
             WEBSITES_ENABLE_APP_SERVICE_STORAGE=false \
           --output none
 
-        # 機寁E��報は個別に設定（引用符で囲む�E�E        az webapp config appsettings set \
+        # 機密情報は個別に設定（引用符で囲む）
+        az webapp config appsettings set \
           --resource-group "$RESOURCE_GROUP" \
           --name "$WEBAPP_NAME" \
           --settings \
@@ -291,7 +300,8 @@ jobs:
             AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
           --output none
 
-        # フロントエンドURL設定（引用符なしで設定！E        az webapp config appsettings set \
+        # フロントエンドURL設定（引用符なしで設定）
+        az webapp config appsettings set \
           --resource-group "$RESOURCE_GROUP" \
           --name "$WEBAPP_NAME" \
           --settings \
@@ -300,14 +310,15 @@ jobs:
             CORS_ALLOW_ORIGINS=$STATIC_WEB_APP_URL,http://localhost:5173,http://localhost:8080 \
           --output none
 
-        # コンチE��名設宁E        az webapp config appsettings set \
+        # コンテナ名設定
+        az webapp config appsettings set \
           --resource-group "$RESOURCE_GROUP" \
           --name "$WEBAPP_NAME" \
           --settings \
             AZURE_STORAGE_CONTAINER_NAME="${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}" \
           --output none
 
-        # AZURE_STORAGE_ACCOUNT_NAMEが設定されてぁE��場合�E追加
+        # AZURE_STORAGE_ACCOUNT_NAMEが設定されている場合は追加
         if [ -n "${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" ]; then
           az webapp config appsettings set \
             --resource-group "$RESOURCE_GROUP" \
@@ -315,12 +326,12 @@ jobs:
             --settings \
               AZURE_STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
             --output none
-          echo "✁EAZURE_STORAGE_ACCOUNT_NAME set"
+          echo "✅ AZURE_STORAGE_ACCOUNT_NAME set"
         else
-          echo "⚠�E�EAZURE_STORAGE_ACCOUNT_NAME not set (using connection string only)"
+          echo "⚠️ AZURE_STORAGE_ACCOUNT_NAME not set (using connection string only)"
         fi
 
-        # BLOB_PREFIXが設定されてぁE��場合�E追加
+        # BLOB_PREFIXが設定されている場合は追加
         if [ -n "${{ secrets.BLOB_PREFIX }}" ]; then
           az webapp config appsettings set \
             --resource-group "$RESOURCE_GROUP" \
@@ -328,31 +339,33 @@ jobs:
             --settings \
               BLOB_PREFIX="${{ secrets.BLOB_PREFIX }}" \
             --output none
-          echo "✁EBLOB_PREFIX set"
+          echo "✅ BLOB_PREFIX set"
         fi
 
-        echo "✁EEnvironment variables configured"
+        echo "✅ Environment variables configured"
 
-        # 設定された環墁E��数を確認（機寁E��報はマスク�E�E        echo ""
+        # 設定された環境変数を確認（機密情報はマスク）
+        echo ""
         echo "🔍 Verifying configured environment variables..."
         az webapp config appsettings list \
           --resource-group "$RESOURCE_GROUP" \
           --name "$WEBAPP_NAME" \
           --query "[?name=='AZURE_STORAGE_CONNECTION_STRING' || name=='AZURE_STORAGE_ACCOUNT_NAME' || name=='AZURE_STORAGE_CONTAINER_NAME' || name=='BLOB_PREFIX'].{name:name, value:value}" \
-          --output table || echo "⚠�E�ECould not verify environment variables"
+          --output table || echo "⚠️ Could not verify environment variables"
 
-        # 環墁E��数の存在確誁E        STORAGE_CONN_STR=$(az webapp config appsettings list \
+        # 環境変数の存在確認
+        STORAGE_CONN_STR=$(az webapp config appsettings list \
           --resource-group "$RESOURCE_GROUP" \
           --name "$WEBAPP_NAME" \
           --query "[?name=='AZURE_STORAGE_CONNECTION_STRING'].value" \
           --output tsv 2>/dev/null || echo "")
 
         if [ -z "$STORAGE_CONN_STR" ]; then
-          echo "❁EERROR: AZURE_STORAGE_CONNECTION_STRING is not set in App Service!"
+          echo "❌ ERROR: AZURE_STORAGE_CONNECTION_STRING is not set in App Service!"
           exit 1
         else
           CONN_STR_LENGTH=${#STORAGE_CONN_STR}
-          echo "✁EAZURE_STORAGE_CONNECTION_STRING is set (length: $CONN_STR_LENGTH)"
+          echo "✅ AZURE_STORAGE_CONNECTION_STRING is set (length: $CONN_STR_LENGTH)"
         fi
 
         STORAGE_ACCOUNT=$(az webapp config appsettings list \
@@ -362,9 +375,9 @@ jobs:
           --output tsv 2>/dev/null || echo "")
 
         if [ -n "$STORAGE_ACCOUNT" ]; then
-          echo "✁EAZURE_STORAGE_ACCOUNT_NAME is set: $STORAGE_ACCOUNT"
+          echo "✅ AZURE_STORAGE_ACCOUNT_NAME is set: $STORAGE_ACCOUNT"
         else
-          echo "⚠�E�EAZURE_STORAGE_ACCOUNT_NAME is not set"
+          echo "⚠️ AZURE_STORAGE_ACCOUNT_NAME is not set"
         fi
 
         STORAGE_CONTAINER=$(az webapp config appsettings list \
@@ -374,9 +387,9 @@ jobs:
           --output tsv 2>/dev/null || echo "")
 
         if [ -n "$STORAGE_CONTAINER" ]; then
-          echo "✁EAZURE_STORAGE_CONTAINER_NAME is set: $STORAGE_CONTAINER"
+          echo "✅ AZURE_STORAGE_CONTAINER_NAME is set: $STORAGE_CONTAINER"
         else
-          echo "⚠�E�EAZURE_STORAGE_CONTAINER_NAME is not set"
+          echo "⚠️ AZURE_STORAGE_CONTAINER_NAME is not set"
         fi
 
     - name: Deploy Docker Container to App Service
@@ -391,7 +404,7 @@ jobs:
           --docker-registry-server-user ${{ secrets.ACR_USERNAME }} \
           --docker-registry-server-password ${{ secrets.ACR_PASSWORD }}
 
-        echo "✁EDocker container configured"
+        echo "✅ Docker container configured"
 
         # Clear appCommandLine to use Dockerfile's CMD
         echo "🔧 Clearing appCommandLine to use Dockerfile CMD..."
@@ -400,7 +413,7 @@ jobs:
           --resource-group "$RESOURCE_GROUP" \
           --generic-configurations '{"appCommandLine":""}'
 
-        echo "✁EappCommandLine cleared - Dockerfile CMD will be used"
+        echo "✅ appCommandLine cleared - Dockerfile CMD will be used"
 
     - name: Restart App Service
       run: |
@@ -410,7 +423,7 @@ jobs:
           --name "$WEBAPP_NAME" \
           --resource-group "$RESOURCE_GROUP"
 
-        echo "✁EApp Service restart initiated"
+        echo "✅ App Service restart initiated"
 
     - name: Wait for Container Startup
       run: |
@@ -422,15 +435,16 @@ jobs:
       run: |
         echo "🌱 Seeding database with admin user..."
 
-        # PostgreSQL クライアントをインスト�Eル
+        # PostgreSQL クライアントをインストール
         sudo apt-get update -qq
         sudo apt-get install -y postgresql-client > /dev/null 2>&1
 
-        # DATABASE_URLから接続情報を抽出して実衁E        echo "Executing seed script..."
-        if psql "${{ secrets.DATABASE_URL }}" -f scripts/seed-admin-user.sql 2>&1 | grep -q "シード完亁E; then
-          echo "✁EDatabase seeded successfully"
+        # DATABASE_URLから接続情報を抽出して実行
+        echo "Executing seed script..."
+        if psql "${{ secrets.DATABASE_URL }}" -f scripts/seed-admin-user.sql 2>&1 | grep -q "シード完了"; then
+          echo "✅ Database seeded successfully"
         else
-          echo "⚠�E�E Seed script executed (check logs for details)"
+          echo "⚠️  Seed script executed (check logs for details)"
         fi
 
     - name: Health Check
@@ -444,13 +458,14 @@ jobs:
         for attempt in $(seq 1 $MAX_RETRIES); do
           echo "🔍 Health check attempt $attempt/$MAX_RETRIES..."
 
-          # シンプルな /health エンド�EイントをチェチE��
+          # シンプルな /health エンドポイントをチェック
           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL/health" || echo "000")
 
           if [ "$HTTP_CODE" = "200" ]; then
-            echo "✁EHealth check passed (HTTP $HTTP_CODE)"
+            echo "✅ Health check passed (HTTP $HTTP_CODE)"
 
-            # 詳細なヘルスチェチE��も実衁E            echo "📊 Fetching detailed health info..."
+            # 詳細なヘルスチェックも実行
+            echo "📊 Fetching detailed health info..."
             curl -s "$APP_URL/api/health/detailed" | head -n 20
 
             echo "🎉 Deployment successful and server is responding"
@@ -461,7 +476,7 @@ jobs:
           [ $attempt -lt $MAX_RETRIES ] && sleep $RETRY_INTERVAL
         done
 
-        echo "⚠�E�EHealth check timeout after $MAX_RETRIES attempts"
+        echo "⚠️ Health check timeout after $MAX_RETRIES attempts"
         echo "📋 Check logs: az webapp log tail --name $WEBAPP_NAME --resource-group $RESOURCE_GROUP"
         exit 1
 
@@ -481,7 +496,7 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
 
         if [ "${{ job.status }}" = "success" ]; then
-          echo "### ✁EDeployment Successful" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Deployment Successful" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Verification Commands:**" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
@@ -500,7 +515,7 @@ jobs:
           echo "az webapp log tail --name ${WEBAPP_NAME} --resource-group ${RESOURCE_GROUP}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
         else
-          echo "### ❁EDeployment Failed" >> $GITHUB_STEP_SUMMARY
+          echo "### ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Troubleshooting:**" >> $GITHUB_STEP_SUMMARY
           echo "1. Check workflow logs above" >> $GITHUB_STEP_SUMMARY
@@ -508,4 +523,4 @@ jobs:
           echo "3. Check App Service status: \`az webapp show --name ${WEBAPP_NAME} --query state\`" >> $GITHUB_STEP_SUMMARY
         fi
 
-# Trigger: 2025-11-25 10:15:49
+# Trigger: 2025-11-25 10:19:22
