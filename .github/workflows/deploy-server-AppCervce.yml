@@ -254,9 +254,9 @@ jobs:
           echo "⚠️ AZURE_STORAGE_CONTAINER_NAME is not set"
         fi
 
-    - name: Deploy Docker Container to App Service
+    - name: Clean App Service Configuration
       run: |
-        echo "🚀 Deploying server application to Azure App Service..."
+        echo "🧹 Cleaning App Service configuration for fresh deployment..."
 
         # WEBSITE_RUN_FROM_PACKAGE を削除（前のデプロイ方式の競合を避ける）
         echo "🔧 Removing WEBSITE_RUN_FROM_PACKAGE setting..."
@@ -265,6 +265,19 @@ jobs:
           --name "$WEBAPP_NAME" \
           --setting-names "WEBSITE_RUN_FROM_PACKAGE" \
           --output none 2>/dev/null || echo "⚠️ WEBSITE_RUN_FROM_PACKAGE not found (expected)"
+
+        # App Service を停止
+        echo "🛑 Stopping App Service..."
+        az webapp stop \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME"
+
+        # 少し待機
+        sleep 3
+
+    - name: Deploy Docker Container to App Service
+      run: |
+        echo "🚀 Deploying server application to Azure App Service..."
 
         # デプロイパッケージの作成
         echo "📦 Creating deployment package..."
@@ -339,6 +352,20 @@ jobs:
           --src /tmp/deploy.zip
 
         echo "✅ Application deployed to App Service"
+
+    - name: Restart App Service
+      run: |
+        echo "🔄 Restarting App Service for fresh start..."
+
+        az webapp restart \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME"
+
+        echo "✅ App Service restarted"
+
+        # 再起動完了を待つ
+        echo "⏳ Waiting for App Service to start (60 seconds)..."
+        sleep 60
 
     - name: Configure Node.js Runtime for App Service
       run: |
