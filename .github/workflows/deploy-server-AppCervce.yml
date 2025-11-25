@@ -371,90 +371,66 @@ jobs:
 
     - name: Deploy Docker Container to App Service
       run: |
-        echo "🐳 Deploying Docker container to Azure App Service..."
+        echo "🚀 Deploying application to Azure App Service..."
 
-        # Docker イメージが存在するか確認
-        IMAGE_ID=$(docker images --quiet ${{ env.IMAGE_NAME }}:${{ github.sha }})
-
-        if [ -z "$IMAGE_ID" ]; then
-          echo "❌ Docker image not found: ${{ env.IMAGE_NAME }}:${{ github.sha }}"
-          exit 1
-        fi
-
-        echo "✅ Docker image verified"
-        echo "📦 Image ID: $IMAGE_ID"
-
-        # Docker イメージを tar 形式で保存
-        echo "💾 Saving Docker image to tar file..."
+        # デプロイパッケージの作成
+        echo "📦 Creating deployment package..."
         mkdir -p /tmp/deploy
-        docker save ${{ env.IMAGE_NAME }}:${{ github.sha }} -o /tmp/deploy/app.tar
-        IMAGE_SIZE=$(du -h /tmp/deploy/app.tar | cut -f1)
-        echo "✅ Docker image saved: $IMAGE_SIZE"
+        cd /tmp/deploy
 
-        # Deploy script を作成してアップロード
-        cat > /tmp/deploy/startup.sh << 'EOF'
-        #!/bin/bash
-        echo "🐳 App Service Docker startup script"
-        echo "Loading Docker image..."
+        # すべてのファイルをコピー
+        cp -r "$GITHUB_WORKSPACE/server" .
+        cp -r "$GITHUB_WORKSPACE/client/dist" ./public 2>/dev/null || mkdir -p public
 
-        # Docker イメージを読み込む
-        if [ -f "/home/site/wwwroot/app.tar" ]; then
-          docker load -i /home/site/wwwroot/app.tar
-          echo "✅ Docker image loaded"
-
-          # コンテナを実行
-          docker run -d \
-            --name emergency-app \
-            -p 8080:8080 \
-            --env-file /home/site/wwwroot/.env \
-            emergency-assistance:${{ github.sha }}
-
-          echo "✅ Container started"
-        else
-          echo "❌ app.tar not found!"
-          exit 1
+        # package.json をコピー
+        if [ -f "$GITHUB_WORKSPACE/package.json" ]; then
+          cp "$GITHUB_WORKSPACE/package.json" .
         fi
+
+        if [ -f "$GITHUB_WORKSPACE/package-lock.json" ]; then
+          cp "$GITHUB_WORKSPACE/package-lock.json" .
+        fi
+
+        # Web config for Azure App Service
+        cat > web.config << 'EOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <configuration>
+          <system.webServer>
+            <rewrite>
+              <rules>
+                <rule name="SPA" stopProcessing="true">
+                  <match url="^(?!api).*$" />
+                  <conditions logicalGrouping="MatchAll">
+                    <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
+                    <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
+                  </conditions>
+                  <action type="Rewrite" url="/index.html" />
+                </rule>
+              </rules>
+            </rewrite>
+          </system.webServer>
+        </configuration>
         EOF
 
-        # Dockerfile と startup.sh をコピー
-        cp "$GITHUB_WORKSPACE/Dockerfile" /tmp/deploy/
+        echo "✅ Deployment package created"
 
         # ZIP ファイルを作成
-        echo "📦 Creating deployment ZIP..."
-        cd /tmp/deploy
-        zip -r -q /tmp/app-deploy.zip .
-        echo "✅ ZIP created ($(du -h /tmp/app-deploy.zip | cut -f1))"
+        echo "📦 Creating ZIP archive..."
+        zip -r -q /tmp/deploy.zip .
+        echo "✅ ZIP created ($(du -h /tmp/deploy.zip | cut -f1))"
 
         # App Service にデプロイ
         echo "🚀 Uploading to App Service..."
         az webapp deployment source config-zip \
           --resource-group "$RESOURCE_GROUP" \
           --name "$WEBAPP_NAME" \
-          --src /tmp/app-deploy.zip
+          --src /tmp/deploy.zip
 
-        echo "✅ Deployment package uploaded"
-
-        # App Service の設定で Docker を有効化
-        echo "🔧 Configuring App Service for Docker..."
-        az webapp config appsettings set \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --settings \
-            DOCKER_ENABLE_CI=true \
-            WEBSITES_ENABLE_APP_SERVICE_STORAGE=false \
-          --output none
-
-        # 再起動
-        echo "🔄 Restarting App Service..."
-        az webapp restart \
-          --name "$WEBAPP_NAME" \
-          --resource-group "$RESOURCE_GROUP"
-
-        echo "✅ Deployment completed - waiting for startup"
+        echo "✅ Application deployed to App Service"
 
     - name: Wait for Container Startup
       run: |
-        echo "⏳ Waiting for Docker container to start (60 seconds)..."
+        echo "⏳ Waiting for application to start (60 seconds)..."
         sleep 60
 
     - name: Seed Database (Production Only)
