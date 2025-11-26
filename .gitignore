@@ -270,11 +270,19 @@ docker/data/
 # Development Files - Exclude from Deployment
 # ========================================
 # Development scripts (not needed in production)
+# But allow diagnostic scripts
+!scripts/check-blob-production.sh
+!scripts/diagnose-blob-config.ps1
 scripts/
 !scripts/.gitkeep
 
 # Documentation (not needed in production deployment)
-docs/
+# But allow deployment-related documentation
+!docs/BLOB_SETUP.md
+!docs/BLOB_SETUP_SUMMARY.md
+!docs/DEPLOYMENT_CHECKLIST.md
+!docs/QUICKSTART_BLOB.md
+!docs/TROUBLESHOOTING_BLOB.md
 # Allow important documentation files
 !README.md
 !CHANGELOG.md
