@@ -1,4 +1,5 @@
 // 動的環境設定
+// Trigger deploy: noop comment updated at runtime
 (function () {
   const isLocalhost = window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1' ||
@@ -19,8 +20,9 @@
   } else if (isAzureStaticWebApp) {
     // Azure Static Web Apps: App ServiceバックエンドAPI使用
     // CORS_ALLOW_ORIGINSは現在のオリジンを使用（動的）
+    // PLACEHOLDER_API_BASE_URL はデプロイ時に VITE_API_BASE_URL で置換される
     config = {
-      "API_BASE_URL": "https://emergency-assistance-bfckhjejb3fbf9du.japanwest-01.azurewebsites.net/api",
+      "API_BASE_URL": "PLACEHOLDER_API_BASE_URL",
       "CORS_ALLOW_ORIGINS": window.location.origin,
       "ENVIRONMENT": "production"
     };
