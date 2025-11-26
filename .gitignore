@@ -273,8 +273,9 @@ docker/data/
 # But allow diagnostic scripts
 !scripts/check-blob-production.sh
 !scripts/diagnose-blob-config.ps1
+!client/scripts/replace-env.cjs
+!client/scripts/.gitkeep
 scripts/
-!scripts/.gitkeep
 
 # Documentation (not needed in production deployment)
 # But allow deployment-related documentation
