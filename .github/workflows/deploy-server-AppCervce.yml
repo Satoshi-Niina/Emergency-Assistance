@@ -187,6 +187,18 @@ jobs:
             CORS_ALLOW_ORIGINS=$STATIC_WEB_APP_URL,http://localhost:5173,http://localhost:8080 \
           --output none
 
+        # Azure Container Registry認証設定（Docker image pull用）
+        echo "🔐 Configuring ACR authentication..."
+        az webapp config appsettings set \
+          --resource-group "$RESOURCE_GROUP" \
+          --name "$WEBAPP_NAME" \
+          --settings \
+            DOCKER_REGISTRY_SERVER_URL="https://${{ secrets.ACR_LOGIN_SERVER }}" \
+            DOCKER_REGISTRY_SERVER_USERNAME="${{ secrets.ACR_USERNAME }}" \
+            DOCKER_REGISTRY_SERVER_PASSWORD="${{ secrets.ACR_PASSWORD }}" \
+          --output none
+        echo "✅ ACR authentication configured"
+
         # コンテナ名設定（上記の機密情報セクションで設定済みのためスキップ）
         echo "✅ AZURE_STORAGE_CONTAINER_NAME already set in credentials section"
 
