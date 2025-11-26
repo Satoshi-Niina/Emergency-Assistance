@@ -11,7 +11,7 @@
     "vite-only": "vite",
     "prebuild": "npm run clean",
     "build": "vite build",
-    "postbuild": "echo Build completed with timestamp: $(date)",
+    "postbuild": "node scripts/replace-env.cjs",
     "preview": "vite preview",
     "clean": "rimraf dist"
   },

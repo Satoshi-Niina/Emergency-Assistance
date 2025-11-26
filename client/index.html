@@ -21,13 +21,12 @@
       worker-src 'self' blob:;
       frame-src 'self';
     " />
-  <!-- Runtime configuration -->
   <script>
-    // バックエンドURLの設定（デプロイ時に埋め込まれる）
-    // この値はデプロイワークフローで自動的に置換されます
-    // PLACEHOLDER_BACKEND_SERVICE_URL はデプロイ時に実際のURLに置換されます
-    window.BACKEND_SERVICE_URL = '';
-    console.log('🔧 Initial BACKEND_SERVICE_URL:', window.BACKEND_SERVICE_URL);
+    // バックエンドURLの設定（ビルド時に環境変数から置換される）
+    // このテンプレート変数はGitHub Actionsまたはデプロイスクリプトによってビルド時に置換されます
+    const backendUrl = '%%%VITE_BACKEND_SERVICE_URL%%%';
+    window.BACKEND_SERVICE_URL = (backendUrl && backendUrl !== '%%%VITE_BACKEND_SERVICE_URL%%%') ? backendUrl : '';
+    
     // 動的環境設定（インライン）
     (function () {
       const isLocalhost = window.location.hostname === 'localhost' ||
@@ -51,12 +50,10 @@
         // 環境変数からバックエンドURLを取得（ビルド時に埋め込まれる）
         // API_BASE_URLには/apiを含める（完全なAPIエンドポイントURL）
         const backendUrl = window.BACKEND_SERVICE_URL || '';
-        // フォールバック: PLACEHOLDER_FALLBACK_BACKEND_URL はデプロイ時に VITE_SERVER_URL で置換される
-        const fallbackBackendUrl = 'PLACEHOLDER_FALLBACK_BACKEND_URL';
         config = {
-          "API_BASE_URL": (backendUrl && backendUrl !== 'PLACEHOLDER_BACKEND_SERVICE_URL')
+          "API_BASE_URL": (backendUrl && backendUrl !== '')
             ? backendUrl + "/api"
-            : fallbackBackendUrl + "/api", // フォールバックURLを使用
+            : "/api", // フォールバック: Static Web App統合Functions
           "CORS_ALLOW_ORIGINS": window.location.origin,
           "ENVIRONMENT": "production"
         };
@@ -73,6 +70,7 @@
         hostname: window.location.hostname,
         environment: config.ENVIRONMENT,
         "API_BASE_URL": config.API_BASE_URL,
+        backendUrl: window.BACKEND_SERVICE_URL,
       });
 
       window.runtimeConfig = config;
