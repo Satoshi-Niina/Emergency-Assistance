@@ -1,31 +1,26 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const zod_1 = require("zod");
-const crypto_1 = __importDefault(require("crypto"));
-const db_js_1 = require("../services/db.js");
-const chunker_js_1 = require("../services/chunker.js");
-const embedding_js_1 = require("../services/embedding.js");
-const config_manager_js_1 = require("../services/config-manager.js");
-const router = (0, express_1.Router)();
+import { Router } from 'express';
+import { z } from 'zod';
+import crypto from 'crypto';
+import { pool } from '../services/db.js';
+import { chunkText } from '../services/chunker.js';
+import { embedTexts } from '../services/embedding.js';
+import { loadRagConfig } from '../services/config-manager.js';
+const router = Router();
 // 入力スキーマの定義
-const IngestRequestSchema = zod_1.z.object({
-    filename: zod_1.z.string().min(1).max(255),
-    text: zod_1.z.string().min(1).max(1000000), // 最大1MB
-    tags: zod_1.z.array(zod_1.z.string()).optional().default([]),
+const IngestRequestSchema = z.object({
+    filename: z.string().min(1).max(255),
+    text: z.string().min(1).max(1000000), // 最大1MB
+    tags: z.array(z.string()).optional().default([]),
 });
 // レスポンススキーマの定義
-const IngestResponseSchema = zod_1.z.object({
-    doc_id: zod_1.z.string(),
-    chunks: zod_1.z.number(),
-    message: zod_1.z.string(),
-    stats: zod_1.z.object({
-        totalChunks: zod_1.z.number(),
-        totalTokens: zod_1.z.number(),
-        processingTime: zod_1.z.number(),
+const IngestResponseSchema = z.object({
+    doc_id: z.string(),
+    chunks: z.number(),
+    message: z.string(),
+    stats: z.object({
+        totalChunks: z.number(),
+        totalTokens: z.number(),
+        processingTime: z.number(),
     }),
 });
 /**
@@ -45,7 +40,7 @@ router.post('/', async (req, res) => {
         }
         const { filename, text, tags } = validationResult.data;
         // 設定を読み込み
-        const config = await (0, config_manager_js_1.loadRagConfig)();
+        const config = await loadRagConfig();
         // テキストの長さ制限チェック
         if (text.length > config.maxTextLength) {
             return res.status(400).json({
@@ -55,10 +50,10 @@ router.post('/', async (req, res) => {
             });
         }
         // 原文のハッシュを生成
-        const textHash = crypto_1.default.createHash('sha1').update(text).digest('hex');
+        const textHash = crypto.createHash('sha1').update(text).digest('hex');
         const docId = textHash;
         // データベース接続
-        const client = await db_js_1.pool.connect();
+        const client = await pool.connect();
         try {
             // トランザクション開始
             await client.query('BEGIN');
@@ -93,7 +88,7 @@ router.post('/', async (req, res) => {
             // 既存のチャンクを削除（新しい内容で再作成）
             await client.query('DELETE FROM chunks WHERE doc_id = $1', [docId]);
             // テキストをチャンク化
-            const chunks = (0, chunker_js_1.chunkText)(text, {
+            const chunks = chunkText(text, {
                 size: config.chunkSize,
                 overlap: config.chunkOverlap,
             });
@@ -108,7 +103,7 @@ router.post('/', async (req, res) => {
             }
             // チャンクの内容を埋め込みベクトルに変換
             const chunkContents = chunks.map(chunk => chunk.content);
-            const embeddings = await (0, embedding_js_1.embedTexts)(chunkContents, config.batchSize);
+            const embeddings = await embedTexts(chunkContents, config.batchSize);
             // 埋め込みベクトルをデータベースに挿入
             for (let i = 0; i < chunkIds.length; i++) {
                 if (embeddings[i] &&
@@ -161,7 +156,7 @@ router.post('/', async (req, res) => {
  */
 router.get('/status', async (req, res) => {
     try {
-        const client = await db_js_1.pool.connect();
+        const client = await pool.connect();
         try {
             // 統計情報を取得
             const docCount = await client.query('SELECT COUNT(*) as count FROM documents');
@@ -186,4 +181,4 @@ router.get('/status', async (req, res) => {
         });
     }
 });
-exports.default = router;
+export default router;

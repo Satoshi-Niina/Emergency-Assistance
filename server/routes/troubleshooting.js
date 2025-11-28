@@ -1,39 +1,34 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const promises_1 = __importDefault(require("fs/promises"));
-const path_1 = __importDefault(require("path"));
-const fs_1 = require("fs");
-const url_1 = require("url");
-const security_js_1 = require("../middleware/security.js");
-const __filename = (0, url_1.fileURLToPath)(import.meta.url);
-const __dirname = path_1.default.dirname(__filename);
-const router = (0, express_1.Router)();
+import { Router } from 'express';
+import fs from 'fs/promises';
+import path from 'path';
+import { existsSync, readdirSync, unlinkSync, writeFileSync, readFileSync, } from 'fs';
+import { fileURLToPath } from 'url';
+import { requireAuth } from '../middleware/security.js';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const router = Router();
 // トラブルシューティングディレクトリのパス
-const troubleshootingDir = path_1.default.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
 // トラブルシューティングデータを読み込む関数
 async function loadTroubleshootingData() {
     try {
         console.log('🔍 トラブルシューティングディレクトリパス:', troubleshootingDir);
         console.log('🔍 現在の作業ディレクトリ:', process.cwd());
-        console.log('🔍 絶対パス:', path_1.default.resolve(troubleshootingDir));
-        if (!(0, fs_1.existsSync)(troubleshootingDir)) {
+        console.log('🔍 絶対パス:', path.resolve(troubleshootingDir));
+        if (!existsSync(troubleshootingDir)) {
             console.warn(`❌ トラブルシューティングディレクトリが見つかりません: ${troubleshootingDir}`);
             console.warn(`🔍 代替パスを試行中...`);
             // 代替パスを試行
             const alternativePaths = [
-                path_1.default.join(process.cwd(), 'knowledge-base', 'troubleshooting'),
-                path_1.default.join(__dirname, '..', '..', 'knowledge-base', 'troubleshooting'),
-                path_1.default.join(__dirname, '..', 'knowledge-base', 'troubleshooting'),
+                path.join(process.cwd(), 'knowledge-base', 'troubleshooting'),
+                path.join(__dirname, '..', '..', 'knowledge-base', 'troubleshooting'),
+                path.join(__dirname, '..', 'knowledge-base', 'troubleshooting'),
             ];
             for (const altPath of alternativePaths) {
                 console.log(`🔍 代替パスをチェック中: ${altPath}`);
-                if ((0, fs_1.existsSync)(altPath)) {
+                if (existsSync(altPath)) {
                     console.log(`✅ 代替パスが見つかりました: ${altPath}`);
-                    const files = (0, fs_1.readdirSync)(altPath);
+                    const files = readdirSync(altPath);
                     console.log(`📁 ディレクトリ内のファイル:`, files);
                     return await loadFromDirectory(altPath);
                 }
@@ -52,7 +47,7 @@ async function loadTroubleshootingData() {
 async function loadFromDirectory(dirPath) {
     try {
         console.log(`📁 ディレクトリから読み込み中: ${dirPath}`);
-        const files = (0, fs_1.readdirSync)(dirPath);
+        const files = readdirSync(dirPath);
         console.log('📁 ディレクトリ内のファイル:', files);
         const jsonFiles = files.filter(file => {
             const isJson = file.endsWith('.json');
@@ -64,9 +59,9 @@ async function loadFromDirectory(dirPath) {
         console.log('📄 処理対象のJSONファイル:', jsonFiles);
         const fileList = await Promise.all(jsonFiles.map(async (file) => {
             try {
-                const filePath = path_1.default.join(dirPath, file);
+                const filePath = path.join(dirPath, file);
                 console.log(`🔍 ファイル読み込み中: ${filePath}`);
-                const content = await promises_1.default.readFile(filePath, 'utf8');
+                const content = await fs.readFile(filePath, 'utf8');
                 console.log(`📄 ファイル ${file} のサイズ: ${content.length} 文字`);
                 const data = JSON.parse(content);
                 console.log(`✅ ファイル ${file} のJSON解析成功:`, {
@@ -116,7 +111,7 @@ async function loadFromDirectory(dirPath) {
     }
 }
 // トラブルシューティング一覧取得
-router.get('/list', security_js_1.requireAuth, async (req, res) => {
+router.get('/list', requireAuth, async (req, res) => {
     console.log('📋 トラブルシューティング一覧リクエスト受信');
     try {
         const data = await loadTroubleshootingData();
@@ -144,7 +139,7 @@ router.get('/list', security_js_1.requireAuth, async (req, res) => {
     }
 });
 // 特定のトラブルシューティング取得
-router.get('/:id', security_js_1.requireAuth, async (req, res) => {
+router.get('/:id', requireAuth, async (req, res) => {
     console.log('📋 特定のトラブルシューティング取得開始:', req.params.id);
     try {
         const { id } = req.params;
@@ -162,7 +157,7 @@ router.get('/:id', security_js_1.requireAuth, async (req, res) => {
         });
         console.log('🔍 トラブルシューティングディレクトリ確認:', troubleshootingDir);
         // トラブルシューティングディレクトリから該当するJSONファイルを検索
-        if (!(0, fs_1.existsSync)(troubleshootingDir)) {
+        if (!existsSync(troubleshootingDir)) {
             console.error('❌ トラブルシューティングディレクトリが見つかりません:', troubleshootingDir);
             return res.status(404).json({
                 success: false,
@@ -171,7 +166,7 @@ router.get('/:id', security_js_1.requireAuth, async (req, res) => {
                 timestamp: new Date().toISOString(),
             });
         }
-        const files = (0, fs_1.readdirSync)(troubleshootingDir);
+        const files = readdirSync(troubleshootingDir);
         console.log('📁 ディレクトリ内のファイル:', files);
         const jsonFiles = files.filter(file => file.endsWith('.json'));
         console.log('📄 JSONファイル:', jsonFiles);
@@ -181,8 +176,8 @@ router.get('/:id', security_js_1.requireAuth, async (req, res) => {
         for (const file of jsonFiles) {
             try {
                 console.log(`🔍 ファイル ${file} をチェック中...`);
-                const filePath = path_1.default.join(troubleshootingDir, file);
-                const fileContent = await promises_1.default.readFile(filePath, 'utf8');
+                const filePath = path.join(troubleshootingDir, file);
+                const fileContent = await fs.readFile(filePath, 'utf8');
                 const data = JSON.parse(fileContent);
                 console.log(`📋 ファイル ${file} の内容:`, {
                     fileId: data.id,
@@ -263,7 +258,7 @@ router.get('/:id', security_js_1.requireAuth, async (req, res) => {
     }
 });
 // トラブルシューティング更新
-router.put('/:id', security_js_1.requireAuth, async (req, res) => {
+router.put('/:id', requireAuth, async (req, res) => {
     console.log('📝 トラブルシューティング更新:', req.params.id);
     try {
         const { id } = req.params;
@@ -276,13 +271,13 @@ router.put('/:id', security_js_1.requireAuth, async (req, res) => {
             });
         }
         // ファイルパスを構築
-        const troubleshootingDir = path_1.default.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-        const filePath = path_1.default.join(troubleshootingDir, `${id}.json`);
+        const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+        const filePath = path.join(troubleshootingDir, `${id}.json`);
         // 既存ファイルの読み込み
         let originalData = null;
-        if (promises_1.default.existsSync(filePath)) {
+        if (fs.existsSync(filePath)) {
             try {
-                const fileContent = promises_1.default.readFileSync(filePath, 'utf-8');
+                const fileContent = fs.readFileSync(filePath, 'utf-8');
                 originalData = JSON.parse(fileContent);
                 console.log('📖 既存データ読み込み成功:', {
                     id: originalData.id,
@@ -362,7 +357,7 @@ router.put('/:id', security_js_1.requireAuth, async (req, res) => {
             });
         }
         // ファイルに保存
-        (0, fs_1.writeFileSync)(filePath, JSON.stringify(updatedFlowData, null, 2), 'utf8');
+        writeFileSync(filePath, JSON.stringify(updatedFlowData, null, 2), 'utf8');
         console.log('✅ トラブルシューティング更新成功:', {
             id: updatedFlowData.id,
             title: updatedFlowData.title,
@@ -395,15 +390,15 @@ router.put('/:id', security_js_1.requireAuth, async (req, res) => {
     }
 });
 // トラブルシューティング削除
-router.delete('/:id', security_js_1.requireAuth, async (req, res) => {
+router.delete('/:id', requireAuth, async (req, res) => {
     console.log('🗑️ トラブルシューティング削除:', req.params.id);
     try {
         const { id } = req.params;
         // ファイルパスを構築
-        const troubleshootingDir = path_1.default.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-        const filePath = path_1.default.join(troubleshootingDir, `${id}.json`);
+        const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+        const filePath = path.join(troubleshootingDir, `${id}.json`);
         // ファイルの存在確認
-        if (!(0, fs_1.existsSync)(filePath)) {
+        if (!existsSync(filePath)) {
             return res.status(404).json({
                 success: false,
                 error: '指定されたトラブルシューティングが見つかりません',
@@ -411,7 +406,7 @@ router.delete('/:id', security_js_1.requireAuth, async (req, res) => {
             });
         }
         // ファイルを削除
-        (0, fs_1.unlinkSync)(filePath);
+        unlinkSync(filePath);
         console.log('✅ トラブルシューティング削除成功:', id);
         res.json({
             success: true,
@@ -464,17 +459,17 @@ router.get('/image/:fileName', async (_req, res) => {
         res.removeHeader('Content-Security-Policy');
         const { fileName } = req.params;
         // まず emergency-flows ディレクトリを確認
-        let uploadDir = path_1.default.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows');
-        let filePath = path_1.default.join(uploadDir, fileName);
+        let uploadDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows');
+        let filePath = path.join(uploadDir, fileName);
         // emergency-flows にファイルがない場合は chat-exports を確認
-        if (!(0, fs_1.existsSync)(filePath)) {
-            uploadDir = path_1.default.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports');
-            filePath = path_1.default.join(uploadDir, fileName);
+        if (!existsSync(filePath)) {
+            uploadDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports');
+            filePath = path.join(uploadDir, fileName);
             console.log('🔄 emergency-flows にファイルが見つからないため、chat-exports を確認:', {
                 fileName,
                 chatExportsDir: uploadDir,
                 chatExportsPath: filePath,
-                exists: (0, fs_1.existsSync)(filePath),
+                exists: existsSync(filePath),
             });
         }
         // デバッグログ強化
@@ -482,29 +477,29 @@ router.get('/image/:fileName', async (_req, res) => {
             fileName,
             uploadDir,
             filePath,
-            exists: (0, fs_1.existsSync)(filePath),
-            filesInDir: (0, fs_1.existsSync)(uploadDir) ? (0, fs_1.readdirSync)(uploadDir) : [],
+            exists: existsSync(filePath),
+            filesInDir: existsSync(uploadDir) ? readdirSync(uploadDir) : [],
         });
-        if (!(0, fs_1.existsSync)(filePath)) {
-            const emergencyFlowsPath = path_1.default.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows', fileName);
-            const chatExportsPath = path_1.default.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports', fileName);
-            const emergencyFlowsDir = path_1.default.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows');
-            const chatExportsDir = path_1.default.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports');
+        if (!existsSync(filePath)) {
+            const emergencyFlowsPath = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows', fileName);
+            const chatExportsPath = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports', fileName);
+            const emergencyFlowsDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows');
+            const chatExportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports');
             return res.status(404).json({
                 error: 'ファイルが存在しません',
                 fileName,
                 emergencyFlowsPath,
                 chatExportsPath,
-                emergencyFlowsDir: (0, fs_1.existsSync)(emergencyFlowsDir)
-                    ? (0, fs_1.readdirSync)(emergencyFlowsDir)
+                emergencyFlowsDir: existsSync(emergencyFlowsDir)
+                    ? readdirSync(emergencyFlowsDir)
                     : [],
-                chatExportsDir: (0, fs_1.existsSync)(chatExportsDir)
-                    ? (0, fs_1.readdirSync)(chatExportsDir)
+                chatExportsDir: existsSync(chatExportsDir)
+                    ? readdirSync(chatExportsDir)
                     : [],
             });
         }
         // ファイルのMIMEタイプを判定
-        const ext = path_1.default.extname(fileName).toLowerCase();
+        const ext = path.extname(fileName).toLowerCase();
         const mimeTypes = {
             '.jpg': 'image/jpeg',
             '.jpeg': 'image/jpeg',
@@ -514,7 +509,7 @@ router.get('/image/:fileName', async (_req, res) => {
         };
         const contentType = mimeTypes[ext] || 'application/octet-stream';
         // ファイルを読み込んでレスポンス
-        const fileBuffer = (0, fs_1.readFileSync)(filePath);
+        const fileBuffer = readFileSync(filePath);
         // CORSヘッダーを設定
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -555,4 +550,4 @@ router.use('*', (req, res) => {
         timestamp: new Date().toISOString(),
     });
 });
-exports.default = router;
+export default router;

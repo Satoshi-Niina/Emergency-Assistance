@@ -1,15 +1,11 @@
-"use strict";
 /**
  * インタラクティブ故障診断システム
  * ユーザーの回答に基づいて動的に次の質問や処置を決定する
  */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateDiagnosisState = updateDiagnosisState;
-exports.generateInteractiveResponse = generateInteractiveResponse;
 /**
  * ユーザーの回答から故障診断状態を更新
  */
-function updateDiagnosisState(currentState, userResponse) {
+export function updateDiagnosisState(currentState, userResponse) {
     const response = userResponse.toLowerCase();
     const newState = { ...currentState };
     // 症状の分析と追加
@@ -50,7 +46,7 @@ function updateDiagnosisState(currentState, userResponse) {
 /**
  * 現在の診断状態に基づいて次のインタラクティブな応答を生成
  */
-function generateInteractiveResponse(state, userResponse) {
+export function generateInteractiveResponse(state, userResponse) {
     const detailRequested = !!userResponse && /詳細|もっと詳しく|くわしく|詳しく教/.test(userResponse);
     // 安全確認が最優先
     if (state.collectedInfo.urgency === 'critical' &&

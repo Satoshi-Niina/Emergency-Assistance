@@ -1,44 +1,9 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-Object.defineProperty(exports, "__esModule", { value: true });
-const express = __importStar(require("express"));
-const env_1 = require("../config/env");
-const path = __importStar(require("path"));
-const fs_1 = require("fs");
-const knowledge_base_js_1 = require("../lib/knowledge-base.js");
-const json_helper_js_1 = require("../lib/json-helper.js");
+import * as express from 'express';
+import { safeLen, getEnvConfig } from '../config/env';
+import * as path from 'path';
+import { existsSync, writeFileSync, mkdirSync, readdirSync, readFileSync, unlinkSync, } from 'fs';
+import { searchKnowledgeBase } from '../lib/knowledge-base.js';
+import { cleanJsonResponse } from '../lib/json-helper.js';
 // import { db } from '../db/index.js';
 // import { emergencyFlows } from '../db/schema.js';
 const router = express.Router();
@@ -47,8 +12,8 @@ const knowledgeBaseDir = path.join(process.cwd(), 'knowledge-base');
 const jsonDir = path.join(knowledgeBaseDir, 'json');
 const troubleshootingDir = path.join(knowledgeBaseDir, 'troubleshooting');
 // ディレクトリが存在しない場合は作成
-if (!(0, fs_1.existsSync)(troubleshootingDir)) {
-    (0, fs_1.mkdirSync)(troubleshootingDir, { recursive: true });
+if (!existsSync(troubleshootingDir)) {
+    mkdirSync(troubleshootingDir, { recursive: true });
 }
 // デバッグ用エンドポイント
 router.get('/debug', (_req, res) => {
@@ -59,7 +24,7 @@ router.get('/debug', (_req, res) => {
             OPENAI_API_KEY_PREFIX: process.env.OPENAI_API_KEY
                 ? process.env.OPENAI_API_KEY.substring(0, 10) + '...'
                 : 'NOT FOUND',
-            OPENAI_API_KEY_LENGTH: (0, env_1.safeLen)((0, env_1.getEnvConfig)().OPENAI_API_KEY),
+            OPENAI_API_KEY_LENGTH: safeLen(getEnvConfig().OPENAI_API_KEY),
             NODE_ENV: process.env.NODE_ENV,
             timestamp: new Date().toISOString(),
         },
@@ -102,7 +67,7 @@ router.post('/keywords', async (req, res) => {
         let knowledgeContext = '';
         try {
             console.log('🔍 ナレッジベース検索開始:', keywords);
-            const searchResults = await (0, knowledge_base_js_1.searchKnowledgeBase)(keywords, {
+            const searchResults = await searchKnowledgeBase(keywords, {
                 maxResults: 5,
                 similarityThreshold: 0.3,
             });
@@ -226,7 +191,7 @@ ${knowledgeContext ? `関連する技術情報:\n${knowledgeContext}` : ''}
             console.error('❌ JSON解析エラー:', parseError);
             console.log('🔍 生のレスポンス:', generatedFlow);
             // JSON解析に失敗した場合のフォールバック処理
-            const cleanedResponse = (0, json_helper_js_1.cleanJsonResponse)(generatedFlow);
+            const cleanedResponse = cleanJsonResponse(generatedFlow);
             try {
                 flowData = JSON.parse(cleanedResponse);
             }
@@ -365,11 +330,11 @@ ${knowledgeContext ? `関連する技術情報:\n${knowledgeContext}` : ''}
             const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
             const filePath = path.join(troubleshootingDir, `${flowData.id}.json`);
             // ディレクトリが存在しない場合は作成
-            if (!(0, fs_1.existsSync)(troubleshootingDir)) {
-                (0, fs_1.mkdirSync)(troubleshootingDir, { recursive: true });
+            if (!existsSync(troubleshootingDir)) {
+                mkdirSync(troubleshootingDir, { recursive: true });
             }
             // ファイルに保存
-            (0, fs_1.writeFileSync)(filePath, JSON.stringify(flowData, null, 2), 'utf8');
+            writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf8');
             console.log('✅ キーワードフロー保存成功:', {
                 id: flowData.id,
                 title: flowData.title,
@@ -442,7 +407,7 @@ router.post('/generate-from-keywords', async (req, res) => {
         console.log('[DEBUG] OpenAI API Key validation:', {
             exists: !!process.env.OPENAI_API_KEY,
             startsWithSk: process.env.OPENAI_API_KEY.startsWith('sk-'),
-            keyLength: (0, env_1.safeLen)((0, env_1.getEnvConfig)().OPENAI_API_KEY),
+            keyLength: safeLen(getEnvConfig().OPENAI_API_KEY),
             prefix: process.env.OPENAI_API_KEY.substring(0, 10) + '...',
         });
         // OpenAIクライアントの状態を確認
@@ -461,7 +426,7 @@ router.post('/generate-from-keywords', async (req, res) => {
         }
         // ナレッジベースから関連情報を検索
         console.log('ナレッジベースから関連情報を検索中...');
-        const relevantChunks = await (0, knowledge_base_js_1.searchKnowledgeBase)(keywords);
+        const relevantChunks = await searchKnowledgeBase(keywords);
         console.log(`関連チャンク数: ${relevantChunks.length}`);
         // 関連情報をプロンプトに追加するための文字列を構築
         let relatedKnowledgeText = '';
@@ -606,7 +571,7 @@ ${relatedKnowledgeText}
         }
         try {
             // 共通のJSON処理ヘルパーを使用してレスポンスをクリーニング
-            const cleanedResponse = (0, json_helper_js_1.cleanJsonResponse)(generatedFlow);
+            const cleanedResponse = cleanJsonResponse(generatedFlow);
             // JSONとして解析
             const flowData = JSON.parse(cleanedResponse);
             // IDが設定されていない場合はキーワードから生成
@@ -624,13 +589,13 @@ ${relatedKnowledgeText}
             // 既存のファイル名と競合しないように確認
             let finalId = flowData.id;
             let counter = 1;
-            while ((0, fs_1.existsSync)(path.join(troubleshootingDir, `${finalId}.json`))) {
+            while (existsSync(path.join(troubleshootingDir, `${finalId}.json`))) {
                 finalId = `${flowData.id}_${counter}`;
                 counter++;
             }
             flowData.id = finalId;
             // フローをファイルに保存
-            (0, fs_1.writeFileSync)(path.join(troubleshootingDir, `${flowData.id}.json`), JSON.stringify(flowData, null, 2));
+            writeFileSync(path.join(troubleshootingDir, `${flowData.id}.json`), JSON.stringify(flowData, null, 2));
             // 生成日時を記録
             flowData.createdAt = new Date().toISOString();
             // 成功レスポンス
@@ -675,13 +640,13 @@ ${relatedKnowledgeText}
                             // 既存のファイル名と競合しないように確認
                             let finalId = truncatedData.id;
                             let counter = 1;
-                            while ((0, fs_1.existsSync)(path.join(troubleshootingDir, `${finalId}.json`))) {
+                            while (existsSync(path.join(troubleshootingDir, `${finalId}.json`))) {
                                 finalId = `${truncatedData.id}_${counter}`;
                                 counter++;
                             }
                             truncatedData.id = finalId;
                             // フローをファイルに保存
-                            (0, fs_1.writeFileSync)(path.join(troubleshootingDir, `${truncatedData.id}.json`), JSON.stringify(truncatedData, null, 2));
+                            writeFileSync(path.join(troubleshootingDir, `${truncatedData.id}.json`), JSON.stringify(truncatedData, null, 2));
                             // 生成日時を記録
                             truncatedData.createdAt = new Date().toISOString();
                             // 成功レスポンス
@@ -716,11 +681,11 @@ ${relatedKnowledgeText}
 router.get('/list', (_req, res) => {
     try {
         // トラブルシューティングディレクトリからJSONファイルを取得
-        const files = (0, fs_1.readdirSync)(troubleshootingDir).filter(file => file.endsWith('.json'));
+        const files = readdirSync(troubleshootingDir).filter(file => file.endsWith('.json'));
         const flowList = files
             .map(file => {
             try {
-                const fileContent = (0, fs_1.readFileSync)(path.join(troubleshootingDir, file), 'utf-8');
+                const fileContent = readFileSync(path.join(troubleshootingDir, file), 'utf-8');
                 const flowData = JSON.parse(fileContent);
                 return {
                     id: flowData.id || file.replace('.json', ''),
@@ -756,13 +721,13 @@ router.get('/detail/:id', (_req, res) => {
             ? req.params.id.substring(3)
             : req.params.id;
         const filePath = path.join(troubleshootingDir, `${cleanFlowId}.json`);
-        if (!(0, fs_1.existsSync)(filePath)) {
+        if (!existsSync(filePath)) {
             return res.status(404).json({
                 success: false,
                 error: '指定されたフローが見つかりません',
             });
         }
-        const fileContent = (0, fs_1.readFileSync)(filePath, 'utf-8');
+        const fileContent = readFileSync(filePath, 'utf-8');
         const flowData = JSON.parse(fileContent);
         const decisionSteps = flowData.steps?.filter(step => step.type === 'decision') || [];
         const conditionSteps = flowData.steps?.filter(step => step.type === 'condition') || [];
@@ -802,13 +767,13 @@ router.delete('/:id', (_req, res) => {
     try {
         const flowId = req.params.id;
         const filePath = path.join(troubleshootingDir, `${flowId}.json`);
-        if (!(0, fs_1.existsSync)(filePath)) {
+        if (!existsSync(filePath)) {
             return res.status(404).json({
                 success: false,
                 error: '指定されたフローが見つかりません',
             });
         }
-        (0, fs_1.unlinkSync)(filePath);
+        unlinkSync(filePath);
         res.json({
             success: true,
             message: 'フローが正常に削除されました',
@@ -822,4 +787,4 @@ router.delete('/:id', (_req, res) => {
         });
     }
 });
-exports.default = router;
+export default router;

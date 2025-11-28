@@ -1,12 +1,6 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.testConnection = exports.closePool = exports.transaction = exports.query = exports.sql = void 0;
-const postgres_1 = __importDefault(require("postgres"));
+import postgres from 'postgres';
 // データベース接続設定 - DATABASE_URLのみを使用
-const sql = (0, postgres_1.default)(process.env.DATABASE_URL ||
+const sql = postgres(process.env.DATABASE_URL ||
     'postgresql://postgres:CHANGE_THIS_PASSWORD@localhost:5432/webappdb', {
     // 使用中: データベース接続文字列
     ssl: process.env.NODE_ENV === 'production'
@@ -16,9 +10,9 @@ const sql = (0, postgres_1.default)(process.env.DATABASE_URL ||
     idle_timeout: 20,
     connect_timeout: 10,
 });
-exports.sql = sql;
+export { sql };
 // クエリ実行関数
-const query = async (text, params) => {
+export const query = async (text, params) => {
     try {
         const result = await sql.unsafe(text, params);
         return result;
@@ -28,9 +22,8 @@ const query = async (text, params) => {
         throw error;
     }
 };
-exports.query = query;
 // トランザクション実行関数
-const transaction = async (callback) => {
+export const transaction = async (callback) => {
     try {
         return await sql.begin(async (tx) => {
             return await callback(tx);
@@ -41,16 +34,14 @@ const transaction = async (callback) => {
         throw error;
     }
 };
-exports.transaction = transaction;
 // 接続プールを閉じる関数
-const closePool = async () => {
+export const closePool = async () => {
     await sql.end();
 };
-exports.closePool = closePool;
 // データベース接続テスト
-const testConnection = async () => {
+export const testConnection = async () => {
     try {
-        const result = await (0, exports.query)('SELECT NOW()');
+        const result = await query('SELECT NOW()');
         console.log('✅ データベース接続テスト成功:', result[0]);
         return true;
     }
@@ -59,12 +50,11 @@ const testConnection = async () => {
         return false;
     }
 };
-exports.testConnection = testConnection;
 // デフォルトエクスポート
-exports.default = {
-    query: exports.query,
-    transaction: exports.transaction,
-    closePool: exports.closePool,
-    testConnection: exports.testConnection,
+export default {
+    query,
+    transaction,
+    closePool,
+    testConnection,
     sql,
 };

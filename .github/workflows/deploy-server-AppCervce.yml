@@ -35,7 +35,6 @@ jobs:
         # 重要なファイルの存在確認
         CRITICAL_FILES=(
           "server/azure-server.mjs"
-          "server/lib/azure-storage.ts"
           "Dockerfile"
         )
 
@@ -57,6 +56,13 @@ jobs:
           echo "✅ getBlobServiceClient function found"
         else
           echo "❌ ERROR: getBlobServiceClient function not found!"
+          exit 1
+        fi
+
+        if grep -q "app.get('/api/knowledge'" server/azure-server.mjs; then
+          echo "✅ /api/knowledge route found"
+        else
+          echo "❌ ERROR: /api/knowledge route not found!"
           exit 1
         fi
 

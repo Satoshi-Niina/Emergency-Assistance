@@ -1,20 +1,18 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const zod_1 = require("zod");
-const config_manager_js_1 = require("../services/config-manager.js");
-const router = (0, express_1.Router)();
+import { Router } from 'express';
+import { z } from 'zod';
+import { loadRagConfig, updateRagConfig, validateRagConfig, getConfigDiff, } from '../services/config-manager.js';
+const router = Router();
 // 設定更新スキーマの定義
-const ConfigUpdateSchema = zod_1.z.object({
-    embedDim: zod_1.z.number().min(1).max(4096).optional(),
-    chunkSize: zod_1.z.number().min(100).max(2000).optional(),
-    chunkOverlap: zod_1.z.number().min(0).max(500).optional(),
-    retrieveK: zod_1.z.number().min(1).max(50).optional(),
-    rerankTop: zod_1.z.number().min(1).max(20).optional(),
-    rerankMin: zod_1.z.number().min(0).max(1).optional(),
-    maxTextLength: zod_1.z.number().min(1000).max(1000000).optional(),
-    batchSize: zod_1.z.number().min(1).max(20).optional(),
-    similarityThreshold: zod_1.z.number().min(0).max(1).optional(),
+const ConfigUpdateSchema = z.object({
+    embedDim: z.number().min(1).max(4096).optional(),
+    chunkSize: z.number().min(100).max(2000).optional(),
+    chunkOverlap: z.number().min(0).max(500).optional(),
+    retrieveK: z.number().min(1).max(50).optional(),
+    rerankTop: z.number().min(1).max(20).optional(),
+    rerankMin: z.number().min(0).max(1).optional(),
+    maxTextLength: z.number().min(1000).max(1000000).optional(),
+    batchSize: z.number().min(1).max(20).optional(),
+    similarityThreshold: z.number().min(0).max(1).optional(),
 });
 /**
  * 現在のRAG設定を取得
@@ -22,7 +20,7 @@ const ConfigUpdateSchema = zod_1.z.object({
  */
 router.get('/rag', async (req, res) => {
     try {
-        const config = await (0, config_manager_js_1.loadRagConfig)();
+        const config = await loadRagConfig();
         res.json({
             config,
             message: 'RAG設定を取得しました',
@@ -53,7 +51,7 @@ router.patch('/rag', async (req, res) => {
         }
         const updateData = validationResult.data;
         // 設定の検証
-        const validation = (0, config_manager_js_1.validateRagConfig)(updateData);
+        const validation = validateRagConfig(updateData);
         if (!validation.valid) {
             return res.status(400).json({
                 error: 'Configuration validation failed',
@@ -61,16 +59,16 @@ router.patch('/rag', async (req, res) => {
             });
         }
         // 現在の設定との差分を確認
-        const changes = await (0, config_manager_js_1.getConfigDiff)(updateData);
+        const changes = await getConfigDiff(updateData);
         if (changes.length === 0) {
             return res.json({
                 message: '設定に変更はありません',
-                config: await (0, config_manager_js_1.loadRagConfig)(),
+                config: await loadRagConfig(),
                 changes: [],
             });
         }
         // 設定を更新
-        const updatedConfig = await (0, config_manager_js_1.updateRagConfig)(updateData);
+        const updatedConfig = await updateRagConfig(updateData);
         console.log(`🔧 RAG設定を更新しました: ${changes.join(', ')}`);
         res.json({
             message: 'RAG設定を更新しました',
@@ -102,7 +100,7 @@ router.post('/rag/validate', async (req, res) => {
             });
         }
         const configData = validationResult.data;
-        const validation = (0, config_manager_js_1.validateRagConfig)(configData);
+        const validation = validateRagConfig(configData);
         if (validation.valid) {
             res.json({
                 valid: true,
@@ -140,7 +138,7 @@ router.post('/rag/diff', async (req, res) => {
             });
         }
         const newConfig = validationResult.data;
-        const changes = await (0, config_manager_js_1.getConfigDiff)(newConfig);
+        const changes = await getConfigDiff(newConfig);
         res.json({
             changes,
             hasChanges: changes.length > 0,
@@ -176,16 +174,16 @@ router.post('/rag/reset', async (req, res) => {
             similarityThreshold: 0.7,
         };
         // 現在の設定との差分を確認
-        const changes = await (0, config_manager_js_1.getConfigDiff)(defaultConfig);
+        const changes = await getConfigDiff(defaultConfig);
         if (changes.length === 0) {
             return res.json({
                 message: '設定は既にデフォルト値です',
-                config: await (0, config_manager_js_1.loadRagConfig)(),
+                config: await loadRagConfig(),
                 changes: [],
             });
         }
         // 設定をリセット
-        const resetConfig = await (0, config_manager_js_1.updateRagConfig)(defaultConfig);
+        const resetConfig = await updateRagConfig(defaultConfig);
         console.log(`🔄 RAG設定をリセットしました: ${changes.join(', ')}`);
         res.json({
             message: 'RAG設定をリセットしました',
@@ -209,7 +207,7 @@ router.post('/rag/reset', async (req, res) => {
  */
 router.get('/rag/export', async (req, res) => {
     try {
-        const config = await (0, config_manager_js_1.loadRagConfig)();
+        const config = await loadRagConfig();
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Content-Disposition', 'attachment; filename="rag-config.json"');
         res.json(config);
@@ -222,4 +220,4 @@ router.get('/rag/export', async (req, res) => {
         });
     }
 });
-exports.default = router;
+export default router;

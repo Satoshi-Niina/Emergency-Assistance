@@ -1,28 +1,12 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.HybridSearchService = void 0;
-const openai_1 = __importDefault(require("openai"));
-const knowledge_base_js_1 = require("./knowledge-base.js");
-const search_js_1 = require("../services/search.js");
-class HybridSearchService {
+import OpenAI from 'openai';
+import { searchKnowledgeBase } from './knowledge-base.js';
+import { SearchService } from '../services/search.js';
+export class HybridSearchService {
+    openai;
+    searchService;
     constructor() {
-        Object.defineProperty(this, "openai", {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: void 0
-        });
-        Object.defineProperty(this, "searchService", {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: void 0
-        });
-        this.openai = new openai_1.default();
-        this.searchService = new search_js_1.SearchService();
+        this.openai = new OpenAI();
+        this.searchService = new SearchService();
     }
     async hybridSearch(query) {
         try {
@@ -34,7 +18,7 @@ class HybridSearchService {
             const semanticResults = await this.searchService.semanticSearch(query, 5);
             console.log('📊 セマンティック検索結果:', semanticResults.length);
             // 3. ナレッジベース検索（既存実装）
-            const knowledgeResults = await (0, knowledge_base_js_1.searchKnowledgeBase)(query);
+            const knowledgeResults = await searchKnowledgeBase(query);
             console.log('📊 ナレッジベース検索結果:', knowledgeResults.length);
             // 4. 結果の統合と重み付け
             const combinedResults = this.combineResults(keywordResults, semanticResults, knowledgeResults);
@@ -200,4 +184,3 @@ class HybridSearchService {
         return vectorizedChunks;
     }
 }
-exports.HybridSearchService = HybridSearchService;

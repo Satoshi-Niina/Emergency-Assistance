@@ -1,33 +1,30 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.HistoryService = void 0;
-const db_js_1 = require("../db/db.js");
-const storageService_js_1 = require("./storageService.js");
-const zod_1 = require("zod");
+import { query } from '../db/db.js';
+import { storageService } from './storageService.js';
+import { z } from 'zod';
 // バリデーションスキーマ
-const createSessionSchema = zod_1.z.object({
-    title: zod_1.z.string().optional(),
-    machineType: zod_1.z.string().optional(),
-    machineNumber: zod_1.z.string().optional(),
-    metadata: zod_1.z.any().optional(),
+const createSessionSchema = z.object({
+    title: z.string().optional(),
+    machineType: z.string().optional(),
+    machineNumber: z.string().optional(),
+    metadata: z.any().optional(),
 });
-const createHistorySchema = zod_1.z.object({
-    sessionId: zod_1.z.string().uuid('セッションIDはUUID形式である必要があります'),
-    question: zod_1.z.string().min(1, '質問は必須です'),
-    answer: zod_1.z.string().optional(),
-    imageBase64: zod_1.z.string().optional(),
-    machineType: zod_1.z.string().optional(),
-    machineNumber: zod_1.z.string().optional(),
-    metadata: zod_1.z.any().optional(),
+const createHistorySchema = z.object({
+    sessionId: z.string().uuid('セッションIDはUUID形式である必要があります'),
+    question: z.string().min(1, '質問は必須です'),
+    answer: z.string().optional(),
+    imageBase64: z.string().optional(),
+    machineType: z.string().optional(),
+    machineNumber: z.string().optional(),
+    metadata: z.any().optional(),
 });
-const searchHistorySchema = zod_1.z.object({
-    machineType: zod_1.z.string().optional(),
-    machineNumber: zod_1.z.string().optional(),
-    status: zod_1.z.enum(['active', 'completed', 'archived']).optional(),
-    limit: zod_1.z.number().min(1).max(100).default(20),
-    offset: zod_1.z.number().min(0).default(0),
+const searchHistorySchema = z.object({
+    machineType: z.string().optional(),
+    machineNumber: z.string().optional(),
+    status: z.enum(['active', 'completed', 'archived']).optional(),
+    limit: z.number().min(1).max(100).default(20),
+    offset: z.number().min(0).default(0),
 });
-class HistoryService {
+export class HistoryService {
     /**
      * チャットセッションを作成
      */
@@ -41,7 +38,7 @@ class HistoryService {
             }
             const { title, machineType, machineNumber, metadata } = validationResult.data;
             // セッションを作成
-            const result = await (0, db_js_1.query)(`INSERT INTO chat_sessions (title, machine_type, machine_number, metadata)
+            const result = await query(`INSERT INTO chat_sessions (title, machine_type, machine_number, metadata)
          VALUES ($1, $2, $3, $4)
          RETURNING *`, [
                 title,
@@ -82,11 +79,11 @@ class HistoryService {
             let imageUrl;
             // 画像がある場合はストレージに保存
             if (imageBase64) {
-                const uploadResult = await storageService_js_1.storageService.saveBase64Image(imageBase64);
+                const uploadResult = await storageService.saveBase64Image(imageBase64);
                 imageUrl = uploadResult.url;
             }
             // 履歴を保存
-            const result = await (0, db_js_1.query)(`INSERT INTO chat_history (session_id, question, answer, image_url, machine_type, machine_number, metadata)
+            const result = await query(`INSERT INTO chat_history (session_id, question, answer, image_url, machine_type, machine_number, metadata)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING *`, [
                 sessionId,
@@ -149,11 +146,11 @@ class HistoryService {
             }
             const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
             // セッション一覧を取得（ビューを使用）
-            const result = await (0, db_js_1.query)(`SELECT * FROM chat_session_summary ${whereClause}
+            const result = await query(`SELECT * FROM chat_session_summary ${whereClause}
          ORDER BY created_at DESC
          LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`, [...queryParams, limit, offset]);
             // 総件数を取得
-            const countResult = await (0, db_js_1.query)(`SELECT COUNT(*) as total FROM chat_sessions ${whereClause}`, queryParams);
+            const countResult = await query(`SELECT COUNT(*) as total FROM chat_sessions ${whereClause}`, queryParams);
             const total = parseInt(countResult.rows[0].total);
             const page = Math.floor(offset / limit) + 1;
             const totalPages = Math.ceil(total / limit);
@@ -187,7 +184,7 @@ class HistoryService {
     static async getSessionById(id) {
         try {
             console.log(`📋 セッション詳細取得: ${id}`);
-            const result = await (0, db_js_1.query)(`SELECT * FROM chat_sessions WHERE id = $1`, [
+            const result = await query(`SELECT * FROM chat_sessions WHERE id = $1`, [
                 id,
             ]);
             if (result.rows.length === 0) {
@@ -218,7 +215,7 @@ class HistoryService {
     static async getSessionHistory(sessionId) {
         try {
             console.log(`📋 セッション履歴取得: ${sessionId}`);
-            const result = await (0, db_js_1.query)(`SELECT * FROM chat_history 
+            const result = await query(`SELECT * FROM chat_history 
          WHERE session_id = $1 
          ORDER BY created_at ASC`, [sessionId]);
             const history = result.rows.map(row => ({
@@ -247,18 +244,18 @@ class HistoryService {
         try {
             console.log(`📋 セッション削除: ${id}`);
             // セッションに関連する画像を削除
-            const historyResult = await (0, db_js_1.query)(`SELECT image_url FROM chat_history WHERE session_id = $1 AND image_url IS NOT NULL`, [id]);
+            const historyResult = await query(`SELECT image_url FROM chat_history WHERE session_id = $1 AND image_url IS NOT NULL`, [id]);
             // 画像ファイルを削除
             for (const row of historyResult.rows) {
                 if (row.image_url) {
                     const filename = row.image_url.split('/').pop();
                     if (filename) {
-                        await storageService_js_1.storageService.deleteFile(filename);
+                        await storageService.deleteFile(filename);
                     }
                 }
             }
             // セッションを削除（CASCADEで履歴も削除される）
-            const result = await (0, db_js_1.query)(`DELETE FROM chat_sessions WHERE id = $1 RETURNING id`, [id]);
+            const result = await query(`DELETE FROM chat_sessions WHERE id = $1 RETURNING id`, [id]);
             if (result.rows.length === 0) {
                 console.log('⚠️  削除対象のセッションが見つかりません:', id);
                 return false;
@@ -304,7 +301,7 @@ class HistoryService {
                 throw new Error('更新するフィールドが指定されていません');
             }
             params.push(id);
-            const result = await (0, db_js_1.query)(`UPDATE chat_sessions 
+            const result = await query(`UPDATE chat_sessions 
          SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP
          WHERE id = $${paramIndex}
          RETURNING *`, params);
@@ -337,22 +334,22 @@ class HistoryService {
         try {
             console.log('📋 履歴統計情報取得');
             // 総セッション数
-            const totalResult = await (0, db_js_1.query)('SELECT COUNT(*) as total FROM chat_sessions');
+            const totalResult = await query('SELECT COUNT(*) as total FROM chat_sessions');
             const totalSessions = parseInt(totalResult.rows[0].total);
             // 今日のセッション数
-            const todayResult = await (0, db_js_1.query)('SELECT COUNT(*) as total FROM chat_sessions WHERE DATE(created_at) = CURRENT_DATE');
+            const todayResult = await query('SELECT COUNT(*) as total FROM chat_sessions WHERE DATE(created_at) = CURRENT_DATE');
             const todaySessions = parseInt(todayResult.rows[0].total);
             // 今週のセッション数
-            const weekResult = await (0, db_js_1.query)("SELECT COUNT(*) as total FROM chat_sessions WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'");
+            const weekResult = await query("SELECT COUNT(*) as total FROM chat_sessions WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'");
             const thisWeekSessions = parseInt(weekResult.rows[0].total);
             // 今月のセッション数
-            const monthResult = await (0, db_js_1.query)("SELECT COUNT(*) as total FROM chat_sessions WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'");
+            const monthResult = await query("SELECT COUNT(*) as total FROM chat_sessions WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'");
             const thisMonthSessions = parseInt(monthResult.rows[0].total);
             // 総メッセージ数
-            const messagesResult = await (0, db_js_1.query)('SELECT COUNT(*) as total FROM chat_history');
+            const messagesResult = await query('SELECT COUNT(*) as total FROM chat_history');
             const totalMessages = parseInt(messagesResult.rows[0].total);
             // アクティブセッション数
-            const activeResult = await (0, db_js_1.query)("SELECT COUNT(*) as total FROM chat_sessions WHERE status = 'active'");
+            const activeResult = await query("SELECT COUNT(*) as total FROM chat_sessions WHERE status = 'active'");
             const activeSessions = parseInt(activeResult.rows[0].total);
             console.log('✅ 統計情報取得完了');
             return {
@@ -391,4 +388,3 @@ class HistoryService {
         }
     }
 }
-exports.HistoryService = HistoryService;

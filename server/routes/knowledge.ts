@@ -1,8 +1,54 @@
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
+import { BlobServiceClient } from '@azure/storage-blob';
+import { azureStorage } from '../azure-storage.js';
 
 const router = express.Router();
+
+const AZURE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING;
+const AZURE_CONTAINER_NAME =
+  process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
+const STORAGE_BASE_PREFIX = (
+  process.env.AZURE_KNOWLEDGE_BASE_PATH ||
+  process.env.STORAGE_BASE_PREFIX ||
+  'knowledge-base'
+)
+  .replace(/^[\\/]+|[\\/]+$/g, '')
+  .replace(/\\+/g, '/');
+const DATA_PREFIX = STORAGE_BASE_PREFIX
+  ? `${STORAGE_BASE_PREFIX}/data/`
+  : 'knowledge-base/data/';
+const AZURE_ENABLED = Boolean(AZURE_CONNECTION_STRING && azureStorage);
+
+const toPosix = (value: string) => value.replace(/\\/g, '/');
+
+const sanitizeRelativePath = (raw: string): string => {
+  const normalized = toPosix(raw.trim());
+  if (!normalized) {
+    throw new Error('ファイル名が指定されていません');
+  }
+  if (normalized.includes('..')) {
+    throw new Error('不正なファイルパスです');
+  }
+  return normalized.replace(/^\/+/, '');
+};
+
+let blobServiceClient: BlobServiceClient | null = null;
+const getContainerClient = () => {
+  if (!AZURE_CONNECTION_STRING) {
+    throw new Error('AZURE_STORAGE_CONNECTION_STRING is not configured');
+  }
+  if (!blobServiceClient) {
+    blobServiceClient = BlobServiceClient.fromConnectionString(
+      AZURE_CONNECTION_STRING
+    );
+  }
+  return blobServiceClient.getContainerClient(AZURE_CONTAINER_NAME);
+};
+
+const buildBlobPath = (file: string) =>
+  toPosix(`${DATA_PREFIX}${sanitizeRelativePath(file)}`);
 
 /**
  * GET /api/knowledge
@@ -11,6 +57,57 @@ const router = express.Router();
 router.get('/', async (_req, res) => {
   try {
     console.log('📚 ナレッジベースデータ取得リクエスト');
+
+    if (AZURE_ENABLED) {
+      await azureStorage?.ensureContainerExists();
+      const containerClient = getContainerClient();
+      const items: Array<{
+        filename: string;
+        name: string;
+        size: number;
+        modifiedAt: string;
+        path: string;
+      }> = [];
+
+      const prefix = DATA_PREFIX; // 末尾スラッシュ付き
+
+      for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+        const blobName = blob.name;
+        if (!blobName.toLowerCase().endsWith('.json')) {
+          continue;
+        }
+
+        const relative = blobName.startsWith(prefix)
+          ? blobName.substring(prefix.length)
+          : blobName;
+
+        if (!relative) {
+          continue;
+        }
+
+        const filename = relative;
+        const parsed = path.posix.parse(relative);
+
+        items.push({
+          filename,
+          name: parsed.name || filename,
+          size: blob.properties.contentLength || 0,
+          modifiedAt:
+            blob.properties.lastModified?.toISOString() ||
+            new Date().toISOString(),
+          path: `/${toPosix(path.posix.join(STORAGE_BASE_PREFIX, 'data', relative))}`,
+        });
+      }
+
+      console.log(`✅ ナレッジベースデータ取得完了 (Azure): ${items.length}件`);
+
+      return res.json({
+        success: true,
+        data: items,
+        total: items.length,
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     // knowledge-base/dataフォルダのパスを設定
     const dataPath = path.join(process.cwd(), 'knowledge-base', 'data');
@@ -72,10 +169,58 @@ router.get('/', async (_req, res) => {
  * GET /api/knowledge/:filename
  * 特定のJSONファイルの内容を取得
  */
-router.get('/:filename', async (_req, res) => {
+router.get('/:filename(*)', async (req, res) => {
   try {
     const { filename } = req.params;
     console.log(`📚 ナレッジベースファイル取得: ${filename}`);
+
+    if (!filename) {
+      return res.status(400).json({
+        success: false,
+        error: 'ファイル名が指定されていません',
+      });
+    }
+
+    if (AZURE_ENABLED) {
+      try {
+        const relativePath = sanitizeRelativePath(filename);
+        const blobPath = buildBlobPath(relativePath);
+
+        const containerClient = getContainerClient();
+        const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
+
+        const exists = await blockBlobClient.exists();
+        if (!exists) {
+          return res.status(404).json({
+            success: false,
+            error: 'ファイルが見つかりません',
+          });
+        }
+
+        const rawContent = await azureStorage!.readFileAsString(blobPath);
+        const content = rawContent.replace(/^\uFEFF/, '');
+        const jsonData = JSON.parse(content);
+
+        const properties = await blockBlobClient.getProperties();
+
+        console.log('✅ ナレッジベースファイル取得完了 (Azure)');
+
+        return res.json({
+          success: true,
+          data: jsonData,
+          filename: relativePath,
+          size: properties.contentLength || Buffer.byteLength(content, 'utf-8'),
+          modifiedAt: properties.lastModified?.toISOString(),
+        });
+      } catch (error) {
+        console.error('❌ Azureナレッジベースファイル取得エラー:', error);
+        return res.status(500).json({
+          success: false,
+          error: 'ナレッジベースファイルの取得に失敗しました',
+          details: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
 
     // ファイルパスを構築
     const filePath = path.join(

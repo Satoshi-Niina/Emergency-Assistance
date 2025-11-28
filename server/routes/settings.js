@@ -1,19 +1,14 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const auth_js_1 = require("../middleware/auth.js");
-const path_1 = __importDefault(require("path"));
-const promises_1 = __importDefault(require("fs/promises"));
-const url_1 = require("url");
-const router = (0, express_1.Router)();
+import { Router } from 'express';
+import { authenticateToken } from '../middleware/auth.js';
+import path from 'path';
+import fs from 'fs/promises';
+import { fileURLToPath } from 'url';
+const router = Router();
 // ES module用の__dirname代替
-const __filename = (0, url_1.fileURLToPath)(import.meta.url);
-const __dirname = path_1.default.dirname(__filename);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 // RAG設定の保存・読み込み用のファイルパス
-const RAG_SETTINGS_FILE = path_1.default.join(__dirname, '../data/rag-settings.json');
+const RAG_SETTINGS_FILE = path.join(__dirname, '../data/rag-settings.json');
 // デフォルトのRAG設定
 const DEFAULT_RAG_SETTINGS = {
     chunkSize: 1000,
@@ -34,12 +29,12 @@ const DEFAULT_RAG_SETTINGS = {
 };
 // RAG設定を保存するディレクトリを確保
 async function ensureDataDirectory() {
-    const dataDir = path_1.default.dirname(RAG_SETTINGS_FILE);
+    const dataDir = path.dirname(RAG_SETTINGS_FILE);
     try {
-        await promises_1.default.access(dataDir);
+        await fs.access(dataDir);
     }
     catch {
-        await promises_1.default.mkdir(dataDir, { recursive: true });
+        await fs.mkdir(dataDir, { recursive: true });
     }
 }
 // RAG設定を取得
@@ -48,7 +43,7 @@ router.get('/rag', async (req, res) => {
         console.log('🔍 RAG設定取得リクエスト');
         await ensureDataDirectory();
         try {
-            const data = await promises_1.default.readFile(RAG_SETTINGS_FILE, 'utf-8');
+            const data = await fs.readFile(RAG_SETTINGS_FILE, 'utf-8');
             const settings = JSON.parse(data);
             console.log('✅ RAG設定読み込み成功:', settings);
             res.json(settings);
@@ -68,7 +63,7 @@ router.get('/rag', async (req, res) => {
     }
 });
 // RAG設定を保存
-router.post('/rag', auth_js_1.authenticateToken, async (req, res) => {
+router.post('/rag', authenticateToken, async (req, res) => {
     try {
         console.log('💾 RAG設定保存リクエスト:', req.body);
         await ensureDataDirectory();
@@ -109,7 +104,7 @@ router.post('/rag', auth_js_1.authenticateToken, async (req, res) => {
                 .json({ error: '最大結果数は1-20の範囲で設定してください' });
         }
         // ファイルに保存
-        await promises_1.default.writeFile(RAG_SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
+        await fs.writeFile(RAG_SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
         console.log('✅ RAG設定保存成功:', settings);
         res.json({ success: true, settings });
     }
@@ -122,7 +117,7 @@ router.post('/rag', auth_js_1.authenticateToken, async (req, res) => {
     }
 });
 // OpenAI APIキーを保存
-router.post('/openai-api-key', auth_js_1.authenticateToken, async (req, res) => {
+router.post('/openai-api-key', authenticateToken, async (req, res) => {
     try {
         console.log('🔑 OpenAI APIキー保存リクエスト');
         const { apiKey } = req.body;
@@ -154,7 +149,7 @@ router.post('/openai-api-key', auth_js_1.authenticateToken, async (req, res) => 
     }
 });
 // OpenAI APIキーを取得
-router.get('/openai-api-key', auth_js_1.authenticateToken, async (req, res) => {
+router.get('/openai-api-key', authenticateToken, async (req, res) => {
     try {
         console.log('🔍 OpenAI APIキー取得リクエスト');
         const apiKey = process.env.OPENAI_API_KEY;
@@ -183,7 +178,7 @@ router.get('/openai-api-key', auth_js_1.authenticateToken, async (req, res) => {
     }
 });
 // AI支援設定ファイルのパス
-const AI_ASSIST_SETTINGS_FILE = path_1.default.join(__dirname, '../data/ai-assist-settings.json');
+const AI_ASSIST_SETTINGS_FILE = path.join(__dirname, '../data/ai-assist-settings.json');
 // デフォルトのAI支援設定
 const DEFAULT_AI_ASSIST_SETTINGS = {
     initialPrompt: '何か問題がありましたか？お困りの事象を教えてください！',
@@ -212,7 +207,7 @@ router.get('/ai-assist', async (req, res) => {
         console.log('🔍 AI支援設定取得リクエスト:', req.path, req.originalUrl);
         await ensureDataDirectory();
         try {
-            const data = await promises_1.default.readFile(AI_ASSIST_SETTINGS_FILE, 'utf-8');
+            const data = await fs.readFile(AI_ASSIST_SETTINGS_FILE, 'utf-8');
             const settings = JSON.parse(data);
             console.log('✅ AI支援設定読み込み成功:', settings);
             res.json({
@@ -238,7 +233,7 @@ router.get('/ai-assist', async (req, res) => {
     }
 });
 // AI支援設定を保存
-router.post('/ai-assist', auth_js_1.authenticateToken, async (req, res) => {
+router.post('/ai-assist', authenticateToken, async (req, res) => {
     try {
         console.log('💾 AI支援設定保存リクエスト:', req.path, req.originalUrl, req.body);
         await ensureDataDirectory();
@@ -248,7 +243,7 @@ router.post('/ai-assist', auth_js_1.authenticateToken, async (req, res) => {
             ...req.body,
         };
         // ファイルに保存
-        await promises_1.default.writeFile(AI_ASSIST_SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
+        await fs.writeFile(AI_ASSIST_SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
         console.log('✅ AI支援設定保存成功:', settings);
         res.json({
             success: true,
@@ -273,4 +268,4 @@ router.get('/test', async (req, res) => {
         originalUrl: req.originalUrl,
     });
 });
-exports.default = router;
+export default router;

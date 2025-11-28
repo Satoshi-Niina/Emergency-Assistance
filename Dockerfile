@@ -41,6 +41,11 @@ RUN echo "=== Builder Stage: Checking copied files ===" && \
     echo "=== Builder Stage: Verifying app.js ===" && \
     test -f /app/server/app.js && echo "✅ app.js found in builder!" || (echo "❌ app.js NOT found in builder!" && exit 1)
 
+# Build server (compile TypeScript)
+RUN echo "=== Compiling TypeScript ===" && \
+    cd server && npm run build && \
+    echo "✅ TypeScript compilation completed"
+
 # Build client
 RUN cd client && npm run build
 

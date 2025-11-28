@@ -1,32 +1,11 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.azureStorage = exports.AzureStorageService = void 0;
-const storage_blob_1 = require("@azure/storage-blob");
-const fs_1 = require("fs");
-const path_1 = __importDefault(require("path"));
-class AzureStorageService {
+import { BlobServiceClient } from '@azure/storage-blob';
+import { promises as fs } from 'fs';
+import path from 'path';
+export class AzureStorageService {
+    blobServiceClient;
+    containerClient;
+    containerName;
     constructor() {
-        Object.defineProperty(this, "blobServiceClient", {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: void 0
-        });
-        Object.defineProperty(this, "containerClient", {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: void 0
-        });
-        Object.defineProperty(this, "containerName", {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: void 0
-        });
         const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
         this.containerName =
             process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
@@ -34,7 +13,7 @@ class AzureStorageService {
             throw new Error('AZURE_STORAGE_CONNECTION_STRING environment variable is required');
         }
         this.blobServiceClient =
-            storage_blob_1.BlobServiceClient.fromConnectionString(connectionString);
+            BlobServiceClient.fromConnectionString(connectionString);
         this.containerClient = this.blobServiceClient.getContainerClient(this.containerName);
     }
     async ensureContainerExists() {
@@ -52,7 +31,7 @@ class AzureStorageService {
         try {
             await this.ensureContainerExists();
             const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
-            const fileBuffer = await fs_1.promises.readFile(filePath);
+            const fileBuffer = await fs.readFile(filePath);
             await blockBlobClient.uploadData(fileBuffer);
             return blockBlobClient.url;
         }
@@ -65,8 +44,8 @@ class AzureStorageService {
         try {
             const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
             // ローカルディレクトリを作成
-            const dir = path_1.default.dirname(localPath);
-            await fs_1.promises.mkdir(dir, { recursive: true });
+            const dir = path.dirname(localPath);
+            await fs.mkdir(dir, { recursive: true });
             await blockBlobClient.downloadToFile(localPath);
         }
         catch (error) {
@@ -139,8 +118,7 @@ class AzureStorageService {
         }
     }
 }
-exports.AzureStorageService = AzureStorageService;
 // シングルトンインスタンス（環境変数がある場合のみ）
-exports.azureStorage = process.env.AZURE_STORAGE_CONNECTION_STRING
+export const azureStorage = process.env.AZURE_STORAGE_CONNECTION_STRING
     ? new AzureStorageService()
     : null;

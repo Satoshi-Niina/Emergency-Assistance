@@ -1,14 +1,7 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.healthRouter = void 0;
-const express_1 = __importDefault(require("express"));
-const storage_js_1 = require("../storage.js");
-const openai_js_1 = require("../lib/openai.js");
-const router = express_1.default.Router();
-exports.healthRouter = router;
+import express from 'express';
+import { storage } from '../storage.js';
+import { getOpenAIClientStatus } from '../lib/openai.js';
+const router = express.Router();
 // 基本的なヘルスチェック（セーフモード対応）
 router.get('/', (_req, res) => {
     try {
@@ -50,7 +43,7 @@ router.get('/', (_req, res) => {
 // データベース接続チェック
 router.get('/db', async (_req, res) => {
     try {
-        const isConnected = await storage_js_1.storage.testConnection();
+        const isConnected = await storage.testConnection();
         if (isConnected) {
             res.json({
                 status: 'healthy',
@@ -79,7 +72,7 @@ router.get('/db', async (_req, res) => {
 // GPT/OpenAI接続チェック
 router.get('/gpt', async (_req, res) => {
     try {
-        const clientStatus = (0, openai_js_1.getOpenAIClientStatus)();
+        const clientStatus = getOpenAIClientStatus();
         if (clientStatus.clientExists &&
             clientStatus.apiKeyExists &&
             !clientStatus.isMockKey) {
@@ -180,7 +173,7 @@ router.get('/system', async (_req, res) => {
     };
     // データベースチェック
     try {
-        const isDbConnected = await storage_js_1.storage.testConnection();
+        const isDbConnected = await storage.testConnection();
         checks.database = isDbConnected ? 'healthy' : 'unhealthy';
     }
     catch (error) {
@@ -188,7 +181,7 @@ router.get('/system', async (_req, res) => {
     }
     // GPTチェック
     try {
-        const clientStatus = (0, openai_js_1.getOpenAIClientStatus)();
+        const clientStatus = getOpenAIClientStatus();
         if (clientStatus.clientExists &&
             clientStatus.apiKeyExists &&
             !clientStatus.isMockKey) {
@@ -206,3 +199,4 @@ router.get('/system', async (_req, res) => {
     const statusCode = hasIssues ? 503 : 200;
     res.status(statusCode).json(checks);
 });
+export { router as healthRouter };

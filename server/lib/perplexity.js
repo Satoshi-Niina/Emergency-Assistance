@@ -1,21 +1,10 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.processPerplexityRequest = exports.perplexityService = exports.PerplexityService = void 0;
-const openai_1 = __importDefault(require("openai"));
-class PerplexityService {
+import OpenAI from 'openai';
+export class PerplexityService {
+    openai = null;
     constructor() {
-        Object.defineProperty(this, "openai", {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: null
-        });
         const apiKey = process.env.PERPLEXITY_API_KEY;
         if (apiKey && apiKey !== 'pplx-your-perplexity-api-key-here') {
-            this.openai = new openai_1.default({
+            this.openai = new OpenAI({
                 apiKey: apiKey,
                 baseURL: 'https://api.perplexity.ai',
             });
@@ -87,10 +76,8 @@ class PerplexityService {
         }
     }
 }
-exports.PerplexityService = PerplexityService;
-exports.perplexityService = new PerplexityService();
+export const perplexityService = new PerplexityService();
 // Process Perplexity request function for routes.ts
-const processPerplexityRequest = async (query) => {
-    return await exports.perplexityService.search(query);
+export const processPerplexityRequest = async (query) => {
+    return await perplexityService.search(query);
 };
-exports.processPerplexityRequest = processPerplexityRequest;

@@ -1,13 +1,8 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const index_js_1 = require("../db/index.js");
-const schema_js_1 = require("../db/schema.js");
-const drizzle_orm_1 = require("drizzle-orm");
-const router = express_1.default.Router();
+import express from 'express';
+import { db } from '../db/index.js';
+import { machineTypes, machines } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
+const router = express.Router();
 // 機種一覧取得API（/api/machine-types）
 router.get('/machine-types', async (_req, res) => {
     try {
@@ -15,19 +10,20 @@ router.get('/machine-types', async (_req, res) => {
         // Content-Typeを明示的に設定
         res.setHeader('Content-Type', 'application/json');
         // Drizzle ORMを使用して機種一覧を取得
-        const result = await index_js_1.db
+        const result = await db
             .select({
-            id: schema_js_1.machineTypes.id,
-            machine_type_name: schema_js_1.machineTypes.machineTypeName,
+            id: machineTypes.id,
+            machine_type_name: machineTypes.machineTypeName,
         })
-            .from(schema_js_1.machineTypes)
-            .orderBy(schema_js_1.machineTypes.machineTypeName);
+            .from(machineTypes)
+            .orderBy(machineTypes.machineTypeName);
         console.log(`✅ 機種一覧取得完了: ${result.length}件`);
         // 本番環境用ログ出力
         console.log({ route: '/api/machines/machine-types', count: result.length });
         res.json({
             success: true,
             data: result,
+            machineTypes: result, // 後方互換性のため
             total: result.length,
             timestamp: new Date().toISOString(),
         });
@@ -49,16 +45,16 @@ router.get('/all-machines', async (_req, res) => {
         // Content-Typeを明示的に設定
         res.setHeader('Content-Type', 'application/json');
         // Drizzle ORMを使用して全機械データを取得
-        const result = await index_js_1.db
+        const result = await db
             .select({
-            type_id: schema_js_1.machineTypes.id,
-            machine_type_name: schema_js_1.machineTypes.machineTypeName,
-            machine_id: schema_js_1.machines.id,
-            machine_number: schema_js_1.machines.machineNumber,
+            type_id: machineTypes.id,
+            machine_type_name: machineTypes.machineTypeName,
+            machine_id: machines.id,
+            machine_number: machines.machineNumber,
         })
-            .from(schema_js_1.machineTypes)
-            .leftJoin(schema_js_1.machines, (0, drizzle_orm_1.eq)(schema_js_1.machineTypes.id, schema_js_1.machines.machineTypeId))
-            .orderBy(schema_js_1.machineTypes.machineTypeName, schema_js_1.machines.machineNumber);
+            .from(machineTypes)
+            .leftJoin(machines, eq(machineTypes.id, machines.machineTypeId))
+            .orderBy(machineTypes.machineTypeName, machines.machineNumber);
         // 機種ごとにグループ化
         const groupedData = result.reduce((acc, row) => {
             const typeName = row.machine_type_name;
@@ -117,8 +113,8 @@ router.post('/machine-types', async (_req, res) => {
             });
         }
         // Drizzle ORMを使用して機種を追加
-        const newMachineType = await index_js_1.db
-            .insert(schema_js_1.machineTypes)
+        const newMachineType = await db
+            .insert(machineTypes)
             .values({
             machineTypeName: machine_type_name,
         })
@@ -141,33 +137,44 @@ router.post('/machine-types', async (_req, res) => {
         });
     }
 });
-// 指定機種に紐づく機械番号一覧取得API
-router.get('/machines', async (_req, res) => {
+// 指定機種に紐づく機械番号一覧取得API（type_idが指定されていない場合は全機械番号を取得）
+router.get('/machines', async (req, res) => {
     try {
         console.log('🔍 機械番号一覧取得リクエスト:', req.query);
         // Content-Typeを明示的に設定
         res.setHeader('Content-Type', 'application/json');
         const { type_id } = req.query;
-        if (!type_id) {
-            return res.status(400).json({
-                success: false,
-                error: '機種IDが指定されていません',
-                timestamp: new Date().toISOString(),
-            });
+        let result;
+        if (type_id) {
+            // 特定の機種IDの機械番号のみ取得
+            result = await db
+                .select({
+                id: machines.id,
+                machine_number: machines.machineNumber,
+                machine_type_id: machines.machineTypeId,
+            })
+                .from(machines)
+                .where(eq(machines.machineTypeId, type_id))
+                .orderBy(machines.machineNumber);
         }
-        // Drizzle ORMを使用して機械番号一覧を取得
-        const result = await index_js_1.db
-            .select({
-            id: schema_js_1.machines.id,
-            machine_number: schema_js_1.machines.machineNumber,
-        })
-            .from(schema_js_1.machines)
-            .where((0, drizzle_orm_1.eq)(schema_js_1.machines.machineTypeId, type_id))
-            .orderBy(schema_js_1.machines.machineNumber);
+        else {
+            // 全機械番号を取得（機種名も含む）
+            result = await db
+                .select({
+                id: machines.id,
+                machine_number: machines.machineNumber,
+                machine_type_id: machines.machineTypeId,
+                machine_type_name: machineTypes.machineTypeName,
+            })
+                .from(machines)
+                .leftJoin(machineTypes, eq(machines.machineTypeId, machineTypes.id))
+                .orderBy(machines.machineNumber);
+        }
         console.log(`✅ 機械番号一覧取得完了: ${result.length}件`);
         res.json({
             success: true,
             data: result,
+            machines: result, // 後方互換性のため
             total: result.length,
             timestamp: new Date().toISOString(),
         });
@@ -204,8 +211,8 @@ router.post('/machines', async (_req, res) => {
             });
         }
         // Drizzle ORMを使用して機械番号を追加
-        const result = await index_js_1.db
-            .insert(schema_js_1.machines)
+        const result = await db
+            .insert(machines)
             .values({
             machineNumber: machine_number.trim(),
             machineTypeId: machine_type_id,
@@ -247,10 +254,10 @@ router.put('/machine-types/:id', async (_req, res) => {
             });
         }
         // Drizzle ORMを使用して機種を更新
-        const updatedMachineType = await index_js_1.db
-            .update(schema_js_1.machineTypes)
+        const updatedMachineType = await db
+            .update(machineTypes)
             .set({ machineTypeName: machine_type_name })
-            .where((0, drizzle_orm_1.eq)(schema_js_1.machineTypes.id, id))
+            .where(eq(machineTypes.id, id))
             .returning();
         if (updatedMachineType.length === 0) {
             return res.status(404).json({
@@ -286,9 +293,9 @@ router.delete('/machine-types/:id', async (_req, res) => {
         // Content-Typeを明示的に設定
         res.setHeader('Content-Type', 'application/json');
         // Drizzle ORMを使用して機種を削除
-        const result = await index_js_1.db
-            .delete(schema_js_1.machineTypes)
-            .where((0, drizzle_orm_1.eq)(schema_js_1.machineTypes.id, id))
+        const result = await db
+            .delete(machineTypes)
+            .where(eq(machineTypes.id, id))
             .returning();
         if (result.length === 0) {
             return res.status(404).json({
@@ -340,13 +347,13 @@ router.put('/machines/:id', async (_req, res) => {
             });
         }
         // Drizzle ORMを使用して機械番号を更新
-        const updatedMachine = await index_js_1.db
-            .update(schema_js_1.machines)
+        const updatedMachine = await db
+            .update(machines)
             .set({
             machineNumber: machine_number.trim(),
             machineTypeId: machine_type_id,
         })
-            .where((0, drizzle_orm_1.eq)(schema_js_1.machines.id, id))
+            .where(eq(machines.id, id))
             .returning();
         if (updatedMachine.length === 0) {
             return res.status(404).json({
@@ -382,9 +389,9 @@ router.delete('/machines/:id', async (_req, res) => {
         // Content-Typeを明示的に設定
         res.setHeader('Content-Type', 'application/json');
         // Drizzle ORMを使用して機械番号を削除
-        const result = await index_js_1.db
-            .delete(schema_js_1.machines)
-            .where((0, drizzle_orm_1.eq)(schema_js_1.machines.id, id))
+        const result = await db
+            .delete(machines)
+            .where(eq(machines.id, id))
             .returning();
         if (result.length === 0) {
             return res.status(404).json({
@@ -434,4 +441,4 @@ router.use('*', (req, res) => {
         timestamp: new Date().toISOString(),
     });
 });
-exports.default = router;
+export default router;

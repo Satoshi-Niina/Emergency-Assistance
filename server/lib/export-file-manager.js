@@ -6,6 +6,8 @@ import { azureStorage } from './azure-storage.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 export class ExportFileManager {
+    baseDir;
+    useAzureStorage;
     constructor(baseDir = path.join(__dirname, '../../knowledge-base/exports')) {
         this.baseDir = process.env.LOCAL_EXPORT_DIR || baseDir;
         this.useAzureStorage = process.env.STORAGE_MODE === 'hybrid' && !!process.env.AZURE_STORAGE_CONNECTION_STRING;

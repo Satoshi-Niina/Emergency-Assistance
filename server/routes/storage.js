@@ -1,11 +1,6 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const storage_blob_1 = require("@azure/storage-blob");
-const router = express_1.default.Router();
+import express from 'express';
+import { BlobServiceClient } from '@azure/storage-blob';
+const router = express.Router();
 const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
 const containerName = process.env.BLOB_CONTAINER_NAME ||
     process.env.AZURE_STORAGE_CONTAINER_NAME ||
@@ -22,7 +17,7 @@ router.get('/list', async (_req, res) => {
             console.warn('⚠️ Azure Storage接続文字列が設定されていません。空のリストを返します。');
             return res.status(200).type('application/json').json([]);
         }
-        const blobServiceClient = storage_blob_1.BlobServiceClient.fromConnectionString(connectionString);
+        const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
         const containerClient = blobServiceClient.getContainerClient(containerName);
         const list = [];
         for await (const b of containerClient.listBlobsFlat({
@@ -46,4 +41,4 @@ router.get('/list', async (_req, res) => {
         });
     }
 });
-exports.default = router;
+export default router;

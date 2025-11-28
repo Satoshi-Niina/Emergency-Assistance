@@ -1,14 +1,9 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const bcryptjs_1 = __importDefault(require("bcryptjs"));
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const index_1 = require("../db/index");
-const schema_1 = require("../db/schema");
-const drizzle_orm_1 = require("drizzle-orm");
+import express from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { db } from '../db/index';
+import { users } from '../db/schema';
+import { eq } from 'drizzle-orm';
 // Type definitions are loaded automatically by TypeScript
 // JWT発行ユーティリティ
 const issueJwt = (userId, options = {}) => {
@@ -17,18 +12,62 @@ const issueJwt = (userId, options = {}) => {
     if (options.exp) {
         jwtOptions.expiresIn = Math.floor((options.exp - Date.now()) / 1000) + 's';
     }
-    return jsonwebtoken_1.default.sign(payload, process.env.JWT_SECRET, jwtOptions);
+    return jwt.sign(payload, process.env.JWT_SECRET, jwtOptions);
 };
-const router = express_1.default.Router();
+const router = express.Router();
+const normalizeRole = (role) => {
+    if (!role)
+        return 'employee';
+    const normalized = role.toString().trim().toLowerCase();
+    if (normalized === 'admin')
+        return 'admin';
+    if (normalized === 'employee')
+        return 'employee';
+    if (normalized === 'user')
+        return 'employee';
+    return 'employee';
+};
 // CORSミドルウェア（認証ルート用）
-// 注意: CORS設定はazure-server.mjsで一元管理されているため、このミドルウェアは不要
-// ただし、レガシーコードとの互換性のため、次のリクエストに進むだけの処理として残す
 router.use((req, res, next) => {
-    // CORS設定はazure-server.mjsで既に適用されているため、ここでは何もしない
+    const origin = req.headers.origin;
+    // 注意: 本番環境では必ずSTATIC_WEB_APP_URL環境変数を設定してください
+    const staticWebAppUrl = process.env.STATIC_WEB_APP_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080');
+    const clientPort = process.env.CLIENT_PORT || '5173';
+    const allowedOrigins = [
+        `http://localhost:${clientPort}`,
+        `http://localhost:${parseInt(clientPort) + 1}`,
+        `http://localhost:${parseInt(clientPort) + 2}`,
+        `http://localhost:${parseInt(clientPort) + 3}`,
+        `http://localhost:${parseInt(clientPort) + 4}`,
+        `http://localhost:${parseInt(clientPort) + 5}`,
+        `http://127.0.0.1:${clientPort}`,
+        `http://127.0.0.1:${parseInt(clientPort) + 1}`,
+        `http://127.0.0.1:${parseInt(clientPort) + 2}`,
+        `http://127.0.0.1:${parseInt(clientPort) + 3}`,
+        `http://127.0.0.1:${parseInt(clientPort) + 4}`,
+        `http://127.0.0.1:${parseInt(clientPort) + 5}`,
+        staticWebAppUrl,
+        ...(process.env.CORS_ALLOW_ORIGINS?.split(',') || [])
+    ].filter(Boolean);
+    if (origin && (allowedOrigins.includes(origin) || allowedOrigins.includes('*'))) {
+        res.header('Access-Control-Allow-Origin', origin);
+    }
+    else if (!origin) {
+        // オリジンなし（同一オリジン）を許可
+        res.header('Access-Control-Allow-Origin', '*');
+    }
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Cache-Control, Pragma, Expires, Cookie');
+    res.header('Access-Control-Max-Age', '86400');
+    // プリフライトリクエスト（OPTIONS）の処理
+    if (req.method === 'OPTIONS') {
+        return res.status(204).end();
+    }
     next();
 });
 // デバッグ用エンドポイント - 環境変数とセッション状態を確認
-router.get('/debug/env', (_req, res) => {
+router.get('/debug/env', (req, res) => {
     console.log('🔍 デバッグエンドポイント呼び出し');
     const debugInfo = {
         environment: {
@@ -62,7 +101,7 @@ router.get('/debug/env', (_req, res) => {
     });
 });
 // セッション状態確認用エンドポイント
-router.get('/debug/session', (_req, res) => {
+router.get('/debug/session', (req, res) => {
     console.log('🔍 セッション状態確認エンドポイント呼び出し');
     res.json({
         success: true,
@@ -98,14 +137,18 @@ router.post('/login', async (req, res) => {
         // バイパスモード時は仮ログイン
         if (bypassDb) {
             console.log('[auth/login] Bypass mode: Creating demo session');
+            const normalizedRole = normalizeRole('user');
             // セッションにユーザー情報を設定
             req.session.user = {
                 id: 'demo',
                 name: username,
-                role: 'user'
+                username,
+                role: normalizedRole
             };
+            req.session.userRole = normalizedRole;
             // JWTトークンも生成（オプション）
-            const token = jsonwebtoken_1.default.sign({ id: 'demo', username, role: 'user' }, process.env.JWT_SECRET || 'fallback-secret', { expiresIn: '1d' });
+            const tokenPayload = { id: 'demo', username, role: normalizedRole };
+            const token = jwt.sign(tokenPayload, process.env.JWT_SECRET || 'fallback-secret', { expiresIn: '1d' });
             return res.json({
                 success: true,
                 mode: 'session',
@@ -118,10 +161,10 @@ router.post('/login', async (req, res) => {
         // 本来のDB認証
         try {
             // データベースからユーザーを検索
-            const foundUsers = await index_1.db
+            const foundUsers = await db
                 .select()
-                .from(schema_1.users)
-                .where((0, drizzle_orm_1.eq)(schema_1.users.username, username))
+                .from(users)
+                .where(eq(users.username, username))
                 .limit(1);
             if (foundUsers.length === 0) {
                 return res.status(401).json({
@@ -132,7 +175,7 @@ router.post('/login', async (req, res) => {
             }
             const foundUser = foundUsers[0];
             // パスワード比較（bcryptjs）
-            const isPasswordValid = await bcryptjs_1.default.compare(password, foundUser.password);
+            const isPasswordValid = await bcrypt.compare(password, foundUser.password);
             if (!isPasswordValid) {
                 return res.status(401).json({
                     success: false,
@@ -153,11 +196,14 @@ router.post('/login', async (req, res) => {
                     });
                 }
                 req.session.userId = foundUser.id;
+                const normalizedRole = normalizeRole(foundUser.role);
                 req.session.user = {
                     id: foundUser.id,
                     name: foundUser.username,
-                    role: foundUser.role || 'user'
+                    username: foundUser.username,
+                    role: normalizedRole
                 };
+                req.session.userRole = normalizedRole;
                 req.session.save(() => {
                     console.log('[auth/login] Login success for user:', foundUser.username);
                     res.json({
@@ -189,7 +235,7 @@ router.post('/login', async (req, res) => {
     }
 });
 // ログアウトエンドポイント
-router.post('/logout', (_req, res) => {
+router.post('/logout', (req, res) => {
     req.session.destroy(() => {
         res.clearCookie('sid', { path: '/' });
         res.json({ success: true });
@@ -201,9 +247,16 @@ router.get('/me', (req, res) => {
         // セッションベースの認証をチェック
         if (req.session?.user) {
             console.log('[auth/me] Session-based auth:', req.session.user);
+            const normalizedRole = normalizeRole(req.session.user.role);
+            const normalizedUser = {
+                ...req.session.user,
+                role: normalizedRole
+            };
+            req.session.user = normalizedUser;
+            req.session.userRole = normalizedRole;
             return res.json({
                 success: true,
-                user: req.session.user,
+                user: normalizedUser,
                 authenticated: true
             });
         }
@@ -212,11 +265,20 @@ router.get('/me', (req, res) => {
         if (auth?.startsWith('Bearer ')) {
             try {
                 const token = auth.slice(7);
-                const payload = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+                const payload = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
                 console.log('[auth/me] Token-based auth:', payload);
+                const payloadObject = typeof payload === 'object' ? payload : {};
+                const normalizedRole = normalizeRole(typeof payloadObject.role === 'string' ? payloadObject.role : undefined);
+                const userFromToken = {
+                    id: typeof payloadObject.sub === 'string'
+                        ? payloadObject.sub
+                        : (typeof payloadObject.id === 'string' ? payloadObject.id : undefined),
+                    ...payloadObject,
+                    role: normalizedRole
+                };
                 return res.json({
                     success: true,
-                    user: { id: payload.sub || payload.id, ...payload },
+                    user: userFromToken,
                     authenticated: true
                 });
             }
@@ -247,7 +309,7 @@ router.get('/me', (req, res) => {
     }
 });
 // サーバ設定ヒント取得（段階的移行対応）
-router.get('/handshake', (_req, res) => {
+router.get('/handshake', (req, res) => {
     console.log('🔍 /api/auth/handshake 呼び出し');
     // 段階的移行モード判定
     const isSafeMode = process.env.SAFE_MODE === 'true';
@@ -308,7 +370,7 @@ router.get('/handshake', (_req, res) => {
     }
 });
 // DB readiness チェックエンドポイント
-router.get('/readiness', async (_req, res) => {
+router.get('/readiness', async (req, res) => {
     console.log('🔍 /api/auth/readiness 呼び出し');
     try {
         // DB_READINESSが有効でない場合はスキップ
@@ -335,7 +397,7 @@ router.get('/readiness', async (_req, res) => {
         }
         // データベース接続テスト
         console.log('[auth/readiness] Testing database connection...');
-        const result = await index_1.db.execute('SELECT 1 as test');
+        const result = await db.execute('SELECT 1 as test');
         console.log('[auth/readiness] Database connection successful');
         return res.json({
             ok: true,
@@ -370,7 +432,7 @@ router.post('/cookie-probe', (_req, res) => {
     res.status(204).send();
 });
 // Cookieプローブ確認
-router.get('/cookie-probe-check', (_req, res) => {
+router.get('/cookie-probe-check', (req, res) => {
     const cookieOk = !!req.cookies['auth-probe'];
     // プローブCookieを削除
     if (cookieOk) {
@@ -379,7 +441,7 @@ router.get('/cookie-probe-check', (_req, res) => {
     res.json({ cookieOk });
 });
 // トークンリフレッシュ
-router.post('/refresh', async (_req, res) => {
+router.post('/refresh', async (req, res) => {
     try {
         // セッションが有効な場合
         if (req.session?.userId) {
@@ -391,7 +453,7 @@ router.post('/refresh', async (_req, res) => {
         if (authHeader && authHeader.startsWith('Bearer ')) {
             const token = authHeader.substring(7);
             try {
-                const payload = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+                const payload = jwt.verify(token, process.env.JWT_SECRET);
                 // 期限が15分未満の場合は新しいトークンを発行
                 const now = Math.floor(Date.now() / 1000);
                 if (payload.exp - now < 900) {
@@ -416,4 +478,4 @@ router.post('/refresh', async (_req, res) => {
             .json({ success: false, error: 'リフレッシュエラー' });
     }
 });
-exports.default = router;
+export default router;

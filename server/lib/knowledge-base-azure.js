@@ -1,60 +1,14 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.knowledgeBaseAzure = exports.KnowledgeBaseAzureService = void 0;
-const azure_storage_js_1 = require("./azure-storage.js");
-const fs = __importStar(require("fs-extra"));
-const path = __importStar(require("path"));
-const url_1 = require("url");
+import { azureStorage } from './azure-storage.js';
+import * as fs from 'fs-extra';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
 // ESM用__dirname定義
-const __filename = (0, url_1.fileURLToPath)(import.meta.url);
+const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-class KnowledgeBaseAzureService {
+export class KnowledgeBaseAzureService {
+    localKnowledgeBasePath;
+    remotePrefix;
     constructor() {
-        Object.defineProperty(this, "localKnowledgeBasePath", {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: void 0
-        });
-        Object.defineProperty(this, "remotePrefix", {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: void 0
-        });
         this.localKnowledgeBasePath = path.join(__dirname, '../../knowledge-base');
         this.remotePrefix = 'knowledge-base';
     }
@@ -63,7 +17,7 @@ class KnowledgeBaseAzureService {
         try {
             console.log('🔄 Syncing knowledge base from Azure Storage...');
             // Azure Storageからダウンロード
-            await azure_storage_js_1.azureStorage.downloadDirectory(this.remotePrefix, this.localKnowledgeBasePath);
+            await azureStorage.downloadDirectory(this.remotePrefix, this.localKnowledgeBasePath);
             console.log('✅ Knowledge base synced from Azure Storage');
         }
         catch (error) {
@@ -81,7 +35,7 @@ class KnowledgeBaseAzureService {
                 await fs.ensureDir(this.localKnowledgeBasePath);
             }
             // Azure Storageにアップロード
-            await azure_storage_js_1.azureStorage.uploadDirectory(this.localKnowledgeBasePath, this.remotePrefix);
+            await azureStorage.uploadDirectory(this.localKnowledgeBasePath, this.remotePrefix);
             console.log('✅ Knowledge base synced to Azure Storage');
         }
         catch (error) {
@@ -94,7 +48,7 @@ class KnowledgeBaseAzureService {
         try {
             const relativePath = path.relative(this.localKnowledgeBasePath, localFilePath);
             const blobName = `${this.remotePrefix}/${relativePath}`;
-            const url = await azure_storage_js_1.azureStorage.uploadFile(localFilePath, blobName);
+            const url = await azureStorage.uploadFile(localFilePath, blobName);
             console.log(`✅ File uploaded to Azure: ${relativePath}`);
             return url;
         }
@@ -107,7 +61,7 @@ class KnowledgeBaseAzureService {
     async downloadFile(blobName) {
         try {
             const localFilePath = path.join(this.localKnowledgeBasePath, blobName.replace(`${this.remotePrefix}/`, ''));
-            await azure_storage_js_1.azureStorage.downloadFile(blobName, localFilePath);
+            await azureStorage.downloadFile(blobName, localFilePath);
             console.log(`✅ File downloaded from Azure: ${blobName}`);
             return localFilePath;
         }
@@ -119,19 +73,19 @@ class KnowledgeBaseAzureService {
     // ファイルの存在確認（Azure Storage）
     async fileExistsInAzure(relativePath) {
         const blobName = `${this.remotePrefix}/${relativePath}`;
-        return await azure_storage_js_1.azureStorage.fileExists(blobName);
+        return await azureStorage.fileExists(blobName);
     }
     // ファイルのURLを取得（Azure Storage）
     getFileUrl(relativePath) {
         const blobName = `${this.remotePrefix}/${relativePath}`;
-        return azure_storage_js_1.azureStorage.getFileUrl(blobName);
+        return azureStorage.getFileUrl(blobName);
     }
     // Knowledge Baseの初期化
     async initialize() {
         try {
             console.log('🚀 Initializing Knowledge Base Azure integration...');
             // Azure Storageコンテナを初期化
-            await azure_storage_js_1.azureStorage.initializeContainer();
+            await azureStorage.initializeContainer();
             // ローカルディレクトリを作成
             await fs.ensureDir(this.localKnowledgeBasePath);
             // Azure Storageから同期
@@ -149,7 +103,7 @@ class KnowledgeBaseAzureService {
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             const backupPrefix = `backups/${timestamp}`;
             console.log(`🔄 Creating backup: ${backupPrefix}`);
-            await azure_storage_js_1.azureStorage.uploadDirectory(this.localKnowledgeBasePath, backupPrefix);
+            await azureStorage.uploadDirectory(this.localKnowledgeBasePath, backupPrefix);
             console.log(`✅ Backup created: ${backupPrefix}`);
         }
         catch (error) {
@@ -164,9 +118,9 @@ class KnowledgeBaseAzureService {
             // 現在のディレクトリをバックアップ
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             const currentBackupPrefix = `backups/restore-${timestamp}`;
-            await azure_storage_js_1.azureStorage.uploadDirectory(this.localKnowledgeBasePath, currentBackupPrefix);
+            await azureStorage.uploadDirectory(this.localKnowledgeBasePath, currentBackupPrefix);
             // バックアップから復元
-            await azure_storage_js_1.azureStorage.downloadDirectory(backupPrefix, this.localKnowledgeBasePath);
+            await azureStorage.downloadDirectory(backupPrefix, this.localKnowledgeBasePath);
             console.log(`✅ Restored from backup: ${backupPrefix}`);
         }
         catch (error) {
@@ -177,7 +131,7 @@ class KnowledgeBaseAzureService {
     // バックアップ一覧を取得
     async listBackups() {
         try {
-            const files = await azure_storage_js_1.azureStorage.listFiles('backups/');
+            const files = await azureStorage.listFiles('backups/');
             const backups = new Set();
             for (const file of files) {
                 const parts = file.split('/');
@@ -226,6 +180,5 @@ class KnowledgeBaseAzureService {
         }
     }
 }
-exports.KnowledgeBaseAzureService = KnowledgeBaseAzureService;
 // シングルトンインスタンス
-exports.knowledgeBaseAzure = new KnowledgeBaseAzureService();
+export const knowledgeBaseAzure = new KnowledgeBaseAzureService();

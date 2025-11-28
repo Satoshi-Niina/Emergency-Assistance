@@ -1,38 +1,31 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.syncRoutesRouter = void 0;
-exports.registerSyncRoutes = registerSyncRoutes;
-const express_1 = __importDefault(require("express"));
-const path_1 = __importDefault(require("path"));
-const multer_1 = __importDefault(require("multer"));
-const fs_1 = __importDefault(require("fs"));
-const storage_js_1 = require("../storage.js");
-const router = express_1.default.Router();
+import express from 'express';
+import path from 'path';
+import multer from 'multer';
+import fs from 'fs';
+import { storage } from '../storage.js';
+const router = express.Router();
 // Multer configuration
-const multerStorage = multer_1.default.diskStorage({
+const multerStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const uploadDir = path_1.default.join(process.cwd(), 'uploads', 'images');
-        if (!fs_1.default.existsSync(uploadDir)) {
-            fs_1.default.mkdirSync(uploadDir, { recursive: true });
+        const uploadDir = path.join(process.cwd(), 'uploads', 'images');
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
         }
         cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path_1.default.extname(file.originalname));
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
     },
 });
-const upload = (0, multer_1.default)({
+const upload = multer({
     storage: multerStorage,
     limits: {
         fileSize: 10 * 1024 * 1024, // 10MB limit
     },
     fileFilter: (req, file, cb) => {
         const allowedTypes = /jpeg|jpg|png|gif|webp/;
-        const extname = allowedTypes.test(path_1.default.extname(file.originalname).toLowerCase());
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
         const mimetype = allowedTypes.test(file.mimetype);
         if (mimetype && extname) {
             return cb(null, true);
@@ -42,7 +35,7 @@ const upload = (0, multer_1.default)({
         }
     },
 });
-function registerSyncRoutes(app) {
+export function registerSyncRoutes(app) {
     // メディアアップロードAPI
     app.post('/api/media/upload', upload.single('file'), async (req, res) => {
         try {
@@ -84,7 +77,7 @@ function registerSyncRoutes(app) {
             const chatId = parseInt(req.params.id);
             const { messages } = req.body;
             // チャットの存在確認
-            const chat = await storage_js_1.storage.getChat(String(chatId));
+            const chat = await storage.getChat(String(chatId));
             if (!chat) {
                 return res.status(404).json({ error: 'チャットが見つかりません' });
             }
@@ -97,7 +90,7 @@ function registerSyncRoutes(app) {
             for (const message of messages) {
                 try {
                     // メッセージを保存（timestampはサーバー側で設定される）
-                    const savedMessage = await storage_js_1.storage.createMessage({
+                    const savedMessage = await storage.createMessage({
                         chatId: String(chatId),
                         content: message.content,
                         senderId: String(userId),
@@ -109,7 +102,7 @@ function registerSyncRoutes(app) {
                             // URLからファイル名を抽出
                             const mediaUrl = mediaItem.url;
                             // データベースにメディア情報を保存
-                            await storage_js_1.storage.createMedia({
+                            await storage.createMedia({
                                 messageId: savedMessage.id,
                                 type: mediaItem.type || 'image',
                                 url: mediaUrl,
@@ -125,7 +118,7 @@ function registerSyncRoutes(app) {
                 }
             }
             // チャットエクスポートレコードを更新
-            await storage_js_1.storage.saveChatExport(String(chatId), String(userId), new Date().getTime());
+            await storage.saveChatExport(String(chatId), String(userId), new Date().getTime());
             res.json({
                 success: true,
                 syncedCount: processedMessages.length,
@@ -142,7 +135,7 @@ function registerSyncRoutes(app) {
         try {
             const chatId = req.params.id;
             // 最終エクスポート情報を取得
-            const lastExport = await storage_js_1.storage.getLastChatExport(String(chatId));
+            const lastExport = await storage.getLastChatExport(String(chatId));
             if (!lastExport) {
                 return res.json({
                     success: true,
@@ -166,4 +159,4 @@ function registerSyncRoutes(app) {
     });
 }
 // Routerは使っていないが、importエラー回避のためダミーエクスポート
-exports.syncRoutesRouter = undefined;
+export const syncRoutesRouter = undefined;

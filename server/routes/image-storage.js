@@ -1,15 +1,10 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const index_js_1 = require("../db/index.js");
-const schema_js_1 = require("../db/schema.js");
-const drizzle_orm_1 = require("drizzle-orm");
-const path_1 = __importDefault(require("path"));
-const fs_1 = __importDefault(require("fs"));
-const router = (0, express_1.Router)();
+import { Router } from 'express';
+import { db } from '../db/index.js';
+import { imageData } from '../db/schema.js';
+import { eq, like } from 'drizzle-orm';
+import path from 'path';
+import fs from 'fs';
+const router = Router();
 // 画像データをアップロード
 router.post('/upload', async (_req, res) => {
     try {
@@ -19,8 +14,8 @@ router.post('/upload', async (_req, res) => {
                 .status(400)
                 .json({ error: '必要なフィールドが不足しています' });
         }
-        const result = await index_js_1.db
-            .insert(schema_js_1.imageData)
+        const result = await db
+            .insert(imageData)
             .values({
             fileName,
             originalFileName,
@@ -43,10 +38,10 @@ router.post('/upload', async (_req, res) => {
 router.get('/:id', async (_req, res) => {
     try {
         const { id } = req.params;
-        const result = await index_js_1.db
+        const result = await db
             .select()
-            .from(schema_js_1.imageData)
-            .where((0, drizzle_orm_1.eq)(schema_js_1.imageData.id, id));
+            .from(imageData)
+            .where(eq(imageData.id, id));
         if (result.length === 0) {
             return res.status(404).json({ error: '画像が見つかりません' });
         }
@@ -64,19 +59,19 @@ router.get('/:id', async (_req, res) => {
 router.get('/category/:category', async (_req, res) => {
     try {
         const { category } = req.params;
-        const result = await index_js_1.db
+        const result = await db
             .select({
-            id: schema_js_1.imageData.id,
-            fileName: schema_js_1.imageData.fileName,
-            originalFileName: schema_js_1.imageData.originalFileName,
-            mimeType: schema_js_1.imageData.mimeType,
-            fileSize: schema_js_1.imageData.fileSize,
-            category: schema_js_1.imageData.category,
-            description: schema_js_1.imageData.description,
-            createdAt: schema_js_1.imageData.createdAt,
+            id: imageData.id,
+            fileName: imageData.fileName,
+            originalFileName: imageData.originalFileName,
+            mimeType: imageData.mimeType,
+            fileSize: imageData.fileSize,
+            category: imageData.category,
+            description: imageData.description,
+            createdAt: imageData.createdAt,
         })
-            .from(schema_js_1.imageData)
-            .where((0, drizzle_orm_1.eq)(schema_js_1.imageData.category, category));
+            .from(imageData)
+            .where(eq(imageData.category, category));
         res.json(result);
     }
     catch (error) {
@@ -88,9 +83,9 @@ router.get('/category/:category', async (_req, res) => {
 router.delete('/:id', async (_req, res) => {
     try {
         const { id } = req.params;
-        const result = await index_js_1.db
-            .delete(schema_js_1.imageData)
-            .where((0, drizzle_orm_1.eq)(schema_js_1.imageData.id, id))
+        const result = await db
+            .delete(imageData)
+            .where(eq(imageData.id, id))
             .returning();
         if (result.length === 0) {
             return res.status(404).json({ error: '画像が見つかりません' });
@@ -106,14 +101,14 @@ router.delete('/:id', async (_req, res) => {
 router.get('/chat-exports/:filename', async (_req, res) => {
     try {
         const { filename } = req.params;
-        const imagePath = path_1.default.join(__dirname, '../../knowledge-base/images/chat-exports', filename);
+        const imagePath = path.join(__dirname, '../../knowledge-base/images/chat-exports', filename);
         // ファイルの存在確認
-        if (!fs_1.default.existsSync(imagePath)) {
+        if (!fs.existsSync(imagePath)) {
             console.log('画像ファイルが見つかりません:', imagePath);
             return res.status(404).json({ error: '画像ファイルが見つかりません' });
         }
         // ファイルの拡張子からMIMEタイプを判定
-        const ext = path_1.default.extname(filename).toLowerCase();
+        const ext = path.extname(filename).toLowerCase();
         let mimeType = 'image/jpeg'; // デフォルト
         if (ext === '.png')
             mimeType = 'image/png';
@@ -124,7 +119,7 @@ router.get('/chat-exports/:filename', async (_req, res) => {
         res.setHeader('Content-Type', mimeType);
         res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1年間キャッシュ
         // ファイルをストリーミングで送信
-        const fileStream = fs_1.default.createReadStream(imagePath);
+        const fileStream = fs.createReadStream(imagePath);
         fileStream.pipe(res);
     }
     catch (error) {
@@ -136,19 +131,19 @@ router.get('/chat-exports/:filename', async (_req, res) => {
 router.get('/search/:query', async (_req, res) => {
     try {
         const { query } = req.params;
-        const result = await index_js_1.db
+        const result = await db
             .select({
-            id: schema_js_1.imageData.id,
-            fileName: schema_js_1.imageData.fileName,
-            originalFileName: schema_js_1.imageData.originalFileName,
-            mimeType: schema_js_1.imageData.mimeType,
-            fileSize: schema_js_1.imageData.fileSize,
-            category: schema_js_1.imageData.category,
-            description: schema_js_1.imageData.description,
-            createdAt: schema_js_1.imageData.createdAt,
+            id: imageData.id,
+            fileName: imageData.fileName,
+            originalFileName: imageData.originalFileName,
+            mimeType: imageData.mimeType,
+            fileSize: imageData.fileSize,
+            category: imageData.category,
+            description: imageData.description,
+            createdAt: imageData.createdAt,
         })
-            .from(schema_js_1.imageData)
-            .where((0, drizzle_orm_1.like)(schema_js_1.imageData.originalFileName, `%${query}%`));
+            .from(imageData)
+            .where(like(imageData.originalFileName, `%${query}%`));
         res.json(result);
     }
     catch (error) {
@@ -156,4 +151,4 @@ router.get('/search/:query', async (_req, res) => {
         res.status(500).json({ error: '画像の検索に失敗しました' });
     }
 });
-exports.default = router;
+export default router;

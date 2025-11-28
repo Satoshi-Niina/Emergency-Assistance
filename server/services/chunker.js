@@ -1,18 +1,11 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.chunkText = chunkText;
-exports.getChunkStats = getChunkStats;
-const crypto_1 = __importDefault(require("crypto"));
+import crypto from 'crypto';
 /**
  * テキストをチャンクに分割する
  * @param text 分割対象のテキスト
  * @param options チャンクサイズとオーバーラップ設定
  * @returns チャンクの配列
  */
-function chunkText(text, options = { size: 800, overlap: 80 }) {
+export function chunkText(text, options = { size: 800, overlap: 80 }) {
     const { size, overlap } = options;
     // 入力検証
     if (!text || text.trim().length === 0) {
@@ -30,7 +23,7 @@ function chunkText(text, options = { size: 800, overlap: 80 }) {
         .trim();
     if (normalizedText.length <= size) {
         // テキストがチャンクサイズ以下の場合はそのまま返す
-        const hash = crypto_1.default.createHash('sha1').update(normalizedText).digest('hex');
+        const hash = crypto.createHash('sha1').update(normalizedText).digest('hex');
         return [
             {
                 page: 1,
@@ -55,7 +48,7 @@ function chunkText(text, options = { size: 800, overlap: 80 }) {
         }
         const content = normalizedText.substring(start, end).trim();
         if (content.length > 0) {
-            const hash = crypto_1.default.createHash('sha1').update(content).digest('hex');
+            const hash = crypto.createHash('sha1').update(content).digest('hex');
             chunks.push({
                 page,
                 content,
@@ -77,7 +70,7 @@ function chunkText(text, options = { size: 800, overlap: 80 }) {
  * @param chunks チャンク配列
  * @returns 統計情報
  */
-function getChunkStats(chunks) {
+export function getChunkStats(chunks) {
     if (chunks.length === 0) {
         return {
             count: 0,

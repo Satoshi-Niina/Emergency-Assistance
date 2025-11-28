@@ -1,54 +1,14 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.usersRouter = void 0;
-const express_1 = __importDefault(require("express"));
-const bcrypt_1 = __importDefault(require("bcrypt"));
-const multer_1 = __importDefault(require("multer"));
-const XLSX = __importStar(require("xlsx"));
-const index_js_1 = require("../db/index.js");
-const schema_js_1 = require("../db/schema.js");
-const drizzle_orm_1 = require("drizzle-orm");
-const router = express_1.default.Router();
-exports.usersRouter = router;
+import express from 'express';
+import bcrypt from 'bcrypt';
+import multer from 'multer';
+import * as XLSX from 'xlsx';
+import { db } from '../db/index.js';
+import { users } from '../db/schema.js';
+import { eq, desc } from 'drizzle-orm';
+const router = express.Router();
 // Multer設定（エクセルファイルアップロード用）
-const storage = multer_1.default.memoryStorage();
-const upload = (0, multer_1.default)({
+const storage = multer.memoryStorage();
+const upload = multer({
     storage: storage,
     fileFilter: (req, file, cb) => {
         // エクセルファイルのみ許可
@@ -120,12 +80,19 @@ router.get('/', async (req, res) => {
             method: req.method,
             url: req.url,
         });
-        // 生のSQLクエリで直接データを取得（より確実）
-        const allUsers = await index_js_1.db.execute(`
-            SELECT id, username, display_name, role, department, description, created_at
-            FROM users
-            ORDER BY created_at DESC
-        `);
+        // Drizzle ORMを使用してユーザー一覧を取得
+        const allUsers = await db
+            .select({
+            id: users.id,
+            username: users.username,
+            display_name: users.displayName,
+            role: users.role,
+            department: users.department,
+            description: users.description,
+            created_at: users.created_at,
+        })
+            .from(users)
+            .orderBy(desc(users.created_at));
         console.log('[DEBUG] 生SQLクエリ結果:', {
             count: allUsers.length,
             users: allUsers.map((u) => ({
@@ -160,7 +127,7 @@ router.get('/debug', async (req, res) => {
     try {
         console.log('[DEBUG] データベース状態確認開始');
         // 生のSQLクエリでデータベースの状態を確認
-        const rawUsers = await index_js_1.db.execute(`
+        const rawUsers = await db.execute(`
             SELECT id, username, display_name, role, department, description, created_at
             FROM users
             ORDER BY created_at DESC
@@ -175,7 +142,7 @@ router.get('/debug', async (req, res) => {
             })),
         });
         // Drizzleクエリも試行
-        const drizzleUsers = await index_js_1.db.select().from(schema_js_1.users);
+        const drizzleUsers = await db.select().from(users);
         console.log('[DEBUG] Drizzleクエリ結果:', {
             count: drizzleUsers.length,
             users: drizzleUsers.map((u) => ({
@@ -213,7 +180,7 @@ router.get('/test', async (req, res) => {
     try {
         console.log('[DEBUG] 簡単テスト開始');
         // 生のSQLクエリで直接データを取得
-        const result = await index_js_1.db.execute(`
+        const result = await db.execute(`
             SELECT id, username, display_name, role, department, description, created_at
             FROM users
             ORDER BY created_at DESC
@@ -307,10 +274,10 @@ router.post('/', async (req, res) => {
             });
         }
         // 既存ユーザーの確認
-        const existingUser = await index_js_1.db
+        const existingUser = await db
             .select()
-            .from(schema_js_1.users)
-            .where((0, drizzle_orm_1.eq)(schema_js_1.users.username, username));
+            .from(users)
+            .where(eq(users.username, username));
         if (existingUser.length > 0) {
             console.log('[DEBUG] 既存ユーザーが存在:', username);
             return res.status(409).json({
@@ -320,7 +287,7 @@ router.post('/', async (req, res) => {
             });
         }
         // パスワードのハッシュ化
-        const hashedPassword = await bcrypt_1.default.hash(password, 10);
+        const hashedPassword = await bcrypt.hash(password, 10);
         console.log('[DEBUG] パスワードハッシュ化完了');
         // ユーザーの作成
         console.log('[DEBUG] データベース挿入開始:', {
@@ -331,8 +298,8 @@ router.post('/', async (req, res) => {
             description,
             hashedPasswordLength: hashedPassword.length,
         });
-        const newUser = await index_js_1.db
-            .insert(schema_js_1.users)
+        const newUser = await db
+            .insert(users)
             .values({
             username,
             password: hashedPassword,
@@ -377,7 +344,7 @@ router.get('/:id', requireAuth, requireAdmin, async (req, res) => {
         // まず、Drizzleのクエリで試行
         let existingUser = null;
         try {
-            const results = await index_js_1.db.select().from(schema_js_1.users).where((0, drizzle_orm_1.eq)(schema_js_1.users.id, id));
+            const results = await db.select().from(users).where(eq(users.id, id));
             existingUser = results[0];
         }
         catch (dbError) {
@@ -386,7 +353,7 @@ router.get('/:id', requireAuth, requireAdmin, async (req, res) => {
         // Drizzleクエリが失敗した場合、手動で検索
         if (!existingUser) {
             console.log('[DEBUG] Drizzleクエリ失敗、手動検索を実行');
-            const allUsers = await index_js_1.db.select().from(schema_js_1.users);
+            const allUsers = await db.select().from(users);
             console.log(`[DEBUG] 全ユーザー一覧 (${allUsers.length}件):`, allUsers.map(u => ({
                 id: u.id,
                 username: u.username,
@@ -484,18 +451,18 @@ const updateUserHandler = async (req, res) => {
             description,
         };
         if (password) {
-            updateData.password = await bcrypt_1.default.hash(password, 10);
+            updateData.password = await bcrypt.hash(password, 10);
         }
-        const existingUser = await index_js_1.db
+        const existingUser = await db
             .select()
-            .from(schema_js_1.users)
-            .where((0, drizzle_orm_1.eq)(schema_js_1.users.id, id));
+            .from(users)
+            .where(eq(users.id, id));
         if (existingUser.length === 0) {
             console.log(`[ERROR] ユーザーが見つかりません: ID="${id}"`);
             return res.status(404).json({ error: 'User not found' });
         }
         console.log(`[DEBUG] 既存ユーザー情報:`, existingUser[0]);
-        await index_js_1.db.update(schema_js_1.users).set(updateData).where((0, drizzle_orm_1.eq)(schema_js_1.users.id, id));
+        await db.update(users).set(updateData).where(eq(users.id, id));
         console.log(`[DEBUG] ユーザー更新完了: ID="${id}"`);
         res.json({
             success: true,
@@ -523,14 +490,14 @@ router.delete('/:id', requireAuth, requireAdmin, async (req, res) => {
         const { id } = req.params;
         console.log(`[DEBUG] ユーザー削除リクエスト: ID="${id}"`);
         // 既存ユーザーの確認
-        const existingUser = await index_js_1.db.select().from(schema_js_1.users).where((0, drizzle_orm_1.eq)(schema_js_1.users.id, id));
+        const existingUser = await db.select().from(users).where(eq(users.id, id));
         if (existingUser.length === 0) {
             console.log(`[ERROR] 削除対象ユーザーが見つかりません: ID="${id}"`);
             return res.status(404).json({ error: 'User not found' });
         }
         console.log(`[DEBUG] 削除対象ユーザー:`, existingUser[0]);
         // ユーザーの削除
-        await index_js_1.db.delete(schema_js_1.users).where((0, drizzle_orm_1.eq)(schema_js_1.users.id, id));
+        await db.delete(users).where(eq(users.id, id));
         console.log(`[DEBUG] ユーザー削除完了: ID="${id}"`);
         res.json({
             success: true,
@@ -614,19 +581,19 @@ router.post('/import-excel', requireAuth, requireAdmin, upload.single('file'), a
                     continue;
                 }
                 // 既存ユーザーの確認
-                const existingUser = await index_js_1.db
+                const existingUser = await db
                     .select()
-                    .from(schema_js_1.users)
-                    .where((0, drizzle_orm_1.eq)(schema_js_1.users.username, username));
+                    .from(users)
+                    .where(eq(users.username, username));
                 if (existingUser.length > 0) {
                     results.errors.push(`行${rowNumber}: ユーザー名「${username}」は既に存在します`);
                     results.failed++;
                     continue;
                 }
                 // パスワードのハッシュ化
-                const hashedPassword = await bcrypt_1.default.hash(password, 10);
+                const hashedPassword = await bcrypt.hash(password, 10);
                 // ユーザーの作成
-                await index_js_1.db.insert(schema_js_1.users).values({
+                await db.insert(users).values({
                     username,
                     password: hashedPassword,
                     displayName,
@@ -683,3 +650,4 @@ router.use('*', (req, res) => {
         timestamp: new Date().toISOString(),
     });
 });
+export { router as usersRouter };

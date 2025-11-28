@@ -1,28 +1,21 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.debugRouter = void 0;
-const express_1 = __importDefault(require("express"));
-const index_js_1 = require("../db/index.js");
-const router = express_1.default.Router();
-exports.debugRouter = router;
+import express from 'express';
+import { db } from '../db/index.js';
+const router = express.Router();
 // データベース接続テスト
 router.get('/database-test', async (req, res) => {
     try {
         console.log('[DEBUG] データベース接続テスト開始');
         // データベース接続テスト
-        const result = await index_js_1.db.execute('SELECT NOW() as current_time');
+        const result = await db.execute('SELECT NOW() as current_time');
         // テーブル一覧取得
-        const tables = await index_js_1.db.execute(`
+        const tables = await db.execute(`
             SELECT table_name 
             FROM information_schema.tables 
             WHERE table_schema = 'public' 
             ORDER BY table_name
         `);
         // usersテーブルの構造を確認
-        const userColumns = await index_js_1.db.execute(`
+        const userColumns = await db.execute(`
             SELECT column_name, data_type, is_nullable
             FROM information_schema.columns 
             WHERE table_name = 'users' 
@@ -97,3 +90,4 @@ router.get('/api-test', (req, res) => {
         message: 'API接続が正常です',
     });
 });
+export { router as debugRouter };

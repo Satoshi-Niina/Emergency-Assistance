@@ -1,52 +1,21 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.logSecurityEvent = exports.securityMonitoring = exports.securityMonitor = void 0;
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
+import fs from 'fs';
+import path from 'path';
 class SecurityMonitor {
+    logFile;
+    maxLogSize;
+    suspiciousIPs;
+    failedAttempts;
+    lastCleanup;
     constructor() {
-        Object.defineProperty(this, "logFile", {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: void 0
-        });
-        Object.defineProperty(this, "maxLogSize", {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: void 0
-        });
-        Object.defineProperty(this, "suspiciousIPs", {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: void 0
-        });
-        Object.defineProperty(this, "failedAttempts", {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: void 0
-        });
-        Object.defineProperty(this, "lastCleanup", {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: void 0
-        });
-        this.logFile = path_1.default.join(process.cwd(), 'logs', 'security.log');
+        this.logFile = path.join(process.cwd(), 'logs', 'security.log');
         this.maxLogSize = 10 * 1024 * 1024; // 10MB
         this.suspiciousIPs = new Set();
         this.failedAttempts = new Map();
         this.lastCleanup = Date.now();
         // ログディレクトリを作成
-        const logDir = path_1.default.dirname(this.logFile);
-        if (!fs_1.default.existsSync(logDir)) {
-            fs_1.default.mkdirSync(logDir, { recursive: true });
+        const logDir = path.dirname(this.logFile);
+        if (!fs.existsSync(logDir)) {
+            fs.mkdirSync(logDir, { recursive: true });
         }
     }
     // セキュリティイベントをログに記録
@@ -93,9 +62,9 @@ class SecurityMonitor {
     writeToLogFile(event) {
         try {
             const logEntry = JSON.stringify(event) + '\n';
-            fs_1.default.appendFileSync(this.logFile, logEntry);
+            fs.appendFileSync(this.logFile, logEntry);
             // ログファイルサイズをチェック
-            const stats = fs_1.default.statSync(this.logFile);
+            const stats = fs.statSync(this.logFile);
             if (stats.size > this.maxLogSize) {
                 this.rotateLogFile();
             }
@@ -109,7 +78,7 @@ class SecurityMonitor {
         try {
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             const rotatedFile = this.logFile.replace('.log', `-${timestamp}.log`);
-            fs_1.default.renameSync(this.logFile, rotatedFile);
+            fs.renameSync(this.logFile, rotatedFile);
             // 古いログファイルを削除（30日以上前）
             this.cleanupOldLogs();
         }
@@ -120,15 +89,15 @@ class SecurityMonitor {
     // 古いログファイルを削除
     cleanupOldLogs() {
         try {
-            const logDir = path_1.default.dirname(this.logFile);
-            const files = fs_1.default.readdirSync(logDir);
+            const logDir = path.dirname(this.logFile);
+            const files = fs.readdirSync(logDir);
             const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
             files.forEach(file => {
                 if (file.startsWith('security-') && file.endsWith('.log')) {
-                    const filePath = path_1.default.join(logDir, file);
-                    const stats = fs_1.default.statSync(filePath);
+                    const filePath = path.join(logDir, file);
+                    const stats = fs.statSync(filePath);
                     if (stats.mtime.getTime() < thirtyDaysAgo) {
-                        fs_1.default.unlinkSync(filePath);
+                        fs.unlinkSync(filePath);
                     }
                 }
             });
@@ -180,13 +149,13 @@ class SecurityMonitor {
     }
 }
 // シングルトンインスタンス
-exports.securityMonitor = new SecurityMonitor();
+export const securityMonitor = new SecurityMonitor();
 // セキュリティ監視ミドルウェア
-const securityMonitoring = (req, res, next) => {
+export const securityMonitoring = (req, res, next) => {
     const ip = req.ip || req.connection.remoteAddress || 'unknown';
     // 疑わしいIPからのアクセスをブロック
-    if (exports.securityMonitor.isSuspiciousIP(ip)) {
-        exports.securityMonitor.logEvent('BLOCKED_SUSPICIOUS_IP', { ip }, req);
+    if (securityMonitor.isSuspiciousIP(ip)) {
+        securityMonitor.logEvent('BLOCKED_SUSPICIOUS_IP', { ip }, req);
         return res.status(403).json({
             success: false,
             error: 'アクセスがブロックされました',
@@ -194,12 +163,10 @@ const securityMonitoring = (req, res, next) => {
     }
     next();
 };
-exports.securityMonitoring = securityMonitoring;
 // セキュリティイベントログミドルウェア
-const logSecurityEvent = (event, details) => {
+export const logSecurityEvent = (event, details) => {
     return (req, res, next) => {
-        exports.securityMonitor.logEvent(event, details, req);
+        securityMonitor.logEvent(event, details, req);
         next();
     };
 };
-exports.logSecurityEvent = logSecurityEvent;

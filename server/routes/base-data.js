@@ -1,15 +1,8 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.baseDataRouter = void 0;
-const express_1 = __importDefault(require("express"));
-const index_js_1 = require("../db/index.js");
-const schema_js_1 = require("../db/schema.js");
-const drizzle_orm_1 = require("drizzle-orm");
-const router = express_1.default.Router();
-exports.baseDataRouter = router;
+import express from 'express';
+import { db } from '../db/index.js';
+import { baseDocuments } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
+const router = express.Router();
 /**
  * GET /api/base-data
  * base_documentsテーブルから全データ取得
@@ -20,15 +13,15 @@ router.get('/', async (_req, res) => {
         // Content-Typeを明示的に設定
         res.setHeader('Content-Type', 'application/json');
         // base_documentsテーブルから全データを取得
-        const documents = await index_js_1.db
+        const documents = await db
             .select({
-            id: schema_js_1.baseDocuments.id,
-            title: schema_js_1.baseDocuments.title,
-            filePath: schema_js_1.baseDocuments.filePath,
-            createdAt: schema_js_1.baseDocuments.createdAt,
+            id: baseDocuments.id,
+            title: baseDocuments.title,
+            filePath: baseDocuments.filePath,
+            createdAt: baseDocuments.createdAt,
         })
-            .from(schema_js_1.baseDocuments)
-            .orderBy(schema_js_1.baseDocuments.createdAt);
+            .from(baseDocuments)
+            .orderBy(baseDocuments.createdAt);
         console.log(`✅ 基礎データ取得完了: ${documents.length}件`);
         res.json({
             success: true,
@@ -67,8 +60,8 @@ router.post('/', async (_req, res) => {
             });
         }
         // 新規文書を作成
-        const newDocument = await index_js_1.db
-            .insert(schema_js_1.baseDocuments)
+        const newDocument = await db
+            .insert(baseDocuments)
             .values({
             title,
             filePath,
@@ -113,10 +106,10 @@ router.put('/:id', async (_req, res) => {
             });
         }
         // 既存文書をチェック
-        const existingDocument = await index_js_1.db
+        const existingDocument = await db
             .select()
-            .from(schema_js_1.baseDocuments)
-            .where((0, drizzle_orm_1.eq)(schema_js_1.baseDocuments.id, id));
+            .from(baseDocuments)
+            .where(eq(baseDocuments.id, id));
         if (existingDocument.length === 0) {
             return res.status(404).json({
                 success: false,
@@ -125,10 +118,10 @@ router.put('/:id', async (_req, res) => {
             });
         }
         // 文書を更新
-        const updatedDocument = await index_js_1.db
-            .update(schema_js_1.baseDocuments)
+        const updatedDocument = await db
+            .update(baseDocuments)
             .set({ title, filePath })
-            .where((0, drizzle_orm_1.eq)(schema_js_1.baseDocuments.id, id))
+            .where(eq(baseDocuments.id, id))
             .returning();
         console.log('✅ 基礎データ更新完了:', updatedDocument[0]);
         res.json({
@@ -159,10 +152,10 @@ router.delete('/:id', async (_req, res) => {
         // Content-Typeを明示的に設定
         res.setHeader('Content-Type', 'application/json');
         // 既存文書をチェック
-        const existingDocument = await index_js_1.db
+        const existingDocument = await db
             .select()
-            .from(schema_js_1.baseDocuments)
-            .where((0, drizzle_orm_1.eq)(schema_js_1.baseDocuments.id, id));
+            .from(baseDocuments)
+            .where(eq(baseDocuments.id, id));
         if (existingDocument.length === 0) {
             return res.status(404).json({
                 success: false,
@@ -171,7 +164,7 @@ router.delete('/:id', async (_req, res) => {
             });
         }
         // 文書を削除
-        await index_js_1.db.delete(schema_js_1.baseDocuments).where((0, drizzle_orm_1.eq)(schema_js_1.baseDocuments.id, id));
+        await db.delete(baseDocuments).where(eq(baseDocuments.id, id));
         console.log('✅ 基礎データ削除完了:', id);
         res.json({
             success: true,
@@ -200,15 +193,15 @@ router.get('/:id', async (_req, res) => {
         console.log(`📄 基礎データ詳細取得: ${id}`);
         // Content-Typeを明示的に設定
         res.setHeader('Content-Type', 'application/json');
-        const document = await index_js_1.db
+        const document = await db
             .select({
-            id: schema_js_1.baseDocuments.id,
-            title: schema_js_1.baseDocuments.title,
-            filePath: schema_js_1.baseDocuments.filePath,
-            createdAt: schema_js_1.baseDocuments.createdAt,
+            id: baseDocuments.id,
+            title: baseDocuments.title,
+            filePath: baseDocuments.filePath,
+            createdAt: baseDocuments.createdAt,
         })
-            .from(schema_js_1.baseDocuments)
-            .where((0, drizzle_orm_1.eq)(schema_js_1.baseDocuments.id, id))
+            .from(baseDocuments)
+            .where(eq(baseDocuments.id, id))
             .limit(1);
         if (document.length === 0) {
             return res.status(404).json({
@@ -256,3 +249,4 @@ router.use('*', (req, res) => {
         timestamp: new Date().toISOString(),
     });
 });
+export { router as baseDataRouter };

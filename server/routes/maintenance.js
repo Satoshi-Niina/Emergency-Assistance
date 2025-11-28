@@ -1,8 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const knowledge_base_service_js_1 = require("../knowledge-base-service.js");
-const router = (0, express_1.Router)();
+import { Router } from 'express';
+import { knowledgeBase } from '../knowledge-base-service.js';
+const router = Router();
 // 保守記録の保存エンドポイント
 router.post('/save', async (_req, res) => {
     try {
@@ -25,7 +23,7 @@ router.post('/save', async (_req, res) => {
         const filePath = `vehicle-maintenance/${fileName}`;
         // JSONデータを整形して保存
         const jsonString = JSON.stringify(maintenanceRecord, null, 2);
-        await knowledge_base_service_js_1.knowledgeBase.writeFile(filePath, jsonString);
+        await knowledgeBase.writeFile(filePath, jsonString);
         console.log(`保守記録を保存しました: ${filePath}`);
         res.json({
             success: true,
@@ -47,12 +45,12 @@ router.post('/save', async (_req, res) => {
 router.get('/list', async (_req, res) => {
     try {
         // maintenance-reportsフォルダ内のファイルを取得
-        const files = await knowledge_base_service_js_1.knowledgeBase.listFiles('maintenance-reports');
+        const files = await knowledgeBase.listFiles('maintenance-reports');
         const maintenanceFiles = files.filter(file => file.endsWith('.json') && file.includes('maintenance_'));
         const records = [];
         for (const file of maintenanceFiles) {
             try {
-                const content = await knowledge_base_service_js_1.knowledgeBase.readFile(`maintenance-reports/${file}`);
+                const content = await knowledgeBase.readFile(`maintenance-reports/${file}`);
                 const record = JSON.parse(content);
                 records.push({
                     fileName: file,
@@ -88,14 +86,14 @@ router.get('/:recordId', async (_req, res) => {
     try {
         const { recordId } = req.params;
         // ファイル一覧を取得してレコードIDでマッチング
-        const files = await knowledge_base_service_js_1.knowledgeBase.listFiles('maintenance-reports');
+        const files = await knowledgeBase.listFiles('maintenance-reports');
         const targetFile = files.find(file => file.includes(recordId));
         if (!targetFile) {
             return res
                 .status(404)
                 .json({ error: '指定されたレコードが見つかりません' });
         }
-        const content = await knowledge_base_service_js_1.knowledgeBase.readFile(`maintenance-reports/${targetFile}`);
+        const content = await knowledgeBase.readFile(`maintenance-reports/${targetFile}`);
         const record = JSON.parse(content);
         res.json({
             success: true,
@@ -116,14 +114,14 @@ router.delete('/:recordId', async (_req, res) => {
     try {
         const { recordId } = req.params;
         // ファイル一覧を取得してレコードIDでマッチング
-        const files = await knowledge_base_service_js_1.knowledgeBase.listFiles('maintenance-reports');
+        const files = await knowledgeBase.listFiles('maintenance-reports');
         const targetFile = files.find(file => file.includes(recordId));
         if (!targetFile) {
             return res
                 .status(404)
                 .json({ error: '指定されたレコードが見つかりません' });
         }
-        await knowledge_base_service_js_1.knowledgeBase.deleteFile(`maintenance-reports/${targetFile}`);
+        await knowledgeBase.deleteFile(`maintenance-reports/${targetFile}`);
         console.log(`保守記録を削除しました: ${targetFile}`);
         res.json({
             success: true,
@@ -139,4 +137,4 @@ router.delete('/:recordId', async (_req, res) => {
         });
     }
 });
-exports.default = router;
+export default router;

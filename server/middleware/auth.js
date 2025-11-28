@@ -1,15 +1,9 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.authenticateToken = void 0;
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+import jwt from 'jsonwebtoken';
 // セーフモード判定
 const isSafeMode = process.env.SAFE_MODE === 'true';
 const bypassJwt = process.env.BYPASS_JWT === 'true';
 // Bearer token authentication middleware
-const authenticateToken = async (req, res, next) => {
+export const authenticateToken = async (req, res, next) => {
     try {
         // セーフモードまたはJWTバイパス時は認証をスキップ
         if (isSafeMode || bypassJwt) {
@@ -39,7 +33,7 @@ const authenticateToken = async (req, res, next) => {
         if (authHeader && authHeader.startsWith('Bearer ')) {
             const token = authHeader.substring(7);
             try {
-                const payload = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET, {
+                const payload = jwt.verify(token, process.env.JWT_SECRET, {
                     clockTolerance: 120, // ±120秒の時刻ずれを許容
                 });
                 // 詳細なJWT検証ログ
@@ -94,4 +88,3 @@ const authenticateToken = async (req, res, next) => {
         });
     }
 };
-exports.authenticateToken = authenticateToken;

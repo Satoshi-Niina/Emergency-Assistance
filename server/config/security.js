@@ -1,8 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.securityConfig = void 0;
-exports.validateSecurityConfig = validateSecurityConfig;
-exports.securityConfig = {
+export const securityConfig = {
     // パスワード設定
     password: {
         minLength: 8,
@@ -83,8 +79,8 @@ exports.securityConfig = {
     },
 };
 // セキュリティ設定の検証
-function validateSecurityConfig() {
-    const config = exports.securityConfig;
+export function validateSecurityConfig() {
+    const config = securityConfig;
     // パスワード設定の検証
     if (config.password.minLength < 8) {
         throw new Error('Password minimum length must be at least 8');

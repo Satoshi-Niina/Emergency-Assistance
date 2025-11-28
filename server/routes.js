@@ -1,71 +1,66 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.registerRoutes = registerRoutes;
-const storage_js_1 = require("./storage.js");
-const schema_js_1 = require("./db/schema.js");
-const express_session_1 = __importDefault(require("express-session"));
-const memorystore_1 = __importDefault(require("memorystore"));
-const openai_js_1 = require("./lib/openai.js");
-const perplexity_js_1 = require("./lib/perplexity.js");
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
-const index_js_1 = require("./db/index.js");
-const multer_config_js_1 = require("./lib/multer-config.js");
-const knowledge_base_js_1 = require("./lib/knowledge-base.js");
-const tech_support_js_1 = require("./routes/tech-support.js");
-const data_processor_js_1 = require("./routes/data-processor.js");
-const emergency_guide_js_1 = __importDefault(require("./routes/emergency-guide.js"));
-const emergency_flow_js_1 = __importDefault(require("./routes/emergency-flow.js"));
-const flow_generator_js_1 = __importDefault(require("./routes/flow-generator.js"));
-const sync_routes_js_1 = require("./routes/sync-routes.js");
-const users_js_1 = require("./routes/users.js");
-const maintenance_js_1 = __importDefault(require("./routes/maintenance.js"));
-const express_1 = __importDefault(require("express"));
-const auth_js_1 = __importDefault(require("./routes/auth.js"));
-const url_1 = require("url");
-const drizzle_orm_1 = require("drizzle-orm");
-const machines_js_1 = __importDefault(require("./routes/machines.js"));
-const history_js_1 = require("./routes/history.js");
-const base_data_js_1 = require("./routes/base-data.js");
-const files_js_1 = __importDefault(require("./routes/files.js"));
-const knowledge_base_js_2 = __importDefault(require("./routes/knowledge-base.js"));
-const qa_learning_js_1 = __importDefault(require("./routes/qa-learning.js"));
-const knowledge_base_js_3 = require("./routes/knowledge-base.js");
-const settings_js_1 = __importDefault(require("./routes/settings.js"));
+import { storage } from './storage.js';
+import { users } from './db/schema.js';
+import session from 'express-session';
+import MemoryStore from 'memorystore';
+import { processOpenAIRequest } from './lib/openai.js';
+import { processPerplexityRequest } from './lib/perplexity.js';
+import fs from 'fs';
+import path from 'path';
+import { db } from './db/index.js';
+import { upload } from './lib/multer-config.js';
+import { addDocumentToKnowledgeBase, listKnowledgeBaseDocuments, removeDocumentFromKnowledgeBase, } from './lib/knowledge-base.js';
+import { techSupportRouter } from './routes/tech-support.js';
+import { registerDataProcessorRoutes } from './routes/data-processor.js';
+import emergencyGuideRouter from './routes/emergency-guide.js';
+import emergencyFlowRoutes from './routes/emergency-flow.js';
+import flowGeneratorRoutes from './routes/flow-generator.js';
+import { registerSyncRoutes } from './routes/sync-routes.js';
+import { usersRouter } from './routes/users.js';
+import maintenanceRouter from './routes/maintenance.js';
+import express from 'express';
+import authRouter from './routes/auth.js';
+import { fileURLToPath } from 'url';
+import { eq } from 'drizzle-orm';
+import machinesRouter from './routes/machines.js';
+import { historyRouter } from './routes/history.js';
+import { baseDataRouter } from './routes/base-data.js';
+import filesRouter from './routes/files.js';
+import knowledgeBaseRouter from './routes/knowledge-base.js';
+import qaLearningRouter from './routes/qa-learning.js';
+import { registerKnowledgeBaseRoutes } from './routes/knowledge-base.js';
+import settingsRouter from './routes/settings.js';
 // ESM用__dirname定義
-const __filename = (0, url_1.fileURLToPath)(import.meta.url);
-const __dirname = path_1.default.dirname(__filename);
-const MemoryStoreSession = (0, memorystore_1.default)(express_session_1.default);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const MemoryStoreSession = MemoryStore(session);
 // Session will now use Postgres via storage.sessionStore
-function registerRoutes(app) {
+export function registerRoutes(app) {
     // 静的ファイル配信の設定（最優先で登録）
-    app.use('/images', express_1.default.static(path_1.default.join(__dirname, '../../public/images')));
-    app.use('/public', express_1.default.static(path_1.default.join(__dirname, '../../public')));
+    app.use('/images', express.static(path.join(__dirname, '../../public/images')));
+    app.use('/public', express.static(path.join(__dirname, '../../public')));
     // Register tech support router
-    app.use('/api/tech-support', tech_support_js_1.techSupportRouter);
+    app.use('/api/tech-support', techSupportRouter);
     // Register data processor routes
-    (0, data_processor_js_1.registerDataProcessorRoutes)(app);
+    registerDataProcessorRoutes(app);
     // Register emergency guide routes
-    app.use('/api/emergency-guide', emergency_guide_js_1.default);
+    app.use('/api/emergency-guide', emergencyGuideRouter);
     // Register emergency flow routes
-    app.use('/api/emergency-flow', emergency_flow_js_1.default);
+    app.use('/api/emergency-flow', emergencyFlowRoutes);
     // Register flow generator routes
-    app.use('/api/flow-generator', flow_generator_js_1.default);
+    app.use('/api/flow-generator', flowGeneratorRoutes);
     // Register sync routes for offline capabilities
-    (0, sync_routes_js_1.registerSyncRoutes)(app);
+    registerSyncRoutes(app);
     // Register API routers
-    app.use('/api/users', users_js_1.usersRouter);
-    app.use('/api/machines', machines_js_1.default);
-    app.use('/api/history', history_js_1.historyRouter);
-    app.use('/api/base-data', base_data_js_1.baseDataRouter);
-    app.use('/api/files', files_js_1.default);
-    app.use('/api/knowledge-base', knowledge_base_js_2.default);
-    app.use('/api/qa-learning', qa_learning_js_1.default);
-    app.use('/api/maintenance', maintenance_js_1.default);
-    app.use('/api/settings', settings_js_1.default);
+    app.use('/api/users', usersRouter);
+    app.use('/api/machines', machinesRouter);
+    app.use('/api/history', historyRouter);
+    app.use('/api/base-data', baseDataRouter);
+    app.use('/api/files', filesRouter);
+    app.use('/api/knowledge-base', knowledgeBaseRouter);
+    app.use('/api/qa-learning', qaLearningRouter);
+    app.use('/api/maintenance', maintenanceRouter);
+    app.use('/api/settings', settingsRouter);
+    app.use('/api/ai-assist/settings', settingsRouter); // AI assist settings endpoint
     // Health check endpoints
     app.get('/api/health', (req, res) => {
         res.json({
@@ -91,7 +86,7 @@ function registerRoutes(app) {
     app.get('/api/debug/database', async (req, res) => {
         try {
             // データベース接続テスト
-            const testQuery = await index_js_1.db.select().from(schema_js_1.users).limit(1);
+            const testQuery = await db.select().from(users).limit(1);
             res.json({
                 status: 'connected',
                 database: 'PostgreSQL',
@@ -143,7 +138,7 @@ function registerRoutes(app) {
             if (!text) {
                 return res.status(400).json({ message: 'Text is required' });
             }
-            const response = await (0, openai_js_1.processOpenAIRequest)(text, true);
+            const response = await processOpenAIRequest(text, true);
             return res.json({ response });
         }
         catch (error) {
@@ -161,7 +156,7 @@ function registerRoutes(app) {
                 return res.status(400).json({ message: 'Query is required' });
             }
             console.log(`Perplexity API request: query=${query}, useKnowledgeBaseOnly=${useKnowledgeBaseOnly}`);
-            const { content, citations } = await (0, perplexity_js_1.processPerplexityRequest)(query);
+            const { content, citations } = await processPerplexityRequest(query);
             return res.json({ content, citations });
         }
         catch (error) {
@@ -175,7 +170,7 @@ function registerRoutes(app) {
     });
     // Setup session middleware
     const sessionSecret = process.env.SESSION_SECRET || 'emergency-recovery-secret';
-    app.use((0, express_session_1.default)({
+    app.use(session({
         secret: sessionSecret,
         resave: false,
         saveUninitialized: false,
@@ -199,10 +194,10 @@ function registerRoutes(app) {
                 });
             }
             // データベースからユーザー情報を確認
-            const user = await index_js_1.db
+            const user = await db
                 .select()
-                .from(schema_js_1.users)
-                .where((0, drizzle_orm_1.eq)(schema_js_1.users.id, req.session.userId))
+                .from(users)
+                .where(eq(users.id, req.session.userId))
                 .limit(1);
             if (user.length === 0) {
                 return res.status(401).json({
@@ -232,10 +227,10 @@ function registerRoutes(app) {
                 });
             }
             // データベースからユーザー情報を確認
-            const user = await index_js_1.db
+            const user = await db
                 .select()
-                .from(schema_js_1.users)
-                .where((0, drizzle_orm_1.eq)(schema_js_1.users.id, req.session.userId))
+                .from(users)
+                .where(eq(users.id, req.session.userId))
                 .limit(1);
             if (user.length === 0) {
                 return res.status(401).json({
@@ -266,7 +261,7 @@ function registerRoutes(app) {
     app.use('/api/auth', (req, res, next) => {
         res.setHeader('Content-Type', 'application/json');
         next();
-    }, auth_js_1.default);
+    }, authRouter);
     // デバッグ用エンドポイント
     app.get('/api/debug', (req, res) => {
         console.log('🔍 デバッグリクエスト受信');
@@ -299,7 +294,7 @@ function registerRoutes(app) {
             if (!keyword) {
                 return res.status(400).json({ message: 'Search query is required' });
             }
-            const documents = await storage_js_1.storage.searchDocumentsByKeyword(keyword);
+            const documents = await storage.searchDocumentsByKeyword(keyword);
             return res.json(documents);
         }
         catch (error) {
@@ -308,18 +303,18 @@ function registerRoutes(app) {
     });
     // Knowledge Base API routes
     // ドキュメントアップロード
-    app.post('/api/knowledge/upload', requireAuth, requireAdmin, multer_config_js_1.upload.single('file'), async (req, res) => {
+    app.post('/api/knowledge/upload', requireAuth, requireAdmin, upload.single('file'), async (req, res) => {
         try {
             if (!req.file) {
                 return res.status(400).json({ error: 'ファイルがありません' });
             }
             const filePath = req.file.path;
             try {
-                const docId = await (0, knowledge_base_js_1.addDocumentToKnowledgeBase)({
-                    originalname: path_1.default.basename(filePath),
+                const docId = await addDocumentToKnowledgeBase({
+                    originalname: path.basename(filePath),
                     path: filePath,
                     mimetype: 'text/plain',
-                }, fs_1.default.readFileSync(filePath, 'utf-8'));
+                }, fs.readFileSync(filePath, 'utf-8'));
                 return res.status(201).json({
                     success: true,
                     docId,
@@ -328,8 +323,8 @@ function registerRoutes(app) {
             }
             catch (err) {
                 // エラー発生時にアップロードファイルを削除
-                if (fs_1.default.existsSync(filePath)) {
-                    fs_1.default.unlinkSync(filePath);
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
                 }
                 throw err;
             }
@@ -348,7 +343,7 @@ function registerRoutes(app) {
             const docId = req.params.docId;
             console.log(`Document deletion request: ID=${docId}`);
             // ドキュメントとその関連ファイルを削除
-            const success = (0, knowledge_base_js_1.removeDocumentFromKnowledgeBase)(docId);
+            const success = removeDocumentFromKnowledgeBase(docId);
             if (success) {
                 // 画像検索データを再初期化
                 const techSupportApiUrl = process.env.TECH_SUPPORT_API_URL || 'http://localhost:5000';
@@ -389,26 +384,26 @@ function registerRoutes(app) {
         try {
             const docId = req.params.docId;
             // ナレッジベースからドキュメント情報を取得
-            const documents = (0, knowledge_base_js_1.listKnowledgeBaseDocuments)();
+            const documents = listKnowledgeBaseDocuments();
             if (documents.success && documents.documents) {
                 const document = documents.documents.find(doc => doc.id === docId);
                 if (!document) {
                     return res.status(404).json({ error: 'Document not found' });
                 }
                 // ドキュメントのパスを取得
-                const docPath = path_1.default.join(__dirname, '../../knowledge-base', document.title);
-                if (!fs_1.default.existsSync(docPath)) {
+                const docPath = path.join(__dirname, '../../knowledge-base', document.title);
+                if (!fs.existsSync(docPath)) {
                     return res
                         .status(404)
                         .json({ error: 'Document file not found: ' + docPath });
                 }
                 console.log(`Starting document reprocessing: ${docPath}`);
                 // 再処理を実行
-                const newDocId = await (0, knowledge_base_js_1.addDocumentToKnowledgeBase)({
-                    originalname: path_1.default.basename(docPath),
+                const newDocId = await addDocumentToKnowledgeBase({
+                    originalname: path.basename(docPath),
                     path: docPath,
                     mimetype: 'text/plain',
-                }, fs_1.default.readFileSync(docPath, 'utf-8'));
+                }, fs.readFileSync(docPath, 'utf-8'));
                 res.json({
                     success: true,
                     docId: newDocId,
@@ -435,7 +430,7 @@ function registerRoutes(app) {
                 return res.status(400).json({ message: 'Text is required' });
             }
             console.log(`ChatGPT API呼び出し: ナレッジベースのみを使用=${useOnlyKnowledgeBase}`);
-            const response = await (0, openai_js_1.processOpenAIRequest)(text, useOnlyKnowledgeBase);
+            const response = await processOpenAIRequest(text, useOnlyKnowledgeBase);
             // Check for specific error messages returned from OpenAI
             if (response.includes('OpenAI APIキーが無効')) {
                 return res.status(401).json({ message: response });
@@ -455,5 +450,5 @@ function registerRoutes(app) {
         }
     });
     // Knowledge base routes
-    (0, knowledge_base_js_3.registerKnowledgeBaseRoutes)(app);
+    registerKnowledgeBaseRoutes(app);
 }

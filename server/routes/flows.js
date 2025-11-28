@@ -1,14 +1,7 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.flowsRouter = void 0;
-const express_1 = __importDefault(require("express"));
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
-const router = express_1.default.Router();
-exports.flowsRouter = router;
+import express from 'express';
+import fs from 'fs';
+import path from 'path';
+const router = express.Router();
 // バリデーションスキーマ
 const createFlowSchema = {
     title: (value) => value && value.length > 0 ? null : 'タイトルは必須です',
@@ -22,9 +15,9 @@ router.get('/', async (_req, res) => {
     try {
         console.log('🔄 応急処置フロー取得リクエスト');
         // トラブルシューティングディレクトリからJSONファイルを読み込み
-        const troubleshootingDir = path_1.default.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+        const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
         console.log('🔍 トラブルシューティングディレクトリ:', troubleshootingDir);
-        if (!fs_1.default.existsSync(troubleshootingDir)) {
+        if (!fs.existsSync(troubleshootingDir)) {
             console.log('❌ トラブルシューティングディレクトリが存在しません');
             return res.json({
                 success: true,
@@ -33,14 +26,14 @@ router.get('/', async (_req, res) => {
                 timestamp: new Date().toISOString(),
             });
         }
-        const files = fs_1.default.readdirSync(troubleshootingDir);
+        const files = fs.readdirSync(troubleshootingDir);
         const jsonFiles = files.filter(file => file.endsWith('.json'));
         console.log('📄 JSONファイル:', jsonFiles);
         const flows = [];
         for (const file of jsonFiles) {
             try {
-                const filePath = path_1.default.join(troubleshootingDir, file);
-                const fileContent = fs_1.default.readFileSync(filePath, 'utf-8');
+                const filePath = path.join(troubleshootingDir, file);
+                const fileContent = fs.readFileSync(filePath, 'utf-8');
                 const flowData = JSON.parse(fileContent);
                 // フローデータを整形
                 const flow = {
@@ -89,14 +82,14 @@ router.post('/', async (_req, res) => {
     try {
         console.log('🔄 新規応急処置フロー作成リクエスト');
         // トラブルシューティングディレクトリのパスを取得
-        const troubleshootingDir = path_1.default.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-        if (!fs_1.default.existsSync(troubleshootingDir)) {
-            fs_1.default.mkdirSync(troubleshootingDir, { recursive: true });
+        const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+        if (!fs.existsSync(troubleshootingDir)) {
+            fs.mkdirSync(troubleshootingDir, { recursive: true });
         }
         // 新しいIDを生成
         const newId = `flow_${Date.now()}`;
         const fileName = `${newId}.json`;
-        const filePath = path_1.default.join(troubleshootingDir, fileName);
+        const filePath = path.join(troubleshootingDir, fileName);
         // 新規フローデータを作成
         const newFlowData = {
             id: newId,
@@ -111,7 +104,7 @@ router.post('/', async (_req, res) => {
             ...req.body,
         };
         // JSONファイルを作成
-        fs_1.default.writeFileSync(filePath, JSON.stringify(newFlowData, null, 2), 'utf-8');
+        fs.writeFileSync(filePath, JSON.stringify(newFlowData, null, 2), 'utf-8');
         console.log('✅ 新規応急処置フロー作成完了:', newId);
         res.status(201).json({
             success: true,
@@ -137,22 +130,22 @@ router.get('/:id', async (_req, res) => {
         const { id } = req.params;
         console.log(`🔄 応急処置フロー詳細取得: ${id}`);
         // トラブルシューティングディレクトリから該当するJSONファイルを検索
-        const troubleshootingDir = path_1.default.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-        if (!fs_1.default.existsSync(troubleshootingDir)) {
+        const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+        if (!fs.existsSync(troubleshootingDir)) {
             return res.status(404).json({
                 success: false,
                 error: 'トラブルシューティングディレクトリが見つかりません',
             });
         }
-        const files = fs_1.default.readdirSync(troubleshootingDir);
+        const files = fs.readdirSync(troubleshootingDir);
         const jsonFiles = files.filter(file => file.endsWith('.json'));
         let flowData = null;
         let fileName = null;
         // IDに一致するファイルを検索
         for (const file of jsonFiles) {
             try {
-                const filePath = path_1.default.join(troubleshootingDir, file);
-                const fileContent = fs_1.default.readFileSync(filePath, 'utf-8');
+                const filePath = path.join(troubleshootingDir, file);
+                const fileContent = fs.readFileSync(filePath, 'utf-8');
                 const data = JSON.parse(fileContent);
                 if (data.id === id || file.replace('.json', '') === id) {
                     flowData = data;
@@ -207,22 +200,22 @@ router.put('/:id', async (_req, res) => {
         const { id } = req.params;
         console.log(`🔄 応急処置フロー更新: ${id}`);
         // トラブルシューティングディレクトリから該当するJSONファイルを検索
-        const troubleshootingDir = path_1.default.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-        if (!fs_1.default.existsSync(troubleshootingDir)) {
+        const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+        if (!fs.existsSync(troubleshootingDir)) {
             return res.status(404).json({
                 success: false,
                 error: 'トラブルシューティングディレクトリが見つかりません',
             });
         }
-        const files = fs_1.default.readdirSync(troubleshootingDir);
+        const files = fs.readdirSync(troubleshootingDir);
         const jsonFiles = files.filter(file => file.endsWith('.json'));
         let flowData = null;
         let fileName = null;
         // IDに一致するファイルを検索
         for (const file of jsonFiles) {
             try {
-                const filePath = path_1.default.join(troubleshootingDir, file);
-                const fileContent = fs_1.default.readFileSync(filePath, 'utf-8');
+                const filePath = path.join(troubleshootingDir, file);
+                const fileContent = fs.readFileSync(filePath, 'utf-8');
                 const data = JSON.parse(fileContent);
                 if (data.id === id || file.replace('.json', '') === id) {
                     flowData = data;
@@ -247,8 +240,8 @@ router.put('/:id', async (_req, res) => {
             updatedAt: new Date().toISOString(),
         };
         // JSONファイルを更新
-        const filePath = path_1.default.join(troubleshootingDir, fileName);
-        fs_1.default.writeFileSync(filePath, JSON.stringify(updatedData, null, 2), 'utf-8');
+        const filePath = path.join(troubleshootingDir, fileName);
+        fs.writeFileSync(filePath, JSON.stringify(updatedData, null, 2), 'utf-8');
         console.log('✅ 応急処置フロー更新完了');
         res.json({
             success: true,
@@ -274,21 +267,21 @@ router.delete('/:id', async (_req, res) => {
         const { id } = req.params;
         console.log(`🔄 応急処置フロー削除: ${id}`);
         // トラブルシューティングディレクトリから該当するJSONファイルを検索
-        const troubleshootingDir = path_1.default.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-        if (!fs_1.default.existsSync(troubleshootingDir)) {
+        const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+        if (!fs.existsSync(troubleshootingDir)) {
             return res.status(404).json({
                 success: false,
                 error: 'トラブルシューティングディレクトリが見つかりません',
             });
         }
-        const files = fs_1.default.readdirSync(troubleshootingDir);
+        const files = fs.readdirSync(troubleshootingDir);
         const jsonFiles = files.filter(file => file.endsWith('.json'));
         let fileName = null;
         // IDに一致するファイルを検索
         for (const file of jsonFiles) {
             try {
-                const filePath = path_1.default.join(troubleshootingDir, file);
-                const fileContent = fs_1.default.readFileSync(filePath, 'utf-8');
+                const filePath = path.join(troubleshootingDir, file);
+                const fileContent = fs.readFileSync(filePath, 'utf-8');
                 const data = JSON.parse(fileContent);
                 if (data.id === id || file.replace('.json', '') === id) {
                     fileName = file;
@@ -306,8 +299,8 @@ router.delete('/:id', async (_req, res) => {
             });
         }
         // JSONファイルを削除
-        const filePath = path_1.default.join(troubleshootingDir, fileName);
-        fs_1.default.unlinkSync(filePath);
+        const filePath = path.join(troubleshootingDir, fileName);
+        fs.unlinkSync(filePath);
         console.log('✅ 応急処置フロー削除完了');
         res.json({
             success: true,
@@ -325,3 +318,4 @@ router.delete('/:id', async (_req, res) => {
         });
     }
 });
+export { router as flowsRouter };

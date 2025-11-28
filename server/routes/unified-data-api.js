@@ -1,18 +1,13 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const index_js_1 = require("../db/index.js");
-const schema_js_1 = require("../db/schema.js");
-const drizzle_orm_1 = require("drizzle-orm");
-const promises_1 = __importDefault(require("fs/promises"));
-const path_1 = __importDefault(require("path"));
-const url_1 = require("url");
-const __filename = (0, url_1.fileURLToPath)(import.meta.url);
-const __dirname = path_1.default.dirname(__filename);
-const router = express_1.default.Router();
+import express from 'express';
+import { db } from '../db/index.js';
+import { users, supportHistory, baseDocuments, historyItems, historyImages, machines, machineTypes, images } from '../db/schema.js';
+import { like, count, sql, or } from 'drizzle-orm';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const router = express.Router();
 /**
  * 統合データAPI - DBとローカルフォルダの総括的な操作エンドポイント
  */
@@ -22,20 +17,20 @@ router.get('/db-overview', async (_req, res) => {
         console.log('📊 データベース総括情報取得開始');
         // 各テーブルの件数を取得
         const [userCount, supportHistoryCount, baseDocumentCount, historyItemCount, historyImageCount, machineCount, machineTypeCount, imageCount] = await Promise.all([
-            index_js_1.db.select({ count: (0, drizzle_orm_1.count)() }).from(schema_js_1.users),
-            index_js_1.db.select({ count: (0, drizzle_orm_1.count)() }).from(schema_js_1.supportHistory),
-            index_js_1.db.select({ count: (0, drizzle_orm_1.count)() }).from(schema_js_1.baseDocuments),
-            index_js_1.db.select({ count: (0, drizzle_orm_1.count)() }).from(schema_js_1.historyItems),
-            index_js_1.db.select({ count: (0, drizzle_orm_1.count)() }).from(schema_js_1.historyImages),
-            index_js_1.db.select({ count: (0, drizzle_orm_1.count)() }).from(schema_js_1.machines),
-            index_js_1.db.select({ count: (0, drizzle_orm_1.count)() }).from(schema_js_1.machineTypes),
-            index_js_1.db.select({ count: (0, drizzle_orm_1.count)() }).from(schema_js_1.images),
+            db.select({ count: count() }).from(users),
+            db.select({ count: count() }).from(supportHistory),
+            db.select({ count: count() }).from(baseDocuments),
+            db.select({ count: count() }).from(historyItems),
+            db.select({ count: count() }).from(historyImages),
+            db.select({ count: count() }).from(machines),
+            db.select({ count: count() }).from(machineTypes),
+            db.select({ count: count() }).from(images),
         ]);
         // 最新データ取得日時
         const latestData = await Promise.all([
-            index_js_1.db.select({ latestDate: (0, drizzle_orm_1.sql) `MAX(created_at)` }).from(schema_js_1.supportHistory),
-            index_js_1.db.select({ latestDate: (0, drizzle_orm_1.sql) `MAX(created_at)` }).from(schema_js_1.baseDocuments),
-            index_js_1.db.select({ latestDate: (0, drizzle_orm_1.sql) `MAX(created_at)` }).from(schema_js_1.historyItems),
+            db.select({ latestDate: sql `MAX(created_at)` }).from(supportHistory),
+            db.select({ latestDate: sql `MAX(created_at)` }).from(baseDocuments),
+            db.select({ latestDate: sql `MAX(created_at)` }).from(historyItems),
         ]);
         const overview = {
             success: true,
@@ -73,7 +68,7 @@ router.get('/db-overview', async (_req, res) => {
 router.get('/folder-overview', async (_req, res) => {
     try {
         console.log('📁 ローカルフォルダ総括情報取得開始');
-        const baseDir = path_1.default.join(__dirname, '../../');
+        const baseDir = path.join(__dirname, '../../');
         const foldersToCheck = [
             'knowledge-base',
             'uploads',
@@ -84,11 +79,11 @@ router.get('/folder-overview', async (_req, res) => {
         ];
         const folderInfo = [];
         for (const folder of foldersToCheck) {
-            const folderPath = path_1.default.join(baseDir, folder);
+            const folderPath = path.join(baseDir, folder);
             try {
-                const stats = await promises_1.default.stat(folderPath);
+                const stats = await fs.stat(folderPath);
                 if (stats.isDirectory()) {
-                    const files = await promises_1.default.readdir(folderPath, { withFileTypes: true });
+                    const files = await fs.readdir(folderPath, { withFileTypes: true });
                     const fileCount = files.filter(file => file.isFile()).length;
                     const subDirCount = files.filter(file => file.isDirectory()).length;
                     folderInfo.push({
@@ -152,39 +147,39 @@ router.post('/search', async (req, res) => {
         if (searchType === 'all' || searchType === 'db') {
             const dbResults = await Promise.all([
                 // サポート履歴検索
-                index_js_1.db.select({
-                    id: schema_js_1.supportHistory.id,
-                    type: (0, drizzle_orm_1.sql) `'support_history'`,
-                    title: (0, drizzle_orm_1.sql) `CONCAT('機種: ', ${schema_js_1.supportHistory.machineType}, ' 機械番号: ', ${schema_js_1.supportHistory.machineNumber})`,
-                    content: schema_js_1.supportHistory.jsonData,
-                    createdAt: schema_js_1.supportHistory.createdAt
+                db.select({
+                    id: supportHistory.id,
+                    type: sql `'support_history'`,
+                    title: sql `CONCAT('機種: ', ${supportHistory.machineType}, ' 機械番号: ', ${supportHistory.machineNumber})`,
+                    content: supportHistory.jsonData,
+                    createdAt: supportHistory.createdAt
                 })
-                    .from(schema_js_1.supportHistory)
-                    .where((0, drizzle_orm_1.or)((0, drizzle_orm_1.like)(schema_js_1.supportHistory.machineType, `%${query}%`), (0, drizzle_orm_1.like)(schema_js_1.supportHistory.machineNumber, `%${query}%`), (0, drizzle_orm_1.sql) `${schema_js_1.supportHistory.jsonData}::text ILIKE ${'%' + query + '%'}`))
+                    .from(supportHistory)
+                    .where(or(like(supportHistory.machineType, `%${query}%`), like(supportHistory.machineNumber, `%${query}%`), sql `${supportHistory.jsonData}::text ILIKE ${'%' + query + '%'}`))
                     .limit(limit)
                     .offset(offset),
                 // 基礎文書検索
-                index_js_1.db.select({
-                    id: schema_js_1.baseDocuments.id,
-                    type: (0, drizzle_orm_1.sql) `'base_document'`,
-                    title: schema_js_1.baseDocuments.title,
-                    content: schema_js_1.baseDocuments.filePath,
-                    createdAt: schema_js_1.baseDocuments.createdAt
+                db.select({
+                    id: baseDocuments.id,
+                    type: sql `'base_document'`,
+                    title: baseDocuments.title,
+                    content: baseDocuments.filePath,
+                    createdAt: baseDocuments.createdAt
                 })
-                    .from(schema_js_1.baseDocuments)
-                    .where((0, drizzle_orm_1.like)(schema_js_1.baseDocuments.title, `%${query}%`))
+                    .from(baseDocuments)
+                    .where(like(baseDocuments.title, `%${query}%`))
                     .limit(limit)
                     .offset(offset),
                 // 履歴アイテム検索
-                index_js_1.db.select({
-                    id: schema_js_1.historyItems.id,
-                    type: (0, drizzle_orm_1.sql) `'history_item'`,
-                    title: schema_js_1.historyItems.title,
-                    content: schema_js_1.historyItems.description,
-                    createdAt: schema_js_1.historyItems.createdAt
+                db.select({
+                    id: historyItems.id,
+                    type: sql `'history_item'`,
+                    title: historyItems.title,
+                    content: historyItems.description,
+                    createdAt: historyItems.createdAt
                 })
-                    .from(schema_js_1.historyItems)
-                    .where((0, drizzle_orm_1.or)((0, drizzle_orm_1.like)(schema_js_1.historyItems.title, `%${query}%`), (0, drizzle_orm_1.like)(schema_js_1.historyItems.description, `%${query}%`)))
+                    .from(historyItems)
+                    .where(or(like(historyItems.title, `%${query}%`), like(historyItems.description, `%${query}%`)))
                     .limit(limit)
                     .offset(offset)
             ]);
@@ -193,9 +188,9 @@ router.post('/search', async (req, res) => {
         // ファイル検索
         if (searchType === 'all' || searchType === 'files') {
             const searchDirs = [
-                path_1.default.join(__dirname, '../../knowledge-base'),
-                path_1.default.join(__dirname, '../../uploads'),
-                path_1.default.join(__dirname, '../../public')
+                path.join(__dirname, '../../knowledge-base'),
+                path.join(__dirname, '../../uploads'),
+                path.join(__dirname, '../../public')
             ];
             const fileResults = [];
             for (const dir of searchDirs) {
@@ -226,18 +221,18 @@ router.post('/search', async (req, res) => {
 async function searchInDirectory(dirPath, query) {
     const results = [];
     try {
-        const items = await promises_1.default.readdir(dirPath, { withFileTypes: true });
+        const items = await fs.readdir(dirPath, { withFileTypes: true });
         for (const item of items) {
-            const fullPath = path_1.default.join(dirPath, item.name);
+            const fullPath = path.join(dirPath, item.name);
             if (item.isFile() && item.name.toLowerCase().includes(query.toLowerCase())) {
-                const stats = await promises_1.default.stat(fullPath);
+                const stats = await fs.stat(fullPath);
                 results.push({
                     type: 'file',
                     name: item.name,
                     path: fullPath,
                     size: stats.size,
                     lastModified: stats.mtime,
-                    directory: path_1.default.basename(dirPath)
+                    directory: path.basename(dirPath)
                 });
             }
             else if (item.isDirectory()) {
@@ -257,7 +252,7 @@ router.get('/db-schema', async (_req, res) => {
     try {
         console.log('📋 データベーススキーマ情報取得開始');
         // PostgreSQLのシステムカタログから情報を取得
-        const tableInfo = await index_js_1.db.execute((0, drizzle_orm_1.sql) `
+        const tableInfo = await db.execute(sql `
       SELECT 
         t.table_name,
         t.table_type,
@@ -313,28 +308,28 @@ router.get('/db-schema', async (_req, res) => {
 router.post('/backup', async (_req, res) => {
     try {
         console.log('💾 データベースバックアップ開始');
-        const backupDir = path_1.default.join(__dirname, '../../backups');
+        const backupDir = path.join(__dirname, '../../backups');
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const backupPath = path_1.default.join(backupDir, `backup-${timestamp}`);
+        const backupPath = path.join(backupDir, `backup-${timestamp}`);
         // バックアップディレクトリ作成
-        await promises_1.default.mkdir(backupPath, { recursive: true });
+        await fs.mkdir(backupPath, { recursive: true });
         // 各テーブルのデータをJSONで出力
         const tablesToBackup = [
-            { table: schema_js_1.users, name: 'users' },
-            { table: schema_js_1.supportHistory, name: 'support_history' },
-            { table: schema_js_1.baseDocuments, name: 'base_documents' },
-            { table: schema_js_1.historyItems, name: 'history_items' },
-            { table: schema_js_1.historyImages, name: 'history_images' },
-            { table: schema_js_1.machines, name: 'machines' },
-            { table: schema_js_1.machineTypes, name: 'machine_types' },
-            { table: schema_js_1.images, name: 'images' }
+            { table: users, name: 'users' },
+            { table: supportHistory, name: 'support_history' },
+            { table: baseDocuments, name: 'base_documents' },
+            { table: historyItems, name: 'history_items' },
+            { table: historyImages, name: 'history_images' },
+            { table: machines, name: 'machines' },
+            { table: machineTypes, name: 'machine_types' },
+            { table: images, name: 'images' }
         ];
         const backupSummary = [];
         for (const { table, name } of tablesToBackup) {
             try {
-                const data = await index_js_1.db.select().from(table);
-                const filePath = path_1.default.join(backupPath, `${name}.json`);
-                await promises_1.default.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
+                const data = await db.select().from(table);
+                const filePath = path.join(backupPath, `${name}.json`);
+                await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
                 backupSummary.push({
                     table: name,
                     recordCount: data.length,
@@ -351,7 +346,7 @@ router.post('/backup', async (_req, res) => {
             }
         }
         // バックアップサマリー保存
-        await promises_1.default.writeFile(path_1.default.join(backupPath, 'backup-summary.json'), JSON.stringify({
+        await fs.writeFile(path.join(backupPath, 'backup-summary.json'), JSON.stringify({
             timestamp: new Date().toISOString(),
             tables: backupSummary
         }, null, 2));
@@ -381,7 +376,7 @@ router.get('/health-check', async (_req, res) => {
         const checks = [];
         // データベース接続チェック
         try {
-            await index_js_1.db.select().from(schema_js_1.users).limit(1);
+            await db.select().from(users).limit(1);
             checks.push({
                 name: 'データベース接続',
                 status: 'OK',
@@ -399,9 +394,9 @@ router.get('/health-check', async (_req, res) => {
         // 必要ディレクトリの存在チェック
         const requiredDirs = ['knowledge-base', 'uploads', 'public'];
         for (const dir of requiredDirs) {
-            const dirPath = path_1.default.join(__dirname, '../../', dir);
+            const dirPath = path.join(__dirname, '../../', dir);
             try {
-                await promises_1.default.access(dirPath);
+                await fs.access(dirPath);
                 checks.push({
                     name: `ディレクトリ: ${dir}`,
                     status: 'OK',
@@ -461,4 +456,4 @@ router.get('/health-check', async (_req, res) => {
         });
     }
 });
-exports.default = router;
+export default router;

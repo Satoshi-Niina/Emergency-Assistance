@@ -1,12 +1,7 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const troubleshooting_qa_js_1 = require("../lib/troubleshooting-qa.js");
-const router = express_1.default.Router();
-const troubleshootingQA = new troubleshooting_qa_js_1.TroubleshootingQA();
+import express from 'express';
+import { TroubleshootingQA, } from '../lib/troubleshooting-qa.js';
+const router = express.Router();
+const troubleshootingQA = new TroubleshootingQA();
 // トラブルシューティングセッションの開始
 router.post('/start', async (_req, res) => {
     try {
@@ -99,4 +94,4 @@ router.post('/solution', async (_req, res) => {
         });
     }
 });
-exports.default = router;
+export default router;

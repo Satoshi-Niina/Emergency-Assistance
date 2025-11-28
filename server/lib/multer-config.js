@@ -1,12 +1,6 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.upload = void 0;
-const multer_1 = __importDefault(require("multer"));
+import multer from 'multer';
 // メモリストレージを使用してファイルをバッファとして保存
-const storage = multer_1.default.memoryStorage();
+const storage = multer.memoryStorage();
 // ファイルフィルター
 const fileFilter = (req, file, cb) => {
     // 許可するMIMEタイプ
@@ -52,7 +46,7 @@ const fileFilter = (req, file, cb) => {
     }
 };
 // multerの設定
-exports.upload = (0, multer_1.default)({
+export const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
     limits: {
@@ -60,4 +54,4 @@ exports.upload = (0, multer_1.default)({
     },
 });
 // デフォルトエクスポートも残す（後方互換性のため）
-exports.default = exports.upload;
+export default upload;

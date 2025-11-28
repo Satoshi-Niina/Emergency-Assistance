@@ -7,6 +7,8 @@ import * as fs from 'fs';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+// 本番環境ではAzure Blob Storageを使用するため、ローカルパスは開発環境のみ
+const isProduction = process.env.NODE_ENV === 'production';
 // 知識ベースディレクトリのパス解決
 // 1. 環境変数が設定されている場合はそれを使用
 // 2. それ以外は、server/libから見て../knowledge-baseを参照
@@ -15,7 +17,8 @@ let KNOWLEDGE_BASE_DIR;
 if (process.env.KNOWLEDGE_BASE_PATH) {
     KNOWLEDGE_BASE_DIR = process.env.KNOWLEDGE_BASE_PATH;
 }
-else {
+else if (!isProduction) {
+    // 開発環境のみローカルパスを解決
     // server/libから見て../knowledge-base
     const relativePath = path.join(__dirname, '..', '..', 'knowledge-base');
     if (fs.existsSync(relativePath)) {
@@ -25,6 +28,10 @@ else {
         // フォールバック: process.cwd()からknowledge-base
         KNOWLEDGE_BASE_DIR = path.join(process.cwd(), 'knowledge-base');
     }
+}
+else {
+    // 本番環境ではAzure Blob Storageを使用するため、ローカルパスは不要
+    KNOWLEDGE_BASE_DIR = '';
 }
 const DATA_DIR = path.join(KNOWLEDGE_BASE_DIR, 'data');
 const TEXT_DIR = path.join(KNOWLEDGE_BASE_DIR, 'text');

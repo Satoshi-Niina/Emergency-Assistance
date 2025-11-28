@@ -1,0 +1,30 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "outDir": "./server",
+        "rootDir": "./server",
+        "module": "ESNext",
+        "target": "ES2022",
+        "moduleResolution": "node",
+        "allowSyntheticDefaultImports": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "strict": false,
+        "resolveJsonModule": true,
+        "declaration": false,
+        "sourceMap": false,
+        "noEmit": false,
+        "allowJs": true,
+        "checkJs": false
+    },
+    "include": [
+        "server/**/*.ts"
+    ],
+    "exclude": [
+        "server/node_modules",
+        "server/**/*.spec.ts",
+        "server/**/*.test.ts",
+        "server/**/*.js",
+        "server/**/*.mjs"
+    ]
+}

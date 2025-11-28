@@ -1,16 +1,14 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const zod_1 = require("zod");
-const interactive_diagnosis_js_1 = require("../lib/interactive-diagnosis.js");
-const openai_js_1 = require("../lib/openai.js");
-const router = (0, express_1.Router)();
+import { Router } from 'express';
+import { z } from 'zod';
+import { updateDiagnosisState, generateInteractiveResponse, } from '../lib/interactive-diagnosis.js';
+import { processOpenAIRequest } from '../lib/openai.js';
+const router = Router();
 // リクエストスキーマ
-const InteractiveDiagnosisRequestSchema = zod_1.z.object({
-    userResponse: zod_1.z.string().min(1),
-    currentState: zod_1.z
+const InteractiveDiagnosisRequestSchema = z.object({
+    userResponse: z.string().min(1),
+    currentState: z
         .object({
-        phase: zod_1.z.enum([
+        phase: z.enum([
             'initial',
             'investigation',
             'diagnosis',
@@ -18,21 +16,21 @@ const InteractiveDiagnosisRequestSchema = zod_1.z.object({
             'verification',
             'completed',
         ]),
-        collectedInfo: zod_1.z.object({
-            symptoms: zod_1.z.array(zod_1.z.string()),
-            vehicleType: zod_1.z.string().nullable(),
-            safetyStatus: zod_1.z.string().nullable(),
-            timing: zod_1.z.string().nullable(),
-            tools: zod_1.z.string().nullable(),
-            environment: zod_1.z.string().nullable(),
-            urgency: zod_1.z.enum(['low', 'medium', 'high', 'critical']),
+        collectedInfo: z.object({
+            symptoms: z.array(z.string()),
+            vehicleType: z.string().nullable(),
+            safetyStatus: z.string().nullable(),
+            timing: z.string().nullable(),
+            tools: z.string().nullable(),
+            environment: z.string().nullable(),
+            urgency: z.enum(['low', 'medium', 'high', 'critical']),
         }),
-        suspectedCauses: zod_1.z.array(zod_1.z.string()),
-        currentFocus: zod_1.z.string().nullable(),
-        nextActions: zod_1.z.array(zod_1.z.string()),
-        confidence: zod_1.z.number(),
-        phraseHistory: zod_1.z.array(zod_1.z.string()).optional(),
-        lastQuestion: zod_1.z.string().optional(),
+        suspectedCauses: z.array(z.string()),
+        currentFocus: z.string().nullable(),
+        nextActions: z.array(z.string()),
+        confidence: z.number(),
+        phraseHistory: z.array(z.string()).optional(),
+        lastQuestion: z.string().optional(),
     })
         .optional(),
 });
@@ -94,9 +92,9 @@ router.post('/', async (req, res) => {
             };
         }
         // 診断状態の更新
-        const updatedState = (0, interactive_diagnosis_js_1.updateDiagnosisState)(diagnosisState, userResponse);
+        const updatedState = updateDiagnosisState(diagnosisState, userResponse);
         // インタラクティブレスポンスの生成
-        let interactiveResponse = (0, interactive_diagnosis_js_1.generateInteractiveResponse)(updatedState, userResponse);
+        let interactiveResponse = generateInteractiveResponse(updatedState, userResponse);
         // 高度な分析が必要な場合はOpenAI APIを使用
         if (updatedState.confidence < 0.6 && updatedState.phase === 'diagnosis') {
             try {
@@ -122,7 +120,7 @@ ${context}
 
 質問のみを回答してください（余計な説明は不要）。
         `;
-                const aiResponse = await (0, openai_js_1.processOpenAIRequest)(aiPrompt, true);
+                const aiResponse = await processOpenAIRequest(aiPrompt, true);
                 // AI生成の質問で更新
                 if (aiResponse && aiResponse.length > 0) {
                     interactiveResponse = {
@@ -158,7 +156,7 @@ ${vehicleInfo}の${primaryCause}に対する応急処置手順を、現場で実
 
 現場の技術者が迷わずに実行できる内容にしてください。
         `;
-                const actionResponse = await (0, openai_js_1.processOpenAIRequest)(actionPrompt, true);
+                const actionResponse = await processOpenAIRequest(actionPrompt, true);
                 if (actionResponse && actionResponse.length > 0) {
                     interactiveResponse = {
                         ...interactiveResponse,
@@ -221,7 +219,7 @@ router.post('/start', async (req, res) => {
             phraseHistory: [],
             lastQuestion: undefined,
         };
-        const initialResponse = (0, interactive_diagnosis_js_1.generateInteractiveResponse)(initialState);
+        const initialResponse = generateInteractiveResponse(initialState);
         res.json({
             interactiveResponse: initialResponse,
             diagnosisState: initialState,
@@ -266,4 +264,4 @@ router.post('/save', async (req, res) => {
         });
     }
 });
-exports.default = router;
+export default router;

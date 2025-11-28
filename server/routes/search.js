@@ -1,33 +1,30 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.registerSearchRoutes = registerSearchRoutes;
-const express_1 = require("express");
-const zod_1 = require("zod");
-const db_js_1 = require("../services/db.js");
-const embedding_js_1 = require("../services/embedding.js");
-const config_manager_js_1 = require("../services/config-manager.js");
-const router = (0, express_1.Router)();
+import { Router } from 'express';
+import { z } from 'zod';
+import { pool } from '../services/db.js';
+import { embedText } from '../services/embedding.js';
+import { loadRagConfig } from '../services/config-manager.js';
+const router = Router();
 // クエリパラメータのスキーマ定義
-const SearchQuerySchema = zod_1.z.object({
-    q: zod_1.z.string().min(1).max(1000),
-    limit: zod_1.z
+const SearchQuerySchema = z.object({
+    q: z.string().min(1).max(1000),
+    limit: z
         .string()
         .optional()
         .transform(val => parseInt(val || '8')),
-    threshold: zod_1.z
+    threshold: z
         .string()
         .optional()
         .transform(val => parseFloat(val || '0.7')),
 });
 // 検索結果のスキーマ定義
-const SearchResultSchema = zod_1.z.object({
-    id: zod_1.z.number(),
-    doc_id: zod_1.z.string(),
-    score: zod_1.z.number(),
-    content: zod_1.z.string(),
-    filename: zod_1.z.string(),
-    tags: zod_1.z.array(zod_1.z.string()).nullable(),
-    page: zod_1.z.number(),
+const SearchResultSchema = z.object({
+    id: z.number(),
+    doc_id: z.string(),
+    score: z.number(),
+    content: z.string(),
+    filename: z.string(),
+    tags: z.array(z.string()).nullable(),
+    page: z.number(),
 });
 /**
  * ベクトル検索
@@ -45,11 +42,11 @@ router.get('/', async (req, res) => {
         }
         const { q: query, limit, threshold } = validationResult.data;
         // 設定を読み込み
-        const config = await (0, config_manager_js_1.loadRagConfig)();
+        const config = await loadRagConfig();
         // 検索クエリを埋め込みベクトルに変換
         let queryEmbedding;
         try {
-            const embeddingResult = await (0, embedding_js_1.embedText)(query);
+            const embeddingResult = await embedText(query);
             queryEmbedding = embeddingResult.embedding;
         }
         catch (error) {
@@ -68,7 +65,7 @@ router.get('/', async (req, res) => {
             });
         }
         // データベース接続
-        const client = await db_js_1.pool.connect();
+        const client = await pool.connect();
         try {
             // ベクトル類似度検索を実行
             const searchQuery = `
@@ -159,7 +156,7 @@ router.get('/tags', async (req, res) => {
             });
         }
         // データベース接続
-        const client = await db_js_1.pool.connect();
+        const client = await pool.connect();
         try {
             // タグによる検索クエリ
             const searchQuery = `
@@ -210,7 +207,7 @@ router.get('/tags', async (req, res) => {
  */
 router.get('/stats', async (req, res) => {
     try {
-        const client = await db_js_1.pool.connect();
+        const client = await pool.connect();
         try {
             // 統計情報を取得
             const totalDocs = await client.query('SELECT COUNT(*) as count FROM documents');
@@ -247,7 +244,7 @@ router.get('/stats', async (req, res) => {
         });
     }
 });
-function registerSearchRoutes(app) {
+export function registerSearchRoutes(app) {
     app.use('/api/search', router);
 }
-exports.default = router;
+export default router;

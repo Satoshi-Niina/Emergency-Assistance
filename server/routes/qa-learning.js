@@ -1,16 +1,11 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const auth_js_1 = require("../middleware/auth.js");
-const openai_js_1 = require("../lib/openai.js");
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
-const router = (0, express_1.Router)();
+import { Router } from 'express';
+import { authenticateToken as requireAuth } from '../middleware/auth.js';
+import { processOpenAIRequest } from '../lib/openai.js';
+import fs from 'fs';
+import path from 'path';
+const router = Router();
 // Q&Aセッションから学習データを生成
-router.post('/generate-learning-data', auth_js_1.authenticateToken, async (req, res) => {
+router.post('/generate-learning-data', requireAuth, async (req, res) => {
     try {
         const { question, answer, solution, success, category = 'troubleshooting', machineType, machineNumber, timestamp, } = req.body;
         if (!question || !answer || !solution) {
@@ -48,7 +43,7 @@ router.post('/generate-learning-data', auth_js_1.authenticateToken, async (req, 
   "relatedKnowledge": ["関連する知識1", "関連する知識2"]
 }
 `;
-        const response = await (0, openai_js_1.processOpenAIRequest)(learningPrompt, false);
+        const response = await processOpenAIRequest(learningPrompt, false);
         let learningData;
         try {
             learningData = JSON.parse(response);
@@ -125,13 +120,13 @@ ${learningData.prevention}
 生成日時: ${learningData.createdAt}
 `;
         // ファイルとして保存
-        const knowledgeDir = path_1.default.join(process.cwd(), 'knowledge-base', 'learning');
-        if (!fs_1.default.existsSync(knowledgeDir)) {
-            fs_1.default.mkdirSync(knowledgeDir, { recursive: true });
+        const knowledgeDir = path.join(process.cwd(), 'knowledge-base', 'learning');
+        if (!fs.existsSync(knowledgeDir)) {
+            fs.mkdirSync(knowledgeDir, { recursive: true });
         }
         const fileName = `learning_${Date.now()}.json`;
-        const filePath = path_1.default.join(knowledgeDir, fileName);
-        fs_1.default.writeFileSync(filePath, JSON.stringify({
+        const filePath = path.join(knowledgeDir, fileName);
+        fs.writeFileSync(filePath, JSON.stringify({
             content: knowledgeContent,
             metadata: learningData,
             keywords: learningData.keywords,
@@ -145,28 +140,28 @@ ${learningData.prevention}
     }
 }
 // 学習データの一覧取得
-router.get('/learning-data', auth_js_1.authenticateToken, async (req, res) => {
+router.get('/learning-data', requireAuth, async (req, res) => {
     try {
-        const knowledgeDir = path_1.default.join(process.cwd(), 'knowledge-base', 'learning');
-        if (!fs_1.default.existsSync(knowledgeDir)) {
+        const knowledgeDir = path.join(process.cwd(), 'knowledge-base', 'learning');
+        if (!fs.existsSync(knowledgeDir)) {
             return res.json({
                 success: true,
                 data: [],
             });
         }
-        const files = fs_1.default
+        const files = fs
             .readdirSync(knowledgeDir)
             .filter((file) => file.endsWith('.json'))
             .sort((a, b) => {
-            const aTime = fs_1.default.statSync(path_1.default.join(knowledgeDir, a)).mtime.getTime();
-            const bTime = fs_1.default.statSync(path_1.default.join(knowledgeDir, b)).mtime.getTime();
+            const aTime = fs.statSync(path.join(knowledgeDir, a)).mtime.getTime();
+            const bTime = fs.statSync(path.join(knowledgeDir, b)).mtime.getTime();
             return bTime - aTime;
         });
         const learningData = files
             .map((file) => {
             try {
-                const filePath = path_1.default.join(knowledgeDir, file);
-                const content = fs_1.default.readFileSync(filePath, 'utf-8');
+                const filePath = path.join(knowledgeDir, file);
+                const content = fs.readFileSync(filePath, 'utf-8');
                 const data = JSON.parse(content);
                 return {
                     id: file.replace('.json', ''),
@@ -194,13 +189,13 @@ router.get('/learning-data', auth_js_1.authenticateToken, async (req, res) => {
     }
 });
 // 学習データの削除
-router.delete('/learning-data/:id', auth_js_1.authenticateToken, async (req, res) => {
+router.delete('/learning-data/:id', requireAuth, async (req, res) => {
     try {
         const { id } = req.params;
-        const knowledgeDir = path_1.default.join(process.cwd(), 'knowledge-base', 'learning');
-        const filePath = path_1.default.join(knowledgeDir, `${id}.json`);
-        if (fs_1.default.existsSync(filePath)) {
-            fs_1.default.unlinkSync(filePath);
+        const knowledgeDir = path.join(process.cwd(), 'knowledge-base', 'learning');
+        const filePath = path.join(knowledgeDir, `${id}.json`);
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
             res.json({
                 success: true,
                 message: '学習データが削除されました',
@@ -221,4 +216,4 @@ router.delete('/learning-data/:id', auth_js_1.authenticateToken, async (req, res
         });
     }
 });
-exports.default = router;
+export default router;

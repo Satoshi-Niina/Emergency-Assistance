@@ -2,15 +2,19 @@ import path from 'path';
 import { promises as fs } from 'fs';
 
 export class KnowledgeBaseService {
-  private readonly localBasePath = './knowledge-base';
-  private readonly azureBasePath = 'knowledge-base';
+  private readonly localBasePath: string;
+  private readonly azureBasePath: string;
   private azureStorage: any = null;
 
   constructor() {
-    // 開発環境ではローカル、本番環境ではAzure Storageを使用
-    this.useAzureStorage =
-      process.env.NODE_ENV === 'production' &&
-      !!process.env.AZURE_STORAGE_CONNECTION_STRING;
+    // 環境変数からパスを取得
+    this.localBasePath = process.env.KNOWLEDGE_BASE_PATH || './knowledge-base';
+    this.azureBasePath = process.env.AZURE_KNOWLEDGE_BASE_PATH || 'knowledge-base';
+
+    // 自動環境検出: Azure接続文字列があればAzure、なければローカル
+    this.useAzureStorage = !!process.env.AZURE_STORAGE_CONNECTION_STRING;
+
+    console.log(`📦 Storage Mode: ${this.useAzureStorage ? 'Azure Blob Storage' : 'Local File System'}`);
 
     // Azure Storageが必要な場合のみインポート
     if (this.useAzureStorage) {

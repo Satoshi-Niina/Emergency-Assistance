@@ -311,8 +311,27 @@ const getBlobServiceClient = () => {
 };
 
 // パス正規化ヘルパー
-const BASE = (process.env.STORAGE_BASE_PREFIX ?? 'knowledge-base')
+const BASE = (process.env.AZURE_KNOWLEDGE_BASE_PATH ?? process.env.STORAGE_BASE_PREFIX ?? 'knowledge-base')
   .replace(/^[\\/]+|[\\/]+$/g, '');
+const KNOWLEDGE_DATA_PREFIX = BASE
+  ? `${BASE}/data/`
+  : 'knowledge-base/data/';
+
+const toPosixPath = (value) => String(value ?? '').replace(/\\/g, '/');
+
+const sanitizeKnowledgeRelativePath = (raw) => {
+  const normalized = toPosixPath(raw).trim();
+  if (!normalized) {
+    throw new Error('ファイル名が指定されていません');
+  }
+  if (normalized.includes('..')) {
+    throw new Error('不正なファイルパスです');
+  }
+  return normalized.replace(/^\/+/, '');
+};
+
+const buildKnowledgeBlobPath = (file) =>
+  toPosixPath(`${KNOWLEDGE_DATA_PREFIX}${sanitizeKnowledgeRelativePath(file)}`);
 const norm = (p) =>
   [BASE, String(p || '')]
     .filter(Boolean)
@@ -2285,6 +2304,225 @@ app.delete('/api/storage/delete', async (req, res) => {
     res.status(500).json({
       error: 'storage_delete_error',
       message: error.message
+    });
+  }
+});
+
+// ナレッジデータAPI - 一覧取得
+app.get('/api/knowledge', async (_req, res) => {
+  try {
+    console.log('[api/knowledge] ナレッジデータ一覧リクエスト');
+
+    if (connectionString) {
+      try {
+        const blobServiceClient = getBlobServiceClient();
+        if (!blobServiceClient) {
+          return res.status(503).json({
+            success: false,
+            error: 'BLOBストレージが利用できません',
+            details: 'Blob service client unavailable'
+          });
+        }
+
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        const containerExists = await containerClient.exists();
+        if (!containerExists) {
+          console.warn('[api/knowledge] Azureコンテナが存在しません:', containerName);
+          return res.json({
+            success: true,
+            data: [],
+            total: 0,
+            message: 'Azure Storage container not found',
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const items = [];
+        const prefix = KNOWLEDGE_DATA_PREFIX;
+        for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+          if (!blob.name.toLowerCase().endsWith('.json')) {
+            continue;
+          }
+
+          const relative = blob.name.startsWith(prefix)
+            ? blob.name.substring(prefix.length)
+            : blob.name;
+
+          if (!relative) {
+            continue;
+          }
+
+          const parsed = path.posix.parse(relative);
+          const basePath = BASE || 'knowledge-base';
+          const publicPath = `/${toPosixPath(path.posix.join(basePath, 'data', relative))}`;
+
+          items.push({
+            filename: relative,
+            name: parsed.name || relative,
+            size: blob.properties.contentLength || 0,
+            modifiedAt:
+              blob.properties.lastModified?.toISOString() || new Date().toISOString(),
+            path: publicPath
+          });
+        }
+
+        console.log(`✅ [api/knowledge] Azureレスポンス: ${items.length}件`);
+        return res.json({
+          success: true,
+          data: items,
+          total: items.length,
+          timestamp: new Date().toISOString()
+        });
+      } catch (azureError) {
+        console.error('[api/knowledge] Azure取得エラー:', azureError);
+        return res.status(500).json({
+          success: false,
+          error: 'ナレッジベースデータの取得に失敗しました',
+          details: azureError instanceof Error ? azureError.message : 'Unknown error'
+        });
+      }
+    }
+
+    const dataDir = path.join(process.cwd(), 'knowledge-base', 'data');
+    if (!fsSync.existsSync(dataDir)) {
+      console.log('[api/knowledge] knowledge-base/data/フォルダが存在しません');
+      return res.json({
+        success: true,
+        data: [],
+        total: 0,
+        message: 'knowledge-base/data/フォルダが存在しません'
+      });
+    }
+
+    const files = fsSync.readdirSync(dataDir);
+    const jsonFiles = files.filter((file) => {
+      const fullPath = path.join(dataDir, file);
+      const stats = fsSync.statSync(fullPath);
+      return stats.isFile() && file.toLowerCase().endsWith('.json');
+    });
+
+    const list = jsonFiles.map((file) => {
+      const fullPath = path.join(dataDir, file);
+      const stats = fsSync.statSync(fullPath);
+      return {
+        filename: file,
+        name: path.parse(file).name,
+        size: stats.size,
+        modifiedAt: stats.mtime.toISOString(),
+        path: `/knowledge-base/data/${file}`
+      };
+    });
+
+    console.log(`✅ [api/knowledge] ローカルレスポンス: ${list.length}件`);
+    res.json({
+      success: true,
+      data: list,
+      total: list.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/knowledge] ナレッジデータ取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ナレッジベースデータの取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// ナレッジデータAPI - 個別取得
+app.get('/api/knowledge/:filename(*)', async (req, res) => {
+  try {
+    const { filename } = req.params;
+    console.log(`[api/knowledge] ナレッジファイル取得: ${filename}`);
+
+    if (!filename) {
+      return res.status(400).json({
+        success: false,
+        error: 'ファイル名が指定されていません'
+      });
+    }
+
+    if (connectionString) {
+      try {
+        const blobServiceClient = getBlobServiceClient();
+        if (!blobServiceClient) {
+          return res.status(503).json({
+            success: false,
+            error: 'BLOBストレージが利用できません',
+            details: 'Blob service client unavailable'
+          });
+        }
+
+        const relativePath = sanitizeKnowledgeRelativePath(filename);
+        const blobPath = buildKnowledgeBlobPath(relativePath);
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
+
+        const exists = await blockBlobClient.exists();
+        if (!exists) {
+          return res.status(404).json({
+            success: false,
+            error: 'ファイルが見つかりません'
+          });
+        }
+
+        const downloadResponse = await blockBlobClient.download();
+        const stream = downloadResponse.readableStreamBody;
+        const buffer = stream ? await streamToBuffer(stream) : Buffer.alloc(0);
+        const content = buffer.toString('utf-8').replace(/^[\uFEFF]+/, '');
+        const jsonData = JSON.parse(content);
+        const properties = await blockBlobClient.getProperties();
+
+        console.log('[api/knowledge] Azureファイル取得成功');
+        return res.json({
+          success: true,
+          data: jsonData,
+          filename: relativePath,
+          size: properties.contentLength || Buffer.byteLength(content, 'utf-8'),
+          modifiedAt: properties.lastModified?.toISOString()
+        });
+      } catch (azureError) {
+        console.error('[api/knowledge] Azureファイル取得エラー:', azureError);
+        return res.status(500).json({
+          success: false,
+          error: 'ナレッジベースファイルの取得に失敗しました',
+          details: azureError instanceof Error ? azureError.message : 'Unknown error'
+        });
+      }
+    }
+
+    if (!filename.toLowerCase().endsWith('.json')) {
+      return res.status(400).json({
+        success: false,
+        error: 'JSONファイルのみ取得可能です'
+      });
+    }
+
+    const localPath = path.join(process.cwd(), 'knowledge-base', 'data', filename);
+    if (!fsSync.existsSync(localPath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'ファイルが見つかりません'
+      });
+    }
+
+    const fileContent = fsSync.readFileSync(localPath, 'utf-8');
+    const jsonData = JSON.parse(fileContent);
+
+    console.log('[api/knowledge] ローカルファイル取得成功');
+    res.json({
+      success: true,
+      data: jsonData,
+      filename,
+      size: Buffer.byteLength(fileContent, 'utf-8')
+    });
+  } catch (error) {
+    console.error('[api/knowledge] ナレッジファイル取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ナレッジベースファイルの取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });

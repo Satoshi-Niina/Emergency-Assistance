@@ -1,28 +1,25 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.KnowledgeService = void 0;
-const index_js_1 = require("../db/index.js");
-const schema_js_1 = require("../db/schema.js");
-const drizzle_orm_1 = require("drizzle-orm");
-const { emergencyFlows } = schema_js_1.schema;
-const zod_1 = require("zod");
+import { db } from '../db/index.js';
+import { schema } from '../db/schema.js';
+import { eq, desc, like, and, gte, lte } from 'drizzle-orm';
+const { emergencyFlows } = schema;
+import { z } from 'zod';
 // バリデーションスキーマ
-const createFlowSchema = zod_1.z.object({
-    title: zod_1.z.string().min(1, 'タイトルは必須です'),
-    description: zod_1.z.string().optional(),
-    keyword: zod_1.z.string().optional(),
-    category: zod_1.z.string().optional(),
-    steps: zod_1.z.array(zod_1.z.any()).optional(),
-    imagePath: zod_1.z.string().optional(),
+const createFlowSchema = z.object({
+    title: z.string().min(1, 'タイトルは必須です'),
+    description: z.string().optional(),
+    keyword: z.string().optional(),
+    category: z.string().optional(),
+    steps: z.array(z.any()).optional(),
+    imagePath: z.string().optional(),
 });
-const searchFlowSchema = zod_1.z.object({
-    title: zod_1.z.string().optional(),
-    keyword: zod_1.z.string().optional(),
-    category: zod_1.z.string().optional(),
-    limit: zod_1.z.number().min(1).max(100).default(20),
-    offset: zod_1.z.number().min(0).default(0),
+const searchFlowSchema = z.object({
+    title: z.string().optional(),
+    keyword: z.string().optional(),
+    category: z.string().optional(),
+    limit: z.number().min(1).max(100).default(20),
+    offset: z.number().min(0).default(0),
 });
-class KnowledgeService {
+export class KnowledgeService {
     /**
      * 応急処置フローを作成
      */
@@ -36,7 +33,7 @@ class KnowledgeService {
             }
             const { title, description, keyword, category, steps, imagePath } = validationResult.data;
             // データベースに保存
-            const newFlow = await index_js_1.db
+            const newFlow = await db
                 .insert(emergencyFlows)
                 .values({
                 title,
@@ -70,16 +67,16 @@ class KnowledgeService {
             // 検索条件を構築
             const conditions = [];
             if (title) {
-                conditions.push((0, drizzle_orm_1.like)(emergencyFlows.title, `%${title}%`));
+                conditions.push(like(emergencyFlows.title, `%${title}%`));
             }
             if (keyword) {
-                conditions.push((0, drizzle_orm_1.like)(emergencyFlows.keyword, `%${keyword}%`));
+                conditions.push(like(emergencyFlows.keyword, `%${keyword}%`));
             }
             if (category) {
-                conditions.push((0, drizzle_orm_1.eq)(emergencyFlows.category, category));
+                conditions.push(eq(emergencyFlows.category, category));
             }
             // データ取得
-            const query = index_js_1.db
+            const query = db
                 .select({
                 id: emergencyFlows.id,
                 title: emergencyFlows.title,
@@ -94,19 +91,19 @@ class KnowledgeService {
                 .from(emergencyFlows);
             // 条件を適用
             if (conditions.length > 0) {
-                query.where((0, drizzle_orm_1.and)(...conditions));
+                query.where(and(...conditions));
             }
             // ページネーションとソート
             const items = await query
-                .orderBy((0, drizzle_orm_1.desc)(emergencyFlows.createdAt))
+                .orderBy(desc(emergencyFlows.createdAt))
                 .limit(limit)
                 .offset(offset);
             // 総件数を取得
-            const countQuery = index_js_1.db
+            const countQuery = db
                 .select({ count: emergencyFlows.id })
                 .from(emergencyFlows);
             if (conditions.length > 0) {
-                countQuery.where((0, drizzle_orm_1.and)(...conditions));
+                countQuery.where(and(...conditions));
             }
             const countResult = await countQuery;
             const total = countResult.length;
@@ -131,7 +128,7 @@ class KnowledgeService {
     static async getFlowById(id) {
         try {
             console.log(`📋 応急処置フロー詳細取得: ${id}`);
-            const flowItem = await index_js_1.db
+            const flowItem = await db
                 .select({
                 id: emergencyFlows.id,
                 title: emergencyFlows.title,
@@ -144,7 +141,7 @@ class KnowledgeService {
                 updatedAt: emergencyFlows.updatedAt,
             })
                 .from(emergencyFlows)
-                .where((0, drizzle_orm_1.eq)(emergencyFlows.id, id))
+                .where(eq(emergencyFlows.id, id))
                 .limit(1);
             if (flowItem.length === 0) {
                 console.log('⚠️  応急処置フローが見つかりません:', id);
@@ -164,9 +161,9 @@ class KnowledgeService {
     static async deleteFlow(id) {
         try {
             console.log(`📋 応急処置フロー削除: ${id}`);
-            const result = await index_js_1.db
+            const result = await db
                 .delete(emergencyFlows)
-                .where((0, drizzle_orm_1.eq)(emergencyFlows.id, id))
+                .where(eq(emergencyFlows.id, id))
                 .returning();
             if (result.length === 0) {
                 console.log('⚠️  削除対象の応急処置フローが見つかりません:', id);
@@ -186,13 +183,13 @@ class KnowledgeService {
     static async updateFlow(id, data) {
         try {
             console.log(`📋 応急処置フロー更新: ${id}`, data);
-            const result = await index_js_1.db
+            const result = await db
                 .update(emergencyFlows)
                 .set({
                 ...data,
                 updatedAt: new Date(),
             })
-                .where((0, drizzle_orm_1.eq)(emergencyFlows.id, id))
+                .where(eq(emergencyFlows.id, id))
                 .returning();
             if (result.length === 0) {
                 console.log('⚠️  更新対象の応急処置フローが見つかりません:', id);
@@ -212,7 +209,7 @@ class KnowledgeService {
     static async getCategories() {
         try {
             console.log('📋 カテゴリ一覧取得');
-            const categories = await index_js_1.db
+            const categories = await db
                 .select({ category: emergencyFlows.category })
                 .from(emergencyFlows)
                 .where(emergencyFlows.category.isNotNull());
@@ -233,7 +230,7 @@ class KnowledgeService {
     static async searchByKeyword(keyword) {
         try {
             console.log(`📋 キーワード検索: ${keyword}`);
-            const flows = await index_js_1.db
+            const flows = await db
                 .select({
                 id: emergencyFlows.id,
                 title: emergencyFlows.title,
@@ -246,8 +243,8 @@ class KnowledgeService {
                 updatedAt: emergencyFlows.updatedAt,
             })
                 .from(emergencyFlows)
-                .where((0, drizzle_orm_1.like)(emergencyFlows.keyword, `%${keyword}%`))
-                .orderBy((0, drizzle_orm_1.desc)(emergencyFlows.createdAt));
+                .where(like(emergencyFlows.keyword, `%${keyword}%`))
+                .orderBy(desc(emergencyFlows.createdAt));
             console.log(`✅ キーワード検索完了: ${flows.length}件`);
             return flows;
         }
@@ -266,7 +263,7 @@ class KnowledgeService {
             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
             // 総件数
-            const totalResult = await index_js_1.db
+            const totalResult = await db
                 .select({ count: emergencyFlows.id })
                 .from(emergencyFlows);
             const totalCount = totalResult.length;
@@ -274,16 +271,16 @@ class KnowledgeService {
             const categories = await this.getCategories();
             const categoryCount = categories.length;
             // 今日の件数
-            const todayResult = await index_js_1.db
+            const todayResult = await db
                 .select({ count: emergencyFlows.id })
                 .from(emergencyFlows)
-                .where((0, drizzle_orm_1.eq)(emergencyFlows.createdAt, today));
+                .where(eq(emergencyFlows.createdAt, today));
             const todayCount = todayResult.length;
             // 今週の件数
-            const weekResult = await index_js_1.db
+            const weekResult = await db
                 .select({ count: emergencyFlows.id })
                 .from(emergencyFlows)
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.gte)(emergencyFlows.createdAt, weekAgo), (0, drizzle_orm_1.lte)(emergencyFlows.createdAt, now)));
+                .where(and(gte(emergencyFlows.createdAt, weekAgo), lte(emergencyFlows.createdAt, now)));
             const thisWeekCount = weekResult.length;
             console.log('✅ 統計情報取得完了');
             return {
@@ -299,4 +296,3 @@ class KnowledgeService {
         }
     }
 }
-exports.KnowledgeService = KnowledgeService;

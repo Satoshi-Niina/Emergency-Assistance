@@ -1,43 +1,36 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.supportHistoryRouter = void 0;
-const express_1 = __importDefault(require("express"));
-const index_js_1 = require("../db/index.js");
-const schema_js_1 = require("../db/schema.js");
-const drizzle_orm_1 = require("drizzle-orm");
-const zod_1 = require("zod");
-const multer_config_js_1 = require("../lib/multer-config.js");
-const path_1 = __importDefault(require("path"));
-const fs_1 = __importDefault(require("fs"));
-const pdfkit_1 = __importDefault(require("pdfkit"));
-const fuse_js_1 = __importDefault(require("fuse.js"));
-const router = express_1.default.Router();
-exports.supportHistoryRouter = router;
+import express from 'express';
+import { db } from '../db/index.js';
+import { supportHistory } from '../db/schema.js';
+import { eq, and, gte, lte, desc, ilike, or } from 'drizzle-orm';
+import { z } from 'zod';
+import { upload } from '../lib/multer-config.js';
+import path from 'path';
+import fs from 'fs';
+import PDFDocument from 'pdfkit';
+import Fuse from 'fuse.js';
+const router = express.Router();
 // 履歴データから機種・機械番号一覧取得
 router.get('/machine-data', async (_req, res) => {
     try {
         console.log('🔍 機種・機械番号データ取得開始');
         // 履歴データから機種一覧を取得（データベースカラムとJSONデータの両方から）
-        const machineTypesResult = await index_js_1.db
+        const machineTypesResult = await db
             .select({
-            machineType: schema_js_1.supportHistory.machineType,
-            jsonData: schema_js_1.supportHistory.jsonData,
+            machineType: supportHistory.machineType,
+            jsonData: supportHistory.jsonData,
         })
-            .from(schema_js_1.supportHistory)
-            .orderBy(schema_js_1.supportHistory.createdAt);
+            .from(supportHistory)
+            .orderBy(supportHistory.createdAt);
         console.log('🔍 機種データ取得結果（DB）:', machineTypesResult.length, '件');
         // 履歴データから機械番号一覧を取得（データベースカラムとJSONデータの両方から）
-        const machinesResult = await index_js_1.db
+        const machinesResult = await db
             .select({
-            machineNumber: schema_js_1.supportHistory.machineNumber,
-            machineType: schema_js_1.supportHistory.machineType,
-            jsonData: schema_js_1.supportHistory.jsonData,
+            machineNumber: supportHistory.machineNumber,
+            machineType: supportHistory.machineType,
+            jsonData: supportHistory.jsonData,
         })
-            .from(schema_js_1.supportHistory)
-            .orderBy(schema_js_1.supportHistory.createdAt);
+            .from(supportHistory)
+            .orderBy(supportHistory.createdAt);
         console.log('🔍 機械番号データ取得結果（DB）:', machinesResult.length, '件');
         // 機種一覧を構築（重複除去）
         const machineTypeSet = new Set();
@@ -128,13 +121,13 @@ router.get('/machine-data', async (_req, res) => {
     }
 });
 // 履歴検索用スキーマ
-const historyQuerySchema = zod_1.z.object({
-    machineType: zod_1.z.string().optional(),
-    machineNumber: zod_1.z.string().optional(),
-    searchText: zod_1.z.string().optional(), // テキスト検索用
-    searchDate: zod_1.z.string().optional(), // 日付検索用
-    limit: zod_1.z.coerce.number().min(1).max(100).default(50),
-    offset: zod_1.z.coerce.number().min(0).default(0),
+const historyQuerySchema = z.object({
+    machineType: z.string().optional(),
+    machineNumber: z.string().optional(),
+    searchText: z.string().optional(), // テキスト検索用
+    searchDate: z.string().optional(), // 日付検索用
+    limit: z.coerce.number().min(1).max(100).default(50),
+    offset: z.coerce.number().min(0).default(0),
 });
 // 履歴一覧取得
 router.get('/', async (_req, res) => {
@@ -144,11 +137,11 @@ router.get('/', async (_req, res) => {
         const whereConditions = [];
         // 機種フィルタ（データベースカラムとJSONデータの両方を検索）
         if (query.machineType) {
-            whereConditions.push((0, drizzle_orm_1.or)((0, drizzle_orm_1.ilike)(schema_js_1.supportHistory.machineType, `%${query.machineType}%`), (0, drizzle_orm_1.ilike)(schema_js_1.supportHistory.jsonData, `%${query.machineType}%`)));
+            whereConditions.push(or(ilike(supportHistory.machineType, `%${query.machineType}%`), ilike(supportHistory.jsonData, `%${query.machineType}%`)));
         }
         // 機械番号フィルタ（データベースカラムとJSONデータの両方を検索）
         if (query.machineNumber) {
-            whereConditions.push((0, drizzle_orm_1.or)((0, drizzle_orm_1.ilike)(schema_js_1.supportHistory.machineNumber, `%${query.machineNumber}%`), (0, drizzle_orm_1.ilike)(schema_js_1.supportHistory.jsonData, `%${query.machineNumber}%`)));
+            whereConditions.push(or(ilike(supportHistory.machineNumber, `%${query.machineNumber}%`), ilike(supportHistory.jsonData, `%${query.machineNumber}%`)));
         }
         // テキスト検索（JSONデータ内の任意のテキスト検索）
         if (query.searchText) {
@@ -157,11 +150,11 @@ router.get('/', async (_req, res) => {
                 .split(/\s+/)
                 .filter(term => term.length > 0);
             if (searchTerms.length > 0) {
-                const searchConditions = searchTerms.map(term => (0, drizzle_orm_1.ilike)(schema_js_1.supportHistory.jsonData, `%${term}%`));
-                whereConditions.push((0, drizzle_orm_1.and)(...searchConditions));
+                const searchConditions = searchTerms.map(term => ilike(supportHistory.jsonData, `%${term}%`));
+                whereConditions.push(and(...searchConditions));
             }
             else {
-                whereConditions.push((0, drizzle_orm_1.ilike)(schema_js_1.supportHistory.jsonData, `%${query.searchText}%`));
+                whereConditions.push(ilike(supportHistory.jsonData, `%${query.searchText}%`));
             }
         }
         // 日付検索
@@ -169,28 +162,28 @@ router.get('/', async (_req, res) => {
             const searchDate = new Date(query.searchDate);
             const nextDay = new Date(searchDate);
             nextDay.setDate(nextDay.getDate() + 1);
-            whereConditions.push((0, drizzle_orm_1.and)((0, drizzle_orm_1.gte)(schema_js_1.supportHistory.createdAt, searchDate), (0, drizzle_orm_1.lte)(schema_js_1.supportHistory.createdAt, nextDay)));
+            whereConditions.push(and(gte(supportHistory.createdAt, searchDate), lte(supportHistory.createdAt, nextDay)));
         }
         // データベースから履歴を取得
-        const results = await index_js_1.db
+        const results = await db
             .select({
-            id: schema_js_1.supportHistory.id,
-            machineType: schema_js_1.supportHistory.machineType,
-            machineNumber: schema_js_1.supportHistory.machineNumber,
-            jsonData: schema_js_1.supportHistory.jsonData,
-            imagePath: schema_js_1.supportHistory.imagePath,
-            createdAt: schema_js_1.supportHistory.createdAt,
+            id: supportHistory.id,
+            machineType: supportHistory.machineType,
+            machineNumber: supportHistory.machineNumber,
+            jsonData: supportHistory.jsonData,
+            imagePath: supportHistory.imagePath,
+            createdAt: supportHistory.createdAt,
         })
-            .from(schema_js_1.supportHistory)
-            .where(whereConditions.length > 0 ? (0, drizzle_orm_1.and)(...whereConditions) : undefined)
-            .orderBy((0, drizzle_orm_1.desc)(schema_js_1.supportHistory.createdAt))
+            .from(supportHistory)
+            .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+            .orderBy(desc(supportHistory.createdAt))
             .limit(query.limit)
             .offset(query.offset);
         // 総件数を取得
-        const totalCount = await index_js_1.db
-            .select({ count: schema_js_1.supportHistory.id })
-            .from(schema_js_1.supportHistory)
-            .where(whereConditions.length > 0 ? (0, drizzle_orm_1.and)(...whereConditions) : undefined);
+        const totalCount = await db
+            .select({ count: supportHistory.id })
+            .from(supportHistory)
+            .where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
         res.json({
             items: results,
             total: totalCount.length,
@@ -206,10 +199,10 @@ router.get('/', async (_req, res) => {
 router.get('/:id', async (_req, res) => {
     try {
         const { id } = req.params;
-        const historyItem = await index_js_1.db
+        const historyItem = await db
             .select()
-            .from(schema_js_1.supportHistory)
-            .where((0, drizzle_orm_1.eq)(schema_js_1.supportHistory.id, id))
+            .from(supportHistory)
+            .where(eq(supportHistory.id, id))
             .limit(1);
         if (historyItem.length === 0) {
             return res.status(404).json({ error: '履歴が見つかりません' });
@@ -222,31 +215,31 @@ router.get('/:id', async (_req, res) => {
     }
 });
 // 履歴作成（画像アップロード対応）
-router.post('/', multer_config_js_1.upload.single('image'), async (req, res) => {
+router.post('/', upload.single('image'), async (req, res) => {
     try {
-        const createSchema = zod_1.z.object({
-            machineType: zod_1.z.string(),
-            machineNumber: zod_1.z.string(),
-            jsonData: zod_1.z.any(), // JSONBデータ
+        const createSchema = z.object({
+            machineType: z.string(),
+            machineNumber: z.string(),
+            jsonData: z.any(), // JSONBデータ
         });
         const data = createSchema.parse(req.body);
         let imagePath = null;
         // 画像がアップロードされた場合の処理
         if (req.file) {
             const fileName = `support_history_${Date.now()}_${req.file.originalname}`;
-            const uploadDir = path_1.default.join(process.cwd(), 'public', 'images', 'support-history');
+            const uploadDir = path.join(process.cwd(), 'public', 'images', 'support-history');
             // ディレクトリが存在しない場合は作成
-            if (!fs_1.default.existsSync(uploadDir)) {
-                fs_1.default.mkdirSync(uploadDir, { recursive: true });
+            if (!fs.existsSync(uploadDir)) {
+                fs.mkdirSync(uploadDir, { recursive: true });
             }
-            const filePath = path_1.default.join(uploadDir, fileName);
+            const filePath = path.join(uploadDir, fileName);
             // ファイルを移動
-            fs_1.default.renameSync(req.file.path, filePath);
+            fs.renameSync(req.file.path, filePath);
             imagePath = `/images/support-history/${fileName}`;
         }
         // データベースに保存
-        const newHistoryItem = await index_js_1.db
-            .insert(schema_js_1.supportHistory)
+        const newHistoryItem = await db
+            .insert(supportHistory)
             .values({
             machineType: data.machineType,
             machineNumber: data.machineNumber,
@@ -266,23 +259,23 @@ router.delete('/:id', async (_req, res) => {
     try {
         const { id } = req.params;
         // 履歴項目を取得
-        const historyItem = await index_js_1.db
+        const historyItem = await db
             .select()
-            .from(schema_js_1.supportHistory)
-            .where((0, drizzle_orm_1.eq)(schema_js_1.supportHistory.id, id))
+            .from(supportHistory)
+            .where(eq(supportHistory.id, id))
             .limit(1);
         if (historyItem.length === 0) {
             return res.status(404).json({ error: '履歴が見つかりません' });
         }
         // 画像ファイルが存在する場合は削除
         if (historyItem[0].imagePath) {
-            const imagePath = path_1.default.join(process.cwd(), 'public', historyItem[0].imagePath);
-            if (fs_1.default.existsSync(imagePath)) {
-                fs_1.default.unlinkSync(imagePath);
+            const imagePath = path.join(process.cwd(), 'public', historyItem[0].imagePath);
+            if (fs.existsSync(imagePath)) {
+                fs.unlinkSync(imagePath);
             }
         }
         // データベースから削除
-        await index_js_1.db.delete(schema_js_1.supportHistory).where((0, drizzle_orm_1.eq)(schema_js_1.supportHistory.id, id));
+        await db.delete(supportHistory).where(eq(supportHistory.id, id));
         res.json({ message: '履歴を削除しました' });
     }
     catch (error) {
@@ -294,17 +287,17 @@ router.delete('/:id', async (_req, res) => {
 router.get('/:id/export-pdf', async (_req, res) => {
     try {
         const { id } = req.params;
-        const historyItem = await index_js_1.db
+        const historyItem = await db
             .select()
-            .from(schema_js_1.supportHistory)
-            .where((0, drizzle_orm_1.eq)(schema_js_1.supportHistory.id, id))
+            .from(supportHistory)
+            .where(eq(supportHistory.id, id))
             .limit(1);
         if (historyItem.length === 0) {
             return res.status(404).json({ error: '履歴が見つかりません' });
         }
         const item = historyItem[0];
         // PDFドキュメントを作成
-        const doc = new pdfkit_1.default();
+        const doc = new PDFDocument();
         // レスポンスヘッダーを設定
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="support_history_${item.machineType}_${item.machineNumber}.pdf"`);
@@ -327,8 +320,8 @@ router.get('/:id/export-pdf', async (_req, res) => {
             doc.moveDown();
             doc.fontSize(14).text('関連画像:', { underline: true });
             doc.moveDown();
-            const imagePath = path_1.default.join(process.cwd(), 'public', item.imagePath);
-            if (fs_1.default.existsSync(imagePath)) {
+            const imagePath = path.join(process.cwd(), 'public', item.imagePath);
+            if (fs.existsSync(imagePath)) {
                 try {
                     doc.image(imagePath, { width: 300 });
                 }
@@ -355,26 +348,26 @@ router.post('/generate-report', async (_req, res) => {
         // 検索条件に基づいて履歴を取得
         const whereConditions = [];
         if (searchFilters.machineType) {
-            whereConditions.push((0, drizzle_orm_1.ilike)(schema_js_1.supportHistory.jsonData, `%${searchFilters.machineType}%`));
+            whereConditions.push(ilike(supportHistory.jsonData, `%${searchFilters.machineType}%`));
         }
         if (searchFilters.machineNumber) {
-            whereConditions.push((0, drizzle_orm_1.ilike)(schema_js_1.supportHistory.jsonData, `%${searchFilters.machineNumber}%`));
+            whereConditions.push(ilike(supportHistory.jsonData, `%${searchFilters.machineNumber}%`));
         }
         if (searchFilters.searchText) {
-            whereConditions.push((0, drizzle_orm_1.ilike)(schema_js_1.supportHistory.jsonData, `%${searchFilters.searchText}%`));
+            whereConditions.push(ilike(supportHistory.jsonData, `%${searchFilters.searchText}%`));
         }
-        const results = await index_js_1.db
+        const results = await db
             .select({
-            id: schema_js_1.supportHistory.id,
-            machineType: schema_js_1.supportHistory.machineType,
-            machineNumber: schema_js_1.supportHistory.machineNumber,
-            jsonData: schema_js_1.supportHistory.jsonData,
-            imagePath: schema_js_1.supportHistory.imagePath,
-            createdAt: schema_js_1.supportHistory.createdAt,
+            id: supportHistory.id,
+            machineType: supportHistory.machineType,
+            machineNumber: supportHistory.machineNumber,
+            jsonData: supportHistory.jsonData,
+            imagePath: supportHistory.imagePath,
+            createdAt: supportHistory.createdAt,
         })
-            .from(schema_js_1.supportHistory)
-            .where(whereConditions.length > 0 ? (0, drizzle_orm_1.and)(...whereConditions) : undefined)
-            .orderBy((0, drizzle_orm_1.desc)(schema_js_1.supportHistory.createdAt));
+            .from(supportHistory)
+            .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+            .orderBy(desc(supportHistory.createdAt));
         // レポートデータを構築
         const reportData = {
             title: reportTitle || '履歴検索レポート',
@@ -392,7 +385,7 @@ router.post('/generate-report', async (_req, res) => {
             })),
         };
         // PDFレポートを生成
-        const doc = new pdfkit_1.default();
+        const doc = new PDFDocument();
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="history_report_${new Date().toISOString().split('T')[0]}.pdf"`);
         doc.pipe(res);
@@ -462,19 +455,19 @@ router.post('/advanced-search', async (_req, res) => {
             return res.status(400).json({ error: '検索テキストが必要です' });
         }
         // 全履歴を取得
-        const allHistory = await index_js_1.db
+        const allHistory = await db
             .select({
-            id: schema_js_1.supportHistory.id,
-            machineType: schema_js_1.supportHistory.machineType,
-            machineNumber: schema_js_1.supportHistory.machineNumber,
-            jsonData: schema_js_1.supportHistory.jsonData,
-            imagePath: schema_js_1.supportHistory.imagePath,
-            createdAt: schema_js_1.supportHistory.createdAt,
+            id: supportHistory.id,
+            machineType: supportHistory.machineType,
+            machineNumber: supportHistory.machineNumber,
+            jsonData: supportHistory.jsonData,
+            imagePath: supportHistory.imagePath,
+            createdAt: supportHistory.createdAt,
         })
-            .from(schema_js_1.supportHistory)
-            .orderBy((0, drizzle_orm_1.desc)(schema_js_1.supportHistory.createdAt));
+            .from(supportHistory)
+            .orderBy(desc(supportHistory.createdAt));
         // Fuse.jsで高度な検索を実行
-        const fuse = new fuse_js_1.default(allHistory, {
+        const fuse = new Fuse(allHistory, {
             keys: [
                 { name: 'machineType', weight: 0.3 },
                 { name: 'machineNumber', weight: 0.3 },
@@ -537,3 +530,4 @@ router.post('/advanced-search', async (_req, res) => {
         res.status(500).json({ error: '検索に失敗しました' });
     }
 });
+export { router as supportHistoryRouter };

@@ -1,17 +1,12 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const bcryptjs_1 = __importDefault(require("bcryptjs"));
-const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
-const index_1 = require("../db/index");
-const schema_1 = require("../db/schema");
-const drizzle_orm_1 = require("drizzle-orm");
-const router = express_1.default.Router();
+import express from 'express';
+import bcrypt from 'bcryptjs';
+import rateLimit from 'express-rate-limit';
+import { db } from '../db/index';
+import { users } from '../db/schema';
+import { eq } from 'drizzle-orm';
+const router = express.Router();
 // レート制限設定
-const loginLimiter = (0, express_rate_limit_1.default)({
+const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15分
     max: 5, // 5回まで
     message: {
@@ -150,15 +145,15 @@ router.post('/login', loginLimiter, async (req, res) => {
             });
         }
         // データベースからユーザーを検索
-        const user = await index_1.db
+        const user = await db
             .select()
-            .from(schema_1.users)
-            .where((0, drizzle_orm_1.eq)(schema_1.users.username, username))
+            .from(users)
+            .where(eq(users.username, username))
             .limit(1);
         if (user.length === 0) {
             // セキュリティのため、ユーザーが存在しない場合も同じエラーメッセージ
             // タイミング攻撃を防ぐため、bcrypt.compareを実行
-            await bcryptjs_1.default.compare(password, '$2b$10$dummyhash');
+            await bcrypt.compare(password, '$2b$10$dummyhash');
             logSecurityEvent('LOGIN_FAILED_USER_NOT_FOUND', { username }, req);
             return res.status(401).json({
                 success: false,
@@ -169,7 +164,7 @@ router.post('/login', loginLimiter, async (req, res) => {
         // パスワード認証（bcryptのみ）
         let isValidPassword = false;
         try {
-            isValidPassword = await bcryptjs_1.default.compare(password, foundUser.password);
+            isValidPassword = await bcrypt.compare(password, foundUser.password);
         }
         catch (error) {
             logSecurityEvent('PASSWORD_VERIFICATION_ERROR', { username, error: error.message }, req);
@@ -237,10 +232,10 @@ router.get('/me', async (_req, res) => {
                 error: '認証されていません',
             });
         }
-        const user = await index_1.db
+        const user = await db
             .select()
-            .from(schema_1.users)
-            .where((0, drizzle_orm_1.eq)(schema_1.users.id, userId))
+            .from(users)
+            .where(eq(users.id, userId))
             .limit(1);
         if (user.length === 0) {
             logSecurityEvent('USER_NOT_FOUND_IN_SESSION', { userId }, req);
@@ -289,4 +284,4 @@ router.post('/logout', (_req, res) => {
         });
     });
 });
-exports.default = router;
+export default router;

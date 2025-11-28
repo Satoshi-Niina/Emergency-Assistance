@@ -1,27 +1,11 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.storageService = exports.StorageService = void 0;
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
-const uuid_1 = require("uuid");
-const url_1 = require("url");
-class StorageService {
+import fs from 'fs';
+import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
+import { fileURLToPath } from 'url';
+export class StorageService {
+    config;
+    isProduction;
     constructor(config) {
-        Object.defineProperty(this, "config", {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: void 0
-        });
-        Object.defineProperty(this, "isProduction", {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: void 0
-        });
         this.config = config;
         this.isProduction = process.env.NODE_ENV === 'production';
         // ローカルストレージのディレクトリを作成
@@ -33,8 +17,8 @@ class StorageService {
      * ディレクトリが存在しない場合は作成
      */
     ensureDirectoryExists(dirPath) {
-        if (!fs_1.default.existsSync(dirPath)) {
-            fs_1.default.mkdirSync(dirPath, { recursive: true });
+        if (!fs.existsSync(dirPath)) {
+            fs.mkdirSync(dirPath, { recursive: true });
             console.log(`✅ ディレクトリ作成: ${dirPath}`);
         }
     }
@@ -48,7 +32,7 @@ class StorageService {
             const buffer = Buffer.from(base64Image, 'base64');
             // ファイル名を生成
             const fileExtension = this.getFileExtensionFromBase64(base64Data);
-            const finalFilename = filename || `${(0, uuid_1.v4)()}.${fileExtension}`;
+            const finalFilename = filename || `${uuidv4()}.${fileExtension}`;
             if (this.config.type === 'local') {
                 return await this.saveToLocal(buffer, finalFilename);
             }
@@ -71,10 +55,10 @@ class StorageService {
         if (!this.config.localPath) {
             throw new Error('ローカルストレージパスが設定されていません');
         }
-        const filePath = path_1.default.join(this.config.localPath, filename);
+        const filePath = path.join(this.config.localPath, filename);
         // ファイルを保存
-        fs_1.default.writeFileSync(filePath, buffer);
-        const stats = fs_1.default.statSync(filePath);
+        fs.writeFileSync(filePath, buffer);
+        const stats = fs.statSync(filePath);
         const url = `/uploads/images/${filename}`; // Webサーバーからの相対パス
         console.log(`✅ ローカル保存完了: ${filePath}`);
         return {
@@ -144,9 +128,9 @@ class StorageService {
         if (!this.config.localPath) {
             return false;
         }
-        const filePath = path_1.default.join(this.config.localPath, filename);
-        if (fs_1.default.existsSync(filePath)) {
-            fs_1.default.unlinkSync(filePath);
+        const filePath = path.join(this.config.localPath, filename);
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
             console.log(`✅ ローカルファイル削除: ${filePath}`);
             return true;
         }
@@ -190,7 +174,7 @@ class StorageService {
      * ファイル名からContent-Typeを取得
      */
     getContentTypeFromFilename(filename) {
-        const extension = path_1.default.extname(filename).toLowerCase();
+        const extension = path.extname(filename).toLowerCase();
         const contentTypes = {
             '.jpg': 'image/jpeg',
             '.jpeg': 'image/jpeg',
@@ -208,8 +192,8 @@ class StorageService {
             if (this.config.type === 'local') {
                 if (!this.config.localPath)
                     return false;
-                const filePath = path_1.default.join(this.config.localPath, filename);
-                return fs_1.default.existsSync(filePath);
+                const filePath = path.join(this.config.localPath, filename);
+                return fs.existsSync(filePath);
             }
             else if (this.config.type === 'azure') {
                 // Azure Blobの存在確認
@@ -240,14 +224,13 @@ class StorageService {
         };
     }
 }
-exports.StorageService = StorageService;
 // ESモジュール用の__dirname代替
-const __filename = (0, url_1.fileURLToPath)(import.meta.url);
-const __dirname = path_1.default.dirname(__filename);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 // デフォルト設定
 const defaultConfig = {
     type: process.env.NODE_ENV === 'production' ? 'azure' : 'local',
-    localPath: process.env.LOCAL_STORAGE_PATH || path_1.default.join(__dirname, '../uploads/images'),
+    localPath: process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads/images'),
     azure: process.env.NODE_ENV === 'production'
         ? {
             accountName: process.env.AZURE_STORAGE_ACCOUNT_NAME || '',
@@ -257,4 +240,4 @@ const defaultConfig = {
         : undefined,
 };
 // シングルトンインスタンス
-exports.storageService = new StorageService(defaultConfig);
+export const storageService = new StorageService(defaultConfig);

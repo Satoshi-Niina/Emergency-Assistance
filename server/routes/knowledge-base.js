@@ -1,15 +1,9 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.registerKnowledgeBaseRoutes = registerKnowledgeBaseRoutes;
-const express_1 = __importDefault(require("express"));
-const multer_config_js_1 = require("../lib/multer-config.js");
-const knowledge_base_js_1 = require("../lib/knowledge-base.js");
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
-const router = express_1.default.Router();
+import express from 'express';
+import { upload } from '../lib/multer-config.js';
+import { saveKnowledgeData, listKnowledgeData, getKnowledgeData, deleteKnowledgeData, KnowledgeType, searchKnowledgeBase, loadKnowledgeBaseIndex, INDEX_FILE, } from '../lib/knowledge-base.js';
+import fs from 'fs';
+import path from 'path';
+const router = express.Router();
 /**
  * GET /api/knowledge-base/stats
  * ナレッジベースの統計情報を返す
@@ -17,7 +11,7 @@ const router = express_1.default.Router();
 router.get('/stats', async (_req, res) => {
     try {
         // 既存のlistKnowledgeDataで全データ取得
-        const result = (0, knowledge_base_js_1.listKnowledgeData)();
+        const result = listKnowledgeData();
         const total = result.data.length;
         // カテゴリごとの件数集計
         const categoryCount = {};
@@ -33,11 +27,11 @@ router.get('/stats', async (_req, res) => {
         });
         // 総容量の計算
         let totalSize = 0;
-        const knowledgeBaseDir = path_1.default.join(process.cwd(), 'knowledge-base');
-        const alternativeDir = path_1.default.join(process.cwd(), '..', 'knowledge-base');
+        const knowledgeBaseDir = path.join(process.cwd(), 'knowledge-base');
+        const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base');
         let targetDir = knowledgeBaseDir;
-        if (!fs_1.default.existsSync(knowledgeBaseDir)) {
-            if (fs_1.default.existsSync(alternativeDir)) {
+        if (!fs.existsSync(knowledgeBaseDir)) {
+            if (fs.existsSync(alternativeDir)) {
                 targetDir = alternativeDir;
             }
         }
@@ -45,16 +39,16 @@ router.get('/stats', async (_req, res) => {
         const calculateDirSize = (dirPath) => {
             let size = 0;
             try {
-                if (fs_1.default.existsSync(dirPath)) {
-                    const items = fs_1.default.readdirSync(dirPath, { withFileTypes: true });
+                if (fs.existsSync(dirPath)) {
+                    const items = fs.readdirSync(dirPath, { withFileTypes: true });
                     for (const item of items) {
-                        const itemPath = path_1.default.join(dirPath, item.name);
+                        const itemPath = path.join(dirPath, item.name);
                         if (item.isDirectory()) {
                             size += calculateDirSize(itemPath);
                         }
                         else if (item.isFile()) {
                             try {
-                                const stats = fs_1.default.statSync(itemPath);
+                                const stats = fs.statSync(itemPath);
                                 size += stats.size;
                             }
                             catch (err) {
@@ -72,7 +66,7 @@ router.get('/stats', async (_req, res) => {
         // 各ディレクトリのサイズを合計
         const directoriesToCheck = ['documents', 'data', 'text', 'qa', 'troubleshooting'];
         for (const dirName of directoriesToCheck) {
-            const dirPath = path_1.default.join(targetDir, dirName);
+            const dirPath = path.join(targetDir, dirName);
             totalSize += calculateDirSize(dirPath);
         }
         res.json({
@@ -107,7 +101,7 @@ router.get('/', async (req, res) => {
         console.log('📚 ナレッジデータ一覧取得リクエスト:', {
             type: knowledgeType,
         });
-        const result = (0, knowledge_base_js_1.listKnowledgeData)(knowledgeType);
+        const result = listKnowledgeData(knowledgeType);
         res.json({
             success: result.success,
             data: result.data,
@@ -133,7 +127,7 @@ router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         console.log('📚 ナレッジデータ取得リクエスト:', { id });
-        const result = (0, knowledge_base_js_1.getKnowledgeData)(id);
+        const result = getKnowledgeData(id);
         if (!result.success) {
             return res.status(404).json({
                 success: false,
@@ -159,7 +153,7 @@ router.get('/:id', async (req, res) => {
  * POST /api/knowledge-base/upload
  * ナレッジデータをアップロード
  */
-router.post('/upload', multer_config_js_1.upload.single('file'), async (req, res) => {
+router.post('/upload', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({
@@ -177,7 +171,7 @@ router.post('/upload', multer_config_js_1.upload.single('file'), async (req, res
             tags: tags ? tags.split(',') : undefined,
         });
         // ファイル内容を読み込み
-        const content = fs_1.default.readFileSync(filePath, 'utf-8');
+        const content = fs.readFileSync(filePath, 'utf-8');
         // メタデータを準備
         const metadata = {
             title: title || filename,
@@ -186,7 +180,7 @@ router.post('/upload', multer_config_js_1.upload.single('file'), async (req, res
             description: description || `アップロードされた${filename}`,
         };
         // ナレッジデータとして保存
-        const result = (0, knowledge_base_js_1.saveKnowledgeData)(filename, content, metadata);
+        const result = saveKnowledgeData(filename, content, metadata);
         if (!result.success) {
             return res.status(500).json({
                 success: false,
@@ -195,7 +189,7 @@ router.post('/upload', multer_config_js_1.upload.single('file'), async (req, res
         }
         // アップロードされた一時ファイルを削除
         try {
-            fs_1.default.unlinkSync(filePath);
+            fs.unlinkSync(filePath);
         }
         catch (deleteError) {
             console.warn('一時ファイル削除警告:', deleteError);
@@ -224,7 +218,7 @@ router.delete('/:id', async (_req, res) => {
     try {
         const { id } = req.params;
         console.log('📚 ナレッジデータ削除リクエスト:', { id });
-        const result = (0, knowledge_base_js_1.deleteKnowledgeData)(id);
+        const result = deleteKnowledgeData(id);
         if (!result.success) {
             return res.status(404).json({
                 success: false,
@@ -253,7 +247,7 @@ router.delete('/:id', async (_req, res) => {
 router.get('/types/list', async (_req, res) => {
     try {
         console.log('📚 ナレッジデータ種類一覧取得リクエスト');
-        const types = Object.values(knowledge_base_js_1.KnowledgeType).map(type => ({
+        const types = Object.values(KnowledgeType).map(type => ({
             value: type,
             label: getTypeLabel(type),
         }));
@@ -290,7 +284,7 @@ router.get('/search', async (_req, res) => {
         console.log('🔍 検索前デバッグ情報:');
         console.log('- 検索クエリ:', query);
         // 改善された検索機能を使用
-        const results = await (0, knowledge_base_js_1.searchKnowledgeBase)(query);
+        const results = await searchKnowledgeBase(query);
         console.log(`✅ 検索完了: ${results.length}件の結果`);
         console.log('🔍 検索結果詳細:', results.map(r => ({
             source: r.metadata.source,
@@ -339,7 +333,7 @@ router.post('/process', async (_req, res) => {
     try {
         console.log('📚 ナレッジデータベクトル化処理開始');
         // ナレッジベースのインデックスを読み込み
-        const index = (0, knowledge_base_js_1.loadKnowledgeBaseIndex)();
+        const index = loadKnowledgeBaseIndex();
         if (!index.knowledge || index.knowledge.length === 0) {
             return res.status(404).json({
                 success: false,
@@ -352,12 +346,12 @@ router.post('/process', async (_req, res) => {
         for (const knowledgeItem of index.knowledge) {
             try {
                 // ファイルが存在するかチェック
-                if (!fs_1.default.existsSync(knowledgeItem.path)) {
+                if (!fs.existsSync(knowledgeItem.path)) {
                     errors.push(`ファイルが見つかりません: ${knowledgeItem.path}`);
                     continue;
                 }
                 // ファイル内容を読み込み
-                const content = fs_1.default.readFileSync(knowledgeItem.path, 'utf-8');
+                const content = fs.readFileSync(knowledgeItem.path, 'utf-8');
                 // ベクトル化処理（OpenAI Embeddings APIを使用）
                 if (process.env.OPENAI_API_KEY) {
                     try {
@@ -370,7 +364,7 @@ router.post('/process', async (_req, res) => {
                             const embedding = response.data[0].embedding;
                             // ベクトルデータを保存
                             const embeddingPath = knowledgeItem.path.replace('.txt', '_embedding.json');
-                            fs_1.default.writeFileSync(embeddingPath, JSON.stringify({
+                            fs.writeFileSync(embeddingPath, JSON.stringify({
                                 embedding,
                                 timestamp: new Date().toISOString(),
                                 model: 'text-embedding-3-small',
@@ -398,7 +392,7 @@ router.post('/process', async (_req, res) => {
             }
         }
         // 更新されたインデックスを保存
-        fs_1.default.writeFileSync(knowledge_base_js_1.INDEX_FILE, JSON.stringify(index, null, 2));
+        fs.writeFileSync(INDEX_FILE, JSON.stringify(index, null, 2));
         res.json({
             success: true,
             message: `${processedCount}件のナレッジデータをベクトル化しました`,
@@ -422,20 +416,20 @@ router.post('/process', async (_req, res) => {
  */
 function getTypeLabel(type) {
     const labels = {
-        [knowledge_base_js_1.KnowledgeType.TROUBLESHOOTING]: 'トラブルシューティング',
-        [knowledge_base_js_1.KnowledgeType.DOCUMENT]: 'ドキュメント',
-        [knowledge_base_js_1.KnowledgeType.QA]: 'Q&A',
-        [knowledge_base_js_1.KnowledgeType.JSON]: 'JSONデータ',
-        [knowledge_base_js_1.KnowledgeType.PPT]: 'プレゼンテーション',
-        [knowledge_base_js_1.KnowledgeType.TEXT]: 'テキスト',
+        [KnowledgeType.TROUBLESHOOTING]: 'トラブルシューティング',
+        [KnowledgeType.DOCUMENT]: 'ドキュメント',
+        [KnowledgeType.QA]: 'Q&A',
+        [KnowledgeType.JSON]: 'JSONデータ',
+        [KnowledgeType.PPT]: 'プレゼンテーション',
+        [KnowledgeType.TEXT]: 'テキスト',
     };
     return labels[type] || type;
 }
-exports.default = router;
+export default router;
 /**
  * ナレッジベースルートを登録する関数
  * @param app Expressアプリケーション
  */
-function registerKnowledgeBaseRoutes(app) {
+export function registerKnowledgeBaseRoutes(app) {
     app.use('/api/knowledge-base', router);
 }

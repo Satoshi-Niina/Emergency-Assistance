@@ -13,8 +13,12 @@
     "start:fallback": "node app.js",
     "start:legacy": "node server.js",
     "start:debug": "node --inspect azure-server.mjs",
-    "dev": "cross-env NODE_ENV=development PORT=8080 node unified-hot-reload-server.js",
-    "build": "echo Build step completed",
+    "dev": "cross-env NODE_ENV=development PORT=8080 tsx watch unified-hot-reload-server.js",
+    "build": "npm run build:server",
+    "build:server": "tsc --project ../tsconfig.server.json",
+    "prebuild": "echo Preparing build...",
+    "postbuild": "echo Build completed successfully",
+    "type-check": "tsc --noEmit --project ../tsconfig.server.json",
     "test": "echo No tests specified"
   },
   "dependencies": {

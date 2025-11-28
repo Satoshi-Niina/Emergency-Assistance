@@ -6,9 +6,13 @@ import * as fs from 'fs';
 
 // 知識ベースディレクトリのパス（絶対パスで指定）
 import { fileURLToPath } from 'url';
+import { knowledgeBase } from '../knowledge-base-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// 本番環境ではAzure Blob Storageを使用するため、ローカルパスは開発環境のみ
+const isProduction = process.env.NODE_ENV === 'production';
 
 // 知識ベースディレクトリのパス解決
 // 1. 環境変数が設定されている場合はそれを使用
@@ -17,7 +21,8 @@ const __dirname = path.dirname(__filename);
 let KNOWLEDGE_BASE_DIR: string;
 if (process.env.KNOWLEDGE_BASE_PATH) {
   KNOWLEDGE_BASE_DIR = process.env.KNOWLEDGE_BASE_PATH;
-} else {
+} else if (!isProduction) {
+  // 開発環境のみローカルパスを解決
   // server/libから見て../knowledge-base
   const relativePath = path.join(__dirname, '..', '..', 'knowledge-base');
   if (fs.existsSync(relativePath)) {
@@ -26,6 +31,9 @@ if (process.env.KNOWLEDGE_BASE_PATH) {
     // フォールバック: process.cwd()からknowledge-base
     KNOWLEDGE_BASE_DIR = path.join(process.cwd(), 'knowledge-base');
   }
+} else {
+  // 本番環境ではAzure Blob Storageを使用するため、ローカルパスは不要
+  KNOWLEDGE_BASE_DIR = '';
 }
 const DATA_DIR = path.join(KNOWLEDGE_BASE_DIR, 'data');
 const TEXT_DIR = path.join(KNOWLEDGE_BASE_DIR, 'text');
@@ -457,13 +465,13 @@ export async function searchKnowledgeBase(
     // 類似度閾値と最大取得件数を適用
     const similarityThreshold = ragSettings?.similarityThreshold ?? 0.7;
     const maxResults = ragSettings?.maxResults ?? 5;
-    
+
     // 類似度でソートして、閾値以上のもののみを返す
     const filteredChunks = scoredChunks
       .filter(chunk => (chunk.similarity || 0) >= similarityThreshold)
       .sort((a, b) => (b.similarity || 0) - (a.similarity || 0))
       .slice(0, maxResults);
-    
+
     const results = filteredChunks;
 
     console.log('🔍 検索結果数:', results.length);

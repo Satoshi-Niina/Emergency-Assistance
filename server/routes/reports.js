@@ -1,12 +1,7 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const promises_1 = __importDefault(require("fs/promises"));
-const path_1 = __importDefault(require("path"));
-const router = express_1.default.Router();
+import express from 'express';
+import fs from 'fs/promises';
+import path from 'path';
+const router = express.Router();
 // JSONファイルを更新するエンドポイント
 router.post('/update', async (_req, res) => {
     try {
@@ -19,9 +14,9 @@ router.post('/update', async (_req, res) => {
         }
         console.log('検索するchatId:', chatId);
         // knowledge-base/exports フォルダ内のJSONファイルを検索
-        const exportsDir = path_1.default.join(__dirname, '../../knowledge-base/exports');
+        const exportsDir = path.join(__dirname, '../../knowledge-base/exports');
         console.log('検索ディレクトリ:', exportsDir);
-        const files = await promises_1.default.readdir(exportsDir);
+        const files = await fs.readdir(exportsDir);
         console.log('ディレクトリ内のファイル:', files);
         // chatIdを含むJSONファイルを検索
         const targetFile = files.find(file => file.includes(chatId) && file.endsWith('.json'));
@@ -32,10 +27,10 @@ router.post('/update', async (_req, res) => {
                 .status(404)
                 .json({ error: '対象のJSONファイルが見つかりません' });
         }
-        const filePath = path_1.default.join(exportsDir, targetFile);
+        const filePath = path.join(exportsDir, targetFile);
         console.log('ファイルパス:', filePath);
         // 既存のJSONファイルを読み込み
-        const fileContent = await promises_1.default.readFile(filePath, 'utf-8');
+        const fileContent = await fs.readFile(filePath, 'utf-8');
         const jsonData = JSON.parse(fileContent);
         console.log('既存データのキー:', Object.keys(jsonData));
         // 差分データで更新
@@ -45,7 +40,7 @@ router.post('/update', async (_req, res) => {
         };
         console.log('更新後のデータキー:', Object.keys(updatedData));
         // 更新されたJSONファイルを保存
-        await promises_1.default.writeFile(filePath, JSON.stringify(updatedData, null, 2), 'utf-8');
+        await fs.writeFile(filePath, JSON.stringify(updatedData, null, 2), 'utf-8');
         console.log(`JSONファイルが更新されました: ${targetFile}`);
         res.json({
             success: true,
@@ -62,4 +57,4 @@ router.post('/update', async (_req, res) => {
         });
     }
 });
-exports.default = router;
+export default router;

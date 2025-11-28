@@ -1,66 +1,28 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express = __importStar(require("express"));
-const openai_1 = __importDefault(require("openai"));
-const zod_1 = require("zod");
-const fs = __importStar(require("fs"));
-const path = __importStar(require("path"));
-const image_uploader_js_1 = require("../utils/image-uploader.js");
-const crypto = __importStar(require("crypto"));
-const url_1 = require("url");
+import * as express from 'express';
+import OpenAI from 'openai';
+import { z } from 'zod';
+import * as fs from 'fs';
+import * as path from 'path';
+import { upload } from '../utils/image-uploader.js';
+import * as crypto from 'crypto';
+import { fileURLToPath } from 'url';
 // ESM用__dirname定義
-const __filename = (0, url_1.fileURLToPath)(import.meta.url);
+const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const router = express.Router();
 // 開発環境ではOpenAI APIキーがなくても動作するように条件付き初期化
 let openai = null;
 if (process.env.OPENAI_API_KEY &&
     process.env.OPENAI_API_KEY !== 'dev-mock-key') {
-    openai = new openai_1.default({
+    openai = new OpenAI({
         apiKey: process.env.OPENAI_API_KEY,
     });
 }
 else {
     console.log('[DEV] OpenAI client not initialized - API key not available');
 }
-const generateFlowSchema = zod_1.z.object({
-    keyword: zod_1.z.string().min(1),
+const generateFlowSchema = z.object({
+    keyword: z.string().min(1),
 });
 // テンプレートスキーマを適用する関数（仮実装）
 function applyTemplateSchema(data) {
@@ -150,28 +112,28 @@ router.post('/update-step-title', async (_req, res) => {
     }
 });
 // フローデータのスキーマ定義
-const flowDataSchema = zod_1.z.object({
-    id: zod_1.z.string().uuid(),
-    title: zod_1.z.string(),
-    description: zod_1.z.string(),
-    steps: zod_1.z.array(zod_1.z.object({
-        id: zod_1.z.string(),
-        title: zod_1.z.string(),
-        description: zod_1.z.string(),
-        message: zod_1.z.string(),
-        type: zod_1.z.enum(['start', 'step', 'decision', 'condition', 'end']),
-        imageUrl: zod_1.z.string().optional(),
-        options: zod_1.z
-            .array(zod_1.z.object({
-            text: zod_1.z.string(),
-            nextStepId: zod_1.z.string(),
-            isTerminal: zod_1.z.boolean(),
-            conditionType: zod_1.z.enum(['yes', 'no', 'other']),
-            condition: zod_1.z.string().optional(),
+const flowDataSchema = z.object({
+    id: z.string().uuid(),
+    title: z.string(),
+    description: z.string(),
+    steps: z.array(z.object({
+        id: z.string(),
+        title: z.string(),
+        description: z.string(),
+        message: z.string(),
+        type: z.enum(['start', 'step', 'decision', 'condition', 'end']),
+        imageUrl: z.string().optional(),
+        options: z
+            .array(z.object({
+            text: z.string(),
+            nextStepId: z.string(),
+            isTerminal: z.boolean(),
+            conditionType: z.enum(['yes', 'no', 'other']),
+            condition: z.string().optional(),
         }))
             .optional(),
     })),
-    triggerKeywords: zod_1.z.array(zod_1.z.string()),
+    triggerKeywords: z.array(z.string()),
 });
 // フロー保存エンドポイント（新規作成・更新）
 router.post('/', async (_req, res) => {
@@ -1512,7 +1474,7 @@ if (process.env.NODE_ENV === 'development') {
     });
 }
 // 画像アップロードエンドポイント
-router.post('/upload-image', image_uploader_js_1.upload.single('image'), async (req, res) => {
+router.post('/upload-image', upload.single('image'), async (req, res) => {
     try {
         console.log('🖼️ 画像アップロードリクエスト受信:', {
             hasFile: !!req.file,
@@ -1635,10 +1597,20 @@ router.post('/upload-image', image_uploader_js_1.upload.single('image'), async (
     }
     catch (error) {
         console.error('❌ 画像アップロードエラー:', error);
+        console.error('エラースタック:', error instanceof Error ? error.stack : 'No stack trace');
+        console.error('エラー詳細:', {
+            name: error instanceof Error ? error.name : 'Unknown',
+            message: error instanceof Error ? error.message : String(error),
+            hasFile: !!req.file,
+            fileSize: req.file?.size,
+            fileName: req.file?.originalname
+        });
         res.status(500).json({
             success: false,
             error: '応急処置フローの処理中にエラーが発生しました',
             details: error instanceof Error ? error.message : 'Unknown error',
+            errorType: error instanceof Error ? error.name : 'Unknown',
+            timestamp: new Date().toISOString()
         });
     }
 });
@@ -1648,17 +1620,17 @@ function encryptUri(fileName: string): string {
   console.log('🔐 暗号化開始:', { fileName });
   const secret = process.env.ENCRYPTION_SECRET || 'default-secret-key';
   console.log('🔐 暗号化キー:', { secretLength: secret.length, secretPrefix: secret.substring(0, 10) + '...' });
-  
+
   const cipher = crypto.createCipher('aes-256-cbc', secret);
   let encrypted = cipher.update(fileName, 'utf8', 'hex');
   encrypted += cipher.final('hex');
-  
+
   console.log('🔐 暗号化完了:', {
     originalFileName: fileName,
     encryptedFileName: encrypted,
     encryptedLength: encrypted.length
   });
-  
+
   return encrypted;
 }
 */
@@ -1966,4 +1938,4 @@ router.use('*', (req, res) => {
         timestamp: new Date().toISOString(),
     });
 });
-exports.default = router;
+export default router;

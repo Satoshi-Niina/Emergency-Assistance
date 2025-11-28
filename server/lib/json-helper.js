@@ -1,4 +1,3 @@
-"use strict";
 /**
  * JSONレスポンスの処理と修復を行うヘルパー関数
  * 以下のケースに対応:
@@ -9,14 +8,12 @@
  * 5. 特殊文字やUnicode文字の処理
  * 6. 不完全な配列や中断された構造の補完
  */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.cleanJsonResponse = cleanJsonResponse;
 /**
  * OpenAI APIからのレスポンスからマークダウンの装飾を削除して、有効なJSONを抽出する
  * @param response OpenAI APIからのレスポンス文字列
  * @returns 処理済みの有効なJSON文字列
  */
-function cleanJsonResponse(response) {
+export function cleanJsonResponse(response) {
     if (!response)
         return '';
     console.log('生のレスポンス (一部):', response.substring(0, 100) + '...');

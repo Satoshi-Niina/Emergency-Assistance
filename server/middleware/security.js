@@ -1,14 +1,8 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.secureCORS = exports.requestSizeLimit = exports.validateSession = exports.requireAdmin = exports.requireAuth = exports.validateInput = exports.logSecurityEvent = exports.getClientIP = exports.strictLimiter = exports.generalLimiter = exports.securityHeaders = void 0;
-const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
-const helmet_1 = __importDefault(require("helmet"));
-const express_validator_1 = require("express-validator");
+import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
+import { validationResult } from 'express-validator';
 // セキュリティヘッダーの設定
-exports.securityHeaders = (0, helmet_1.default)({
+export const securityHeaders = helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
@@ -32,7 +26,7 @@ exports.securityHeaders = (0, helmet_1.default)({
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 });
 // レート制限設定
-exports.generalLimiter = (0, express_rate_limit_1.default)({
+export const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15分
     max: 100, // 100リクエストまで
     message: {
@@ -43,7 +37,7 @@ exports.generalLimiter = (0, express_rate_limit_1.default)({
     legacyHeaders: false,
 });
 // 厳しいレート制限（認証関連）
-exports.strictLimiter = (0, express_rate_limit_1.default)({
+export const strictLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15分
     max: 10, // 10リクエストまで
     message: {
@@ -54,20 +48,19 @@ exports.strictLimiter = (0, express_rate_limit_1.default)({
     legacyHeaders: false,
 });
 // IPアドレス取得
-const getClientIP = (req) => {
+export const getClientIP = (req) => {
     return (req.ip ||
         req.connection.remoteAddress ||
         req.socket.remoteAddress ||
         req.connection?.socket?.remoteAddress ||
         'unknown');
 };
-exports.getClientIP = getClientIP;
 // セキュリティログ
-const logSecurityEvent = (event, details, req) => {
+export const logSecurityEvent = (event, details, req) => {
     const logData = {
         event,
         timestamp: new Date().toISOString(),
-        ip: (0, exports.getClientIP)(req),
+        ip: getClientIP(req),
         userAgent: req.get('User-Agent'),
         url: req.originalUrl,
         method: req.method,
@@ -80,14 +73,13 @@ const logSecurityEvent = (event, details, req) => {
     };
     console.log(`🔒 SECURITY: ${event}`, logData);
 };
-exports.logSecurityEvent = logSecurityEvent;
 // 入力検証ミドルウェア
-const validateInput = (validations) => {
+export const validateInput = (validations) => {
     return async (req, res, next) => {
         await Promise.all(validations.map(validation => validation.run(req)));
-        const errors = (0, express_validator_1.validationResult)(req);
+        const errors = validationResult(req);
         if (!errors.isEmpty()) {
-            (0, exports.logSecurityEvent)('VALIDATION_ERROR', {
+            logSecurityEvent('VALIDATION_ERROR', {
                 errors: errors.array(),
                 body: req.body,
             }, req);
@@ -100,11 +92,10 @@ const validateInput = (validations) => {
         next();
     };
 };
-exports.validateInput = validateInput;
 // 認証チェックミドルウェア
-const requireAuth = (req, res, next) => {
+export const requireAuth = (req, res, next) => {
     if (!req.session?.userId) {
-        (0, exports.logSecurityEvent)('UNAUTHORIZED_ACCESS', {
+        logSecurityEvent('UNAUTHORIZED_ACCESS', {
             url: req.originalUrl,
             method: req.method,
         }, req);
@@ -115,11 +106,10 @@ const requireAuth = (req, res, next) => {
     }
     next();
 };
-exports.requireAuth = requireAuth;
 // 管理者権限チェックミドルウェア
-const requireAdmin = (req, res, next) => {
+export const requireAdmin = (req, res, next) => {
     if (!req.session?.userId) {
-        (0, exports.logSecurityEvent)('UNAUTHORIZED_ACCESS', {
+        logSecurityEvent('UNAUTHORIZED_ACCESS', {
             url: req.originalUrl,
             method: req.method,
         }, req);
@@ -129,7 +119,7 @@ const requireAdmin = (req, res, next) => {
         });
     }
     if (req.session.userRole !== 'admin') {
-        (0, exports.logSecurityEvent)('INSUFFICIENT_PRIVILEGES', {
+        logSecurityEvent('INSUFFICIENT_PRIVILEGES', {
             userId: req.session.userId,
             role: req.session.userRole,
             url: req.originalUrl,
@@ -141,15 +131,14 @@ const requireAdmin = (req, res, next) => {
     }
     next();
 };
-exports.requireAdmin = requireAdmin;
 // セッション有効性チェック
-const validateSession = (req, res, next) => {
+export const validateSession = (req, res, next) => {
     if (req.session?.userId) {
         // セッションの有効期限チェック（24時間）
         const sessionAge = Date.now() - (req.session.loginTime || 0);
         const maxAge = 24 * 60 * 60 * 1000; // 24時間
         if (sessionAge > maxAge) {
-            (0, exports.logSecurityEvent)('SESSION_EXPIRED', {
+            logSecurityEvent('SESSION_EXPIRED', {
                 userId: req.session.userId,
                 sessionAge,
             }, req);
@@ -164,13 +153,12 @@ const validateSession = (req, res, next) => {
     }
     next();
 };
-exports.validateSession = validateSession;
 // リクエストサイズ制限
-const requestSizeLimit = (maxSize) => {
+export const requestSizeLimit = (maxSize) => {
     return (req, res, next) => {
         const contentLength = parseInt(req.get('content-length') || '0');
         if (contentLength > maxSize) {
-            (0, exports.logSecurityEvent)('REQUEST_TOO_LARGE', {
+            logSecurityEvent('REQUEST_TOO_LARGE', {
                 contentLength,
                 maxSize,
                 url: req.originalUrl,
@@ -183,9 +171,8 @@ const requestSizeLimit = (maxSize) => {
         next();
     };
 };
-exports.requestSizeLimit = requestSizeLimit;
 // CORS設定の強化
-const secureCORS = (req, res, next) => {
+export const secureCORS = (req, res, next) => {
     const origin = req.headers.origin;
     const allowedOrigins = [
         'http://localhost:5002',
@@ -209,4 +196,3 @@ const secureCORS = (req, res, next) => {
     }
     next();
 };
-exports.secureCORS = secureCORS;

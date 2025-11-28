@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.autoFixFlowData = exports.validateFlowData = exports.flowValidator = exports.FlowValidator = void 0;
-class FlowValidator {
+export class FlowValidator {
     validateFlow(nodes) {
         const errors = [];
         const warnings = [];
@@ -76,17 +73,15 @@ class FlowValidator {
         return false;
     }
 }
-exports.FlowValidator = FlowValidator;
-exports.flowValidator = new FlowValidator();
+export const flowValidator = new FlowValidator();
 // Validate flow data function for emergency-flow.ts
-const validateFlowData = (flowData) => {
-    return exports.flowValidator.validateFlow(flowData.steps || []);
+export const validateFlowData = (flowData) => {
+    return flowValidator.validateFlow(flowData.steps || []);
 };
-exports.validateFlowData = validateFlowData;
 // Auto fix flow data function for emergency-flow.ts
-const autoFixFlowData = (flowData) => {
+export const autoFixFlowData = (flowData) => {
     // 基本的な自動修正ロジック
-    const result = (0, exports.validateFlowData)(flowData);
+    const result = validateFlowData(flowData);
     if (result.isValid) {
         return flowData;
     }
@@ -97,4 +92,3 @@ const autoFixFlowData = (flowData) => {
     }
     return fixedData;
 };
-exports.autoFixFlowData = autoFixFlowData;

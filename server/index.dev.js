@@ -1,17 +1,12 @@
 #!/usr/bin/env tsx
-"use strict";
 // ローカル開発用サーバー
 // 本番環境と同じproduction-server.jsを使用
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const child_process_1 = require("child_process");
-const path_1 = __importDefault(require("path"));
+import { spawn } from 'child_process';
+import path from 'path';
 console.log('🚀 ローカル開発サーバーを起動中...');
 // production-server.jsを実行
-const serverPath = path_1.default.join(__dirname, 'production-server.js');
-const server = (0, child_process_1.spawn)('node', [serverPath], {
+const serverPath = path.join(__dirname, 'production-server.js');
+const server = spawn('node', [serverPath], {
     stdio: 'inherit',
     env: {
         ...process.env,

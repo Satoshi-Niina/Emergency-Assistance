@@ -1,9 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.fixJsonString = fixJsonString;
-exports.safeJsonParse = safeJsonParse;
-exports.validateJson = validateJson;
-function fixJsonString(jsonString) {
+export function fixJsonString(jsonString) {
     try {
         // 基本的なJSON修正
         let fixed = jsonString.trim();
@@ -28,7 +23,7 @@ function fixJsonString(jsonString) {
         return jsonString;
     }
 }
-function safeJsonParse(jsonString) {
+export function safeJsonParse(jsonString) {
     try {
         const fixed = fixJsonString(jsonString);
         return JSON.parse(fixed);
@@ -38,7 +33,7 @@ function safeJsonParse(jsonString) {
         return null;
     }
 }
-function validateJson(jsonString) {
+export function validateJson(jsonString) {
     try {
         JSON.parse(jsonString);
         return true;

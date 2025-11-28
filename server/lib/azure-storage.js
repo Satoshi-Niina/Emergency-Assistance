@@ -3,31 +3,62 @@ import { DefaultAzureCredential } from '@azure/identity';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 export class AzureStorageService {
+    blobServiceClient;
+    containerClient;
+    containerName;
+    blobPrefix;
+    sharedKeyCredential;
     constructor() {
         const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
         const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
         const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY;
         this.containerName =
             process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
+        // 環境変数のログ出力（デバッグ用）
+        console.log('🔍 BLOB Storage Environment Variables:');
+        console.log('   AZURE_STORAGE_CONNECTION_STRING:', connectionString ? `[SET] (length: ${connectionString.length})` : '[NOT SET]');
+        console.log('   AZURE_STORAGE_CONTAINER_NAME:', this.containerName);
+        console.log('   AZURE_STORAGE_ACCOUNT_NAME:', accountName ? '[SET]' : '[NOT SET]');
+        console.log('   AZURE_STORAGE_ACCOUNT_KEY:', accountKey ? '[SET]' : '[NOT SET]');
+        console.log('   BLOB_PREFIX:', process.env.BLOB_PREFIX || '[NOT SET]');
         // BLOB_PREFIXの正規化（末尾スラッシュ付与、空文字はそのまま）
+        // 空文字列やundefinedの場合は空文字列として扱う
         let prefix = (process.env.BLOB_PREFIX && process.env.BLOB_PREFIX.trim()) || '';
         if (prefix && !prefix.endsWith('/')) {
             prefix += '/';
         }
         this.blobPrefix = prefix;
-        this.sharedKeyCredential = undefined;
+        // 接続文字列が存在し、空文字列でない場合
         if (connectionString && connectionString.trim()) {
-            const parsed = this.parseConnectionString(connectionString);
-            if ((parsed === null || parsed === void 0 ? void 0 : parsed.accountName) && (parsed === null || parsed === void 0 ? void 0 : parsed.accountKey)) {
-                this.sharedKeyCredential = new StorageSharedKeyCredential(parsed.accountName, parsed.accountKey);
-                this.blobServiceClient = new BlobServiceClient(`https://${parsed.accountName}.blob.core.windows.net`, this.sharedKeyCredential);
+            // 接続文字列の基本的な検証（警告のみ、エラーはthrowしない）
+            if (connectionString.length < 50 || !connectionString.includes('AccountName=') || !connectionString.includes('AccountKey=')) {
+                console.warn('⚠️ AZURE_STORAGE_CONNECTION_STRING appears to be invalid');
+                console.warn('⚠️ Expected format: AccountName=...;AccountKey=...;EndpointSuffix=...');
+                console.warn('⚠️ Attempting to initialize anyway...');
             }
-            else {
-                this.blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
-                const credential = this.blobServiceClient.credential;
-                if (credential instanceof StorageSharedKeyCredential) {
-                    this.sharedKeyCredential = credential;
+            try {
+                const parsed = this.parseConnectionString(connectionString);
+                if (parsed.accountName && parsed.accountKey) {
+                    this.sharedKeyCredential = new StorageSharedKeyCredential(parsed.accountName, parsed.accountKey);
+                    this.blobServiceClient = new BlobServiceClient(`https://${parsed.accountName}.blob.core.windows.net`, this.sharedKeyCredential);
+                    console.log('✅ BLOB service client initialized with connection string (shared key)');
                 }
+                else {
+                    this.blobServiceClient =
+                        BlobServiceClient.fromConnectionString(connectionString);
+                    const credential = this.blobServiceClient.credential;
+                    if (credential instanceof StorageSharedKeyCredential) {
+                        this.sharedKeyCredential = credential;
+                    }
+                    else {
+                        console.warn('⚠️ Unable to derive shared key credential from connection string; SAS generation disabled');
+                    }
+                    console.log('✅ BLOB service client initialized with connection string');
+                }
+            }
+            catch (error) {
+                console.error('❌ Failed to initialize BLOB service client:', error);
+                throw new Error(`Failed to initialize Azure Blob Storage: ${error instanceof Error ? error.message : 'Unknown error'}`);
             }
         }
         else if (accountName && accountKey && accountName.trim() && accountKey.trim()) {
@@ -37,10 +68,21 @@ export class AzureStorageService {
         }
         else if (accountName && accountName.trim()) {
             // Managed Identityを使用（Azure App Service上で動作）
-            const credential = new DefaultAzureCredential();
-            this.blobServiceClient = new BlobServiceClient(`https://${accountName.trim()}.blob.core.windows.net`, credential);
+            // connectionStringがない場合のみaccountNameが必要
+            try {
+                const credential = new DefaultAzureCredential();
+                this.blobServiceClient = new BlobServiceClient(`https://${accountName.trim()}.blob.core.windows.net`, credential);
+                console.log('✅ BLOB service client initialized with Managed Identity');
+            }
+            catch (error) {
+                console.error('❌ Failed to initialize BLOB service client with Managed Identity:', error);
+                throw new Error(`Failed to initialize Azure Blob Storage with Managed Identity: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            }
         }
         else {
+            // すべての接続方法が失敗した場合
+            console.error('❌ No valid BLOB storage configuration found');
+            console.error('❌ Required: AZURE_STORAGE_CONNECTION_STRING or (AZURE_STORAGE_ACCOUNT_NAME + AZURE_STORAGE_ACCOUNT_KEY) or AZURE_STORAGE_ACCOUNT_NAME (for Managed Identity)');
             throw new Error('AZURE_STORAGE_CONNECTION_STRING or AZURE_STORAGE_ACCOUNT_NAME is required for Azure Blob Storage connection');
         }
         this.containerClient = this.blobServiceClient.getContainerClient(this.containerName);
@@ -51,19 +93,19 @@ export class AzureStorageService {
             .map(part => part.trim())
             .filter(Boolean)
             .reduce((acc, part) => {
-                const [key, ...rest] = part.split('=');
-                if (!key || rest.length === 0) {
-                    return acc;
-                }
-                const value = rest.join('=');
-                if (key === 'AccountName') {
-                    acc.accountName = value;
-                }
-                else if (key === 'AccountKey') {
-                    acc.accountKey = value;
-                }
+            const [key, ...rest] = part.split('=');
+            if (!key || rest.length === 0) {
                 return acc;
-            }, {});
+            }
+            const value = rest.join('=');
+            if (key === 'AccountName') {
+                acc.accountName = value;
+            }
+            else if (key === 'AccountKey') {
+                acc.accountKey = value;
+            }
+            return acc;
+        }, {});
     }
     getFullBlobName(blobName) {
         return this.blobPrefix + blobName.replace(/^\/+/u, '');

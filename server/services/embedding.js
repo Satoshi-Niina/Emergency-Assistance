@@ -1,20 +1,11 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.embedText = embedText;
-exports.embedTexts = embedTexts;
-exports.embedLongText = embedLongText;
-exports.calculateSimilarity = calculateSimilarity;
-const openai_1 = __importDefault(require("openai"));
-const dotenv_1 = require("dotenv");
+import OpenAI from 'openai';
+import { config } from 'dotenv';
 // 環境変数を読み込み
-(0, dotenv_1.config)();
+config();
 if (!process.env.OPENAI_API_KEY) {
     console.warn('⚠️ OPENAI_API_KEY is not set. Embedding service will not work.');
 }
-const openai = new openai_1.default({
+const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 /**
@@ -22,7 +13,7 @@ const openai = new openai_1.default({
  * @param text 変換対象のテキスト
  * @returns 埋め込みベクトルとトークン数
  */
-async function embedText(text) {
+export async function embedText(text) {
     if (!process.env.OPENAI_API_KEY) {
         throw new Error('OpenAI API key is not configured');
     }
@@ -61,7 +52,7 @@ async function embedText(text) {
  * @param batchSize バッチサイズ（デフォルト: 5）
  * @returns 埋め込み結果の配列
  */
-async function embedTexts(texts, batchSize = 5) {
+export async function embedTexts(texts, batchSize = 5) {
     if (!process.env.OPENAI_API_KEY) {
         throw new Error('OpenAI API key is not configured');
     }
@@ -97,7 +88,7 @@ async function embedTexts(texts, batchSize = 5) {
  * @param maxChunkSize 最大チャンクサイズ（文字数）
  * @returns 埋め込みベクトルの配列
  */
-async function embedLongText(text, maxChunkSize = 4000) {
+export async function embedLongText(text, maxChunkSize = 4000) {
     if (!text || text.trim().length === 0) {
         return [];
     }
@@ -129,7 +120,7 @@ async function embedLongText(text, maxChunkSize = 4000) {
  * @param vec2 ベクトル2
  * @returns 類似度（0-1、1が完全一致）
  */
-function calculateSimilarity(vec1, vec2) {
+export function calculateSimilarity(vec1, vec2) {
     if (vec1.length !== vec2.length) {
         throw new Error('Vector dimensions must match');
     }
