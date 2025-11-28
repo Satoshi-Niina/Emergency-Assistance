@@ -8,7 +8,6 @@
   "scripts": {
     "predev": "powershell -ExecutionPolicy Bypass -File scripts/kill-port-8080.ps1",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "_comment_dev": "predevスクリプトはローカル開発環境専用です。Azure App Serviceではポートは自動設定されるため不要です。",
     "dev:server": "cross-env NODE_ENV=development PORT=8080 node server/unified-hot-reload-server.js",
     "dev:client": "npm --prefix client run vite-only",
     "start": "cross-env NODE_ENV=production PORT=8080 node server/azure-server.mjs",

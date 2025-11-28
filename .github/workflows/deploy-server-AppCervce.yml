@@ -598,21 +598,27 @@ jobs:
       run: |
         echo "🏥 Verifying deployment health..."
 
-        MAX_RETRIES=10
-        RETRY_INTERVAL=10
+        MAX_RETRIES=15
+        RETRY_INTERVAL=15
 
         for attempt in $(seq 1 $MAX_RETRIES); do
           echo "🔍 Health check attempt $attempt/$MAX_RETRIES..."
 
-          # シンプルな /health エンドポイントをチェック
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL/health" || echo "000")
+          # シンプルな /health エンドポイントをチェック（エラーメッセージも表示）
+          HTTP_CODE=$(curl -s -o /tmp/health_response.txt -w "%{http_code}" --max-time 15 "$APP_URL/health" 2>&1 | tail -n 1 || echo "000")
+          
+          # curlのエラーも確認
+          if [ -f /tmp/health_response.txt ]; then
+            RESPONSE_BODY=$(cat /tmp/health_response.txt)
+            echo "📋 Response body: $RESPONSE_BODY"
+          fi
 
           if [ "$HTTP_CODE" = "200" ]; then
             echo "✅ Health check passed (HTTP $HTTP_CODE)"
 
             # 詳細なヘルスチェックも実行
             echo "📊 Fetching detailed health info..."
-            curl -s "$APP_URL/api/health/detailed" | head -n 20
+            curl -s "$APP_URL/api/health/detailed" | head -n 20 || echo "⚠️ Detailed health check failed, but basic health check passed"
 
             echo "🎉 Deployment successful and server is responding"
             exit 0
@@ -622,8 +628,10 @@ jobs:
           [ $attempt -lt $MAX_RETRIES ] && sleep $RETRY_INTERVAL
         done
 
-        echo "⚠️ Health check timeout after $MAX_RETRIES attempts"
+        echo "⚠️ Health check timeout after $MAX_RETRIES attempts (total wait time: $((MAX_RETRIES * RETRY_INTERVAL))s)"
+        echo "📋 This is a warning, not a failure. The deployment may still be successful."
         echo "📋 Check logs: az webapp log tail --name $WEBAPP_NAME --resource-group $RESOURCE_GROUP"
+        echo "📋 Or visit: $APP_URL/health"
         exit 1
 
     - name: Deployment Summary

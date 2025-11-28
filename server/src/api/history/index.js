@@ -1,3 +1,61 @@
+// BLOBストレージクライアントの初期化
+const getBlobServiceClient = () => {
+  const { BlobServiceClient } = require('@azure/storage-blob');
+  const { DefaultAzureCredential } = require('@azure/identity');
+  
+  const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+  const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
+  const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY;
+
+  if (connectionString && connectionString.trim()) {
+    try {
+      return BlobServiceClient.fromConnectionString(connectionString.trim());
+    } catch (error) {
+      console.error('❌ Failed to initialize BLOB service client:', error);
+      return null;
+    }
+  } else if (accountName && accountKey && accountName.trim() && accountKey.trim()) {
+    try {
+      const { StorageSharedKeyCredential } = require('@azure/storage-blob');
+      const credential = new StorageSharedKeyCredential(
+        accountName.trim(),
+        accountKey.trim()
+      );
+      return new BlobServiceClient(
+        `https://${accountName.trim()}.blob.core.windows.net`,
+        credential
+      );
+    } catch (error) {
+      console.error('❌ Failed to initialize BLOB service client:', error);
+      return null;
+    }
+  } else if (accountName && accountName.trim()) {
+    try {
+      const credential = new DefaultAzureCredential();
+      return new BlobServiceClient(
+        `https://${accountName.trim()}.blob.core.windows.net`,
+        credential
+      );
+    } catch (error) {
+      console.error('❌ Failed to initialize BLOB service client with Managed Identity:', error);
+      return null;
+    }
+  }
+  
+  return null;
+};
+
+// パス正規化ヘルパー
+const norm = (p) => {
+  const BASE = (process.env.AZURE_KNOWLEDGE_BASE_PATH ?? process.env.STORAGE_BASE_PREFIX ?? 'knowledge-base')
+    .replace(/^[\\/]+|[\\/]+$/g, '');
+  return [BASE, String(p || '')]
+    .filter(Boolean)
+    .join('/')
+    .replace(/\\+/g, '/')
+    .replace(/\/+/g, '/');
+};
+
 module.exports = async (context, request) => {
   try {
     context.log('History HTTP trigger function processed a request.');
@@ -77,31 +135,39 @@ module.exports = async (context, request) => {
 
     // GET /api/history/machine-data - マシンデータ履歴
     if (method === 'GET' && action === 'machine-data') {
-      const fs = require('fs');
-      const path = require('path');
-      
+      const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
+      const blobServiceClient = getBlobServiceClient();
       let allFiles = [];
-      
-      // knowledge-base/exportsディレクトリのみからファイルを取得
-      const exportsPath = path.join(process.cwd(), 'knowledge-base', 'exports');
-      if (fs.existsSync(exportsPath)) {
-        const exportFiles = fs.readdirSync(exportsPath, { withFileTypes: true })
-          .filter(dirent => dirent.isFile() && dirent.name.endsWith('.json'))
-          .map(dirent => {
-            const filePath = path.join(exportsPath, dirent.name);
-            const stats = fs.statSync(filePath);
-            return {
-              id: dirent.name.replace('.json', ''),
-              name: dirent.name.replace('.json', ''),
-              title: dirent.name.replace('.json', ''),
-              type: 'history',
-              createdAt: stats.birthtime.toISOString(),
-              size: stats.size,
-              filePath: `knowledge-base/exports/${dirent.name}`,
-              category: 'exports'
-            };
-          });
-        allFiles = allFiles.concat(exportFiles);
+
+      if (blobServiceClient) {
+        try {
+          const containerClient = blobServiceClient.getContainerClient(containerName);
+          const prefix = norm('exports/');
+          
+          context.log(`🔍 BLOBストレージからマシンデータ取得: prefix=${prefix}, container=${containerName}`);
+          
+          for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+            if (blob.name.endsWith('.json')) {
+              const fileName = blob.name.split('/').pop();
+              allFiles.push({
+                id: fileName.replace('.json', ''),
+                name: fileName.replace('.json', ''),
+                title: fileName.replace('.json', ''),
+                type: 'history',
+                createdAt: blob.properties.lastModified ? blob.properties.lastModified.toISOString() : new Date().toISOString(),
+                size: blob.properties.contentLength || 0,
+                filePath: blob.name,
+                category: 'exports'
+              });
+            }
+          }
+          context.log(`✅ BLOBから ${allFiles.length} 件のマシンデータ取得`);
+        } catch (error) {
+          context.log.error('❌ BLOB読み込みエラー:', error);
+          // エラーでも空配列を返す
+        }
+      } else {
+        context.log.warn('⚠️ BLOBサービスクライアントが利用できません');
       }
 
       return {
@@ -117,6 +183,58 @@ module.exports = async (context, request) => {
           data: allFiles,
           total: allFiles.length,
           message: '機械故障履歴ファイル一覧を取得しました',
+          timestamp: new Date().toISOString()
+        }),
+      };
+    }
+
+    // GET /api/history/export-files - エクスポートファイル一覧取得
+    if (method === 'GET' && action === 'export-files') {
+      const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
+      const blobServiceClient = getBlobServiceClient();
+      const items = [];
+
+      if (blobServiceClient) {
+        try {
+          const containerClient = blobServiceClient.getContainerClient(containerName);
+          const prefix = norm('exports/');
+
+          context.log(`🔍 BLOBストレージからエクスポート取得: prefix=${prefix}, container=${containerName}`);
+
+          for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+            if (blob.name.endsWith('.json')) {
+              const fileName = blob.name.split('/').pop();
+              items.push({
+                id: fileName.replace('.json', ''),
+                fileName: fileName,
+                blobName: blob.name,
+                lastModified: blob.properties.lastModified ? blob.properties.lastModified.toISOString() : new Date().toISOString(),
+                size: blob.properties.contentLength || 0,
+              });
+            }
+          }
+          context.log(`✅ BLOBから ${items.length} 件のエクスポート取得`);
+        } catch (error) {
+          context.log.error('❌ BLOB読み込みエラー:', error);
+          context.log.error('❌ エラー詳細:', error instanceof Error ? error.stack : error);
+          // BLOBエラーでも空配列を返す（フォールバック）
+        }
+      } else {
+        context.log.warn('⚠️ BLOBサービスクライアントが利用できません');
+      }
+
+      return {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie',
+        },
+        body: JSON.stringify({
+          success: true,
+          data: items,
+          total: items.length,
           timestamp: new Date().toISOString()
         }),
       };

@@ -101,6 +101,17 @@ const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', true);
 
+// Azure App Serviceの認証設定（Easy Auth）の確認
+// X-MS-CLIENT-PRINCIPALヘッダーが存在する場合、Easy Authが有効になっている可能性があります
+app.use((req, res, next) => {
+  if (req.headers['x-ms-client-principal']) {
+    console.warn('⚠️ Azure App Service Easy Auth is enabled');
+    console.warn('⚠️ X-MS-CLIENT-PRINCIPAL header detected:', req.headers['x-ms-client-principal']);
+    console.warn('⚠️ If you are getting 403 errors, disable Easy Auth in Azure Portal or exclude API endpoints');
+  }
+  next();
+});
+
 // 本番ミドルウェア群
 app.use(
   helmet({
@@ -177,15 +188,21 @@ console.log('✅ CORS middleware initialized');
 // 追加のCORS対応 - Preflightリクエストを確実に処理
 app.options('*', cors(corsOptions));
 
-// リクエストロギングミドルウェア（デバッグ用）
-if (process.env.NODE_ENV === 'development') {
-  app.use((req, res, next) => {
-    if (req.path.startsWith('/api/')) {
-      console.log(`📥 ${req.method} ${req.path}`);
-    }
-    next();
-  });
-}
+// リクエストロギングミドルウェア（本番環境でも有効化）
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    console.log(`📥 ${req.method} ${req.path}`, {
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+      cookie: req.headers.cookie ? 'present' : 'missing',
+      'x-forwarded-for': req.headers['x-forwarded-for'],
+      'x-original-url': req.headers['x-original-url'],
+      'x-ms-client-principal': req.headers['x-ms-client-principal'] ? 'present' : 'missing',
+      timestamp: new Date().toISOString()
+    });
+  }
+  next();
+});
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));
@@ -623,16 +640,36 @@ async function startupSequence() {
 startupSequence();
 
 // セッション管理の設定（CORS対応修正版）
+const isAzureHosted = !!process.env.WEBSITE_SITE_NAME;
+const isProductionEnv = (process.env.NODE_ENV || '').toLowerCase() === 'production';
+const sessionCookieSecure = process.env.SESSION_COOKIE_SECURE
+  ? process.env.SESSION_COOKIE_SECURE.toLowerCase() === 'true'
+  : (isAzureHosted || isProductionEnv);
+const sessionCookieSameSite = process.env.SESSION_COOKIE_SAMESITE
+  ? process.env.SESSION_COOKIE_SAMESITE.toLowerCase()
+  : (sessionCookieSecure ? 'none' : 'lax');
+const sessionCookieHttpOnly = process.env.SESSION_COOKIE_HTTPONLY
+  ? process.env.SESSION_COOKIE_HTTPONLY.toLowerCase() === 'true'
+  : false;
+const sessionCookieDomain = cleanEnvValue(process.env.SESSION_COOKIE_DOMAIN) || undefined;
+
+console.log('✅ Session cookie settings:', {
+  secure: sessionCookieSecure,
+  sameSite: sessionCookieSameSite,
+  httpOnly: sessionCookieHttpOnly,
+  domain: sessionCookieDomain || 'auto'
+});
+
 app.use(session({
   secret: process.env.SESSION_SECRET || 'azure-production-session-secret-32-chars-fixed',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // HTTPでも動作するように一時的にfalse
-    httpOnly: false, // フロントエンドからアクセス可能
+    secure: sessionCookieSecure,
+    httpOnly: sessionCookieHttpOnly,
     maxAge: 24 * 60 * 60 * 1000, // 24時間
-    sameSite: 'none', // クロスサイト対応
-    domain: undefined, // ドメイン制限なし
+    sameSite: sessionCookieSameSite,
+    domain: sessionCookieDomain,
     path: '/' // すべてのパスで有効
   },
   name: 'emergency.session', // セッション名を変更
@@ -4375,51 +4412,130 @@ app.put('/api/emergency-flow/:flowId', async (req, res) => {
 app.get('/api/emergency-flow/list', async (req, res) => {
   try {
     console.log('[api/emergency-flow/list] フロー一覧取得リクエスト');
+    console.log('[api/emergency-flow/list] Request headers:', {
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+      cookie: req.headers.cookie ? 'present' : 'missing',
+      'user-agent': req.headers['user-agent']
+    });
 
     const flows = [];
+    
+    // BLOB接続文字列の確認
+    if (!connectionString || !connectionString.trim()) {
+      console.warn('[api/emergency-flow/list] ⚠️ AZURE_STORAGE_CONNECTION_STRING is not configured');
+      console.warn('[api/emergency-flow/list] ⚠️ Connection string length:', connectionString ? connectionString.length : 0);
+      console.warn('[api/emergency-flow/list] ⚠️ Returning empty flow list');
+      return res.json({
+        success: true,
+        data: flows,
+        total: flows.length,
+        message: 'BLOBストレージが設定されていません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
     const blobServiceClient = getBlobServiceClient();
 
-    if (blobServiceClient) {
-      try {
-        const containerClient = blobServiceClient.getContainerClient(containerName);
-        const prefix = norm('troubleshooting/');
+    if (!blobServiceClient) {
+      console.warn('[api/emergency-flow/list] ⚠️ BLOBサービスクライアントが利用できません');
+      console.warn('[api/emergency-flow/list] ⚠️ AZURE_STORAGE_CONNECTION_STRING:', connectionString ? 'Set' : 'Not set');
+      console.warn('[api/emergency-flow/list] ⚠️ AZURE_STORAGE_ACCOUNT_NAME:', process.env.AZURE_STORAGE_ACCOUNT_NAME || 'Not set');
+      console.warn('[api/emergency-flow/list] ⚠️ AZURE_STORAGE_CONTAINER_NAME:', containerName);
+      return res.json({
+        success: true,
+        data: flows,
+        total: flows.length,
+        message: 'BLOBサービスクライアントが利用できません',
+        timestamp: new Date().toISOString()
+      });
+    }
 
-        console.log(`🔍 BLOBストレージからフロー取得: prefix=${prefix}, container=${containerName}`);
+    try {
+      const containerClient = blobServiceClient.getContainerClient(containerName);
+      const prefix = norm('troubleshooting/');
 
-        for await (const blob of containerClient.listBlobsFlat({ prefix })) {
-          if (blob.name.endsWith('.json')) {
-            const fileName = blob.name.split('/').pop();
-            flows.push({
-              id: path.basename(fileName, '.json'),
-              name: fileName,
-              blobName: blob.name,
-              lastModified: blob.properties.lastModified,
-              size: blob.properties.contentLength,
-            });
-          }
-        }
-        console.log(`✅ BLOBから ${flows.length} 件のフロー取得`);
-      } catch (error) {
-        console.error('❌ BLOB読み込みエラー:', error);
-        console.error('❌ エラー詳細:', error instanceof Error ? error.stack : error);
-        // BLOBエラーでも空配列を返す（フォールバック）
+      console.log(`🔍 BLOBストレージからフロー取得: prefix=${prefix}, container=${containerName}`);
+
+      // コンテナの存在確認
+      const containerExists = await containerClient.exists();
+      if (!containerExists) {
+        console.error(`❌ コンテナが存在しません: ${containerName}`);
+        return res.json({
+          success: true,
+          data: flows,
+          total: flows.length,
+          message: `コンテナ "${containerName}" が存在しません`,
+          timestamp: new Date().toISOString()
+        });
       }
-    } else {
-      console.warn('⚠️ BLOBサービスクライアントが利用できません - フロー一覧は空です');
+
+      for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+        if (blob.name.endsWith('.json')) {
+          const fileName = blob.name.split('/').pop();
+          flows.push({
+            id: path.basename(fileName, '.json'),
+            name: fileName,
+            blobName: blob.name,
+            lastModified: blob.properties.lastModified,
+            size: blob.properties.contentLength,
+          });
+        }
+      }
+      console.log(`✅ BLOBから ${flows.length} 件のフロー取得`);
+    } catch (blobError) {
+      console.error('❌ BLOB読み込みエラー:', blobError);
+      console.error('❌ エラー詳細:', blobError instanceof Error ? blobError.stack : blobError);
+      console.error('❌ エラーメッセージ:', blobError instanceof Error ? blobError.message : 'Unknown error');
+      
+      // エラーの種類に応じた詳細なログ
+      if (blobError instanceof Error) {
+        if (blobError.message.includes('ENOTFOUND')) {
+          console.error('❌ DNS解決エラー: ストレージアカウント名が正しくない可能性があります');
+        } else if (blobError.message.includes('403') || blobError.message.includes('Forbidden')) {
+          console.error('❌ 認証エラー: ストレージアカウントキーまたは接続文字列が正しくない可能性があります');
+        } else if (blobError.message.includes('404') || blobError.message.includes('Not Found')) {
+          console.error('❌ リソースが見つかりません: コンテナまたはプレフィックスが存在しない可能性があります');
+        }
+      }
+      
+      // BLOBエラーでも空配列を返す（フォールバック）
+      return res.json({
+        success: true,
+        data: flows,
+        total: flows.length,
+        message: 'BLOBストレージからの読み込みに失敗しました',
+        error: blobError instanceof Error ? blobError.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
     }
 
     res.json({
       success: true,
       data: flows,
       total: flows.length,
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
     console.error('❌ フロー一覧取得エラー:', error);
     console.error('❌ エラー詳細:', error instanceof Error ? error.stack : error);
+    console.error('❌ エラーメッセージ:', error instanceof Error ? error.message : 'Unknown error');
+    
+    // 403エラーの場合は詳細なログを出力
+    if (error instanceof Error && (error.message.includes('403') || error.message.includes('Forbidden'))) {
+      console.error('❌ 403 Forbidden エラーが発生しました');
+      console.error('❌ 考えられる原因:');
+      console.error('   1. Azure App Serviceの認証設定（Easy Auth）が有効になっている');
+      console.error('   2. セッションクッキーが正しく送信されていない');
+      console.error('   3. CORS設定の問題');
+      console.error('   4. BLOBストレージの認証情報が正しくない');
+    }
+    
     res.status(500).json({
       success: false,
       error: 'フロー一覧の取得に失敗しました',
       details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
     });
   }
 });
