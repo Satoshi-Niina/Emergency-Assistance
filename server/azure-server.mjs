@@ -1173,23 +1173,138 @@ app.get('/api/troubleshooting/:id', (req, res) => {
   });
 });
 
-// 履歴詳細取得API（BLOBストレージ優先 - 本番環境対応）
-app.get('/api/history/:id', async (req, res, next) => {
-  const { id } = req.params;
-  // Avoid catching more specific /api/history/* routes that appear later in the stack
-  const reservedPrefixes = [
-    'export-files',
-    'export-list',
-    'exports',
-    'local-files',
-    'machine-data',
-    'upload-image'
-  ];
+// ==== /api/history/* サブルートを先に定義（/:id より前） ====
 
-  if (reservedPrefixes.some((prefix) => req.path.startsWith(`/api/history/${prefix}`))) {
-    console.log('[api/history/:id] Reserved sub-route detected, delegating to next handler:', req.path);
-    return next();
+// 16. 履歴API（機種・機械番号データ）
+app.get('/api/history/machine-data', async (req, res) => {
+  try {
+    console.log('[api/history] 機種・機械番号データ取得リクエスト');
+
+    if (!dbPool) {
+      return res.json({
+        success: true,
+        machineTypes: [],
+        machines: [],
+        message: 'データベース接続が設定されていません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const client = await dbPool.connect();
+    const result = await client.query(`
+      SELECT
+        mt.id as machine_type_id,
+        mt.machine_type_name,
+        m.id as machine_id,
+        m.machine_number
+      FROM machine_types mt
+      LEFT JOIN machines m ON mt.id = m.machine_type_id
+      ORDER BY mt.machine_type_name, m.machine_number
+    `);
+    await client.release();
+
+    // データを整形
+    const machineTypes = [];
+    const machines = [];
+    const typeMap = new Map();
+
+    result.rows.forEach(row => {
+      if (!typeMap.has(row.machine_type_id)) {
+        const typeData = {
+          id: row.machine_type_id,
+          machineTypeName: row.machine_type_name
+        };
+        machineTypes.push(typeData);
+        typeMap.set(row.machine_type_id, typeData);
+      }
+
+      if (row.machine_id) {
+        machines.push({
+          id: row.machine_id,
+          machineTypeId: row.machine_type_id,
+          machineNumber: row.machine_number
+        });
+      }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        machineTypes,
+        machines
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/history] 機種・機械番号データ取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '機種・機械番号データの取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
   }
+});
+
+// エクスポートファイル一覧API
+app.get('/api/history/export-files', async (req, res) => {
+  try {
+    console.log('[api/history/export-files] エクスポートファイル一覧取得リクエスト');
+
+    const items = [];
+    const blobServiceClient = getBlobServiceClient();
+
+    if (blobServiceClient) {
+      try {
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        const prefix = norm('exports/');
+
+        console.log(`🔍 BLOBストレージからエクスポート取得: prefix=${prefix}, container=${containerName}`);
+
+        for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+          if (blob.name.endsWith('.json')) {
+            const fileName = blob.name.split('/').pop();
+            items.push({
+              id: fileName.replace('.json', ''),
+              fileName: fileName,
+              blobName: blob.name,
+              lastModified: blob.properties.lastModified,
+              size: blob.properties.contentLength,
+            });
+          }
+        }
+        console.log(`✅ BLOBから ${items.length} 件のエクスポート取得`);
+      } catch (error) {
+        console.error('❌ BLOB読み込みエラー:', error);
+        console.error('❌ エラー詳細:', error instanceof Error ? error.stack : error);
+        // BLOBエラーでも空配列を返す（フォールバック）
+      }
+    } else {
+      console.warn('⚠️ BLOBサービスクライアントが利用できません');
+    }
+
+    res.json({
+      success: true,
+      data: items,
+      total: items.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/history/export-files] エラー:', error);
+    console.error('[api/history/export-files] エラー詳細:', error instanceof Error ? error.stack : error);
+    res.status(500).json({
+      success: false,
+      error: 'エクスポートファイル一覧の取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// ==== 履歴詳細取得API（/:id - 最後に定義） ====
+// 履歴詳細取得API（BLOBストレージ優先 - 本番環境対応）
+app.get('/api/history/:id', async (req, res) => {
+  const { id } = req.params;
 
   try {
     console.log(`📋 履歴アイテム取得リクエスト: ${id}`);
@@ -1371,79 +1486,7 @@ app.get('/api/history/:id', async (req, res, next) => {
   }
 });
 
-// 16. 履歴API（機種・機械番号データ）
-app.get('/api/history/machine-data', async (req, res) => {
-  try {
-    console.log('[api/history] 機種・機械番号データ取得リクエスト');
-
-    if (!dbPool) {
-      return res.json({
-        success: true,
-        machineTypes: [],
-        machines: [],
-        message: 'データベース接続が設定されていません',
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    const client = await dbPool.connect();
-    const result = await client.query(`
-      SELECT
-        mt.id as machine_type_id,
-        mt.machine_type_name,
-        m.id as machine_id,
-        m.machine_number
-      FROM machine_types mt
-      LEFT JOIN machines m ON mt.id = m.machine_type_id
-      ORDER BY mt.machine_type_name, m.machine_number
-    `);
-    await client.release();
-
-    // データを整形
-    const machineTypes = [];
-    const machines = [];
-    const typeMap = new Map();
-
-    result.rows.forEach(row => {
-      if (!typeMap.has(row.machine_type_id)) {
-        const typeData = {
-          id: row.machine_type_id,
-          machineTypeName: row.machine_type_name
-        };
-        machineTypes.push(typeData);
-        typeMap.set(row.machine_type_id, typeData);
-      }
-
-      if (row.machine_id) {
-        machines.push({
-          id: row.machine_id,
-          machineNumber: row.machine_number,
-          machineTypeName: row.machine_type_name
-        });
-      }
-    });
-
-    console.log('[api/history] 機種・機械番号データ取得成功:',
-      'machineTypes:', machineTypes.length,
-      'machines:', machines.length
-    );
-
-    res.json({
-      success: true,
-      machineTypes,
-      machines,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('[api/history] 機種・機械番号データ取得エラー:', error);
-    res.status(500).json({
-      success: false,
-      error: '機種・機械番号データの取得に失敗しました',
-      details: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
+// NOTE: /api/history/machine-data は1178行目で定義済み（重複削除）
 
 // ユーザー管理API
 app.get('/api/users', async (req, res) => {
@@ -2986,60 +3029,7 @@ app.get('/api/admin/dashboard', async (req, res) => {
   }
 });
 
-// エクスポートファイル一覧API
-app.get('/api/history/export-files', async (req, res) => {
-  try {
-    console.log('[api/history/export-files] エクスポートファイル一覧取得リクエスト');
-
-    const items = [];
-    const blobServiceClient = getBlobServiceClient();
-
-    if (blobServiceClient) {
-      try {
-        const containerClient = blobServiceClient.getContainerClient(containerName);
-        const prefix = norm('exports/');
-
-        console.log(`🔍 BLOBストレージからエクスポート取得: prefix=${prefix}, container=${containerName}`);
-
-        for await (const blob of containerClient.listBlobsFlat({ prefix })) {
-          if (blob.name.endsWith('.json')) {
-            const fileName = blob.name.split('/').pop();
-            items.push({
-              id: fileName.replace('.json', ''),
-              fileName: fileName,
-              blobName: blob.name,
-              lastModified: blob.properties.lastModified,
-              size: blob.properties.contentLength,
-            });
-          }
-        }
-        console.log(`✅ BLOBから ${items.length} 件のエクスポート取得`);
-      } catch (error) {
-        console.error('❌ BLOB読み込みエラー:', error);
-        console.error('❌ エラー詳細:', error instanceof Error ? error.stack : error);
-        // BLOBエラーでも空配列を返す（フォールバック）
-      }
-    } else {
-      console.warn('⚠️ BLOBサービスクライアントが利用できません');
-    }
-
-    res.json({
-      success: true,
-      data: items,
-      total: items.length,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('[api/history/export-files] エラー:', error);
-    console.error('[api/history/export-files] エラー詳細:', error instanceof Error ? error.stack : error);
-    res.status(500).json({
-      success: false,
-      error: 'エクスポートファイル一覧の取得に失敗しました',
-      details: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
-    });
-  }
-});
+// NOTE: /api/history/export-files は1249行目で定義済み（重複削除）
 
 // フィルターデータ取得API
 app.get('/api/history/exports/filter-data', async (req, res) => {
