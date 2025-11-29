@@ -1174,9 +1174,24 @@ app.get('/api/troubleshooting/:id', (req, res) => {
 });
 
 // 履歴詳細取得API（BLOBストレージ優先 - 本番環境対応）
-app.get('/api/history/:id', async (req, res) => {
+app.get('/api/history/:id', async (req, res, next) => {
+  const { id } = req.params;
+  // Avoid catching more specific /api/history/* routes that appear later in the stack
+  const reservedPrefixes = [
+    'export-files',
+    'export-list',
+    'exports',
+    'local-files',
+    'machine-data',
+    'upload-image'
+  ];
+
+  if (reservedPrefixes.some((prefix) => req.path.startsWith(`/api/history/${prefix}`))) {
+    console.log('[api/history/:id] Reserved sub-route detected, delegating to next handler:', req.path);
+    return next();
+  }
+
   try {
-    const { id } = req.params;
     console.log(`📋 履歴アイテム取得リクエスト: ${id}`);
 
     // BLOBストレージから取得を試行（本番環境優先）
@@ -4287,7 +4302,7 @@ app.post('/api/emergency-flow', async (req, res) => {
           return {
             ...image,
             fileName: fileName,
-            url: `/api/images/emergency-flows/${fileName}`,
+            url: `/api/emergency-flow/image/${fileName}`,
             blobPath: `images/emergency-flows/${fileName}`
           };
         });
@@ -4320,6 +4335,10 @@ app.post('/api/emergency-flow', async (req, res) => {
     }
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
+    if (!(await containerClient.exists())) {
+      console.log(`[api/emergency-flow] コンテナ '${containerName}' が存在しないため作成します...`);
+      await containerClient.createIfNotExists();
+    }
     const blobName = norm(`troubleshooting/${fileName}`);
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
@@ -4389,7 +4408,7 @@ app.put('/api/emergency-flow/:flowId', async (req, res) => {
           return {
             ...image,
             fileName: fileName,
-            url: `/api/images/emergency-flows/${fileName}`,
+            url: `/api/emergency-flow/image/${fileName}`,
             blobPath: `images/emergency-flows/${fileName}`
           };
         });
@@ -4420,6 +4439,10 @@ app.put('/api/emergency-flow/:flowId', async (req, res) => {
     }
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
+    if (!(await containerClient.exists())) {
+      console.log(`[api/emergency-flow] コンテナ '${containerName}' が存在しないため作成します...`);
+      await containerClient.createIfNotExists();
+    }
     const fileName = `${flowId}.json`;
     const blobName = norm(`troubleshooting/${fileName}`);
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
@@ -4739,7 +4762,7 @@ app.post('/api/emergency-flow/upload-image', upload.single('image'), async (req,
 
     console.log(`✅ 画像アップロード成功: ${blobName}`);
 
-    const imageUrl = `/api/images/emergency-flows/${fileName}`;
+    const imageUrl = `/api/emergency-flow/image/${fileName}`;
 
     res.json({
       success: true,
