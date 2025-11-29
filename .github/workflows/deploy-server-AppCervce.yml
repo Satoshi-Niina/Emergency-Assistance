@@ -502,38 +502,26 @@ jobs:
             WEBSITE_USE_ZIP=0 \
           --output none
 
-        # Kudu APIを使用して直接ZIPをデプロイ（古いファイルを完全上書き）
-        echo "🚀 Deploying via Kudu ZipDeploy API (full clean deployment)..."
+        # 標準のAzure CLIデプロイに戻す（より安定）
+        echo "🚀 Deploying via Azure CLI..."
         
-        KUDU_CREDS=$(az webapp deployment list-publishing-credentials \
+        az webapp deploy \
           --resource-group "$RESOURCE_GROUP" \
           --name "$WEBAPP_NAME" \
-          --query "[publishingUserName, publishingPassword]" \
-          --output tsv)
+          --src-path /tmp/deploy.zip \
+          --type zip \
+          --clean true \
+          --restart true \
+          --timeout 600 || {
+            echo "⚠️ Standard deploy failed, trying config-zip..."
+            az webapp deployment source config-zip \
+              --resource-group "$RESOURCE_GROUP" \
+              --name "$WEBAPP_NAME" \
+              --src /tmp/deploy.zip \
+              --timeout 600
+          }
         
-        KUDU_USER=$(echo "$KUDU_CREDS" | head -n 1)
-        KUDU_PASS=$(echo "$KUDU_CREDS" | tail -n 1)
-        KUDU_URL="https://${WEBAPP_NAME}.scm.japanwest-01.azurewebsites.net"
-        
-        # Kudu ZipDeploy API（完全クリーンデプロイ）
-        HTTP_CODE=$(curl -X POST \
-          -u "$KUDU_USER:$KUDU_PASS" \
-          "$KUDU_URL/api/zipdeploy?isAsync=true" \
-          --data-binary @/tmp/deploy.zip \
-          --header "Content-Type: application/zip" \
-          --write-out "%{http_code}" \
-          --output /tmp/deploy_response.txt \
-          --max-time 600)
-        
-        if [ "$HTTP_CODE" = "202" ] || [ "$HTTP_CODE" = "200" ]; then
-          echo "✅ Deployment initiated successfully (HTTP $HTTP_CODE)"
-          DEPLOY_LOCATION=$(grep -i "location:" /tmp/deploy_response.txt | cut -d' ' -f2 | tr -d '\r')
-          echo "📍 Deployment tracking URL: $DEPLOY_LOCATION"
-        else
-          echo "❌ Deployment failed with HTTP $HTTP_CODE"
-          cat /tmp/deploy_response.txt
-          exit 1
-        fi
+        echo "✅ Deployment completed"
 
         # デプロイステータスを確認
         echo "🔍 Monitoring deployment status..."
