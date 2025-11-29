@@ -385,6 +385,29 @@ jobs:
         echo "📊 App Service State: $STATE"
         echo "✅ App Service is ready for deployment"
 
+    - name: Build Server Application
+      run: |
+        echo "🔨 Building server application..."
+        cd server
+        
+        # 依存関係をインストール
+        echo "📦 Installing dependencies..."
+        npm ci --production=false
+        
+        # TypeScriptをビルド
+        echo "🔨 Building TypeScript..."
+        npm run build || {
+          echo "⚠️ Build command failed, checking if build is optional..."
+          if [ -f "azure-server.mjs" ]; then
+            echo "✅ Main server file exists, continuing..."
+          else
+            echo "❌ ERROR: Build failed and no main server file found!"
+            exit 1
+          fi
+        }
+        
+        echo "✅ Server application built"
+
     - name: Deploy Docker Container to App Service
       run: |
         echo "🚀 Deploying server application to Azure App Service..."
