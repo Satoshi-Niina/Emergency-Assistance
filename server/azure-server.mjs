@@ -318,6 +318,35 @@ const getBlobServiceClient = () => {
   try {
     const client = BlobServiceClient.fromConnectionString(trimmedConnectionString);
     console.log('✅ BLOB service client initialized successfully');
+
+    // コンテナの存在確認と作成（非同期で実行）
+    setTimeout(async () => {
+      try {
+        const containerClient = client.getContainerClient(containerName);
+        const exists = await containerClient.exists();
+
+        if (!exists) {
+          console.log(`⚠️ Container '${containerName}' does not exist. Creating...`);
+          await containerClient.create({
+            access: 'blob' // Blobレベルのパブリックアクセス
+          });
+          console.log(`✅ Container '${containerName}' created successfully`);
+        } else {
+          console.log(`✅ Container '${containerName}' exists`);
+        }
+
+        // コンテナのプロパティを確認
+        const properties = await containerClient.getProperties();
+        console.log(`📊 Container properties:`, {
+          lastModified: properties.lastModified,
+          publicAccess: properties.blobPublicAccess || 'none'
+        });
+      } catch (containerError) {
+        console.error('❌ Container check/creation failed:', containerError);
+        console.error('❌ Error details:', containerError instanceof Error ? containerError.message : 'Unknown error');
+      }
+    }, 2000); // 2秒後に実行（起動処理の後）
+
     return client;
   } catch (error) {
     console.error('❌ BLOB service client initialization failed:', error);
@@ -677,6 +706,26 @@ app.use(session({
   rolling: false // セッション更新を無効化
 }));
 
+// セッションデバッグミドルウェア（本番環境でのトラブルシューティング用）
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    console.log('[Session Debug]', {
+      path: req.path,
+      method: req.method,
+      sessionID: req.sessionID,
+      hasSession: !!req.session,
+      hasUser: !!req.session?.user,
+      userId: req.session?.user?.id,
+      userRole: req.session?.user?.role,
+      cookies: req.headers.cookie ? 'present' : 'missing',
+      cookieHeader: req.headers.cookie?.substring(0, 100) + '...',
+      origin: req.headers.origin,
+      timestamp: new Date().toISOString()
+    });
+  }
+  next();
+});
+
 // ===== ヘルスエンドポイント =====
 // BLOBストレージ単体テストAPI
 const ok = (_req, res) => res.status(200).send('ok');
@@ -826,6 +875,132 @@ app.get('/api/health/full', async (req, res) => {
       cookie_sameSite: 'lax'
     }
   });
+});
+
+// BLOB診断エンドポイント（包括的テスト）
+app.get('/api/_diag/blob-test', async (req, res) => {
+  const diagnostics = {
+    timestamp: new Date().toISOString(),
+    connectionString: {
+      configured: !!connectionString,
+      length: connectionString ? connectionString.length : 0,
+      valid: false
+    },
+    containerName: containerName,
+    client: {
+      initialized: false,
+      error: null
+    },
+    container: {
+      exists: false,
+      canCreate: false,
+      error: null
+    },
+    permissions: {
+      canRead: false,
+      canWrite: false,
+      error: null
+    }
+  };
+
+  try {
+    // 1. BLOB クライアント初期化テスト
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      diagnostics.client.error = 'BLOB service client is null';
+      return res.status(503).json({
+        success: false,
+        message: 'BLOBストレージクライアントの初期化に失敗しました',
+        diagnostics
+      });
+    }
+
+    diagnostics.client.initialized = true;
+    diagnostics.connectionString.valid = true;
+
+    // 2. コンテナ存在確認
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const containerExists = await containerClient.exists();
+    diagnostics.container.exists = containerExists;
+
+    // 3. コンテナ作成テスト（存在しない場合）
+    if (!containerExists) {
+      try {
+        await containerClient.create({ access: 'blob' });
+        diagnostics.container.canCreate = true;
+        diagnostics.container.exists = true;
+        console.log(`✅ Diagnostic: Container '${containerName}' created`);
+      } catch (createError) {
+        diagnostics.container.error = createError.message;
+        diagnostics.container.canCreate = false;
+      }
+    } else {
+      diagnostics.container.canCreate = true; // 既に存在する
+    }
+
+    // 4. 書き込みテスト
+    if (diagnostics.container.exists) {
+      try {
+        const testBlobName = `_diagnostic/test-${Date.now()}.txt`;
+        const testContent = 'BLOB storage write test';
+        const blockBlobClient = containerClient.getBlockBlobClient(testBlobName);
+
+        await blockBlobClient.upload(testContent, testContent.length, {
+          blobHTTPHeaders: { blobContentType: 'text/plain' }
+        });
+
+        diagnostics.permissions.canWrite = true;
+        console.log(`✅ Diagnostic: Write test successful`);
+
+        // 5. 読み取りテスト
+        try {
+          const downloadResponse = await blockBlobClient.download();
+          const chunks = [];
+          for await (const chunk of downloadResponse.readableStreamBody) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          }
+          const downloadedContent = Buffer.concat(chunks).toString('utf-8');
+
+          if (downloadedContent === testContent) {
+            diagnostics.permissions.canRead = true;
+            console.log(`✅ Diagnostic: Read test successful`);
+          }
+
+          // テストファイルを削除
+          await blockBlobClient.delete();
+          console.log(`✅ Diagnostic: Test file deleted`);
+        } catch (readError) {
+          diagnostics.permissions.error = `Read failed: ${readError.message}`;
+        }
+      } catch (writeError) {
+        diagnostics.permissions.error = `Write failed: ${writeError.message}`;
+      }
+    }
+
+    // 診断結果の判定
+    const allTestsPassed =
+      diagnostics.client.initialized &&
+      diagnostics.container.exists &&
+      diagnostics.permissions.canRead &&
+      diagnostics.permissions.canWrite;
+
+    res.status(allTestsPassed ? 200 : 500).json({
+      success: allTestsPassed,
+      message: allTestsPassed
+        ? 'BLOBストレージは正常に動作しています'
+        : 'BLOBストレージに問題があります',
+      diagnostics
+    });
+
+  } catch (error) {
+    diagnostics.client.error = error.message;
+    res.status(500).json({
+      success: false,
+      message: 'BLOB診断中にエラーが発生しました',
+      error: error.message,
+      diagnostics
+    });
+  }
 });
 
 
@@ -996,10 +1171,37 @@ app.post('/api/auth/login', async (req, res) => {
         department: foundUser.department
       };
 
-      res.json({
-        success: true,
-        user: responseUser,
-        message: 'ログインに成功しました'
+      // セッションを明示的に保存（クロスオリジン対応）
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          console.error('[auth/login] Session save error:', saveErr);
+          return res.status(500).json({
+            success: false,
+            error: 'session_save_failed',
+            message: 'セッションの保存に失敗しました'
+          });
+        }
+
+        console.log('[auth/login] Session saved successfully:', {
+          sessionID: req.sessionID,
+          userId: foundUser.id,
+          username: foundUser.username,
+          role: normalizedRole
+        });
+
+        // Set-Cookieヘッダーの確認
+        const setCookieHeader = res.getHeader('Set-Cookie');
+        console.log('[auth/login] Set-Cookie header:', setCookieHeader);
+
+        res.json({
+          success: true,
+          user: responseUser,
+          message: 'ログインに成功しました',
+          debug: process.env.NODE_ENV !== 'production' ? {
+            sessionID: req.sessionID,
+            sessionSaved: true
+          } : undefined
+        });
       });
 
     } catch (dbError) {
@@ -1047,10 +1249,26 @@ app.get('/api/auth/handshake', (req, res) => {
 app.get('/api/auth/me', (req, res) => {
   console.log('[api/auth/me] セッション確認:', {
     sessionId: req.sessionID,
+    hasSession: !!req.session,
     hasUser: !!req.session.user,
     userRole: req.session.user?.role,
+    cookies: req.headers.cookie ? 'present' : 'missing',
+    cookieHeader: req.headers.cookie?.substring(0, 100),
+    origin: req.headers.origin,
+    referer: req.headers.referer,
     timestamp: new Date().toISOString()
   });
+
+  // すべてのCookieをログ出力（デバッグ用）
+  if (req.headers.cookie) {
+    const cookies = req.headers.cookie.split(';').map(c => c.trim());
+    console.log('[api/auth/me] Received cookies:', cookies);
+    console.log('[api/auth/me] Session cookie name:', 'emergency.session');
+    const sessionCookie = cookies.find(c => c.startsWith('emergency.session='));
+    console.log('[api/auth/me] Session cookie found:', !!sessionCookie);
+  } else {
+    console.warn('[api/auth/me] No cookies received in request');
+  }
 
   if (req.session.user) {
     const normalizedRole = normalizeUserRole(req.session.user.role);
@@ -1060,6 +1278,12 @@ app.get('/api/auth/me', (req, res) => {
     };
     req.session.user = normalizedUser;
     req.session.userRole = normalizedRole;
+
+    console.log('[api/auth/me] User authenticated:', {
+      userId: normalizedUser.id,
+      username: normalizedUser.username,
+      role: normalizedRole
+    });
 
     res.json({
       success: true,
@@ -1072,12 +1296,19 @@ app.get('/api/auth/me', (req, res) => {
       }
     });
   } else {
+    console.warn('[api/auth/me] No user in session:', {
+      sessionId: req.sessionID,
+      hasSession: !!req.session,
+      sessionKeys: req.session ? Object.keys(req.session) : []
+    });
+
     res.status(401).json({
       success: false,
       message: 'ログインしていません',
       debug: {
         sessionId: req.sessionID,
         hasSession: !!req.session,
+        hasCookie: !!req.headers.cookie,
         timestamp: new Date().toISOString()
       }
     });
