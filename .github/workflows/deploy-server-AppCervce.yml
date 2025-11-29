@@ -441,44 +441,8 @@ jobs:
         echo "📋 Files in deploy directory:"
         ls -la | head -20
 
-        # web.config を作成してNode.jsランタイム設定
-        cat > web.config << 'EOF'
-        <?xml version="1.0" encoding="utf-8"?>
-        <configuration>
-          <system.webServer>
-            <webSocket enabled="false" />
-            <handlers>
-              <add name="iisnode" path="azure-server.mjs" verb="*" modules="iisnode" />
-            </handlers>
-            <rewrite>
-              <rules>
-                <rule name="NodeInspector" patternSyntax="ECMAScript" stopProcessing="true">
-                  <match url="^\/debug[\/]?" />
-                  <action type="Rewrite" url="localhost:7071\/debug" />
-                </rule>
-                <rule name="StaticContent">
-                  <action type="CustomResponse" statusCode="404" subStatusCode="1001" statusReason="Managed by iisnode" statusDescription="Managed by iisnode" />
-                </rule>
-                <rule name="DynamicContent">
-                  <conditions>
-                    <add input="{REQUEST_FILENAME}" matchType="File" negate="True" />
-                  </conditions>
-                  <action type="Rewrite" url="azure-server.mjs" />
-                </rule>
-              </rules>
-            </rewrite>
-            <security>
-              <requestFiltering>
-                <hiddenSegments>
-                  <add segment="node_modules" />
-                </hiddenSegments>
-              </requestFiltering>
-            </security>
-            <httpErrors existingResponse="PassThrough" />
-            <iisnode nodeProcessCommandLine="&quot;$PROGRAMFILES\nodejs\node.exe&quot;" debuggingEnabled="false" />
-          </system.webServer>
-        </configuration>
-        EOF
+        # web.config は server/web.config を使用するため、ここでは作成しない
+        echo "✅ Using existing web.config from server directory"
 
         # ZIP ファイルを作成（node_modulesを除外）
         echo "📦 Creating ZIP archive (excluding node_modules)..."
