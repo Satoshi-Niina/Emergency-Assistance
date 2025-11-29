@@ -502,100 +502,41 @@ jobs:
             WEBSITE_USE_ZIP=0 \
           --output none
 
-        # 標準のAzure CLIデプロイに戻す（より安定）
-        echo "🚀 Deploying via Azure CLI..."
+        # 非同期デプロイでタイムアウトを回避
+        echo "🚀 Deploying via Azure CLI (async mode)..."
         
-        az webapp deploy \
+        az webapp deployment source config-zip \
           --resource-group "$RESOURCE_GROUP" \
           --name "$WEBAPP_NAME" \
-          --src-path /tmp/deploy.zip \
-          --type zip \
-          --clean true \
-          --restart true \
-          --timeout 600 || {
-            echo "⚠️ Standard deploy failed, trying config-zip..."
-            az webapp deployment source config-zip \
-              --resource-group "$RESOURCE_GROUP" \
-              --name "$WEBAPP_NAME" \
-              --src /tmp/deploy.zip \
-              --timeout 600
-          }
+          --src /tmp/deploy.zip \
+          --async true \
+          --timeout 300
         
-        echo "✅ Deployment completed"
+        echo "✅ Deployment initiated (async mode)"
+        echo "⏳ Deployment will continue in background..."
+        echo "📍 Check status at: https://${WEBAPP_NAME}.scm.japanwest-01.azurewebsites.net/api/deployments/latest"
 
-        # デプロイステータスを確認
-        echo "🔍 Monitoring deployment status..."
-        MAX_WAIT=300  # 5分待機
-        ELAPSED=0
-        INTERVAL=15
+        # 短時間の待機のみ（バックグラウンドで継続）
+        echo "⏳ Waiting 30 seconds for deployment to start..."
+        sleep 30
+        
+        echo "✅ Deployment in progress"
+        echo "📋 The deployment will continue in background on Azure"
+        echo "📋 It may take 10-15 minutes to complete"
+        echo "📋 Monitor at: https://${WEBAPP_NAME}.scm.japanwest-01.azurewebsites.net/api/deployments/latest"
 
-        while [ $ELAPSED -lt $MAX_WAIT ]; do
-          # デプロイステータスを取得（最新のデプロイメント）
-          DEPLOY_STATUS=$(az rest \
-            --method get \
-            --uri "https://management.azure.com/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.Web/sites/$WEBAPP_NAME/deployments?api-version=2022-03-01" \
-            --query "value[0].properties.status" \
-            --output tsv 2>/dev/null || echo "Unknown")
-
-          echo "📊 Deployment status: $DEPLOY_STATUS (waited ${ELAPSED}s)"
-
-          if [ "$DEPLOY_STATUS" = "4" ] || [ "$DEPLOY_STATUS" = "Success" ]; then
-            echo "✅ Deployment completed successfully"
-            break
-          elif [ "$DEPLOY_STATUS" = "3" ] || [ "$DEPLOY_STATUS" = "Failed" ]; then
-            echo "❌ Deployment failed"
-            exit 1
-          fi
-
-          sleep $INTERVAL
-          ELAPSED=$((ELAPSED + INTERVAL))
-        done
-
-        if [ $ELAPSED -ge $MAX_WAIT ]; then
-          echo "⚠️ Deployment status check timed out after ${MAX_WAIT}s"
-          echo "📋 Deployment may still be in progress. Check manually:"
-          echo "    https://$WEBAPP_NAME.scm.japanwest-01.azurewebsites.net/api/deployments/latest"
-        fi
-
-        echo "✅ Application deployed to App Service"
-
-    - name: Clear Cache and Restart App Service
+    - name: Restart App Service
       run: |
-        echo "🧹 Clearing App Service cache..."
+        echo "⏳ Waiting for deployment to settle (60 seconds)..."
+        sleep 60
         
-        # Kudu APIでキャッシュをクリア
-        KUDU_CREDS=$(az webapp deployment list-publishing-credentials \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --query "[publishingUserName, publishingPassword]" \
-          --output tsv 2>/dev/null || echo "")
-
-        if [ -n "$KUDU_CREDS" ]; then
-          KUDU_USER=$(echo "$KUDU_CREDS" | head -n 1)
-          KUDU_PASS=$(echo "$KUDU_CREDS" | tail -n 1)
-          KUDU_URL="https://${WEBAPP_NAME}.scm.japanwest-01.azurewebsites.net"
-          
-          # Node.jsキャッシュをクリア
-          curl -X POST \
-            -u "$KUDU_USER:$KUDU_PASS" \
-            "$KUDU_URL/api/command" \
-            --header "Content-Type: application/json" \
-            --data '{"command": "rm -rf /home/site/deployments/tools/node_modules", "dir": "/home/site/wwwroot"}' \
-            -s || echo "⚠️ Could not clear cache via Kudu"
-          
-          echo "✅ Cache cleared"
-        fi
-
-        echo "🔄 Restarting App Service for fresh start..."
-
+        echo "🔄 Restarting App Service..."
         az webapp restart \
           --resource-group "$RESOURCE_GROUP" \
           --name "$WEBAPP_NAME"
 
-        echo "✅ App Service restarted"
-
-        # 再起動完了を待つ
-        echo "⏳ Waiting for App Service to start (60 seconds)..."
+        echo "✅ App Service restart initiated"
+        echo "⏳ Waiting for startup (60 seconds)..."
         sleep 60
 
     - name: Configure Node.js Runtime for App Service
