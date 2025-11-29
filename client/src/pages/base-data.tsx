@@ -45,6 +45,7 @@ import {
 import VehicleMaintenanceForm from '../components/maintenance/VehicleMaintenanceForm';
 import { useNavigate } from 'react-router-dom';
 import { FileSelector } from '../components/ui/FileSelector';
+import { buildApiUrl } from '../lib/api';
 
 interface ImportStatus {
   fileName: string;
@@ -352,7 +353,8 @@ export default function BaseDataPage() {
   const fetchExportFiles = async () => {
     try {
       console.log('📂 エクスポートファイル一覧取得開始');
-      const response = await fetch('/api/history/export-files', {
+      const exportsUrl = buildApiUrl('/history/export-files');
+      const response = await fetch(exportsUrl, {
         credentials: 'include',
       });
       
@@ -369,7 +371,7 @@ export default function BaseDataPage() {
           status: response.status,
           statusText: response.statusText,
           body: errorText,
-          url: '/api/history/export-files',
+          url: exportsUrl,
         });
         // 404エラーの場合は空配列を返す（ファイルが見つからない）
         if (response.status === 404) {
@@ -379,18 +381,28 @@ export default function BaseDataPage() {
         return;
       }
 
-      const files = await response.json();
-      console.log('📋 APIレスポンス（生データ）:', files);
-      console.log('✅ エクスポートファイル一覧取得成功:', Array.isArray(files) ? files.length : 'not array', '件');
-      
-      if (!Array.isArray(files)) {
-        console.error('❌ レスポンスが配列ではありません:', typeof files, files);
+      const rawPayload = await response.json();
+      console.log('📋 APIレスポンス（生データ）:', rawPayload);
+
+      const items = Array.isArray(rawPayload)
+        ? rawPayload
+        : Array.isArray(rawPayload?.data)
+          ? rawPayload.data
+          : [];
+
+      if (!Array.isArray(items) || items.length === 0) {
+        if (!Array.isArray(items)) {
+          console.error('❌ レスポンス形式を判別できません:', rawPayload);
+        }
+        console.log('⚠️ エクスポートファイルが見つかりません');
         setExportFiles([]);
         return;
       }
-      
+
+      console.log('✅ エクスポートファイル一覧取得成功:', items.length, '件');
+
       // レスポンスをExportFile型に変換
-      const formattedFiles: ExportFile[] = files.map((file: any) => {
+      const formattedFiles: ExportFile[] = items.map((file: any) => {
         console.log('🔄 ファイルデータ変換:', file);
         return {
           fileName: file.fileName,

@@ -4070,24 +4070,75 @@ app.post('/api/chats/:id/send-test', async (req, res) => {
   }
 });
 
-// 26. 診断用エンドポイント - ルート一覧
+// 26. 診断用エンドポイント - ルート一覧（動的生成）
 app.get('/api/_diag/routes', (req, res) => {
+  // Express appからすべての登録済みルートを抽出
+  const routes = [];
+
+  function extractRoutes(stack, basePath = '') {
+    stack.forEach((middleware) => {
+      if (middleware.route) {
+        // ルートが直接登録されている場合
+        const methods = Object.keys(middleware.route.methods).map(m => m.toUpperCase()).join(', ');
+        routes.push({
+          path: basePath + middleware.route.path,
+          methods: methods,
+          type: 'route'
+        });
+      } else if (middleware.name === 'router' && middleware.handle.stack) {
+        // ルーターがネストされている場合
+        const routerPath = middleware.regexp.source
+          .replace('\\/?', '')
+          .replace('(?=\\/|$)', '')
+          .replace(/\\\//g, '/')
+          .replace(/\^/g, '')
+          .replace(/\$/g, '');
+        extractRoutes(middleware.handle.stack, basePath + routerPath);
+      }
+    });
+  }
+
+  extractRoutes(app._router.stack);
+
+  // 重要なエンドポイントをハイライト
+  const criticalEndpoints = [
+    '/api/emergency-flow/list',
+    '/api/history/machine-data',
+    '/api/history/export-files'
+  ];
+
+  const criticalStatus = criticalEndpoints.map(endpoint => ({
+    endpoint,
+    registered: routes.some(r => r.path === endpoint)
+  }));
+
   res.json({
     success: true,
-    routes: [
-      '/api/health',
-      '/api/auth/login',
-      '/api/users (GET, POST, PUT, DELETE)',
-      '/api/machines (GET, POST, PUT, DELETE)',
-      '/api/machines/machine-types (GET, POST, PUT, DELETE)',
-      '/api/machines/machines',
-      '/api/knowledge-base',
-      '/api/emergency-flow/list',
-      '/api/chatgpt',
-      '/api/history',
-      '/api/settings/rag'
-    ],
-    message: '利用可能なルート一覧（本番環境）- ユーザー・機械管理フル対応',
+    totalRoutes: routes.length,
+    routes: routes.sort((a, b) => a.path.localeCompare(b.path)),
+    criticalEndpoints: criticalStatus,
+    message: `${routes.length}個のルートが登録されています`,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// 27. 診断用エンドポイント - 全ルート詳細（簡易版）
+app.get('/api/_diag/all-routes', (req, res) => {
+  const routes = [];
+
+  app._router.stack.forEach((middleware) => {
+    if (middleware.route) {
+      const methods = Object.keys(middleware.route.methods).map(m => m.toUpperCase());
+      methods.forEach(method => {
+        routes.push(`${method} ${middleware.route.path}`);
+      });
+    }
+  });
+
+  res.json({
+    success: true,
+    routes: routes.sort(),
+    total: routes.length,
     timestamp: new Date().toISOString()
   });
 });
@@ -4420,7 +4471,7 @@ app.get('/api/emergency-flow/list', async (req, res) => {
     });
 
     const flows = [];
-    
+
     // BLOB接続文字列の確認
     if (!connectionString || !connectionString.trim()) {
       console.warn('[api/emergency-flow/list] ⚠️ AZURE_STORAGE_CONNECTION_STRING is not configured');
@@ -4487,7 +4538,7 @@ app.get('/api/emergency-flow/list', async (req, res) => {
       console.error('❌ BLOB読み込みエラー:', blobError);
       console.error('❌ エラー詳細:', blobError instanceof Error ? blobError.stack : blobError);
       console.error('❌ エラーメッセージ:', blobError instanceof Error ? blobError.message : 'Unknown error');
-      
+
       // エラーの種類に応じた詳細なログ
       if (blobError instanceof Error) {
         if (blobError.message.includes('ENOTFOUND')) {
@@ -4498,7 +4549,7 @@ app.get('/api/emergency-flow/list', async (req, res) => {
           console.error('❌ リソースが見つかりません: コンテナまたはプレフィックスが存在しない可能性があります');
         }
       }
-      
+
       // BLOBエラーでも空配列を返す（フォールバック）
       return res.json({
         success: true,
@@ -4520,7 +4571,7 @@ app.get('/api/emergency-flow/list', async (req, res) => {
     console.error('❌ フロー一覧取得エラー:', error);
     console.error('❌ エラー詳細:', error instanceof Error ? error.stack : error);
     console.error('❌ エラーメッセージ:', error instanceof Error ? error.message : 'Unknown error');
-    
+
     // 403エラーの場合は詳細なログを出力
     if (error instanceof Error && (error.message.includes('403') || error.message.includes('Forbidden'))) {
       console.error('❌ 403 Forbidden エラーが発生しました');
@@ -4530,7 +4581,7 @@ app.get('/api/emergency-flow/list', async (req, res) => {
       console.error('   3. CORS設定の問題');
       console.error('   4. BLOBストレージの認証情報が正しくない');
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'フロー一覧の取得に失敗しました',
@@ -4705,6 +4756,120 @@ app.post('/api/emergency-flow/upload-image', upload.single('image'), async (req,
       success: false,
       error: '画像のアップロードに失敗しました',
       details: error.message
+    });
+  }
+});
+
+// 応急復旧フロー画像配信API（BLOB優先、ローカルフォールバック）
+app.get('/api/emergency-flow/image/:fileName', async (req, res) => {
+  const { fileName } = req.params;
+  console.log('[api/emergency-flow/image] リクエスト受信:', { fileName });
+
+  const setImageHeaders = (contentType) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+  };
+
+  const extension = path.extname(fileName || '').toLowerCase();
+  const mimeTypes = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp'
+  };
+  const contentType = mimeTypes[extension] || 'application/octet-stream';
+
+  try {
+    // 1. BLOBストレージから取得
+    const blobServiceClient = getBlobServiceClient();
+    if (blobServiceClient) {
+      try {
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        const blobName = norm(`images/emergency-flows/${fileName}`);
+        const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+        if (await blockBlobClient.exists()) {
+          console.log('[api/emergency-flow/image] BLOBヒット:', { blobName });
+          const downloadResponse = await blockBlobClient.download();
+          const chunks = [];
+          if (downloadResponse.readableStreamBody) {
+            for await (const chunk of downloadResponse.readableStreamBody) {
+              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            }
+            const buffer = Buffer.concat(chunks);
+            setImageHeaders(contentType);
+            return res.status(200).send(buffer);
+          }
+          console.warn('[api/emergency-flow/image] readableStreamBody が空でした');
+        } else {
+          console.log('[api/emergency-flow/image] BLOB未存在、ローカル検索へフォールバック:', { blobName });
+        }
+      } catch (blobError) {
+        console.error('[api/emergency-flow/image] BLOB取得エラー（フォールバック継続）:', blobError);
+      }
+    } else {
+      console.warn('[api/emergency-flow/image] BLOBクライアント未初期化、ローカル検索を使用します');
+    }
+
+    // 2. ローカルファイルを検索
+    const searchDirectories = [
+      path.join(process.cwd(), 'knowledge-base', 'images', 'emergency-flows'),
+      path.join(__dirname, '..', 'knowledge-base', 'images', 'emergency-flows'),
+      path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports'),
+      path.join(__dirname, '..', 'knowledge-base', 'images', 'chat-exports')
+    ].map(p => path.resolve(p));
+
+    console.log('[api/emergency-flow/image] ローカル検索パス:', searchDirectories);
+
+    const findLocalFile = () => {
+      const targetLower = (fileName || '').toLowerCase();
+      for (const dir of searchDirectories) {
+        if (!fsSync.existsSync(dir)) {
+          continue;
+        }
+        const files = fsSync.readdirSync(dir);
+        const exactMatch = files.find(entry => entry === fileName);
+        if (exactMatch) {
+          return path.join(dir, exactMatch);
+        }
+        const caseInsensitiveMatch = files.find(entry => entry.toLowerCase() === targetLower);
+        if (caseInsensitiveMatch) {
+          return path.join(dir, caseInsensitiveMatch);
+        }
+      }
+      return null;
+    };
+
+    const localFilePath = findLocalFile();
+
+    if (localFilePath) {
+      console.log('[api/emergency-flow/image] ローカルファイルヒット:', { localFilePath });
+      const buffer = fsSync.readFileSync(localFilePath);
+      setImageHeaders(contentType);
+      return res.status(200).send(buffer);
+    }
+
+    console.warn('[api/emergency-flow/image] ファイルが見つかりませんでした', {
+      fileName,
+      searchedPaths: searchDirectories
+    });
+    return res.status(404).json({
+      success: false,
+      error: '画像が見つかりません',
+      fileName,
+      searchedPaths: searchDirectories
+    });
+  } catch (error) {
+    console.error('[api/emergency-flow/image] 取得エラー:', error);
+    return res.status(500).json({
+      success: false,
+      error: '画像の取得に失敗しました',
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 });
@@ -5392,6 +5557,59 @@ if (!clientDistPath) {
     res.sendFile(indexPath);
   });
 }
+
+// ===== 404ハンドラー（すべてのルートの後、エラーハンドラの前）=====
+app.use((req, res, next) => {
+  console.warn('⚠️ 404 Not Found:', {
+    method: req.method,
+    url: req.url,
+    path: req.path,
+    originalUrl: req.originalUrl,
+    baseUrl: req.baseUrl,
+    headers: {
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+      'user-agent': req.headers['user-agent'],
+      'x-forwarded-for': req.headers['x-forwarded-for'],
+      'x-original-url': req.headers['x-original-url']
+    },
+    timestamp: new Date().toISOString()
+  });
+
+  // 404エラーの詳細をログに記録
+  if (req.path.startsWith('/api/')) {
+    console.error('❌ API endpoint not found:', req.path);
+    console.error('❌ This could indicate:');
+    console.error('   1. Route not registered in azure-server.mjs');
+    console.error('   2. IIS/iisnode routing issue');
+    console.error('   3. Request not reaching Express app');
+
+    // 類似のルートを検索
+    const allRoutes = [];
+    app._router.stack.forEach((middleware) => {
+      if (middleware.route) {
+        allRoutes.push(middleware.route.path);
+      }
+    });
+
+    const similarRoutes = allRoutes.filter(route =>
+      route.includes(req.path.split('/').pop()) ||
+      req.path.includes(route.split('/').pop())
+    );
+
+    if (similarRoutes.length > 0) {
+      console.warn('💡 Similar routes found:', similarRoutes);
+    }
+  }
+
+  res.status(404).json({
+    error: 'not_found',
+    message: 'Endpoint not found',
+    path: req.path,
+    method: req.method,
+    timestamp: new Date().toISOString()
+  });
+});
 
 // ===== エラーハンドラ（最後尾）=====
 app.use((err, req, res, _next) => {
