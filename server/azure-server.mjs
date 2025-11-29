@@ -4359,10 +4359,17 @@ app.post('/api/emergency-flow', async (req, res) => {
     });
   } catch (error) {
     console.error('[api/emergency-flow] 保存エラー:', error);
+    console.error('[api/emergency-flow] エラー詳細:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      code: error.code
+    });
     res.status(500).json({
       success: false,
       error: 'フローの保存に失敗しました',
-      details: error.message
+      details: error.message,
+      errorCode: error.code || 'UNKNOWN'
     });
   }
 });
@@ -4464,10 +4471,17 @@ app.put('/api/emergency-flow/:flowId', async (req, res) => {
     });
   } catch (error) {
     console.error('[api/emergency-flow] 更新エラー:', error);
+    console.error('[api/emergency-flow] エラー詳細:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      code: error.code
+    });
     res.status(500).json({
       success: false,
       error: 'フローの更新に失敗しました',
-      details: error.message
+      details: error.message,
+      errorCode: error.code || 'UNKNOWN'
     });
   }
 });
@@ -4887,6 +4901,94 @@ app.get('/api/emergency-flow/image/:fileName', async (req, res) => {
   }
 });
 
+// チャット画像配信API
+app.get('/api/images/chat-exports/:fileName', async (req, res) => {
+  const { fileName } = req.params;
+  console.log('[api/images/chat-exports] リクエスト受信:', { fileName });
+
+  const setImageHeaders = (contentType) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+  };
+
+  const extension = path.extname(fileName || '').toLowerCase();
+  const mimeTypes = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp'
+  };
+  const contentType = mimeTypes[extension] || 'application/octet-stream';
+
+  try {
+    // 1. BLOBストレージから取得
+    const blobServiceClient = getBlobServiceClient();
+    if (blobServiceClient) {
+      try {
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        const blobName = norm(`images/chat-exports/${fileName}`);
+        const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+        if (await blockBlobClient.exists()) {
+          console.log('[api/images/chat-exports] BLOBヒット:', { blobName });
+          const downloadResponse = await blockBlobClient.download();
+          const chunks = [];
+          if (downloadResponse.readableStreamBody) {
+            for await (const chunk of downloadResponse.readableStreamBody) {
+              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            }
+            const buffer = Buffer.concat(chunks);
+            setImageHeaders(contentType);
+            return res.status(200).send(buffer);
+          }
+          console.warn('[api/images/chat-exports] readableStreamBody が空でした');
+        } else {
+          console.log('[api/images/chat-exports] BLOB未存在:', { blobName });
+        }
+      } catch (blobError) {
+        console.error('[api/images/chat-exports] BLOB取得エラー:', blobError);
+      }
+    } else {
+      console.warn('[api/images/chat-exports] BLOBクライアント未初期化');
+    }
+
+    // 2. ローカルファイルを検索（開発環境フォールバック）
+    const searchDirectories = [
+      path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports'),
+      path.join(__dirname, '..', 'knowledge-base', 'images', 'chat-exports')
+    ];
+
+    for (const dir of searchDirectories) {
+      const filePath = path.join(dir, fileName);
+      if (fsSync.existsSync(filePath)) {
+        console.log('[api/images/chat-exports] ローカルファイルヒット:', { filePath });
+        const buffer = fsSync.readFileSync(filePath);
+        setImageHeaders(contentType);
+        return res.status(200).send(buffer);
+      }
+    }
+
+    console.log('[api/images/chat-exports] 画像が見つかりませんでした:', { fileName });
+    return res.status(404).json({
+      success: false,
+      error: '画像が見つかりません',
+      fileName: fileName
+    });
+  } catch (error) {
+    console.error('[api/images/chat-exports] 取得エラー:', error);
+    return res.status(500).json({
+      success: false,
+      error: '画像の取得に失敗しました',
+      details: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
 // チャット画像アップロードAPI（リトライロジック付き）
 app.post('/api/history/upload-image', upload.single('image'), async (req, res) => {
   const maxRetries = 3;
@@ -4954,7 +5056,8 @@ app.post('/api/history/upload-image', upload.single('image'), async (req, res) =
 
       console.log(`✅ チャット画像アップロード成功: ${blobName}`);
 
-      const imageUrl = blockBlobClient.url;
+      // APIエンドポイント経由のURLを返す（Blob直接URLではなく）
+      const imageUrl = `/api/images/chat-exports/${fileName}`;
 
       return res.json({
         success: true,
@@ -5088,7 +5191,8 @@ app.post('/api/chats/:chatId/send', async (req, res) => {
             }
           });
 
-          const imageUrl = blockBlobClient.url;
+          // APIエンドポイント経由のURLを返す（Blob直接URLではなく）
+          const imageUrl = `/api/images/chat-exports/${imageFileName}`;
           savedImages.push({
             fileName: imageFileName,
             blobName: blobName,
