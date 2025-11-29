@@ -2397,23 +2397,27 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
         .jpeg({ quality: 85 })
         .toBuffer();
 
-      // ローカルファイルシステムに保存
-      fs.writeFileSync(filePath, resizedBuffer);
-      console.log('✅ 画像ファイルを保存しました（120pxにリサイズ）:', filePath);
-
-      // 常にローカルファイルURLを返す（標準）
+      const isProduction = process.env.NODE_ENV === 'production';
       const imageUrl = `/api/images/chat-exports/${fileName}`;
 
-      // STORAGE_MODE=hybridの場合はAzure Storageにもバックアップアップロード
-      if (process.env.STORAGE_MODE === 'hybrid' && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+      if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+        // 本番環境: Azure Storageに直接アップロード
         try {
+          const tempPath = path.join(require('os').tmpdir(), fileName);
+          fs.writeFileSync(tempPath, resizedBuffer);
+          
           const blobName = `images/chat-exports/${fileName}`;
-          await azureStorage.uploadFile(filePath, blobName);
-          console.log('☁️ Azure Storageバックアップ完了:', blobName);
+          await azureStorage.uploadFile(tempPath, blobName);
+          fs.unlinkSync(tempPath); // 一時ファイル削除
+          console.log('✅ Azure Storageに直接アップロード:', blobName);
         } catch (uploadError) {
-          console.error('⚠️ Azure Storageアップロードエラー（ローカルファイルは保存済み）:', uploadError);
-          // バックアップ失敗でもローカル保存は成功しているのでエラーにしない
+          console.error('⚠️ Azure Storageアップロードエラー:', uploadError);
+          throw uploadError;
         }
+      } else {
+        // 開発環境: ローカルファイルシステムに保存
+        fs.writeFileSync(filePath, resizedBuffer);
+        console.log('✅ 画像ファイルを保存しました（開発環境・120pxにリサイズ）:', filePath);
       }
 
       res.json({
@@ -2424,22 +2428,30 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
       });
     } catch (resizeError) {
       console.error('❌ 画像リサイズエラー:', resizeError);
-      // リサイズに失敗した場合は元の画像を保存
-      fs.writeFileSync(filePath, req.file.buffer);
-
-      // 常にローカルファイルURLを返す（標準）
+      const isProduction = process.env.NODE_ENV === 'production';
       const imageUrl = `/api/images/chat-exports/${fileName}`;
 
-      // STORAGE_MODE=hybridの場合はAzure Storageにもバックアップアップロード
-      if (process.env.STORAGE_MODE === 'hybrid' && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+      if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+        // 本番環境: リサイズ失敗時も元の画像をAzure Storageにアップロード
         try {
+          const tempPath = path.join(require('os').tmpdir(), fileName);
+          fs.writeFileSync(tempPath, req.file.buffer);
+          
           const blobName = `images/chat-exports/${fileName}`;
-          await azureStorage.uploadFile(filePath, blobName);
-          console.log('☁️ Azure Storageバックアップ完了:', blobName);
+          await azureStorage.uploadFile(tempPath, blobName);
+          fs.unlinkSync(tempPath);
+          console.log('⚠️ リサイズ失敗、元の画像をAzure Storageにアップロード:', blobName);
         } catch (uploadError) {
           console.error('⚠️ Azure Storageアップロードエラー:', uploadError);
+          throw uploadError;
         }
-      } res.json({
+      } else {
+        // 開発環境: 元の画像をローカルに保存
+        fs.writeFileSync(filePath, req.file.buffer);
+        console.log('⚠️ リサイズ失敗、元の画像を保存（開発環境）:', filePath);
+      }
+
+      res.json({
         success: true,
         imageUrl,
         fileName,

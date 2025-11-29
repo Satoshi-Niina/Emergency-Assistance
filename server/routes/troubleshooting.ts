@@ -495,15 +495,81 @@ router.delete('/:id', requireAuth, async (req, res) => {
       });
     }
 
-    // ファイルを削除
-    unlinkSync(filePath);
+    // JSONファイルを読み込んで画像を抽出
+    let deletedImages: string[] = [];
+    try {
+      const fileContent = readFileSync(filePath, 'utf-8');
+      const flowData = JSON.parse(fileContent);
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      // フローの各ステップから画像を抽出して削除
+      if (flowData.steps && Array.isArray(flowData.steps)) {
+        for (const step of flowData.steps) {
+          if (step.images && Array.isArray(step.images)) {
+            for (const image of step.images) {
+              const imageFileName = image.fileName || image.url?.split('/').pop();
+              if (imageFileName) {
+                try {
+                  // 開発環境: ローカルファイルを削除
+                  if (!isProduction) {
+                    const imagePath = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows', imageFileName);
+                    if (existsSync(imagePath)) {
+                      unlinkSync(imagePath);
+                      deletedImages.push(imageFileName);
+                      console.log(`🗑️ 画像削除（ローカル）: ${imageFileName}`);
+                    }
+                  }
+                  
+                  // 本番環境: Azure Storageから削除
+                  if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+                    const { AzureStorageService } = require('../azure-storage.js');
+                    const azureStorage = new AzureStorageService();
+                    const blobName = `images/emergency-flows/${imageFileName}`;
+                    await azureStorage.deleteFile(blobName);
+                    deletedImages.push(imageFileName);
+                    console.log(`🗑️ 画像削除（Azure）: ${blobName}`);
+                  }
+                } catch (imageError) {
+                  console.warn(`⚠️ 画像削除エラー (${imageFileName}):`, imageError);
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (parseError) {
+      console.warn('⚠️ JSONパースエラー（画像削除スキップ）:', parseError);
+    }
 
-    console.log('✅ トラブルシューティング削除成功:', id);
+    // JSONファイルを削除
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    // 開発環境: ローカルファイルを削除
+    if (!isProduction) {
+      unlinkSync(filePath);
+      console.log('🗑️ JSONファイル削除（ローカル）:', filePath);
+    }
+    
+    // 本番環境: Azure Storageから削除
+    if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+      try {
+        const { AzureStorageService } = require('../azure-storage.js');
+        const azureStorage = new AzureStorageService();
+        const blobName = `troubleshooting/${id}.json`;
+        await azureStorage.deleteFile(blobName);
+        console.log('🗑️ JSONファイル削除（Azure）:', blobName);
+      } catch (azureError) {
+        console.warn('⚠️ Azure JSON削除エラー:', azureError);
+      }
+    }
+
+    console.log('✅ トラブルシューティング削除成功:', id, '画像:', deletedImages.length, '件');
 
     res.json({
       success: true,
       message: 'トラブルシューティングが正常に削除されました',
       id,
+      deletedImages: deletedImages.length,
     });
   } catch (error) {
     console.error('❌ トラブルシューティング削除エラー:', error);

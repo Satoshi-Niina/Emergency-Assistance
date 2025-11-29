@@ -24,8 +24,8 @@
   <script>
     // バックエンドURLの設定（ビルド時に環境変数から置換される）
     // このテンプレート変数はGitHub Actionsまたはデプロイスクリプトによってビルド時に置換されます
-    const backendUrl = '';
-    window.BACKEND_SERVICE_URL = (backendUrl && backendUrl !== '') ? backendUrl : '';
+    const backendUrl = 'https://emergency-assistantapp-gwgscxcca5cahyb9.japanwest-01.azurewebsites.net';
+    window.BACKEND_SERVICE_URL = (backendUrl && backendUrl !== 'https://emergency-assistantapp-gwgscxcca5cahyb9.japanwest-01.azurewebsites.net') ? backendUrl : '';
     
     // 動的環境設定（インライン）
     (function () {
@@ -76,7 +76,7 @@
       window.runtimeConfig = config;
     })();
   </script>
-  <script type="module" crossorigin src="/main.CNHr_EFh.mjs"></script>
+  <script type="module" crossorigin src="/main.IMQ3o73P.mjs"></script>
   <link rel="stylesheet" crossorigin href="/style.BiEQaNif.css">
 </head>
 

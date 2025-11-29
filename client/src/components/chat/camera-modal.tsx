@@ -34,6 +34,7 @@ import { useIsLargeScreen } from '../../hooks/use-large-screen';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useOrientation } from '../../hooks/use-orientation';
+import { buildApiUrl } from '../../lib/api';
 
 export default function CameraModal() {
   const [isOpen, setIsOpen] = useState(false);
@@ -360,7 +361,8 @@ export default function CameraModal() {
         });
 
         // サーバーに画像をアップロード
-        const uploadResponse = await fetch('/api/history/upload-image', {
+        const uploadUrl = buildApiUrl('/history/upload-image');
+        const uploadResponse = await fetch(uploadUrl, {
           method: 'POST',
           body: formData,
         });

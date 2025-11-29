@@ -6,66 +6,9 @@ import * as path from 'path';
 import { upload } from '../utils/image-uploader.js';
 import * as crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import { BlobServiceClient, StorageSharedKeyCredential } from '@azure/storage-blob';
-import { DefaultAzureCredential } from '@azure/identity';
-
 // ESM用__dirname定義
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// BLOBストレージクライアントの初期化
-const getBlobServiceClient = () => {
-    const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
-    const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
-    const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY;
-
-    if (connectionString && connectionString.trim()) {
-        try {
-            return BlobServiceClient.fromConnectionString(connectionString.trim());
-        } catch (error) {
-            console.error('❌ Failed to initialize BLOB service client:', error);
-            return null;
-        }
-    } else if (accountName && accountKey && accountName.trim() && accountKey.trim()) {
-        try {
-            const credential = new StorageSharedKeyCredential(
-                accountName.trim(),
-                accountKey.trim()
-            );
-            return new BlobServiceClient(
-                `https://${accountName.trim()}.blob.core.windows.net`,
-                credential
-            );
-        } catch (error) {
-            console.error('❌ Failed to initialize BLOB service client:', error);
-            return null;
-        }
-    } else if (accountName && accountName.trim()) {
-        try {
-            const credential = new DefaultAzureCredential();
-            return new BlobServiceClient(
-                `https://${accountName.trim()}.blob.core.windows.net`,
-                credential
-            );
-        } catch (error) {
-            console.error('❌ Failed to initialize BLOB service client with Managed Identity:', error);
-            return null;
-        }
-    }
-
-    return null;
-};
-
-// パス正規化ヘルパー
-const normalizePath = (p) => {
-    const BASE = (process.env.AZURE_KNOWLEDGE_BASE_PATH ?? process.env.BLOB_PREFIX ?? 'knowledge-base')
-        .replace(/^[\/]+|[\/]+$/g, '');
-    return [BASE, String(p || '')]
-        .filter(Boolean)
-        .join('/')
-        .replace(/\\+/g, '/')
-        .replace(/\/+/g, '/');
-};
 const router = express.Router();
 // 開発環境ではOpenAI APIキーがなくても動作するように条件付き初期化
 let openai = null;
@@ -182,12 +125,12 @@ const flowDataSchema = z.object({
         imageUrl: z.string().optional(),
         options: z
             .array(z.object({
-                text: z.string(),
-                nextStepId: z.string(),
-                isTerminal: z.boolean(),
-                conditionType: z.enum(['yes', 'no', 'other']),
-                condition: z.string().optional(),
-            }))
+            text: z.string(),
+            nextStepId: z.string(),
+            isTerminal: z.boolean(),
+            conditionType: z.enum(['yes', 'no', 'other']),
+            condition: z.string().optional(),
+        }))
             .optional(),
     })),
     triggerKeywords: z.array(z.string()),
@@ -491,8 +434,30 @@ router.put('/:id', async (req, res) => {
                 }
             });
         }
-        // JSONファイルを更新
-        fs.writeFileSync(filePath, JSON.stringify(updatedFlowData, null, 2), 'utf-8');
+        const isProduction = process.env.NODE_ENV === 'production';
+        if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+            // 本番環境: Azure Storageに直接保存
+            try {
+                const { azureStorage } = await import('../azure-storage.js');
+                if (azureStorage) {
+                    const tempPath = path.join(require('os').tmpdir(), fileName);
+                    fs.writeFileSync(tempPath, JSON.stringify(updatedFlowData, null, 2), 'utf-8');
+                    const blobName = `troubleshooting/${fileName}`;
+                    await azureStorage.uploadFile(tempPath, blobName);
+                    fs.unlinkSync(tempPath); // 一時ファイル削除
+                    console.log('✅ Azure Storageに直接保存:', blobName);
+                }
+            }
+            catch (azureError) {
+                console.error('⚠️ Azure Storageバックアップエラー:', azureError);
+                throw azureError;
+            }
+        }
+        else {
+            // 開発環境: ローカルファイルに保存
+            fs.writeFileSync(filePath, JSON.stringify(updatedFlowData, null, 2), 'utf-8');
+            console.log('✅ ローカルファイルに保存（開発環境）:', filePath);
+        }
         console.log('✅ フロー更新成功:', {
             id: updatedFlowData.id,
             title: updatedFlowData.title,
@@ -529,25 +494,34 @@ router.get('/', async (_req, res) => {
     try {
         // Content-Typeを明示的に設定
         res.setHeader('Content-Type', 'application/json');
-        console.log('🔍 Azure Blob Storageからフロー一覧を取得中...');
-
-        const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
-        const blobServiceClient = getBlobServiceClient();
-
-        if (!blobServiceClient) {
-            console.error('❌ Blob Service Clientの初期化に失敗しました');
-            return res.status(500).json({
-                success: false,
-                error: 'Azure Storage接続に失敗しました',
-                timestamp: new Date().toISOString(),
-            });
+        console.log('🔍 トラブルシューティングディレクトリからフロー一覧を取得中...');
+        // トラブルシューティングディレクトリからJSONファイルを読み込み
+        const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+        // サーバーディレクトリから起動されている場合の代替パス
+        const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+        console.log('🔍 トラブルシューティングディレクトリパス:', troubleshootingDir);
+        console.log('🔍 現在の作業ディレクトリ:', process.cwd());
+        console.log('🔍 絶対パス:', path.resolve(troubleshootingDir));
+        // ディレクトリの存在確認と適切なパスの選択
+        let targetDir = troubleshootingDir;
+        if (!fs.existsSync(troubleshootingDir)) {
+            console.log('❌ メインディレクトリが存在しません、代替パスを試行中...');
+            if (fs.existsSync(alternativeDir)) {
+                console.log(`✅ 代替パスが見つかりました: ${alternativeDir}`);
+                targetDir = alternativeDir;
+            }
+            else {
+                console.error('❌ どのパスでもディレクトリが見つかりませんでした');
+                return res.json({
+                    success: false,
+                    error: 'トラブルシューティングディレクトリが見つかりません',
+                    timestamp: new Date().toISOString(),
+                });
+            }
         }
-
-        const fileList = await loadFromBlobStorage(blobServiceClient, containerName);
-
+        const fileList = await loadFromDirectory(targetDir);
         // 作成日時でソート
         fileList.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
         console.log('📋 最終的なフロー一覧:', fileList);
         res.json({
             success: true,
@@ -566,109 +540,7 @@ router.get('/', async (_req, res) => {
         });
     }
 });
-// Azure Blob Storageからフローを読み込む関数
-async function loadFromBlobStorage(blobServiceClient, containerName) {
-    try {
-        const prefix = normalizePath('troubleshooting/');
-        console.log(`📁 Azure Blob Storageから読み込み中: container=${containerName}, prefix=${prefix}`);
-
-        const containerClient = blobServiceClient.getContainerClient(containerName);
-        const fileList = [];
-
-        for await (const blob of containerClient.listBlobsFlat({ prefix })) {
-            // .json ファイルのみ処理、バックアップや一時ファイルは除外
-            if (!blob.name.endsWith('.json') ||
-                blob.name.includes('.backup') ||
-                blob.name.includes('.tmp')) {
-                continue;
-            }
-
-            try {
-                const fileName = blob.name.split('/').pop();
-                console.log(`🔍 Blob読み込み中: ${blob.name}`);
-
-                // Blobの内容を取得
-                const blobClient = containerClient.getBlobClient(blob.name);
-                const downloadResponse = await blobClient.download();
-                const downloaded = await streamToString(downloadResponse.readableStreamBody);
-
-                const flowData = JSON.parse(downloaded);
-                console.log(`✅ Blob ${fileName} のJSON解析成功:`, {
-                    id: flowData.id,
-                    title: flowData.title,
-                    hasDescription: !!flowData.description,
-                    hasSteps: !!(flowData.steps && flowData.steps.length > 0),
-                });
-
-                let description = flowData.description || '';
-                if (!description && flowData.steps && flowData.steps.length > 0) {
-                    const firstStep = flowData.steps[0];
-                    description = firstStep.description || firstStep.message || '';
-                }
-
-                // タイトルを複数のソースから取得
-                let title = flowData.title ||
-                    flowData.metadata?.title ||
-                    flowData.metadata?.タイトル ||
-                    flowData.name ||
-                    flowData.problemDescription ||
-                    'タイトルなし';
-
-                const result = {
-                    id: flowData.id || fileName.replace('.json', ''),
-                    title: title,
-                    description: description,
-                    fileName: fileName,
-                    filePath: blob.name,
-                    createdAt: flowData.createdAt || blob.properties.createdOn?.toISOString() || new Date().toISOString(),
-                    updatedAt: flowData.updatedAt || blob.properties.lastModified?.toISOString() || new Date().toISOString(),
-                    triggerKeywords: flowData.triggerKeywords || flowData.trigger || [],
-                    category: flowData.category || '',
-                    dataSource: 'blob',
-                };
-                fileList.push(result);
-                console.log(`✅ フロー ${result.id} 処理完了:`, result);
-            }
-            catch (error) {
-                console.error(`❌ Blob ${blob.name} の解析中にエラーが発生しました:`, error);
-                console.error(`🔍 エラーの詳細:`, {
-                    message: error instanceof Error ? error.message : 'Unknown error',
-                    stack: error instanceof Error ? error.stack : undefined,
-                });
-                continue; // エラーBlobをスキップして続行
-            }
-        }
-
-        console.log(`📋 有効なBlob数: ${fileList.length}`);
-
-        // 有効なファイルがない場合は警告を出力
-        if (fileList.length === 0) {
-            console.warn(`⚠️ 有効なフローBlobが見つかりませんでした: container=${containerName}, prefix=${prefix}`);
-        }
-
-        return fileList;
-    }
-    catch (error) {
-        console.error(`❌ Azure Blob Storage からの読み込みエラー:`, error);
-        return [];
-    }
-}
-
-// Stream を文字列に変換するヘルパー関数
-async function streamToString(readableStream) {
-    return new Promise((resolve, reject) => {
-        const chunks = [];
-        readableStream.on('data', (data) => {
-            chunks.push(data.toString());
-        });
-        readableStream.on('end', () => {
-            resolve(chunks.join(''));
-        });
-        readableStream.on('error', reject);
-    });
-}
-
-// 指定されたディレクトリからファイルを読み込む関数（後方互換性のため残す）
+// 指定されたディレクトリからファイルを読み込む関数
 async function loadFromDirectory(dirPath) {
     try {
         console.log(`📁 ディレクトリから読み込み中: ${dirPath}`);
@@ -760,25 +632,45 @@ async function loadFromDirectory(dirPath) {
 // フロー一覧取得エンドポイント（互換性のため残す）
 router.get('/list', async (_req, res) => {
     try {
-        console.log('🔍 Azure Blob Storageからフロー一覧を取得中（/list）...');
-
-        const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
-        const blobServiceClient = getBlobServiceClient();
-
-        if (!blobServiceClient) {
-            console.error('❌ Blob Service Clientの初期化に失敗しました');
-            return res.status(500).json({
-                success: false,
-                error: 'Azure Storage接続に失敗しました',
+        console.log('🔍 応急処置フローディレクトリからフロー一覧を取得中（/list）...');
+        // 応急処置フローディレクトリからJSONファイルを読み込み
+        const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+        console.log('🔍 トラブルシューティングディレクトリパス:', troubleshootingDir);
+        console.log('🔍 現在の作業ディレクトリ:', process.cwd());
+        console.log('🔍 絶対パス:', path.resolve(troubleshootingDir));
+        if (!fs.existsSync(troubleshootingDir)) {
+            console.log('❌ トラブルシューティングディレクトリが存在しません');
+            console.log('🔍 代替パスを試行中...');
+            // 代替パスを試行
+            const alternativePaths = [
+                path.join(process.cwd(), 'knowledge-base', 'troubleshooting'),
+                path.join(__dirname, '..', '..', 'knowledge-base', 'troubleshooting'),
+                path.join(__dirname, '..', 'knowledge-base', 'troubleshooting'),
+            ];
+            for (const altPath of alternativePaths) {
+                console.log(`🔍 代替パスをチェック中: ${altPath}`);
+                if (fs.existsSync(altPath)) {
+                    console.log(`✅ 代替パスが見つかりました: ${altPath}`);
+                    const fileList = await loadFromDirectory(altPath);
+                    return res.json({
+                        success: true,
+                        data: fileList,
+                        total: fileList.length,
+                        timestamp: new Date().toISOString(),
+                    });
+                }
+            }
+            console.error('❌ どのパスでもディレクトリが見つかりませんでした');
+            return res.json({
+                success: true,
+                data: [],
+                total: 0,
                 timestamp: new Date().toISOString(),
             });
         }
-
-        const fileList = await loadFromBlobStorage(blobServiceClient, containerName);
-
+        const fileList = await loadFromDirectory(troubleshootingDir);
         // 作成日時でソート
         fileList.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
         console.log('📋 最終的なフロー一覧:', fileList);
         res.json({
             success: true,
@@ -1031,15 +923,82 @@ router.delete('/:id', async (req, res) => {
                 })),
             });
         }
-        // JSONファイルを削除
+        // JSONファイルを読み込んで画像を抽出
         const filePath = path.join(targetDir, fileName);
-        fs.unlinkSync(filePath);
-        console.log(`🗑️ フロー削除完了: ${id}, ファイル: ${fileName}, パス: ${filePath}`);
+        let flowData = null;
+        let deletedImages = [];
+        try {
+            const fileContent = fs.readFileSync(filePath, 'utf-8');
+            flowData = JSON.parse(fileContent);
+            // フローの各ステップから画像を抽出
+            const isProduction = process.env.NODE_ENV === 'production';
+            if (flowData.steps && Array.isArray(flowData.steps)) {
+                for (const step of flowData.steps) {
+                    if (step.images && Array.isArray(step.images)) {
+                        for (const image of step.images) {
+                            const imageFileName = image.fileName || image.url?.split('/').pop();
+                            if (imageFileName) {
+                                try {
+                                    // 開発環境: ローカルファイルを削除
+                                    if (!isProduction) {
+                                        const imagePath = path.join(process.cwd(), 'knowledge-base', 'images', 'emergency-flows', imageFileName);
+                                        if (fs.existsSync(imagePath)) {
+                                            fs.unlinkSync(imagePath);
+                                            deletedImages.push(imageFileName);
+                                            console.log(`🗑️ フロー画像削除（ローカル）: ${imageFileName}`);
+                                        }
+                                    }
+                                    // 本番環境: Azure Storageから削除
+                                    if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+                                        const { azureStorage } = await import('../azure-storage.js');
+                                        if (azureStorage) {
+                                            const blobName = `images/emergency-flows/${imageFileName}`;
+                                            await azureStorage.deleteFile(blobName);
+                                            deletedImages.push(imageFileName);
+                                            console.log(`🗑️ フロー画像削除（Azure）: ${blobName}`);
+                                        }
+                                    }
+                                }
+                                catch (imageError) {
+                                    console.warn(`⚠️ 画像削除エラー (${imageFileName}):`, imageError);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch (parseError) {
+            console.warn('⚠️ フローJSONパースエラー（画像削除スキップ）:', parseError);
+        }
+        // JSONファイルを削除
+        const isProduction = process.env.NODE_ENV === 'production';
+        // 開発環境: ローカルファイルを削除
+        if (!isProduction) {
+            fs.unlinkSync(filePath);
+            console.log(`🗑️ フローJSON削除（ローカル）: ${filePath}`);
+        }
+        // 本番環境: Azure Storageから削除
+        if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+            try {
+                const { azureStorage } = await import('../azure-storage.js');
+                if (azureStorage) {
+                    const blobName = `troubleshooting/${fileName}`;
+                    await azureStorage.deleteFile(blobName);
+                    console.log(`🗑️ フローJSON削除（Azure）: ${blobName}`);
+                }
+            }
+            catch (azureError) {
+                console.warn('⚠️ AzureフローJSON削除エラー:', azureError);
+            }
+        }
+        console.log(`🗑️ フロー削除完了: ${id}, ファイル: ${fileName}, 画像: ${deletedImages.length}件`);
         res.json({
             success: true,
             message: 'フローが削除されました',
             deletedId: id,
             deletedFile: fileName,
+            deletedImages: deletedImages.length,
         });
     }
     catch (error) {
@@ -1646,8 +1605,9 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
         const originalName = req.file.originalname;
         const extension = originalName.split('.').pop();
         const fileName = `emergency-flow-step${timestamp}.${extension}`;
-        // 保存先ディレクトリを作成
-        const uploadDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows');
+        // 保存先ディレクトリを作成（プロジェクトルート基準）
+        const projectRoot = path.resolve(process.cwd());
+        const uploadDir = path.join(projectRoot, 'knowledge-base', 'images', 'emergency-flows');
         console.log('📁 アップロードディレクトリ:', uploadDir);
         if (!fs.existsSync(uploadDir)) {
             console.log('📁 ディレクトリを作成中:', uploadDir);
@@ -1697,8 +1657,31 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
                     console.log('📁 ディレクトリを作成中:', uploadDir);
                     fs.mkdirSync(uploadDir, { recursive: true });
                 }
-                fs.writeFileSync(filePath, req.file.buffer);
-                console.log('✅ ファイル保存成功:', filePath);
+                const isProduction = process.env.NODE_ENV === 'production';
+                if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+                    // 本番環境: Azure Storageに直接アップロード
+                    try {
+                        const { azureStorage } = await import('../azure-storage.js');
+                        if (azureStorage) {
+                            // 一時ファイルに保存してからAzureにアップロード
+                            const tempPath = path.join(require('os').tmpdir(), finalFileName);
+                            fs.writeFileSync(tempPath, req.file.buffer);
+                            const blobName = `images/emergency-flows/${finalFileName}`;
+                            await azureStorage.uploadFile(tempPath, blobName);
+                            fs.unlinkSync(tempPath); // 一時ファイル削除
+                            console.log('✅ Azure Storageに直接アップロード:', blobName);
+                        }
+                    }
+                    catch (azureError) {
+                        console.error('⚠️ Azure Storageアップロードエラー:', azureError);
+                        throw azureError;
+                    }
+                }
+                else {
+                    // 開発環境: ローカルファイルシステムに保存
+                    fs.writeFileSync(filePath, req.file.buffer);
+                    console.log('✅ ファイル保存成功（開発環境）:', filePath);
+                }
             }
             catch (writeError) {
                 console.error('❌ ファイル保存エラー:', writeError);
@@ -1989,9 +1972,10 @@ router.get('/:id', async (req, res) => {
         console.log(`🔄 フロー取得開始: ID=${id}`);
         const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
         console.log(`📁 トラブルシューティングディレクトリ: ${troubleshootingDir}`);
+        // ディレクトリが存在しない場合は作成
         if (!fs.existsSync(troubleshootingDir)) {
-            console.log(`❌ トラブルシューティングディレクトリが見つかりません: ${troubleshootingDir}`);
-            return res.status(404).json({ error: 'トラブルシューティングディレクトリが見つかりません' });
+            console.log(`📁 トラブルシューティングディレクトリを作成: ${troubleshootingDir}`);
+            fs.mkdirSync(troubleshootingDir, { recursive: true });
         }
         const files = fs.readdirSync(troubleshootingDir);
         const jsonFiles = files.filter(file => file.endsWith('.json'));

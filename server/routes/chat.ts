@@ -953,21 +953,22 @@ export function registerChatRoutes(app: any): void {
         process.env.LOCAL_EXPORT_DIR || path.join('knowledge-base', 'exports')
       );
 
-      if (!process.env.KNOWLEDGE_EXPORTS_DIR) {
-        process.env.KNOWLEDGE_EXPORTS_DIR = exportsDir;
-      }
-
-      if (!fs.existsSync(exportsDir)) {
-        fs.mkdirSync(exportsDir, { recursive: true });
-        console.log('exports フォルダを作成しました:', exportsDir);
-      }
-
       const isProduction = process.env.NODE_ENV === 'production';
+
+      // 開発環境のみディレクトリを作成
+      if (!isProduction) {
+        if (!process.env.KNOWLEDGE_EXPORTS_DIR) {
+          process.env.KNOWLEDGE_EXPORTS_DIR = exportsDir;
+        }
+        if (!fs.existsSync(exportsDir)) {
+          fs.mkdirSync(exportsDir, { recursive: true });
+          console.log('exports フォルダを作成しました（開発環境）:', exportsDir);
+        }
+      }
       const rawBlobPrefix = process.env.BLOB_PREFIX?.trim();
-      const azureJsonPrefix = rawBlobPrefix ? 'exports/' : 'knowledge-base/exports/';
-      const azureImagePrefix = rawBlobPrefix
-        ? 'images/chat-exports/'
-        : 'knowledge-base/images/chat-exports/';
+      // azure-storage.ts が自動的に knowledge-base/ を追加するため、ここでは付けない
+      const azureJsonPrefix = 'exports/';
+      const azureImagePrefix = 'images/chat-exports/';
       const localImageBaseUrl = ensureTrailingSlash(
         process.env.DEV_CHAT_EXPORT_IMAGE_BASE_URL ||
         process.env.LOCAL_IMAGE_BASE_URL ||
@@ -986,11 +987,14 @@ export function registerChatRoutes(app: any): void {
 
       const imagesDir = configuredImagesDir || defaultImagesDir;
 
-      if (!fs.existsSync(imagesDir)) {
-        fs.mkdirSync(imagesDir, { recursive: true });
-        console.log('画像保存ディレクトリを作成しました:', imagesDir);
-      } else {
-        console.log('📁 画像保存先ディレクトリ:', imagesDir);
+      // 開発環境のみディレクトリを作成
+      if (!isProduction) {
+        if (!fs.existsSync(imagesDir)) {
+          fs.mkdirSync(imagesDir, { recursive: true });
+          console.log('画像保存ディレクトリを作成しました（開発環境）:', imagesDir);
+        } else {
+          console.log('📁 画像保存先ディレクトリ:', imagesDir);
+        }
       }
 
       let azureStorageService: any = null;
@@ -1174,27 +1178,62 @@ export function registerChatRoutes(app: any): void {
             const imageFileName = `chat_image_${chatId}_${imageTimestamp}.jpg`;
             const imagePath = path.join(imagesDir, imageFileName);
 
-            // 画像を120pxにリサイズして保存
+            // 画像を120pxにリサイズ
+            let imageBuffer: Buffer;
             try {
-              const resizedBuffer = await sharp(buffer)
+              imageBuffer = await sharp(buffer)
                 .resize(120, 120, {
-                  fit: 'inside', // アスペクト比を維持しながら、120x120以内に収める
-                  withoutEnlargement: true, // 拡大しない
+                  fit: 'inside',
+                  withoutEnlargement: true,
                 })
                 .jpeg({ quality: 85 })
                 .toBuffer();
-
-              fs.writeFileSync(imagePath, resizedBuffer);
-              console.log('画像ファイルを保存しました（120pxにリサイズ）:', imagePath);
+              console.log('画像をリサイズしました（120px）');
             } catch (resizeError) {
-              // リサイズに失敗した場合は元の画像を保存
-              console.warn('画像リサイズエラー、元の画像を保存:', resizeError);
-              fs.writeFileSync(imagePath, buffer);
-              console.log('画像ファイルを保存しました（リサイズなし）:', imagePath);
+              console.warn('画像リサイズエラー、元の画像を使用:', resizeError);
+              imageBuffer = buffer;
             }
 
-            const { url: imageUrl, storageKey, storageType } =
-              await resolveImageLink(imageFileName, imagePath);
+            let imageUrl: string;
+            let storageKey: string;
+            let storageType: 'azure-blob' | 'local-file';
+
+            // 本番環境ではローカル保存をスキップし、Azure Storageに直接アップロード
+            if (isProduction && shouldUseAzure && azureStorageService) {
+              // 一時ファイルに保存してからAzureにアップロード
+              const tempPath = path.join(require('os').tmpdir(), imageFileName);
+              fs.writeFileSync(tempPath, imageBuffer);
+              
+              try {
+                const blobName = `${azureImagePrefix}${imageFileName}`;
+                await azureStorageService.uploadFile(tempPath, blobName);
+                fs.unlinkSync(tempPath); // 一時ファイル削除
+                
+                // SAS URL生成
+                try {
+                  imageUrl = azureStorageService.generateBlobSasUrl(blobName, 60 * 60 * 1000);
+                  storageKey = blobName;
+                  storageType = 'azure-blob';
+                  console.log('✅ Azure Storageに直接アップロード:', blobName);
+                } catch (sasError) {
+                  console.error('⚠️ SASトークン生成エラー:', sasError);
+                  imageUrl = `/api/images/chat-exports/${imageFileName}`;
+                  storageKey = imageFileName;
+                  storageType = 'local-file';
+                }
+              } catch (uploadError) {
+                fs.unlinkSync(tempPath); // エラー時も一時ファイル削除
+                console.error('⚠️ Azure Storageアップロードエラー:', uploadError);
+                throw uploadError;
+              }
+            } else {
+              // 開発環境ではローカルに保存
+              fs.writeFileSync(imagePath, imageBuffer);
+              console.log('画像ファイルを保存しました（開発環境）:', imagePath);
+              imageUrl = `/api/images/chat-exports/${imageFileName}`;
+              storageKey = imageFileName;
+              storageType = 'local-file';
+            }
 
             // 画像データをURLに置き換え
             message.content = imageUrl;
@@ -1373,37 +1412,39 @@ export function registerChatRoutes(app: any): void {
       // エクスポートデータは既に画像データが除去されているので、そのまま使用
       const cleanedExportData = exportData;
 
-      // UTF-8エンコーディングでJSONファイルを保存（BOMなし）
+      // UTF-8エンコーディングでJSONファイルを保存
       const jsonString = JSON.stringify(cleanedExportData, null, 2);
       let jsonBlobName: string | null = shouldUseAzure
         ? `${azureJsonPrefix}${fileName}`
         : null;
-      try {
-        // UTF-8 BOMなしで保存
-        fs.writeFileSync(filePath, jsonString, 'utf8');
-        console.log('チャットデータを保存しました:', filePath);
-        console.log('保存されたデータサイズ:', Buffer.byteLength(jsonString, 'utf8'), 'bytes');
-      } catch (writeError) {
-        console.error('ファイル保存エラー:', writeError);
-        throw writeError;
-      }
 
-      if (shouldUseAzure && azureStorageService) {
+      if (isProduction && shouldUseAzure && azureStorageService) {
+        // 本番環境: Azure Storageに直接保存（一時ファイル経由）
+        const tempPath = path.join(require('os').tmpdir(), fileName);
         try {
+          fs.writeFileSync(tempPath, jsonString, 'utf8');
           console.log('☁️ Azure BLOB Storageにアップロード中...');
-          await azureStorageService.uploadFile(filePath, jsonBlobName!);
+          await azureStorageService.uploadFile(tempPath, jsonBlobName!);
+          fs.unlinkSync(tempPath); // 一時ファイル削除
           console.log('✅ JSONファイルをBLOBにアップロード完了:', jsonBlobName);
           exportStorage = { type: 'azure-blob', key: jsonBlobName! };
           exportData.storage = exportStorage;
-          const updatedJson = JSON.stringify(exportData, null, 2);
-          fs.writeFileSync(filePath, updatedJson, 'utf8');
         } catch (uploadError) {
-          console.error('⚠️ Azure BLOBアップロードエラー（ローカル保存は成功）:', uploadError);
-          jsonBlobName = null;
+          if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+          console.error('⚠️ Azure BLOBアップロードエラー:', uploadError);
+          throw uploadError;
+        }
+      } else {
+        // 開発環境: ローカルファイルに保存
+        try {
+          fs.writeFileSync(filePath, jsonString, 'utf8');
+          console.log('チャットデータを保存しました（開発環境）:', filePath);
+          console.log('保存されたデータサイズ:', Buffer.byteLength(jsonString, 'utf8'), 'bytes');
           exportStorage = { type: 'local-file', key: filePath };
           exportData.storage = exportStorage;
-          const fallbackJson = JSON.stringify(exportData, null, 2);
-          fs.writeFileSync(filePath, fallbackJson, 'utf8');
+        } catch (writeError) {
+          console.error('ファイル保存エラー:', writeError);
+          throw writeError;
         }
       }
 

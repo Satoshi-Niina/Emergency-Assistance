@@ -357,17 +357,35 @@ router.delete('/:id', async (req, res) => {
 
     // 関連する画像を削除（savedImages または images から取得）
     const images = item.images || item.savedImages || [];
+    const isProduction = process.env.NODE_ENV === 'production';
+    
     if (images.length > 0) {
       for (const image of images) {
         try {
           const fileName = image.fileName || image.originalFileName;
           if (fileName) {
-            const imagePath = path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports', fileName);
-            if (fs.existsSync(imagePath)) {
-              fs.unlinkSync(imagePath);
-              console.log(`🗑️ 画像削除: ${fileName}`);
-            } else {
-              console.warn(`⚠️ 画像ファイルが見つかりません: ${imagePath}`);
+            // 開発環境: ローカルファイルを削除
+            if (!isProduction) {
+              const imagePath = path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports', fileName);
+              if (fs.existsSync(imagePath)) {
+                fs.unlinkSync(imagePath);
+                console.log(`🗑️ 画像削除（ローカル）: ${fileName}`);
+              } else {
+                console.warn(`⚠️ 画像ファイルが見つかりません: ${imagePath}`);
+              }
+            }
+            
+            // 本番環境: Azure Storageから削除
+            if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+              try {
+                const { AzureStorageService } = require('../azure-storage.js');
+                const azureStorage = new AzureStorageService();
+                const blobName = `images/chat-exports/${fileName}`;
+                await azureStorage.deleteFile(blobName);
+                console.log(`🗑️ 画像削除（Azure）: ${blobName}`);
+              } catch (azureError) {
+                console.warn(`⚠️ Azure画像削除エラー:`, azureError);
+              }
             }
           }
         } catch (imageError) {
@@ -395,11 +413,28 @@ router.delete('/:id', async (req, res) => {
     }
 
     try {
-      if (fs.existsSync(jsonFilePath)) {
-        fs.unlinkSync(jsonFilePath);
-        console.log(`🗑️ JSONファイル削除: ${jsonFilePath}`);
-      } else {
-        console.warn(`⚠️ JSONファイルが見つかりません: ${jsonFilePath}`);
+      // 開発環境: ローカルファイルを削除
+      if (!isProduction) {
+        if (fs.existsSync(jsonFilePath)) {
+          fs.unlinkSync(jsonFilePath);
+          console.log(`🗑️ JSONファイル削除（ローカル）: ${jsonFilePath}`);
+        } else {
+          console.warn(`⚠️ JSONファイルが見つかりません: ${jsonFilePath}`);
+        }
+      }
+      
+      // 本番環境: Azure Storageから削除
+      if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+        try {
+          const { AzureStorageService } = require('../azure-storage.js');
+          const azureStorage = new AzureStorageService();
+          const jsonFileName = path.basename(jsonFilePath);
+          const blobName = `exports/${jsonFileName}`;
+          await azureStorage.deleteFile(blobName);
+          console.log(`🗑️ JSONファイル削除（Azure）: ${blobName}`);
+        } catch (azureError) {
+          console.warn(`⚠️ Azure JSON削除エラー:`, azureError);
+        }
       }
     } catch (fileError) {
       console.warn(`⚠️ JSONファイル削除エラー:`, fileError);

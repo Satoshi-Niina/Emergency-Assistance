@@ -40,11 +40,17 @@ export class AzureStorageService {
     try {
       await this.ensureContainerExists();
 
-      const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
+      // knowledge-base/ プレフィックスを自動追加（既に含まれている場合は追加しない）
+      const fullBlobName = blobName.startsWith('knowledge-base/')
+        ? blobName
+        : `knowledge-base/${blobName}`;
+
+      const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
       const fileBuffer = await fs.readFile(filePath);
 
       await blockBlobClient.uploadData(fileBuffer);
 
+      console.log('✅ Azure Blob uploaded:', fullBlobName);
       return blockBlobClient.url;
     } catch (error) {
       console.error('Error uploading file to Azure Storage:', error);
@@ -54,13 +60,19 @@ export class AzureStorageService {
 
   async downloadFile(blobName: string, localPath: string): Promise<void> {
     try {
-      const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
+      // knowledge-base/ プレフィックスを自動追加（既に含まれている場合は追加しない）
+      const fullBlobName = blobName.startsWith('knowledge-base/')
+        ? blobName
+        : `knowledge-base/${blobName}`;
+
+      const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
 
       // ローカルディレクトリを作成
       const dir = path.dirname(localPath);
       await fs.mkdir(dir, { recursive: true });
 
       await blockBlobClient.downloadToFile(localPath);
+      console.log('✅ Azure Blob downloaded:', fullBlobName);
     } catch (error) {
       console.error('Error downloading file from Azure Storage:', error);
       throw error;
@@ -69,7 +81,12 @@ export class AzureStorageService {
 
   async fileExists(blobName: string): Promise<boolean> {
     try {
-      const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
+      // knowledge-base/ プレフィックスを自動追加（既に含まれている場合は追加しない）
+      const fullBlobName = blobName.startsWith('knowledge-base/')
+        ? blobName
+        : `knowledge-base/${blobName}`;
+
+      const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
       const exists = await blockBlobClient.exists();
       return exists;
     } catch (error) {
@@ -95,8 +112,14 @@ export class AzureStorageService {
 
   async deleteFile(blobName: string): Promise<void> {
     try {
-      const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
+      // knowledge-base/ プレフィックスを自動追加（既に含まれている場合は追加しない）
+      const fullBlobName = blobName.startsWith('knowledge-base/')
+        ? blobName
+        : `knowledge-base/${blobName}`;
+
+      const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
       await blockBlobClient.deleteIfExists();
+      console.log('✅ Azure Blob deleted:', fullBlobName);
     } catch (error) {
       console.error('Error deleting file:', error);
       throw error;
@@ -105,7 +128,12 @@ export class AzureStorageService {
 
   async readFileAsString(blobName: string): Promise<string> {
     try {
-      const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
+      // knowledge-base/ プレフィックスを自動追加（既に含まれている場合は追加しない）
+      const fullBlobName = blobName.startsWith('knowledge-base/')
+        ? blobName
+        : `knowledge-base/${blobName}`;
+
+      const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
       const downloadResponse = await blockBlobClient.download();
 
       if (downloadResponse.readableStreamBody) {
@@ -127,10 +155,16 @@ export class AzureStorageService {
     try {
       await this.ensureContainerExists();
 
-      const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
+      // knowledge-base/ プレフィックスを自動追加（既に含まれている場合は追加しない）
+      const fullBlobName = blobName.startsWith('knowledge-base/')
+        ? blobName
+        : `knowledge-base/${blobName}`;
+
+      const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
       const buffer = Buffer.from(content, 'utf-8');
 
       await blockBlobClient.uploadData(buffer);
+      console.log('✅ Azure Blob written:', fullBlobName);
     } catch (error) {
       console.error('Error writing string to file:', error);
       throw error;

@@ -138,7 +138,18 @@ export class AzureStorageService {
   }
 
   private getFullBlobName(blobName: string): string {
-    return this.blobPrefix + blobName.replace(/^\/+/u, '');
+    // blobName から先頭のスラッシュを削除
+    const cleanBlobName = blobName.replace(/^\/+/u, '');
+    
+    // BLOB_PREFIX が設定されている場合は使用、なければ 'knowledge-base/' を使用
+    const prefix = this.blobPrefix || 'knowledge-base/';
+    
+    // 既に knowledge-base/ で始まっている場合は prefix を追加しない
+    if (cleanBlobName.startsWith('knowledge-base/')) {
+      return cleanBlobName;
+    }
+    
+    return prefix + cleanBlobName;
   }
 
   // コンテナの初期化

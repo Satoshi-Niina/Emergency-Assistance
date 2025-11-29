@@ -1,5 +1,4 @@
 {
-    "extends": "./tsconfig.json",
     "compilerOptions": {
         "outDir": "./server",
         "rootDir": "./server",
@@ -15,7 +14,8 @@
         "sourceMap": false,
         "noEmit": false,
         "allowJs": true,
-        "checkJs": false
+        "checkJs": false,
+        "allowImportingTsExtensions": false
     },
     "include": [
         "server/**/*.ts"

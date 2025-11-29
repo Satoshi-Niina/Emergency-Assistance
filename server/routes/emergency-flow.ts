@@ -507,8 +507,30 @@ router.put('/:id', async (req, res) => {
     }
 
 
-    // JSONファイルを更新
-    fs.writeFileSync(filePath, JSON.stringify(updatedFlowData, null, 2), 'utf-8');
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+      // 本番環境: Azure Storageに直接保存
+      try {
+        const { azureStorage } = await import('../azure-storage.js');
+        if (azureStorage) {
+          const tempPath = path.join(require('os').tmpdir(), fileName);
+          fs.writeFileSync(tempPath, JSON.stringify(updatedFlowData, null, 2), 'utf-8');
+          
+          const blobName = `troubleshooting/${fileName}`;
+          await azureStorage.uploadFile(tempPath, blobName);
+          fs.unlinkSync(tempPath); // 一時ファイル削除
+          console.log('✅ Azure Storageに直接保存:', blobName);
+        }
+      } catch (azureError) {
+        console.error('⚠️ Azure Storageバックアップエラー:', azureError);
+        throw azureError;
+      }
+    } else {
+      // 開発環境: ローカルファイルに保存
+      fs.writeFileSync(filePath, JSON.stringify(updatedFlowData, null, 2), 'utf-8');
+      console.log('✅ ローカルファイルに保存（開発環境）:', filePath);
+    }
 
     console.log('✅ フロー更新成功:', {
       id: updatedFlowData.id,
@@ -1075,16 +1097,86 @@ router.delete('/:id', async (req, res) => {
       });
     }
 
-    // JSONファイルを削除
+    // JSONファイルを読み込んで画像を抽出
     const filePath = path.join(targetDir, fileName);
-    fs.unlinkSync(filePath);
+    let flowData: any = null;
+    let deletedImages: string[] = [];
+    
+    try {
+      const fileContent = fs.readFileSync(filePath, 'utf-8');
+      flowData = JSON.parse(fileContent);
+      
+      // フローの各ステップから画像を抽出
+      const isProduction = process.env.NODE_ENV === 'production';
+      if (flowData.steps && Array.isArray(flowData.steps)) {
+        for (const step of flowData.steps) {
+          if (step.images && Array.isArray(step.images)) {
+            for (const image of step.images) {
+              const imageFileName = image.fileName || image.url?.split('/').pop();
+              if (imageFileName) {
+                try {
+                  // 開発環境: ローカルファイルを削除
+                  if (!isProduction) {
+                    const imagePath = path.join(process.cwd(), 'knowledge-base', 'images', 'emergency-flows', imageFileName);
+                    if (fs.existsSync(imagePath)) {
+                      fs.unlinkSync(imagePath);
+                      deletedImages.push(imageFileName);
+                      console.log(`🗑️ フロー画像削除（ローカル）: ${imageFileName}`);
+                    }
+                  }
+                  
+                  // 本番環境: Azure Storageから削除
+                  if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+                    const { azureStorage } = await import('../azure-storage.js');
+                    if (azureStorage) {
+                      const blobName = `images/emergency-flows/${imageFileName}`;
+                      await azureStorage.deleteFile(blobName);
+                      deletedImages.push(imageFileName);
+                      console.log(`🗑️ フロー画像削除（Azure）: ${blobName}`);
+                    }
+                  }
+                } catch (imageError) {
+                  console.warn(`⚠️ 画像削除エラー (${imageFileName}):`, imageError);
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (parseError) {
+      console.warn('⚠️ フローJSONパースエラー（画像削除スキップ）:', parseError);
+    }
+    
+    // JSONファイルを削除
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    // 開発環境: ローカルファイルを削除
+    if (!isProduction) {
+      fs.unlinkSync(filePath);
+      console.log(`🗑️ フローJSON削除（ローカル）: ${filePath}`);
+    }
+    
+    // 本番環境: Azure Storageから削除
+    if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+      try {
+        const { azureStorage } = await import('../azure-storage.js');
+        if (azureStorage) {
+          const blobName = `troubleshooting/${fileName}`;
+          await azureStorage.deleteFile(blobName);
+          console.log(`🗑️ フローJSON削除（Azure）: ${blobName}`);
+        }
+      } catch (azureError) {
+        console.warn('⚠️ AzureフローJSON削除エラー:', azureError);
+      }
+    }
 
-    console.log(`🗑️ フロー削除完了: ${id}, ファイル: ${fileName}, パス: ${filePath}`);
+    console.log(`🗑️ フロー削除完了: ${id}, ファイル: ${fileName}, 画像: ${deletedImages.length}件`);
     res.json({
       success: true,
       message: 'フローが削除されました',
       deletedId: id,
       deletedFile: fileName,
+      deletedImages: deletedImages.length,
     });
   } catch (error) {
     console.error('❌ フロー削除エラー:', {
@@ -1775,10 +1867,10 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
     const extension = originalName.split('.').pop();
     const fileName = `emergency-flow-step${timestamp}.${extension}`;
 
-    // 保存先ディレクトリを作成
+    // 保存先ディレクトリを作成（プロジェクトルート基準）
+    const projectRoot = path.resolve(process.cwd());
     const uploadDir = path.join(
-      process.cwd(),
-      '..',
+      projectRoot,
       'knowledge-base',
       'images',
       'emergency-flows'
@@ -1837,8 +1929,31 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
           fs.mkdirSync(uploadDir, { recursive: true });
         }
 
-        fs.writeFileSync(filePath, req.file.buffer);
-        console.log('✅ ファイル保存成功:', filePath);
+        const isProduction = process.env.NODE_ENV === 'production';
+
+        if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+          // 本番環境: Azure Storageに直接アップロード
+          try {
+            const { azureStorage } = await import('../azure-storage.js');
+            if (azureStorage) {
+              // 一時ファイルに保存してからAzureにアップロード
+              const tempPath = path.join(require('os').tmpdir(), finalFileName);
+              fs.writeFileSync(tempPath, req.file.buffer);
+              
+              const blobName = `images/emergency-flows/${finalFileName}`;
+              await azureStorage.uploadFile(tempPath, blobName);
+              fs.unlinkSync(tempPath); // 一時ファイル削除
+              console.log('✅ Azure Storageに直接アップロード:', blobName);
+            }
+          } catch (azureError) {
+            console.error('⚠️ Azure Storageアップロードエラー:', azureError);
+            throw azureError;
+          }
+        } else {
+          // 開発環境: ローカルファイルシステムに保存
+          fs.writeFileSync(filePath, req.file.buffer);
+          console.log('✅ ファイル保存成功（開発環境）:', filePath);
+        }
       } catch (writeError) {
         console.error('❌ ファイル保存エラー:', writeError);
         throw new Error(`ファイルの保存に失敗しました: ${writeError instanceof Error ? writeError.message : 'Unknown error'}`);
@@ -2170,9 +2285,10 @@ router.get('/:id', async (req, res) => {
 
     console.log(`📁 トラブルシューティングディレクトリ: ${troubleshootingDir}`);
 
+    // ディレクトリが存在しない場合は作成
     if (!fs.existsSync(troubleshootingDir)) {
-      console.log(`❌ トラブルシューティングディレクトリが見つかりません: ${troubleshootingDir}`);
-      return res.status(404).json({ error: 'トラブルシューティングディレクトリが見つかりません' });
+      console.log(`📁 トラブルシューティングディレクトリを作成: ${troubleshootingDir}`);
+      fs.mkdirSync(troubleshootingDir, { recursive: true });
     }
 
     const files = fs.readdirSync(troubleshootingDir);
