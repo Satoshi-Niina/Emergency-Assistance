@@ -343,33 +343,22 @@ jobs:
 
         echo "📊 App Service State: $WEBAPP_STATE"
 
-        # 既存ファイルを完全削除（Kudu API使用）
-        echo "🧹 Deleting all existing files from wwwroot..."
-        
-        # Kudu認証情報を取得
-        KUDU_CREDS=$(az webapp deployment list-publishing-credentials \
+        # デプロイメント履歴を完全クリア
+        echo "🧹 Clearing deployment history..."
+        az rest \
+          --method delete \
+          --uri "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.Web/sites/$WEBAPP_NAME/deployments?api-version=2022-03-01" \
+          2>/dev/null || echo "⚠️ Could not clear deployment history"
+
+        # ローカルキャッシュをクリア
+        echo "🧹 Clearing local cache..."
+        az webapp config appsettings set \
           --resource-group "$RESOURCE_GROUP" \
           --name "$WEBAPP_NAME" \
-          --query "[publishingUserName, publishingPassword]" \
-          --output tsv 2>/dev/null || echo "")
+          --settings WEBSITE_LOCAL_CACHE_OPTION=Never \
+          --output none
 
-        if [ -n "$KUDU_CREDS" ]; then
-          KUDU_USER=$(echo "$KUDU_CREDS" | head -n 1)
-          KUDU_PASS=$(echo "$KUDU_CREDS" | tail -n 1)
-          KUDU_URL="https://${WEBAPP_NAME}.scm.japanwest-01.azurewebsites.net"
-          
-          echo "🔧 Deleting wwwroot contents via Kudu API..."
-          # wwwroot内のすべてのファイルとフォルダを削除（node_modulesを除く）
-          curl -X DELETE \
-            -u "$KUDU_USER:$KUDU_PASS" \
-            "$KUDU_URL/api/vfs/site/wwwroot/" \
-            --header "If-Match: *" \
-            -s || echo "⚠️ Could not delete via Kudu API"
-          
-          echo "✅ Old files deleted"
-        else
-          echo "⚠️ Could not get Kudu credentials, skipping file deletion"
-        fi
+        echo "✅ Cache and deployment history cleared"
 
     - name: Verify Clean State Before Deployment
       run: |
@@ -501,26 +490,50 @@ jobs:
         echo "🚀 Uploading to App Service..."
         echo "⏱️ Large deployments may take several minutes..."
 
-        # SCM_DO_BUILD_DURING_DEPLOYMENT=true を設定してApp Service側でnpm installを実行
+        # デプロイ設定を完全リセット
+        echo "🔧 Configuring deployment settings..."
         az webapp config appsettings set \
           --resource-group "$RESOURCE_GROUP" \
           --name "$WEBAPP_NAME" \
           --settings \
             SCM_DO_BUILD_DURING_DEPLOYMENT=true \
             WEBSITE_NODE_DEFAULT_VERSION=20-lts \
+            WEBSITE_RUN_FROM_PACKAGE=0 \
+            WEBSITE_USE_ZIP=0 \
           --output none
 
-        # タイムアウトを長めに設定してデプロイ（非同期 + クリーンオプション）
-        az webapp deployment source config-zip \
+        # Kudu APIを使用して直接ZIPをデプロイ（古いファイルを完全上書き）
+        echo "🚀 Deploying via Kudu ZipDeploy API (full clean deployment)..."
+        
+        KUDU_CREDS=$(az webapp deployment list-publishing-credentials \
           --resource-group "$RESOURCE_GROUP" \
           --name "$WEBAPP_NAME" \
-          --src /tmp/deploy.zip \
-          --clean true \
-          --async true \
-          --timeout 1800 || {
-            echo "⚠️ Deployment command timed out, but deployment may still be in progress"
-            echo "📍 Checking deployment status..."
-          }
+          --query "[publishingUserName, publishingPassword]" \
+          --output tsv)
+        
+        KUDU_USER=$(echo "$KUDU_CREDS" | head -n 1)
+        KUDU_PASS=$(echo "$KUDU_CREDS" | tail -n 1)
+        KUDU_URL="https://${WEBAPP_NAME}.scm.japanwest-01.azurewebsites.net"
+        
+        # Kudu ZipDeploy API（完全クリーンデプロイ）
+        HTTP_CODE=$(curl -X POST \
+          -u "$KUDU_USER:$KUDU_PASS" \
+          "$KUDU_URL/api/zipdeploy?isAsync=true" \
+          --data-binary @/tmp/deploy.zip \
+          --header "Content-Type: application/zip" \
+          --write-out "%{http_code}" \
+          --output /tmp/deploy_response.txt \
+          --max-time 600)
+        
+        if [ "$HTTP_CODE" = "202" ] || [ "$HTTP_CODE" = "200" ]; then
+          echo "✅ Deployment initiated successfully (HTTP $HTTP_CODE)"
+          DEPLOY_LOCATION=$(grep -i "location:" /tmp/deploy_response.txt | cut -d' ' -f2 | tr -d '\r')
+          echo "📍 Deployment tracking URL: $DEPLOY_LOCATION"
+        else
+          echo "❌ Deployment failed with HTTP $HTTP_CODE"
+          cat /tmp/deploy_response.txt
+          exit 1
+        fi
 
         # デプロイステータスを確認
         echo "🔍 Monitoring deployment status..."
