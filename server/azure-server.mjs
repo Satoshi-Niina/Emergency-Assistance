@@ -357,11 +357,19 @@ const getBlobServiceClient = () => {
 };
 
 // パス正規化ヘルパー
-const BASE = (process.env.AZURE_KNOWLEDGE_BASE_PATH ?? process.env.STORAGE_BASE_PREFIX ?? 'knowledge-base')
+// 環境変数からBLOBストレージのベースパスを取得（柔軟性のため）
+const BASE = (process.env.AZURE_KNOWLEDGE_BASE_PATH ?? 'knowledge-base')
   .replace(/^[\\/]+|[\\/]+$/g, '');
+
+// 起動時にBASE設定をログ出力
+console.log('📁 BLOB Base Path Configuration:');
+console.log('   AZURE_KNOWLEDGE_BASE_PATH:', process.env.AZURE_KNOWLEDGE_BASE_PATH || 'not set (using default)');
+console.log('   Resolved BASE:', BASE);
+console.log('   Container Name:', containerName);
+
 const KNOWLEDGE_DATA_PREFIX = BASE
   ? `${BASE}/data/`
-  : 'knowledge-base/data/';
+  : 'data/';
 
 const toPosixPath = (value) => String(value ?? '').replace(/\\/g, '/');
 
@@ -378,6 +386,9 @@ const sanitizeKnowledgeRelativePath = (raw) => {
 
 const buildKnowledgeBlobPath = (file) =>
   toPosixPath(`${KNOWLEDGE_DATA_PREFIX}${sanitizeKnowledgeRelativePath(file)}`);
+
+// norm関数: BASEパスとサブパスを結合
+// 例: norm('images/test.jpg') => 'knowledge-base/images/test.jpg'
 const norm = (p) =>
   [BASE, String(p || '')]
     .filter(Boolean)
