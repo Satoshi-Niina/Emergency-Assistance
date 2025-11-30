@@ -7,6 +7,7 @@ on:
     paths:
       - 'server/**'
       - 'shared/**'
+      - 'package.json'
       - '.github/workflows/deploy-server-AppCervce.yml'
   workflow_dispatch:
 
