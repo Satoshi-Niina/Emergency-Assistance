@@ -50,35 +50,21 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: Install dependencies (root workspace)
+      - name: Install and build shared module (first)
         run: |
-          echo "📦 Installing root dependencies..."
-          npm install --ignore-scripts
-          echo "✅ Root dependencies installed"
+          echo "📦 Installing shared dependencies..."
+          cd shared
+          npm install --no-audit --no-fund
+          echo "🔨 Building shared module..."
+          npm run build
+          echo "✅ Shared module built"
 
       - name: Install server dependencies
         run: |
+          echo "📦 Installing server dependencies..."
           cd server
           npm install --no-audit --no-fund
           echo "✅ Server dependencies installed"
-
-      - name: Install client dependencies
-        run: |
-          cd client
-          npm install --no-audit --no-fund
-          echo "✅ Client dependencies installed"
-
-      - name: Install shared dependencies
-        run: |
-          cd shared
-          npm install --no-audit --no-fund
-          echo "✅ Shared dependencies installed"
-
-      - name: Build shared module
-        run: |
-          cd shared
-          npm run build
-          echo "✅ Shared module built"
 
       - name: Build server
         run: |
