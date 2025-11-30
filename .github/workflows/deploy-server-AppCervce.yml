@@ -37,16 +37,42 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Cache node modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.npm
+            node_modules
+            server/node_modules
+            client/node_modules
+            shared/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: Install dependencies (root workspace)
         run: |
-          if [ -f "package-lock.json" ]; then
-            echo "📦 Using npm ci with package-lock.json"
-            npm ci
-          else
-            echo "⚠️ package-lock.json not found, using npm install"
-            npm install
-          fi
-          echo "✅ Root workspace and all dependencies installed"
+          echo "📦 Installing root dependencies..."
+          npm install --ignore-scripts
+          echo "✅ Root dependencies installed"
+
+      - name: Install server dependencies
+        run: |
+          cd server
+          npm install --no-audit --no-fund
+          echo "✅ Server dependencies installed"
+
+      - name: Install client dependencies
+        run: |
+          cd client
+          npm install --no-audit --no-fund
+          echo "✅ Client dependencies installed"
+
+      - name: Install shared dependencies
+        run: |
+          cd shared
+          npm install --no-audit --no-fund
+          echo "✅ Shared dependencies installed"
 
       - name: Build shared module
         run: |
