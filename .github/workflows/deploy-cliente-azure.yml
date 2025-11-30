@@ -1,12 +1,12 @@
 ﻿name: Deploy Client (Azure Static Web Apps)
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'client/**'
-      - '.github/workflows/deploy-cliente-azure.yml'
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'client/**'
+  #     - '.github/workflows/deploy-cliente-azure.yml'
   workflow_dispatch:
 
 jobs:
