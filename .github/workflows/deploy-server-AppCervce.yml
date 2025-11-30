@@ -52,42 +52,20 @@ jobs:
           cd server
           npm install --no-audit --no-fund
           echo "✅ Server dependencies installed"
-          
-          echo "🔍 Verifying critical packages..."
-          npm list @azure/storage-blob express-rate-limit fuse.js adm-zip || echo "⚠️ Some packages missing"
 
-      - name: Build server
+      - name: Create deployment zip
         run: |
+          echo "📦 Creating deployment zip..."
           cd server
-          echo "🔨 Building server..."
-          npm run build
-          echo "✅ Server build completed"
-
-      - name: Prepare deployment package
-        run: |
-          mkdir -p deployment-package
-          
-          # サーバーファイルをコピー
-          cp -r server/dist deployment-package/
-          cp -r server/node_modules deployment-package/
-          cp server/package.json deployment-package/
-          
-          # sharedモジュールをコピー
-          mkdir -p deployment-package/shared
-          cp -r shared/dist deployment-package/shared/
-          cp shared/package.json deployment-package/shared/
-          
-          # knowledge-base ディレクトリ構造を作成（空でもOK）
-          mkdir -p deployment-package/knowledge-base/exports
-          mkdir -p deployment-package/knowledge-base/images/chat-exports
-          mkdir -p deployment-package/knowledge-base/images/emergency-flows
-          mkdir -p deployment-package/knowledge-base/troubleshooting
-          
-          echo "✅ Deployment package prepared"
+          # node_modulesとソースファイルをzipに含める
+          zip -r ../server-deploy.zip . -x "*.git*" "*.log" "dist/*"
+          cd ..
+          echo "✅ Deployment zip created: server-deploy.zip"
+          ls -lh server-deploy.zip
 
       - name: Create web.config for Azure App Service
         run: |
-          cat > deployment-package/web.config << 'EOF'
+          cat > server/web.config << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <configuration>
             <system.webServer>
@@ -128,7 +106,7 @@ jobs:
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: deployment-package
+          package: server-deploy.zip
 
       - name: Clear existing environment variables on Azure App Service
         uses: azure/cli@v1
@@ -183,7 +161,7 @@ jobs:
                 OPENAI_MAX_TOKENS=2000 \
                 DEBUG_MODE=false \
                 VERBOSE_LOGGING=false \
-                SCM_DO_BUILD_DURING_DEPLOYMENT=false \
+                SCM_DO_BUILD_DURING_DEPLOYMENT=true \
                 WEBSITE_NODE_DEFAULT_VERSION=20-lts
             
             echo "✅ App settings configured successfully"
