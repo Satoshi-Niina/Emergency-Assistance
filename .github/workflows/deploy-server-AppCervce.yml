@@ -46,14 +46,7 @@ jobs:
           npm run build
           echo "✅ Shared module built"
 
-      - name: Install server dependencies
-        run: |
-          echo "📦 Installing server dependencies..."
-          cd server
-          npm install --no-audit --no-fund
-          echo "✅ Server dependencies installed"
-
-      - name: Create deployment zip
+      - name: Create deployment zip (source only, Azure will install deps)
         run: |
           echo "📦 Creating deployment zip..."
           cd server
