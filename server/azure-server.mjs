@@ -2,7 +2,8 @@
 
 // Azure App Service専用サーバー
 // Windows/Linux環境で確実に動作する最小限のサーバー
-// Version: 2025-11-20 (Deployment verification)
+// Version: 2025-11-30T10:05:00+09:00 (Deployment version tracking)
+// Build: ${new Date().toISOString()}
 
 // 環境変数読み込み（ローカル開発のみ、本番では不要）
 import dotenv from 'dotenv';
@@ -820,6 +821,33 @@ app.get('/api/health/detailed', (req, res) => {
   }
 
   res.status(200).json(healthResponse);
+});
+
+// デプロイバージョン確認エンドポイント（デプロイ検証用）
+app.get('/api/version', (req, res) => {
+  const buildInfo = {
+    version: '2025-11-30T10:05:00+09:00',
+    buildTimestamp: new Date().toISOString(),
+    deploymentInfo: {
+      commitSha: process.env.SCM_COMMIT_ID || 'unknown',
+      buildId: process.env.BUILD_BUILDID || 'unknown',
+      deploymentId: process.env.WEBSITE_INSTANCE_ID || 'unknown',
+      hostname: process.env.WEBSITE_HOSTNAME || 'unknown',
+      siteName: process.env.WEBSITE_SITE_NAME || 'unknown'
+    },
+    nodeVersion: process.version,
+    platform: process.platform,
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'production',
+    lastModified: '2025-11-30T10:05:00+09:00',
+    features: {
+      blobStorage: !!connectionString,
+      database: !!dbPool,
+      openai: !!OPENAI_API_KEY
+    }
+  };
+
+  res.json(buildInfo);
 });
 
 // Full database testing health check (別エンドポイント)
