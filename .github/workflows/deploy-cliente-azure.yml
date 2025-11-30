@@ -42,6 +42,11 @@ jobs:
           echo "🔧 Building with environment:"
           echo "   VITE_BACKEND_SERVICE_URL: $VITE_BACKEND_SERVICE_URL"
           echo "   NODE_ENV: $NODE_ENV"
+          
+          # 古いビルド成果物を削除してクリーンビルドを保証
+          echo "🧹 Cleaning previous build artifacts..."
+          rm -rf dist
+          
           npm run build
           echo "✅ Build completed"
           

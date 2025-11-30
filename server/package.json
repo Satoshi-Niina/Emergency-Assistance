@@ -16,6 +16,7 @@
     "dev": "cross-env NODE_ENV=development PORT=8080 tsx watch unified-hot-reload-server.js",
     "build": "npm run build:server",
     "build:server": "tsc --project ../tsconfig.server.json",
+    "build:oryx-info": "echo 'Oryx runs npm run build, which triggers build:server (TypeScript compilation). This is correct.'",
     "prebuild": "echo Preparing build...",
     "postbuild": "echo Build completed successfully",
     "type-check": "tsc --noEmit --project ../tsconfig.server.json",

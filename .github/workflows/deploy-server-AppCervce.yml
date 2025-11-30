@@ -444,6 +444,12 @@ jobs:
         # web.config は server/web.config を使用するため、ここでは作成しない
         echo "✅ Using existing web.config from server directory"
 
+        # デプロイバージョン確認用のファイルを作成
+        echo "📝 Generating version.txt..."
+        echo "Commit: ${{ github.sha }}" > version.txt
+        echo "Build Time: $(date -u)" >> version.txt
+        echo "✅ version.txt created"
+
         # ZIP ファイルを作成（node_modulesを除外）
         echo "📦 Creating ZIP archive (excluding node_modules)..."
         zip -r -q /tmp/deploy.zip . -x "node_modules/*" "node_modules/**/*" ".git/*" ".github/*" "*.log"
