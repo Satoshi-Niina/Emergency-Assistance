@@ -21,6 +21,13 @@ jobs:
         with:
           submodules: false
 
+      - name: Verify package-lock.json exists
+        run: |
+          echo "📋 Checking for package-lock.json files..."
+          ls -la package-lock.json || echo "❌ Root package-lock.json not found"
+          ls -la client/package-lock.json || echo "❌ Client package-lock.json not found"
+          ls -la server/package-lock.json || echo "⚠️ Server package-lock.json not found (expected)"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
