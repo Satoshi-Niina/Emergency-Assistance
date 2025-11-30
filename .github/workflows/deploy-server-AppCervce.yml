@@ -25,21 +25,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
 
-      - name: Install dependencies (shared)
+      - name: Install dependencies (root workspace)
         run: |
-          cd shared
-          npm install
+          npm ci
+          echo "✅ Root workspace and all dependencies installed"
 
       - name: Build shared module
         run: |
           cd shared
           npm run build
-
-      - name: Install dependencies (server)
-        run: |
-          cd server
-          npm install
+          echo "✅ Shared module built"
 
       - name: Build server
         run: |
