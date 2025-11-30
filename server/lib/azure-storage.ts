@@ -188,7 +188,7 @@ export class AzureStorageService {
     }
   }
 
-  // ファイルをダウンロード
+  // ファイルをダウンロード（ローカルファイルに保存）
   async downloadFile(blobName: string, localPath: string): Promise<void> {
     try {
       const fullBlobName = this.getFullBlobName(blobName);
@@ -209,6 +209,30 @@ export class AzureStorageService {
       });
     } catch (error) {
       console.error(`❌ Failed to download file ${blobName}:`, error);
+      throw error;
+    }
+  }
+
+  // ファイルを文字列として取得
+  async downloadFileAsString(blobName: string): Promise<string> {
+    try {
+      const fullBlobName = this.getFullBlobName(blobName);
+      const blockBlobClient =
+        this.containerClient.getBlockBlobClient(fullBlobName);
+      const downloadResponse = await blockBlobClient.download();
+      
+      if (!downloadResponse.readableStreamBody) {
+        throw new Error('No readable stream body in download response');
+      }
+
+      const chunks: Buffer[] = [];
+      for await (const chunk of downloadResponse.readableStreamBody) {
+        chunks.push(Buffer.from(chunk));
+      }
+      
+      return Buffer.concat(chunks).toString('utf8');
+    } catch (error) {
+      console.error(`❌ Failed to download file as string ${blobName}:`, error);
       throw error;
     }
   }
@@ -240,11 +264,10 @@ export class AzureStorageService {
     }
   }
 
-  // ディレクトリ内のファイル一覧を取得
+  // ディレクトリ内のファイル一覧を取得（ファイル名のみ）
   async listFiles(prefix?: string): Promise<string[]> {
     try {
       const files: string[] = [];
-      // BLOB_PREFIX + prefix（prefixが空ならBLOB_PREFIXのみ）
       let fullPrefix = this.blobPrefix;
       if (prefix) {
         fullPrefix += prefix.replace(/^\/+/, '');
@@ -260,6 +283,51 @@ export class AzureStorageService {
       return files;
     } catch (error) {
       console.error('❌ Failed to list files:', error);
+      throw error;
+    }
+  }
+
+  // ディレクトリ内のファイル一覧を詳細情報付きで取得
+  async listFilesWithDetails(prefix?: string): Promise<Array<{
+    name: string;
+    properties: {
+      lastModified: Date;
+      contentLength: number;
+      contentType?: string;
+    };
+  }>> {
+    try {
+      const files: Array<{
+        name: string;
+        properties: {
+          lastModified: Date;
+          contentLength: number;
+          contentType?: string;
+        };
+      }> = [];
+      
+      let fullPrefix = this.blobPrefix;
+      if (prefix) {
+        fullPrefix += prefix.replace(/^\/+/, '');
+      }
+      const listOptions = fullPrefix ? { prefix: fullPrefix } : {};
+
+      for await (const blob of this.containerClient.listBlobsFlat(
+        listOptions
+      )) {
+        files.push({
+          name: blob.name,
+          properties: {
+            lastModified: blob.properties.lastModified || new Date(),
+            contentLength: blob.properties.contentLength || 0,
+            contentType: blob.properties.contentType,
+          },
+        });
+      }
+
+      return files;
+    } catch (error) {
+      console.error('❌ Failed to list files with details:', error);
       throw error;
     }
   }

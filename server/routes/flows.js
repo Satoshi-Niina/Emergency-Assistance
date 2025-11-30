@@ -103,8 +103,29 @@ router.post('/', async (_req, res) => {
             dataSource: 'file',
             ...req.body,
         };
-        // JSONファイルを作成
-        fs.writeFileSync(filePath, JSON.stringify(newFlowData, null, 2), 'utf-8');
+        // JSONファイルを保存
+        const isProduction = process.env.NODE_ENV === 'production';
+        if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+            // 本番環境: Azure BLOBに保存
+            try {
+                const { azureStorage } = await import('../azure-storage.js');
+                const tempPath = path.join(require('os').tmpdir(), path.basename(filePath));
+                fs.writeFileSync(tempPath, JSON.stringify(newFlowData, null, 2), 'utf-8');
+                const blobName = `troubleshooting/${path.basename(filePath)}`;
+                await azureStorage.uploadFile(tempPath, blobName);
+                fs.unlinkSync(tempPath);
+                console.log('✅ Azure BLOBにアップロード:', blobName);
+            }
+            catch (uploadError) {
+                console.error('⚠️ Azure BLOBアップロードエラー:', uploadError);
+                throw uploadError;
+            }
+        }
+        else {
+            // 開発環境: ローカルファイルに保存
+            fs.writeFileSync(filePath, JSON.stringify(newFlowData, null, 2), 'utf-8');
+            console.log('✅ ローカルファイルに保存（開発環境）:', filePath);
+        }
         console.log('✅ 新規応急処置フロー作成完了:', newId);
         res.status(201).json({
             success: true,

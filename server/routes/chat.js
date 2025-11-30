@@ -503,12 +503,30 @@ export function registerChatRoutes(app) {
                 console.log('troubleshooting フォルダを作成しました:', exportsDir);
             }
             // 画像を個別ファイルとして保存（環境変数または projectRoot）
-            const projectRoot = path.resolve(__dirname, '..', '..');
             const imagesDir = process.env.FAULT_HISTORY_IMAGES_DIR || path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
             if (!fs.existsSync(imagesDir)) {
                 fs.mkdirSync(imagesDir, { recursive: true });
                 console.log('画像保存ディレクトリを作成しました:', imagesDir);
             }
+            // Azure Storage初期化（本番環境のみ）
+            const isProduction = process.env.NODE_ENV === 'production';
+            let azureStorageService = null;
+            const azureImagePrefix = 'images/chat-exports/';
+            const azureJsonPrefix = 'exports/';
+            if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+                try {
+                    const azureModule = await import('../lib/azure-storage.js');
+                    azureStorageService = azureModule.azureStorage;
+                    if (azureStorageService?.initializeContainer) {
+                        await azureStorageService.initializeContainer();
+                    }
+                }
+                catch (azureError) {
+                    console.error('⚠️ Azure Storage 初期化エラー:', azureError);
+                    azureStorageService = null;
+                }
+            }
+            const shouldUseAzure = Boolean(isProduction && azureStorageService);
             // チャットメッセージから画像を抽出してファイルとして保存（先に処理）
             const savedImages = [];
             const cleanedChatData = JSON.parse(JSON.stringify(chatData)); // ディープコピー
@@ -550,25 +568,53 @@ export function registerChatRoutes(app) {
                         const imageTimestamp = Date.now();
                         const imageFileName = `chat_image_${chatId}_${imageTimestamp}.jpg`;
                         const imagePath = path.join(imagesDir, imageFileName);
-                        // 画像を120pxにリサイズして保存
+                        // 画像を120pxにリサイズ
+                        let imageBuffer;
                         try {
-                            const resizedBuffer = await sharp(buffer)
+                            imageBuffer = await sharp(buffer)
                                 .resize(120, 120, {
-                                fit: 'inside', // アスペクト比を維持しながら、120x120以内に収める
-                                withoutEnlargement: true, // 拡大しない
+                                fit: 'inside',
+                                withoutEnlargement: true,
                             })
                                 .jpeg({ quality: 85 })
                                 .toBuffer();
-                            fs.writeFileSync(imagePath, resizedBuffer);
-                            console.log('画像ファイルを保存しました（120pxにリサイズ）:', imagePath);
+                            console.log('画像をリサイズしました（120px）');
                         }
                         catch (resizeError) {
-                            // リサイズに失敗した場合は元の画像を保存
-                            console.warn('画像リサイズエラー、元の画像を保存:', resizeError);
-                            fs.writeFileSync(imagePath, buffer);
-                            console.log('画像ファイルを保存しました（リサイズなし）:', imagePath);
+                            console.warn('画像リサイズエラー、元の画像を使用:', resizeError);
+                            imageBuffer = buffer;
                         }
-                        const imageUrl = `/api/images/chat-exports/${imageFileName}`;
+                        let imageUrl;
+                        let storageKey;
+                        let storageType;
+                        // 本番環境ではAzure BLOBに直接アップロード
+                        if (isProduction && shouldUseAzure && azureStorageService) {
+                            const tempPath = path.join(require('os').tmpdir(), imageFileName);
+                            try {
+                                fs.writeFileSync(tempPath, imageBuffer);
+                                const blobName = `${azureImagePrefix}${imageFileName}`;
+                                await azureStorageService.uploadFile(tempPath, blobName);
+                                fs.unlinkSync(tempPath);
+                                imageUrl = azureStorageService.generateBlobSasUrl(blobName, 60 * 60 * 1000);
+                                storageKey = blobName;
+                                storageType = 'azure-blob';
+                                console.log('✅ Azure BLOBにアップロード:', blobName);
+                            }
+                            catch (uploadError) {
+                                if (fs.existsSync(tempPath))
+                                    fs.unlinkSync(tempPath);
+                                console.error('⚠️ Azure BLOBアップロードエラー:', uploadError);
+                                throw uploadError;
+                            }
+                        }
+                        else {
+                            // 開発環境のみローカル保存
+                            fs.writeFileSync(imagePath, imageBuffer);
+                            console.log('画像ファイルを保存しました（開発環境）:', imagePath);
+                            imageUrl = `/api/images/chat-exports/${imageFileName}`;
+                            storageKey = imageFileName;
+                            storageType = 'local-file';
+                        }
                         // 画像データをURLに置き換え
                         message.content = imageUrl;
                         savedImages.push({
@@ -577,8 +623,10 @@ export function registerChatRoutes(app) {
                             originalFileName: imageFileName,
                             path: imagePath,
                             url: imageUrl,
+                            storageKey,
+                            storageType,
                             mimeType: 'image/jpeg',
-                            fileSize: fs.existsSync(imagePath) ? fs.statSync(imagePath).size.toString() : '0',
+                            fileSize: imageBuffer.length.toString(),
                             description: `Chat image ${imageFileName}`,
                             createdAt: new Date().toISOString(),
                         });
@@ -689,18 +737,38 @@ export function registerChatRoutes(app) {
             };
             // エクスポートデータは既に画像データが除去されているので、そのまま使用
             const cleanedExportData = exportData;
-            // UTF-8エンコーディングでJSONファイルを保存（BOMなし）
+            // UTF-8エンコーディングでJSONファイルを保存
             const jsonString = JSON.stringify(cleanedExportData, null, 2);
-            try {
-                // UTF-8 BOMなしで保存
-                fs.writeFileSync(filePath, jsonString, 'utf8');
-                console.log('チャットデータを保存しました:', filePath);
-                console.log('保存されたファイル名:', fileName);
-                console.log('保存されたデータサイズ:', Buffer.byteLength(jsonString, 'utf8'), 'bytes');
+            if (isProduction && shouldUseAzure && azureStorageService) {
+                // 本番環境: Azure BLOBに直接アップロード
+                const tempPath = path.join(require('os').tmpdir(), fileName);
+                try {
+                    fs.writeFileSync(tempPath, jsonString, 'utf8');
+                    const blobName = `${azureJsonPrefix}${fileName}`;
+                    await azureStorageService.uploadFile(tempPath, blobName);
+                    fs.unlinkSync(tempPath);
+                    console.log('✅ JSONをBLOBにアップロード:', blobName);
+                    console.log('保存されたデータサイズ:', Buffer.byteLength(jsonString, 'utf8'), 'bytes');
+                }
+                catch (uploadError) {
+                    if (fs.existsSync(tempPath))
+                        fs.unlinkSync(tempPath);
+                    console.error('⚠️ BLOBアップロードエラー:', uploadError);
+                    throw uploadError;
+                }
             }
-            catch (writeError) {
-                console.error('ファイル保存エラー:', writeError);
-                throw writeError;
+            else {
+                // 開発環境: ローカルファイルに保存
+                try {
+                    fs.writeFileSync(filePath, jsonString, 'utf8');
+                    console.log('チャットデータを保存しました（開発環境）:', filePath);
+                    console.log('保存されたファイル名:', fileName);
+                    console.log('保存されたデータサイズ:', Buffer.byteLength(jsonString, 'utf8'), 'bytes');
+                }
+                catch (writeError) {
+                    console.error('ファイル保存エラー:', writeError);
+                    throw writeError;
+                }
             }
             // ファイルベースの保存のみ（DB保存は削除）
             console.log('チャットエクスポートがファイルに保存されました');
@@ -998,37 +1066,28 @@ export function registerChatRoutes(app) {
                         let imageUrl;
                         let storageKey;
                         let storageType;
-                        // 本番環境ではローカル保存をスキップし、Azure Storageに直接アップロード
+                        // 本番環境ではAzure BLOBに直接アップロード
                         if (isProduction && shouldUseAzure && azureStorageService) {
-                            // 一時ファイルに保存してからAzureにアップロード
                             const tempPath = path.join(require('os').tmpdir(), imageFileName);
-                            fs.writeFileSync(tempPath, imageBuffer);
                             try {
+                                fs.writeFileSync(tempPath, imageBuffer);
                                 const blobName = `${azureImagePrefix}${imageFileName}`;
                                 await azureStorageService.uploadFile(tempPath, blobName);
-                                fs.unlinkSync(tempPath); // 一時ファイル削除
-                                // SAS URL生成
-                                try {
-                                    imageUrl = azureStorageService.generateBlobSasUrl(blobName, 60 * 60 * 1000);
-                                    storageKey = blobName;
-                                    storageType = 'azure-blob';
-                                    console.log('✅ Azure Storageに直接アップロード:', blobName);
-                                }
-                                catch (sasError) {
-                                    console.error('⚠️ SASトークン生成エラー:', sasError);
-                                    imageUrl = `/api/images/chat-exports/${imageFileName}`;
-                                    storageKey = imageFileName;
-                                    storageType = 'local-file';
-                                }
+                                fs.unlinkSync(tempPath);
+                                imageUrl = azureStorageService.generateBlobSasUrl(blobName, 60 * 60 * 1000);
+                                storageKey = blobName;
+                                storageType = 'azure-blob';
+                                console.log('✅ Azure BLOBにアップロード:', blobName);
                             }
                             catch (uploadError) {
-                                fs.unlinkSync(tempPath); // エラー時も一時ファイル削除
-                                console.error('⚠️ Azure Storageアップロードエラー:', uploadError);
+                                if (fs.existsSync(tempPath))
+                                    fs.unlinkSync(tempPath);
+                                console.error('⚠️ Azure BLOBアップロードエラー:', uploadError);
                                 throw uploadError;
                             }
                         }
                         else {
-                            // 開発環境ではローカルに保存
+                            // 開発環境のみローカル保存
                             fs.writeFileSync(imagePath, imageBuffer);
                             console.log('画像ファイルを保存しました（開発環境）:', imagePath);
                             imageUrl = `/api/images/chat-exports/${imageFileName}`;

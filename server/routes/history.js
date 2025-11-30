@@ -382,8 +382,29 @@ router.put('/update-item/:chatId', async (req, res) => {
             lastUpdated: new Date().toISOString(),
             updatedBy: updatedBy || 'user',
         };
-        // 更新されたJSONファイルを保存（UTF-8 BOMなし）
-        fs.writeFileSync(filePath, JSON.stringify(updatedJsonData, null, 2), { encoding: 'utf8' });
+        // 更新されたJSONファイルを保存
+        const isProduction = process.env.NODE_ENV === 'production';
+        if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+            // 本番環境: Azure BLOBに保存
+            try {
+                const { azureStorage } = await import('../azure-storage.js');
+                const tempPath = path.join(require('os').tmpdir(), targetFile);
+                fs.writeFileSync(tempPath, JSON.stringify(updatedJsonData, null, 2), 'utf8');
+                const blobName = `exports/${targetFile}`;
+                await azureStorage.uploadFile(tempPath, blobName);
+                fs.unlinkSync(tempPath);
+                console.log('✅ Azure BLOBにアップロード:', blobName);
+            }
+            catch (uploadError) {
+                console.error('⚠️ Azure BLOBアップロードエラー:', uploadError);
+                throw uploadError;
+            }
+        }
+        else {
+            // 開発環境: ローカルファイルに保存
+            fs.writeFileSync(filePath, JSON.stringify(updatedJsonData, null, 2), { encoding: 'utf8' });
+            console.log('✅ ローカルファイルに保存（開発環境）:', filePath);
+        }
         console.log('✅ JSONファイル更新完了:', {
             chatId,
             fileName: targetFile,
@@ -1226,8 +1247,29 @@ router.put('/update-item/:id', async (_req, res) => {
             backupPath: backupPath || 'バックアップが無効化されています',
             success: !!backupPath,
         });
-        // ファイルに上書き保存
-        fs.writeFileSync(targetFile, JSON.stringify(updatedJsonData, null, 2), 'utf8');
+        // ファイルに保存
+        const isProduction = process.env.NODE_ENV === 'production';
+        if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+            // 本番環境: Azure BLOBに保存
+            try {
+                const { azureStorage } = await import('../azure-storage.js');
+                const tempPath = path.join(require('os').tmpdir(), path.basename(targetFile));
+                fs.writeFileSync(tempPath, JSON.stringify(updatedJsonData, null, 2), 'utf8');
+                const blobName = `exports/${path.basename(targetFile)}`;
+                await azureStorage.uploadFile(tempPath, blobName);
+                fs.unlinkSync(tempPath);
+                console.log('✅ Azure BLOBにアップロード:', blobName);
+            }
+            catch (uploadError) {
+                console.error('⚠️ Azure BLOBアップロードエラー:', uploadError);
+                throw uploadError;
+            }
+        }
+        else {
+            // 開発環境: ローカルファイルに保存
+            fs.writeFileSync(targetFile, JSON.stringify(updatedJsonData, null, 2), 'utf8');
+            console.log('✅ ローカルファイルに保存（開発環境）:', targetFile);
+        }
         console.log('✅ 履歴ファイル更新完了:', targetFile);
         console.log('📊 更新されたフィールド:', Object.keys(updatedData));
         res.json({
@@ -1850,11 +1892,31 @@ router.post('/import-export', async (req, res) => {
                 console.warn(`画像の保存に失敗しました: ${imageUrl}`, imageError);
             }
         }
-        // JSONファイルをdocumentsフォルダに保存（元データをそのまま）
+        // JSONファイルを保存
         const destJsonFileName = `${Date.now()}_${fileName}`;
         const destJsonPath = path.join(documentsDir, destJsonFileName);
-        fs.writeFileSync(destJsonPath, jsonContent, 'utf8');
-        console.log(`JSONファイルを保存しました: ${destJsonFileName}`);
+        const isProduction = process.env.NODE_ENV === 'production';
+        if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+            // 本番環境: Azure BLOBに保存
+            try {
+                const { azureStorage } = await import('../azure-storage.js');
+                const tempPath = path.join(require('os').tmpdir(), destJsonFileName);
+                fs.writeFileSync(tempPath, jsonContent, 'utf8');
+                const blobName = `documents/${destJsonFileName}`;
+                await azureStorage.uploadFile(tempPath, blobName);
+                fs.unlinkSync(tempPath);
+                console.log(`✅ JSONをAzure BLOBにアップロード: ${destJsonFileName}`);
+            }
+            catch (uploadError) {
+                console.error('⚠️ Azure BLOBアップロードエラー:', uploadError);
+                throw uploadError;
+            }
+        }
+        else {
+            // 開発環境: ローカルファイルに保存
+            fs.writeFileSync(destJsonPath, jsonContent, 'utf8');
+            console.log(`JSONファイルを保存しました（開発環境）: ${destJsonFileName}`);
+        }
         console.log(`画像ファイル数: ${savedImagePaths.length}`);
         res.json({
             success: true,
