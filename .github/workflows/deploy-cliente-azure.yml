@@ -117,4 +117,4 @@ jobs:
           output_location: "."
           skip_app_build: true
 
-# Trigger: 2025-11-28 - Force redeploy with latest client code
+# Trigger: 2025-11-30 15:30 - Deploy with server environment sync

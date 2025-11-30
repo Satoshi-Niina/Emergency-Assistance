@@ -1,690 +1,198 @@
-name: Deploy Server (Docker Container)
+name: Deploy Server (Azure App Service)
 
 on:
   push:
     branches:
       - main
+    paths:
+      - 'server/**'
+      - 'shared/**'
+      - '.github/workflows/deploy-server-AppCervce.yml'
   workflow_dispatch:
-
-concurrency:
-  group: 'server-docker-deploy-${{ github.ref }}'
-  cancel-in-progress: true
-
-env:
-  IMAGE_NAME: emergency-assistance
-  NODE_VERSION: '20'
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    name: Build and Deploy Server to Azure App Service
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
-
-    - name: Verify GitHub Repository Files
-      run: |
-        echo "🔍 Verifying GitHub repository files before Docker build..."
-        echo "📋 Commit SHA: ${{ github.sha }}"
-        echo "📋 Branch: ${{ github.ref }}"
-        echo ""
-
-        # 重要なファイルの存在確認
-        CRITICAL_FILES=(
-          "server/azure-server.mjs"
-          "Dockerfile"
-        )
-
-        for file in "${CRITICAL_FILES[@]}"; do
-          if [ -f "$file" ]; then
-            FILE_SIZE=$(wc -c < "$file" 2>/dev/null || echo "0")
-            LAST_MODIFIED=$(git log -1 --format="%ai" -- "$file" 2>/dev/null || echo "unknown")
-            echo "✅ $file exists (size: $FILE_SIZE bytes, last modified: $LAST_MODIFIED)"
-          else
-            echo "❌ ERROR: $file not found in repository!"
-            exit 1
-          fi
-        done
-
-        # サーバーファイルの内容確認
-        echo ""
-        echo "🔍 Verifying server/azure-server.mjs content..."
-        if grep -q "getBlobServiceClient" server/azure-server.mjs; then
-          echo "✅ getBlobServiceClient function found"
-        else
-          echo "❌ ERROR: getBlobServiceClient function not found!"
-          exit 1
-        fi
-
-        if grep -q "app.get('/api/knowledge'" server/azure-server.mjs; then
-          echo "✅ /api/knowledge route found"
-        else
-          echo "❌ ERROR: /api/knowledge route not found!"
-          exit 1
-        fi
-
-        if grep -q "Testing BLOB connection" server/azure-server.mjs; then
-          echo "✅ BLOB connection test found"
-        else
-          echo "⚠️ WARNING: BLOB connection test not found"
-        fi
-
-        echo ""
-        echo "✅ All critical files verified - Docker build will use these files"
-
-    - name: Set Environment Variables
-      id: configure-env
-      run: |
-        ENVIRONMENT="production"
-        WEBAPP_NAME="${{ secrets.WEBAPP_NAME }}"
-        RESOURCE_GROUP="${{ secrets.AZURE_RESOURCE_GROUP }}"
-        APP_URL="${{ secrets.APP_URL }}"
-        STATIC_WEB_APP_URL="${{ secrets.STATIC_WEB_APP_URL }}"
-
-        export ENVIRONMENT WEBAPP_NAME RESOURCE_GROUP APP_URL STATIC_WEB_APP_URL
-
-        {
-          echo "ENVIRONMENT=$ENVIRONMENT"
-          echo "WEBAPP_NAME=$WEBAPP_NAME"
-          echo "RESOURCE_GROUP=$RESOURCE_GROUP"
-          echo "APP_URL=$APP_URL"
-          echo "STATIC_WEB_APP_URL=$STATIC_WEB_APP_URL"
-        } >> "$GITHUB_ENV"
-
-        {
-          echo "environment=$ENVIRONMENT"
-          echo "webapp-name=$WEBAPP_NAME"
-          echo "resource-group=$RESOURCE_GROUP"
-          echo "app-url=$APP_URL"
-          echo "static-web-app-url=$STATIC_WEB_APP_URL"
-        } >> "$GITHUB_OUTPUT"
-
-        echo "✅ Environment: $ENVIRONMENT"
-        echo "🔗 Backend: $APP_URL"
-        echo "🔗 Frontend: $STATIC_WEB_APP_URL"
-
-    - name: Validate Required Secrets
-      run: |
-        echo "🔍 Validating deployment secrets..."
-
-        # Azure Resource Group
-        if [ -z "$RESOURCE_GROUP" ]; then
-          echo "❌ AZURE_RESOURCE_GROUP secret is missing"
-          exit 1
-        fi
-
-        # Application secrets
-        if [ -z "${{ secrets.DATABASE_URL }}" ]; then
-          echo "❌ DATABASE_URL secret is missing"
-          exit 1
-        fi
-
-        echo "✅ All required secrets validated"
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Azure Login
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-    - name: Configure App Service Environment Variables
-      run: |
-        echo "🔧 Configuring App Service environment variables..."
-
-        # DATABASE_URLの検証（長さのみ、内容は表示しない）
-        DB_URL="${{ secrets.DATABASE_URL }}"
-        if [ -z "$DB_URL" ]; then
-          echo "❌ ERROR: DATABASE_URL secret is empty!"
-          exit 1
-        fi
-        DB_URL_LENGTH=${#DB_URL}
-        echo "✅ DATABASE_URL length: $DB_URL_LENGTH characters"
-
-        # Azure CLIのappsettings setコマンドでは、各設定を個別に設定する方が安全
-        echo "🔧 Setting environment variables individually..."
-
-        az webapp config appsettings set \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --settings \
-            NODE_ENV=$ENVIRONMENT \
-            PORT=8080 \
-            PG_SSL=require \
-            STORAGE_MODE=hybrid \
-            KNOWLEDGE_BASE_PATH=/app/knowledge-base \
-            LOCAL_EXPORT_DIR=/app/knowledge-base/exports \
-            FAULT_HISTORY_IMAGES_DIR=/app/knowledge-base/images/chat-exports \
-            DATABASE_BACKUP=false \
-            WEBSITES_PORT=8080 \
-            WEBSITES_CONTAINER_START_TIME_LIMIT=600 \
-            WEBSITES_ENABLE_APP_SERVICE_STORAGE=false \
-          --output none
-
-        # 機密情報は個別に設定（引用符で囲む）
-        az webapp config appsettings set \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --settings \
-            DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-            SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
-            JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-            OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-            AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
-            AZURE_STORAGE_CONTAINER_NAME="${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}" \
-            AZURE_STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
-            APPLICATIONINSIGHTS_CONNECTION_STRING="${{ secrets.APPLICATIONINSIGHTS_CONNECTION_STRING }}" \
-            ApplicationInsightsAgent_EXTENSION_VERSION="${{ secrets.ApplicationInsightsAgent_EXTENSION_VERSION }}" \
-            XDT_MicrosoftApplicationInsights_Mode="${{ secrets.XDT_MicrosoftApplicationInsights_Mode }}" \
-          --output none
-
-        # フロントエンドURL設定（引用符なしで設定）
-        az webapp config appsettings set \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --settings \
-            FRONTEND_URL=$STATIC_WEB_APP_URL \
-            STATIC_WEB_APP_URL=$STATIC_WEB_APP_URL \
-            CORS_ALLOW_ORIGINS=$STATIC_WEB_APP_URL,http://localhost:5173,http://localhost:8080 \
-          --output none
-
-        # Azure Container Registry認証設定（Docker image pull用）
-        echo "🔐 Configuring ACR authentication..."
-        az webapp config appsettings set \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --settings \
-            DOCKER_REGISTRY_SERVER_URL="https://${{ secrets.ACR_LOGIN_SERVER }}" \
-            DOCKER_REGISTRY_SERVER_USERNAME="${{ secrets.ACR_USERNAME }}" \
-            DOCKER_REGISTRY_SERVER_PASSWORD="${{ secrets.ACR_PASSWORD }}" \
-          --output none
-        echo "✅ ACR authentication configured"
-
-        # コンテナ名設定（上記の機密情報セクションで設定済みのためスキップ）
-        echo "✅ AZURE_STORAGE_CONTAINER_NAME already set in credentials section"
-
-        # AZURE_STORAGE_ACCOUNT_NAME（上記の機密情報セクションで設定済みのためスキップ）
-        echo "✅ AZURE_STORAGE_ACCOUNT_NAME already set in credentials section"
-
-        # BLOB_PREFIXが設定されている場合は追加
-        if [ -n "${{ secrets.BLOB_PREFIX }}" ]; then
-          az webapp config appsettings set \
-            --resource-group "$RESOURCE_GROUP" \
-            --name "$WEBAPP_NAME" \
-            --settings \
-              BLOB_PREFIX="${{ secrets.BLOB_PREFIX }}" \
-            --output none
-          echo "✅ BLOB_PREFIX set"
-        fi
-
-        echo "✅ Environment variables configured"
-
-        # 設定された環境変数を確認（機密情報はマスク）
-        echo ""
-        echo "🔍 Verifying configured environment variables..."
-        az webapp config appsettings list \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --query "[?name=='AZURE_STORAGE_CONNECTION_STRING' || name=='AZURE_STORAGE_ACCOUNT_NAME' || name=='AZURE_STORAGE_CONTAINER_NAME' || name=='BLOB_PREFIX'].{name:name, value:value}" \
-          --output table || echo "⚠️ Could not verify environment variables"
-
-        # 環境変数の存在確認
-        STORAGE_CONN_STR=$(az webapp config appsettings list \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --query "[?name=='AZURE_STORAGE_CONNECTION_STRING'].value" \
-          --output tsv 2>/dev/null || echo "")
-
-        if [ -z "$STORAGE_CONN_STR" ]; then
-          echo "❌ ERROR: AZURE_STORAGE_CONNECTION_STRING is not set in App Service!"
-          exit 1
-        else
-          CONN_STR_LENGTH=${#STORAGE_CONN_STR}
-          echo "✅ AZURE_STORAGE_CONNECTION_STRING is set (length: $CONN_STR_LENGTH)"
-        fi
-
-        STORAGE_ACCOUNT=$(az webapp config appsettings list \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --query "[?name=='AZURE_STORAGE_ACCOUNT_NAME'].value" \
-          --output tsv 2>/dev/null || echo "")
-
-        if [ -n "$STORAGE_ACCOUNT" ]; then
-          echo "✅ AZURE_STORAGE_ACCOUNT_NAME is set: $STORAGE_ACCOUNT"
-        else
-          echo "⚠️ AZURE_STORAGE_ACCOUNT_NAME is not set"
-        fi
-
-        STORAGE_CONTAINER=$(az webapp config appsettings list \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --query "[?name=='AZURE_STORAGE_CONTAINER_NAME'].value" \
-          --output tsv 2>/dev/null || echo "")
-
-        if [ -n "$STORAGE_CONTAINER" ]; then
-          echo "✅ AZURE_STORAGE_CONTAINER_NAME is set: $STORAGE_CONTAINER"
-        else
-          echo "⚠️ AZURE_STORAGE_CONTAINER_NAME is not set"
-        fi
-
-    - name: Clean App Service Configuration
-      run: |
-        echo "🧹 Cleaning App Service configuration for fresh deployment..."
-
-        # 進行中のデプロイをチェック
-        echo "🔍 Checking for ongoing deployments..."
-        ONGOING_DEPLOYMENT=$(az webapp deployment list \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --query "[?provisioningState=='InProgress' || provisioningState=='Running'].id" \
-          --output tsv 2>/dev/null || echo "")
-
-        if [ -n "$ONGOING_DEPLOYMENT" ]; then
-          echo "⚠️ WARNING: Ongoing deployment detected: $ONGOING_DEPLOYMENT"
-          echo "⏳ Waiting 30 seconds for deployment to complete..."
-          sleep 30
-        else
-          echo "✅ No ongoing deployments"
-        fi
-
-        # WEBSITE_RUN_FROM_PACKAGE設定の確認と削除
-        echo "🔍 Checking WEBSITE_RUN_FROM_PACKAGE setting..."
-        CURRENT_SETTING=$(az webapp config appsettings list \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --query "[?name=='WEBSITE_RUN_FROM_PACKAGE'].value" \
-          --output tsv 2>/dev/null || echo "")
-
-        if [ -n "$CURRENT_SETTING" ]; then
-          echo "🔧 WEBSITE_RUN_FROM_PACKAGE found, removing..."
-          az webapp config appsettings delete \
-            --resource-group "$RESOURCE_GROUP" \
-            --name "$WEBAPP_NAME" \
-            --setting-names "WEBSITE_RUN_FROM_PACKAGE" \
-            --output none
-
-          # 削除を確認
-          VERIFY_SETTING=$(az webapp config appsettings list \
-            --resource-group "$RESOURCE_GROUP" \
-            --name "$WEBAPP_NAME" \
-            --query "[?name=='WEBSITE_RUN_FROM_PACKAGE'].value" \
-            --output tsv 2>/dev/null || echo "")
-
-          if [ -z "$VERIFY_SETTING" ]; then
-            echo "✅ WEBSITE_RUN_FROM_PACKAGE successfully removed"
-          else
-            echo "❌ ERROR: Failed to remove WEBSITE_RUN_FROM_PACKAGE"
-            exit 1
-          fi
-        else
-          echo "✅ WEBSITE_RUN_FROM_PACKAGE not set (expected)"
-        fi
-
-        # App Service を停止
-        echo "🛑 Stopping App Service..."
-        az webapp stop \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME"
-
-        # 停止完了を待つ
-        echo "⏳ Waiting for App Service to stop completely..."
-        sleep 10
-
-        # 停止を確認
-        WEBAPP_STATE=$(az webapp show \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --query "state" \
-          --output tsv)
-
-        echo "📊 App Service State: $WEBAPP_STATE"
-
-        # デプロイメント履歴を完全クリア
-        echo "🧹 Clearing deployment history..."
-        az rest \
-          --method delete \
-          --uri "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.Web/sites/$WEBAPP_NAME/deployments?api-version=2022-03-01" \
-          2>/dev/null || echo "⚠️ Could not clear deployment history"
-
-        # ローカルキャッシュをクリア
-        echo "🧹 Clearing local cache..."
-        az webapp config appsettings set \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --settings WEBSITE_LOCAL_CACHE_OPTION=Never \
-          --output none
-
-        echo "✅ Cache and deployment history cleared"
-
-    - name: Verify Clean State Before Deployment
-      run: |
-        echo "🔍 Verifying App Service is ready for deployment..."
-
-        # WEBSITE_RUN_FROM_PACKAGE が削除されていることを確認
-        SETTING_CHECK=$(az webapp config appsettings list \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --query "[?name=='WEBSITE_RUN_FROM_PACKAGE'].value" \
-          --output tsv 2>/dev/null || echo "")
-
-        if [ -n "$SETTING_CHECK" ]; then
-          echo "❌ ERROR: WEBSITE_RUN_FROM_PACKAGE still exists!"
-          echo "⚠️ This should have been removed in the previous step"
-          exit 1
-        fi
-        echo "✅ WEBSITE_RUN_FROM_PACKAGE confirmed removed"
-
-        # 進行中のデプロイがないことを確認
-        ONGOING=$(az webapp deployment list \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --query "[?provisioningState=='InProgress' || provisioningState=='Running'].id" \
-          --output tsv 2>/dev/null || echo "")
-
-        if [ -n "$ONGOING" ]; then
-          echo "❌ ERROR: Deployment still in progress: $ONGOING"
-          echo "⚠️ Cannot proceed with new deployment"
-          exit 1
-        fi
-        echo "✅ No ongoing deployments"
-
-        # App Service の状態を確認
-        STATE=$(az webapp show \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --query "state" \
-          --output tsv)
-
-        echo "📊 App Service State: $STATE"
-        echo "✅ App Service is ready for deployment"
-
-    - name: Deploy Docker Container to App Service
-      run: |
-        echo "🚀 Deploying server application to Azure App Service..."
-
-        # デプロイパッケージの作成
-        echo "📦 Creating deployment package..."
-        mkdir -p /tmp/deploy
-        cd /tmp/deploy
-
-        # server ディレクトリの内容をルートにコピー（App Service が server フォルダをスキップするため）
-        echo "📂 Preparing application files..."
-        cp -r "$GITHUB_WORKSPACE/server/"* .
-
-        # server/package*.json が存在することを確認
-        if [ ! -f "package.json" ]; then
-          echo "❌ ERROR: package.json not found after copying server files!"
-          ls -la
-          exit 1
-        fi
-
-        # node_modulesを削除（存在する場合、ZIPエラーを防ぐため）
-        if [ -d "node_modules" ]; then
-          echo "🧹 Removing existing node_modules..."
-          rm -rf node_modules
-        fi
-
-        # .zipignoreを作成してnode_modulesを除外
-        cat > .zipignore << 'ZIPIGNORE'
-        node_modules/
-        .git/
-        .github/
-        *.log
-        .DS_Store
-        ZIPIGNORE
-
-        echo "✅ Application files prepared (without node_modules)"
-        echo "📋 Files in deploy directory:"
-        ls -la | head -20
-
-        # web.config は server/web.config を使用するため、ここでは作成しない
-        echo "✅ Using existing web.config from server directory"
-
-        # デプロイバージョン確認用のファイルを作成
-        echo "📝 Generating version.txt..."
-        echo "Commit: ${{ github.sha }}" > version.txt
-        echo "Build Time: $(date -u)" >> version.txt
-        echo "✅ version.txt created"
-
-        # ZIP ファイルを作成（node_modulesを除外）
-        echo "📦 Creating ZIP archive (excluding node_modules)..."
-        zip -r -q /tmp/deploy.zip . -x "node_modules/*" "node_modules/**/*" ".git/*" ".github/*" "*.log"
-        DEPLOY_SIZE=$(du -h /tmp/deploy.zip | cut -f1)
-        echo "✅ ZIP created (${DEPLOY_SIZE})"
-
-        # App Service にデプロイ（非同期モード + クリーンデプロイ）
-        echo "🚀 Uploading to App Service..."
-        echo "⏱️ Large deployments may take several minutes..."
-
-        # デプロイ設定を完全リセット
-        echo "🔧 Configuring deployment settings..."
-        az webapp config appsettings set \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --settings \
-            SCM_DO_BUILD_DURING_DEPLOYMENT=true \
-            WEBSITE_NODE_DEFAULT_VERSION=20-lts \
-            WEBSITE_RUN_FROM_PACKAGE=0 \
-            WEBSITE_USE_ZIP=0 \
-          --output none
-
-        # デプロイ実行（バックグラウンド継続を許可）
-        echo "🚀 Deploying via Azure CLI..."
-        
-        # タイムアウトなしでデプロイ（&でバックグラウンド実行）
-        (az webapp deployment source config-zip \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --src /tmp/deploy.zip 2>&1 | tee /tmp/deploy_log.txt) &
-        
-        DEPLOY_PID=$!
-        echo "✅ Deployment started (PID: $DEPLOY_PID)"
-        
-        # 2分間だけ待機
-        echo "⏳ Waiting 2 minutes for initial deployment..."
-        sleep 120
-        
-        # プロセスがまだ実行中か確認
-        if kill -0 $DEPLOY_PID 2>/dev/null; then
-          echo "⏳ Deployment still in progress, continuing in background..."
-          echo "📋 Last log lines:"
-          tail -10 /tmp/deploy_log.txt || true
-        else
-          wait $DEPLOY_PID
-          EXIT_CODE=$?
-          if [ $EXIT_CODE -eq 0 ]; then
-            echo "✅ Deployment completed successfully"
-          else
-            echo "⚠️ Deployment exited with code $EXIT_CODE"
-            tail -20 /tmp/deploy_log.txt || true
-          fi
-        fi
-        
-        echo "📍 Check status at: https://${WEBAPP_NAME}.scm.japanwest-01.azurewebsites.net/api/deployments/latest"
-
-        # 短時間の待機のみ（バックグラウンドで継続）
-        echo "⏳ Waiting 30 seconds for deployment to start..."
-        sleep 30
-        
-        echo "✅ Deployment in progress"
-        echo "📋 The deployment will continue in background on Azure"
-        echo "📋 It may take 10-15 minutes to complete"
-        echo "📋 Monitor at: https://${WEBAPP_NAME}.scm.japanwest-01.azurewebsites.net/api/deployments/latest"
-
-    - name: Restart App Service
-      run: |
-        echo "⏳ Waiting for deployment to settle (60 seconds)..."
-        sleep 60
-        
-        echo "🔄 Restarting App Service..."
-        az webapp restart \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME"
-
-        echo "✅ App Service restart initiated"
-        echo "⏳ Waiting for startup (60 seconds)..."
-        sleep 60
-
-    - name: Configure Node.js Runtime for App Service
-      run: |
-        echo "🔧 Configuring Node.js runtime..."
-
-        # Docker コンテナデプロイの場合、ランタイム設定は不要
-        # ランタイムバージョンはDockerfileで指定済み
-        echo "✅ Using Docker container runtime (configured in Dockerfile)"
-
-    - name: Check App Service Deployment Status
-      run: |
-        echo "🔍 Checking App Service deployment status..."
-
-        # App Service の状態を確認
-        WEBAPP_STATE=$(az webapp show \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --query "state" \
-          --output tsv)
-
-        echo "🔄 App Service State: $WEBAPP_STATE"
-
-        # Dockerコンテナ設定を確認
-        echo "🐳 Docker Container Configuration:"
-        az webapp config container show \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          --query "{image: '[0].value', registryUrl: '[1].value'}" \
-          --output json || echo "⚠️  Could not retrieve container configuration"
-
-        # App Serviceが稼働中か確認
-        if [ "$WEBAPP_STATE" = "Running" ]; then
-          echo "✅ App Service is running"
-        else
-          echo "⚠️  App Service state: $WEBAPP_STATE"
-        fi
-
-    - name: View App Service Logs
-      continue-on-error: true
-      run: |
-        echo "📋 Fetching App Service logs..."
-
-        # 簡単なログ取得を試みる
-        az webapp log show \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$WEBAPP_NAME" \
-          || echo "⚠️ Could not fetch logs via az command"
-
-        # 代替方法: Kudu API を通じたログ取得情報を表示
-        echo ""
-        echo "📌 To view detailed logs, visit Kudu console at:"
-        echo "https://$WEBAPP_NAME-gwgscxcca5cahyb9.scm.japanwest-01.azurewebsites.net/api/logs/docker"
-
-    - name: Wait for Container Startup
-      run: |
-        echo "⏳ Waiting for application to start (60 seconds)..."
-        sleep 60
-
-    - name: Seed Database (Production Only)
-      if: github.ref == 'refs/heads/main'
-      run: |
-        echo "🌱 Seeding database with admin user..."
-
-        # PostgreSQL クライアントをインストール
-        sudo apt-get update -qq
-        sudo apt-get install -y postgresql-client > /dev/null 2>&1
-
-        # DATABASE_URLから接続情報を抽出して実行
-        echo "Executing seed script..."
-        if psql "${{ secrets.DATABASE_URL }}" -f scripts/seed-admin-user.sql 2>&1 | grep -q "シード完了"; then
-          echo "✅ Database seeded successfully"
-        else
-          echo "⚠️  Seed script executed (check logs for details)"
-        fi
-
-    - name: Health Check
-      continue-on-error: true
-      run: |
-        echo "🏥 Verifying deployment health..."
-
-        MAX_RETRIES=15
-        RETRY_INTERVAL=15
-
-        for attempt in $(seq 1 $MAX_RETRIES); do
-          echo "🔍 Health check attempt $attempt/$MAX_RETRIES..."
-
-          # シンプルな /health エンドポイントをチェック（エラーメッセージも表示）
-          HTTP_CODE=$(curl -s -o /tmp/health_response.txt -w "%{http_code}" --max-time 15 "$APP_URL/health" 2>&1 | tail -n 1 || echo "000")
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            server/package-lock.json
+            shared/package-lock.json
+
+      - name: Install dependencies (shared)
+        run: |
+          cd shared
+          npm ci
+
+      - name: Build shared module
+        run: |
+          cd shared
+          npm run build
+
+      - name: Install dependencies (server)
+        run: |
+          cd server
+          npm ci
+
+      - name: Build server
+        run: |
+          cd server
+          npm run build
+          echo "✅ Server build completed"
+
+      - name: Prepare deployment package
+        run: |
+          mkdir -p deployment-package
           
-          # curlのエラーも確認
-          if [ -f /tmp/health_response.txt ]; then
-            RESPONSE_BODY=$(cat /tmp/health_response.txt)
-            echo "📋 Response body: $RESPONSE_BODY"
+          # サーバーファイルをコピー
+          cp -r server/dist deployment-package/
+          cp -r server/node_modules deployment-package/
+          cp server/package.json deployment-package/
+          
+          # sharedモジュールをコピー
+          mkdir -p deployment-package/shared
+          cp -r shared/dist deployment-package/shared/
+          cp shared/package.json deployment-package/shared/
+          
+          # knowledge-base ディレクトリ構造を作成（空でもOK）
+          mkdir -p deployment-package/knowledge-base/exports
+          mkdir -p deployment-package/knowledge-base/images/chat-exports
+          mkdir -p deployment-package/knowledge-base/images/emergency-flows
+          mkdir -p deployment-package/knowledge-base/troubleshooting
+          
+          echo "✅ Deployment package prepared"
+
+      - name: Create web.config for Azure App Service
+        run: |
+          cat > deployment-package/web.config << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <system.webServer>
+              <handlers>
+                <add name="iisnode" path="dist/azure-server.mjs" verb="*" modules="iisnode"/>
+              </handlers>
+              <rewrite>
+                <rules>
+                  <rule name="NodeInspector" patternSyntax="ECMAScript" stopProcessing="true">
+                    <match url="^dist/azure-server.mjs\/debug[\/]?" />
+                  </rule>
+                  <rule name="StaticContent">
+                    <action type="Rewrite" url="public{REQUEST_URI}"/>
+                  </rule>
+                  <rule name="DynamicContent">
+                    <conditions>
+                      <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="True"/>
+                    </conditions>
+                    <action type="Rewrite" url="dist/azure-server.mjs"/>
+                  </rule>
+                </rules>
+              </rewrite>
+              <security>
+                <requestFiltering>
+                  <hiddenSegments>
+                    <remove segment="bin"/>
+                  </hiddenSegments>
+                </requestFiltering>
+              </security>
+              <httpErrors existingResponse="PassThrough" />
+            </system.webServer>
+          </configuration>
+          EOF
+          echo "✅ web.config created"
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: deployment-package
+
+      - name: Clear existing environment variables on Azure App Service
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            echo "🧹 Clearing existing app settings..."
+            
+            # 現在の設定を取得（Azureシステム設定を除く）
+            CURRENT_SETTINGS=$(az webapp config appsettings list \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+              --query "[?!starts_with(name, 'WEBSITE_') && !starts_with(name, 'SCM_') && !starts_with(name, 'APPLICATIONINSIGHTS_') && name != 'ApplicationInsightsAgent_EXTENSION_VERSION'].name" \
+              -o tsv)
+            
+            # カスタム環境変数を削除
+            if [ -n "$CURRENT_SETTINGS" ]; then
+              for setting in $CURRENT_SETTINGS; do
+                echo "  Removing: $setting"
+                az webapp config appsettings delete \
+                  --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+                  --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+                  --setting-names "$setting"
+              done
+              echo "✅ Existing app settings cleared"
+            else
+              echo "ℹ️ No custom app settings to clear"
+            fi
+
+      - name: Set environment variables on Azure App Service
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            echo "⚙️ Setting new app settings..."
+            
+            az webapp config appsettings set \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+              --settings \
+                NODE_ENV=production \
+                DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+                PG_SSL="${{ secrets.PG_SSL }}" \
+                SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
+                JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+                FRONTEND_URL="${{ secrets.FRONTEND_URL }}" \
+                STATIC_WEB_APP_URL="${{ secrets.STATIC_WEB_APP_URL }}" \
+                AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
+                AZURE_STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
+                AZURE_STORAGE_ACCOUNT_KEY="${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}" \
+                AZURE_STORAGE_CONTAINER_NAME=knowledge \
+                BLOB_PREFIX=knowledge-base/ \
+                OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+                OPENAI_MAX_TOKENS=2000 \
+                DEBUG_MODE=false \
+                VERBOSE_LOGGING=false \
+                SCM_DO_BUILD_DURING_DEPLOYMENT=false \
+                WEBSITE_NODE_DEFAULT_VERSION=20-lts
+            
+            echo "✅ App settings configured successfully"
+
+      - name: Verify deployment
+        run: |
+          echo "✅ Deployment completed"
+          echo "🔍 Waiting for app to start..."
+          sleep 30
+          
+          # ヘルスチェック
+          HEALTH_URL="https://${{ secrets.AZURE_WEBAPP_NAME }}.azurewebsites.net/health"
+          echo "🏥 Checking health endpoint: $HEALTH_URL"
+          
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || echo "000")
+          
+          if [ "$RESPONSE" = "200" ]; then
+            echo "✅ Health check passed (HTTP $RESPONSE)"
+          else
+            echo "⚠️ Health check returned HTTP $RESPONSE"
+            echo "   This may be normal if the app is still starting up"
           fi
 
-          if [ "$HTTP_CODE" = "200" ]; then
-            echo "✅ Health check passed (HTTP $HTTP_CODE)"
-
-            # 詳細なヘルスチェックも実行
-            echo "📊 Fetching detailed health info..."
-            curl -s "$APP_URL/api/health/detailed" | head -n 20 || echo "⚠️ Detailed health check failed, but basic health check passed"
-
-            echo "🎉 Deployment successful and server is responding"
-            exit 0
-          fi
-
-          echo "⏳ Server not ready yet (HTTP $HTTP_CODE), retrying in ${RETRY_INTERVAL}s..."
-          [ $attempt -lt $MAX_RETRIES ] && sleep $RETRY_INTERVAL
-        done
-
-        echo "⚠️ Health check timeout after $MAX_RETRIES attempts (total wait time: $((MAX_RETRIES * RETRY_INTERVAL))s)"
-        echo "📋 This is a warning, not a failure. The deployment may still be successful."
-        echo "📋 Check logs: az webapp log tail --name $WEBAPP_NAME --resource-group $RESOURCE_GROUP"
-        echo "📋 Or visit: $APP_URL/health"
-        exit 1
-
-    - name: Deployment Summary
-      if: always()
-      run: |
-        echo "## 🐳 Docker Deployment Summary" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
-        echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
-        echo "| Environment | ${ENVIRONMENT} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Docker Image | \`${{ env.IMAGE_NAME }}:${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
-        echo "| Web App | ${WEBAPP_NAME} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Backend URL | ${APP_URL} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Frontend URL | ${STATIC_WEB_APP_URL} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-
-        if [ "${{ job.status }}" = "success" ]; then
-          echo "### ✅ Deployment Successful" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Verification Commands:**" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "# Health check" >> $GITHUB_STEP_SUMMARY
-          echo "curl ${APP_URL}/health" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "# Detailed health" >> $GITHUB_STEP_SUMMARY
-          echo "curl ${APP_URL}/api/health/detailed | jq" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "# CORS test from frontend" >> $GITHUB_STEP_SUMMARY
-          echo "curl -i -X OPTIONS ${APP_URL}/api/auth/login \\" >> $GITHUB_STEP_SUMMARY
-          echo "  -H \"Origin: ${STATIC_WEB_APP_URL}\" \\" >> $GITHUB_STEP_SUMMARY
-          echo '  -H "Access-Control-Request-Method: POST"' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "# View logs" >> $GITHUB_STEP_SUMMARY
-          echo "az webapp log tail --name ${WEBAPP_NAME} --resource-group ${RESOURCE_GROUP}" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-        else
-          echo "### ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Troubleshooting:**" >> $GITHUB_STEP_SUMMARY
-          echo "1. Check workflow logs above" >> $GITHUB_STEP_SUMMARY
-          echo "2. View container logs: \`az webapp log tail --name ${WEBAPP_NAME}\`" >> $GITHUB_STEP_SUMMARY
-          echo "3. Check App Service status: \`az webapp show --name ${WEBAPP_NAME} --query state\`" >> $GITHUB_STEP_SUMMARY
-        fi
-
-# Trigger: 2025-11-25 10:19:22
+# Trigger: 2025-11-30 15:30 - Deploy with environment variable management
