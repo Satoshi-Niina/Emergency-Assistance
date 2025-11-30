@@ -825,58 +825,29 @@ app.get('/api/health/detailed', (req, res) => {
 
 // デプロイバージョン確認エンドポイント（デプロイ検証用）
 app.get('/api/version', (req, res) => {
-  try {
-    // version.jsonファイルを読み込み（デプロイ時に生成される）
-    const versionPath = path.join(__dirname, 'version.json');
-
-    if (fsSync.existsSync(versionPath)) {
-      const versionContent = fsSync.readFileSync(versionPath, 'utf8');
-      const versionData = JSON.parse(versionContent);
-
-      console.log('[api/version] Version file found:', versionData);
-
-      return res.json({
-        ...versionData,
-        serverInfo: {
-          nodeVersion: process.version,
-          platform: process.platform,
-          uptime: process.uptime(),
-          environment: process.env.NODE_ENV || 'production'
-        },
-        features: {
-          blobStorage: !!connectionString,
-          database: !!dbPool,
-          openai: !!OPENAI_API_KEY
-        },
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    console.warn('[api/version] version.json not found, using fallback');
-  } catch (error) {
-    console.error('[api/version] Error reading version file:', error);
-  }
-
-  // フォールバック（version.jsonが見つからない場合）
-  res.json({
+  const buildInfo = {
     version: '2025-11-30T10:05:00+09:00',
-    commitSha: 'unknown',
-    commitShortSha: 'unknown',
-    buildNumber: 'unknown',
-    warning: 'version.json not found - using fallback',
-    serverInfo: {
-      nodeVersion: process.version,
-      platform: process.platform,
-      uptime: process.uptime(),
-      environment: process.env.NODE_ENV || 'production'
+    buildTimestamp: new Date().toISOString(),
+    deploymentInfo: {
+      commitSha: process.env.SCM_COMMIT_ID || 'unknown',
+      buildId: process.env.BUILD_BUILDID || 'unknown',
+      deploymentId: process.env.WEBSITE_INSTANCE_ID || 'unknown',
+      hostname: process.env.WEBSITE_HOSTNAME || 'unknown',
+      siteName: process.env.WEBSITE_SITE_NAME || 'unknown'
     },
+    nodeVersion: process.version,
+    platform: process.platform,
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'production',
+    lastModified: '2025-11-30T10:05:00+09:00',
     features: {
       blobStorage: !!connectionString,
       database: !!dbPool,
       openai: !!OPENAI_API_KEY
-    },
-    timestamp: new Date().toISOString()
-  });
+    }
+  };
+
+  res.json(buildInfo);
 });
 
 // Full database testing health check (別エンドポイント)
