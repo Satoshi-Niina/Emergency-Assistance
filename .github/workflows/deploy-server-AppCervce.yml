@@ -441,6 +441,23 @@ jobs:
         echo "📋 Files in deploy directory:"
         ls -la | head -20
 
+        # version.json を生成（デプロイ検証用）
+        cat > version.json << EOF
+        {
+          "version": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "commitSha": "${{ github.sha }}",
+          "commitShortSha": "$(echo ${{ github.sha }} | cut -c1-7)",
+          "buildNumber": "${{ github.run_number }}",
+          "buildId": "${{ github.run_id }}",
+          "branch": "${{ github.ref_name }}",
+          "deployer": "${{ github.actor }}",
+          "repository": "${{ github.repository }}",
+          "workflow": "${{ github.workflow }}"
+        }
+        EOF
+        echo "✅ Version file created"
+        cat version.json
+
         # web.config は server/web.config を使用するため、ここでは作成しない
         echo "✅ Using existing web.config from server directory"
 
@@ -596,6 +613,56 @@ jobs:
         else
           echo "⚠️  Seed script executed (check logs for details)"
         fi
+
+    - name: Verify Deployment Version
+      continue-on-error: true
+      run: |
+        echo "🔍 Verifying deployed code version..."
+        
+        EXPECTED_SHA="${{ github.sha }}"
+        EXPECTED_SHORT_SHA=$(echo $EXPECTED_SHA | cut -c1-7)
+        
+        echo "📋 Expected commit SHA: $EXPECTED_SHORT_SHA"
+        
+        MAX_RETRIES=20
+        RETRY_INTERVAL=15
+        
+        for attempt in $(seq 1 $MAX_RETRIES); do
+          echo "🔍 Verification attempt $attempt/$MAX_RETRIES..."
+          
+          # バージョンエンドポイントにアクセス
+          VERSION_RESPONSE=$(curl -s --max-time 10 "$APP_URL/api/version" 2>&1 || echo "{}")
+          
+          # HTTPステータスコードも取得
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL/api/version" 2>&1 || echo "000")
+          
+          echo "📋 HTTP Status: $HTTP_CODE"
+          echo "📋 Response: $VERSION_RESPONSE"
+          
+          if [ "$HTTP_CODE" = "200" ]; then
+            DEPLOYED_SHA=$(echo "$VERSION_RESPONSE" | jq -r '.commitShortSha // "unknown"' 2>/dev/null || echo "unknown")
+            echo "📋 Deployed commit SHA: $DEPLOYED_SHA"
+            
+            if [ "$DEPLOYED_SHA" = "$EXPECTED_SHORT_SHA" ]; then
+              echo "✅ Deployment verified! Correct version is deployed."
+              echo "✅ Version details:"
+              echo "$VERSION_RESPONSE" | jq '.' 2>/dev/null || echo "$VERSION_RESPONSE"
+              exit 0
+            else
+              echo "⚠️ Wrong version deployed: Expected $EXPECTED_SHORT_SHA, Got $DEPLOYED_SHA"
+            fi
+          else
+            echo "⚠️ Version endpoint not responding (HTTP $HTTP_CODE)"
+          fi
+          
+          echo "⏳ Retrying in ${RETRY_INTERVAL}s..."
+          [ $attempt -lt $MAX_RETRIES ] && sleep $RETRY_INTERVAL
+        done
+        
+        echo "❌ Deployment verification failed after $MAX_RETRIES attempts"
+        echo "❌ Expected: $EXPECTED_SHORT_SHA"
+        echo "⚠️ This may indicate deployment issues, but build will continue"
+        exit 1
 
     - name: Health Check
       continue-on-error: true
