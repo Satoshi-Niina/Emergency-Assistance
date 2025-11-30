@@ -14,45 +14,83 @@ const createFlowSchema = {
 router.get('/', async (_req, res) => {
     try {
         console.log('🔄 応急処置フロー取得リクエスト');
-        // トラブルシューティングディレクトリからJSONファイルを読み込み
-        const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-        console.log('🔍 トラブルシューティングディレクトリ:', troubleshootingDir);
-        if (!fs.existsSync(troubleshootingDir)) {
-            console.log('❌ トラブルシューティングディレクトリが存在しません');
-            return res.json({
-                success: true,
-                flows: [],
-                total: 0,
-                timestamp: new Date().toISOString(),
-            });
-        }
-        const files = fs.readdirSync(troubleshootingDir);
-        const jsonFiles = files.filter(file => file.endsWith('.json'));
-        console.log('📄 JSONファイル:', jsonFiles);
-        const flows = [];
-        for (const file of jsonFiles) {
+        const isProduction = process.env.NODE_ENV === 'production';
+        let flows = [];
+        // 本番環境: Azure BLOBから取得
+        if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
             try {
-                const filePath = path.join(troubleshootingDir, file);
-                const fileContent = fs.readFileSync(filePath, 'utf-8');
-                const flowData = JSON.parse(fileContent);
-                // フローデータを整形
-                const flow = {
-                    id: flowData.id || file.replace('.json', ''),
-                    title: flowData.title || 'タイトルなし',
-                    description: flowData.description || '',
-                    fileName: file,
-                    filePath: `knowledge-base/troubleshooting/${file}`,
-                    createdAt: flowData.createdAt || new Date().toISOString(),
-                    updatedAt: flowData.updatedAt || new Date().toISOString(),
-                    triggerKeywords: flowData.triggerKeywords || flowData.trigger || [],
-                    category: flowData.category || '',
-                    steps: flowData.steps || [],
-                    dataSource: 'file',
-                };
-                flows.push(flow);
+                const { azureStorage } = await import('../lib/azure-storage.js');
+                console.log('☁️ Azure BLOBからフローを取得');
+                const blobs = await azureStorage.listFilesWithDetails('troubleshooting/');
+                const jsonBlobs = blobs.filter(blob => blob.name.endsWith('.json'));
+                console.log(`📄 BLOB数: ${jsonBlobs.length}`);
+                flows = await Promise.all(jsonBlobs.map(async (blob) => {
+                    try {
+                        const content = await azureStorage.downloadFileAsString(blob.name);
+                        const flowData = JSON.parse(content);
+                        return {
+                            id: flowData.id || blob.name.replace('troubleshooting/', '').replace('.json', ''),
+                            title: flowData.title || 'タイトルなし',
+                            description: flowData.description || '',
+                            fileName: blob.name.split('/').pop(),
+                            filePath: blob.name,
+                            createdAt: flowData.createdAt || new Date().toISOString(),
+                            updatedAt: flowData.updatedAt || new Date().toISOString(),
+                            triggerKeywords: flowData.triggerKeywords || flowData.trigger || [],
+                            category: flowData.category || '',
+                            steps: flowData.steps || [],
+                            dataSource: 'azure-blob',
+                        };
+                    }
+                    catch (error) {
+                        console.error(`❌ BLOB読み込みエラー: ${blob.name}`, error);
+                        return null;
+                    }
+                }));
+                flows = flows.filter(flow => flow !== null);
             }
-            catch (error) {
-                console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
+            catch (azureError) {
+                console.error('❌ Azure BLOB読み込みエラー:', azureError);
+                flows = [];
+            }
+        }
+        else {
+            // 開発環境: ローカルファイルシステムから取得
+            const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+            console.log('🔍 ローカルディレクトリ:', troubleshootingDir);
+            if (!fs.existsSync(troubleshootingDir)) {
+                console.log('❌ トラブルシューティングディレクトリが存在しません');
+                return res.json({
+                    success: true,
+                    flows: [],
+                    total: 0,
+                    timestamp: new Date().toISOString(),
+                });
+            }
+            const files = fs.readdirSync(troubleshootingDir);
+            const jsonFiles = files.filter(file => file.endsWith('.json'));
+            for (const file of jsonFiles) {
+                try {
+                    const filePath = path.join(troubleshootingDir, file);
+                    const fileContent = fs.readFileSync(filePath, 'utf-8');
+                    const flowData = JSON.parse(fileContent);
+                    flows.push({
+                        id: flowData.id || file.replace('.json', ''),
+                        title: flowData.title || 'タイトルなし',
+                        description: flowData.description || '',
+                        fileName: file,
+                        filePath: `knowledge-base/troubleshooting/${file}`,
+                        createdAt: flowData.createdAt || new Date().toISOString(),
+                        updatedAt: flowData.updatedAt || new Date().toISOString(),
+                        triggerKeywords: flowData.triggerKeywords || flowData.trigger || [],
+                        category: flowData.category || '',
+                        steps: flowData.steps || [],
+                        dataSource: 'file',
+                    });
+                }
+                catch (error) {
+                    console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
+                }
             }
         }
         // 作成日時でソート
@@ -150,32 +188,59 @@ router.get('/:id', async (_req, res) => {
     try {
         const { id } = req.params;
         console.log(`🔄 応急処置フロー詳細取得: ${id}`);
-        // トラブルシューティングディレクトリから該当するJSONファイルを検索
-        const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-        if (!fs.existsSync(troubleshootingDir)) {
-            return res.status(404).json({
-                success: false,
-                error: 'トラブルシューティングディレクトリが見つかりません',
-            });
-        }
-        const files = fs.readdirSync(troubleshootingDir);
-        const jsonFiles = files.filter(file => file.endsWith('.json'));
+        const isProduction = process.env.NODE_ENV === 'production';
         let flowData = null;
         let fileName = null;
-        // IDに一致するファイルを検索
-        for (const file of jsonFiles) {
+        // 本番環境: Azure BLOBから取得
+        if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
             try {
-                const filePath = path.join(troubleshootingDir, file);
-                const fileContent = fs.readFileSync(filePath, 'utf-8');
-                const data = JSON.parse(fileContent);
-                if (data.id === id || file.replace('.json', '') === id) {
-                    flowData = data;
-                    fileName = file;
-                    break;
+                const { azureStorage } = await import('../lib/azure-storage.js');
+                const blobs = await azureStorage.listFilesWithDetails('troubleshooting/');
+                const jsonBlobs = blobs.filter(blob => blob.name.endsWith('.json'));
+                for (const blob of jsonBlobs) {
+                    try {
+                        const content = await azureStorage.downloadFileAsString(blob.name);
+                        const data = JSON.parse(content);
+                        if (data.id === id || blob.name.replace('troubleshooting/', '').replace('.json', '') === id) {
+                            flowData = data;
+                            fileName = blob.name.split('/').pop();
+                            break;
+                        }
+                    }
+                    catch (error) {
+                        console.error(`❌ BLOB読み込みエラー: ${blob.name}`, error);
+                    }
                 }
             }
-            catch (error) {
-                console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
+            catch (azureError) {
+                console.error('❌ Azure BLOB読み込みエラー:', azureError);
+            }
+        }
+        else {
+            // 開発環境: ローカルファイルシステムから取得
+            const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+            if (!fs.existsSync(troubleshootingDir)) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'トラブルシューティングディレクトリが見つかりません',
+                });
+            }
+            const files = fs.readdirSync(troubleshootingDir);
+            const jsonFiles = files.filter(file => file.endsWith('.json'));
+            for (const file of jsonFiles) {
+                try {
+                    const filePath = path.join(troubleshootingDir, file);
+                    const fileContent = fs.readFileSync(filePath, 'utf-8');
+                    const data = JSON.parse(fileContent);
+                    if (data.id === id || file.replace('.json', '') === id) {
+                        flowData = data;
+                        fileName = file;
+                        break;
+                    }
+                }
+                catch (error) {
+                    console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
+                }
             }
         }
         if (!flowData) {
@@ -192,14 +257,14 @@ router.get('/:id', async (_req, res) => {
                 title: flowData.title || 'タイトルなし',
                 description: flowData.description || '',
                 fileName: fileName,
-                filePath: `knowledge-base/troubleshooting/${fileName}`,
+                filePath: isProduction ? `troubleshooting/${fileName}` : `knowledge-base/troubleshooting/${fileName}`,
                 createdAt: flowData.createdAt || new Date().toISOString(),
                 updatedAt: flowData.updatedAt || new Date().toISOString(),
                 triggerKeywords: flowData.triggerKeywords || flowData.trigger || [],
                 category: flowData.category || '',
                 steps: flowData.steps || [],
-                dataSource: 'file',
-                ...flowData, // 元のデータも含める
+                dataSource: isProduction ? 'azure-blob' : 'file',
+                ...flowData,
             },
         });
     }
@@ -220,32 +285,59 @@ router.put('/:id', async (_req, res) => {
     try {
         const { id } = req.params;
         console.log(`🔄 応急処置フロー更新: ${id}`);
-        // トラブルシューティングディレクトリから該当するJSONファイルを検索
-        const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-        if (!fs.existsSync(troubleshootingDir)) {
-            return res.status(404).json({
-                success: false,
-                error: 'トラブルシューティングディレクトリが見つかりません',
-            });
-        }
-        const files = fs.readdirSync(troubleshootingDir);
-        const jsonFiles = files.filter(file => file.endsWith('.json'));
+        const isProduction = process.env.NODE_ENV === 'production';
         let flowData = null;
         let fileName = null;
-        // IDに一致するファイルを検索
-        for (const file of jsonFiles) {
+        // 本番環境: Azure BLOBから取得
+        if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
             try {
-                const filePath = path.join(troubleshootingDir, file);
-                const fileContent = fs.readFileSync(filePath, 'utf-8');
-                const data = JSON.parse(fileContent);
-                if (data.id === id || file.replace('.json', '') === id) {
-                    flowData = data;
-                    fileName = file;
-                    break;
+                const { azureStorage } = await import('../lib/azure-storage.js');
+                const blobs = await azureStorage.listFilesWithDetails('troubleshooting/');
+                const jsonBlobs = blobs.filter(blob => blob.name.endsWith('.json'));
+                for (const blob of jsonBlobs) {
+                    try {
+                        const content = await azureStorage.downloadFileAsString(blob.name);
+                        const data = JSON.parse(content);
+                        if (data.id === id || blob.name.replace('troubleshooting/', '').replace('.json', '') === id) {
+                            flowData = data;
+                            fileName = blob.name.split('/').pop();
+                            break;
+                        }
+                    }
+                    catch (error) {
+                        console.error(`❌ BLOB読み込みエラー: ${blob.name}`, error);
+                    }
                 }
             }
-            catch (error) {
-                console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
+            catch (azureError) {
+                console.error('❌ Azure BLOB読み込みエラー:', azureError);
+            }
+        }
+        else {
+            // 開発環境: ローカルファイルシステムから取得
+            const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+            if (!fs.existsSync(troubleshootingDir)) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'トラブルシューティングディレクトリが見つかりません',
+                });
+            }
+            const files = fs.readdirSync(troubleshootingDir);
+            const jsonFiles = files.filter(file => file.endsWith('.json'));
+            for (const file of jsonFiles) {
+                try {
+                    const filePath = path.join(troubleshootingDir, file);
+                    const fileContent = fs.readFileSync(filePath, 'utf-8');
+                    const data = JSON.parse(fileContent);
+                    if (data.id === id || file.replace('.json', '') === id) {
+                        flowData = data;
+                        fileName = file;
+                        break;
+                    }
+                }
+                catch (error) {
+                    console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
+                }
             }
         }
         if (!flowData) {
@@ -287,30 +379,56 @@ router.delete('/:id', async (_req, res) => {
     try {
         const { id } = req.params;
         console.log(`🔄 応急処置フロー削除: ${id}`);
-        // トラブルシューティングディレクトリから該当するJSONファイルを検索
-        const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-        if (!fs.existsSync(troubleshootingDir)) {
-            return res.status(404).json({
-                success: false,
-                error: 'トラブルシューティングディレクトリが見つかりません',
-            });
-        }
-        const files = fs.readdirSync(troubleshootingDir);
-        const jsonFiles = files.filter(file => file.endsWith('.json'));
+        const isProduction = process.env.NODE_ENV === 'production';
         let fileName = null;
-        // IDに一致するファイルを検索
-        for (const file of jsonFiles) {
+        // 本番環境: Azure BLOBから検索
+        if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
             try {
-                const filePath = path.join(troubleshootingDir, file);
-                const fileContent = fs.readFileSync(filePath, 'utf-8');
-                const data = JSON.parse(fileContent);
-                if (data.id === id || file.replace('.json', '') === id) {
-                    fileName = file;
-                    break;
+                const { azureStorage } = await import('../lib/azure-storage.js');
+                const blobs = await azureStorage.listFilesWithDetails('troubleshooting/');
+                const jsonBlobs = blobs.filter(blob => blob.name.endsWith('.json'));
+                for (const blob of jsonBlobs) {
+                    try {
+                        const content = await azureStorage.downloadFileAsString(blob.name);
+                        const data = JSON.parse(content);
+                        if (data.id === id || blob.name.replace('troubleshooting/', '').replace('.json', '') === id) {
+                            fileName = blob.name;
+                            break;
+                        }
+                    }
+                    catch (error) {
+                        console.error(`❌ BLOB読み込みエラー: ${blob.name}`, error);
+                    }
                 }
             }
-            catch (error) {
-                console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
+            catch (azureError) {
+                console.error('❌ Azure BLOB読み込みエラー:', azureError);
+            }
+        }
+        else {
+            // 開発環境: ローカルファイルシステムから検索
+            const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+            if (!fs.existsSync(troubleshootingDir)) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'トラブルシューティングディレクトリが見つかりません',
+                });
+            }
+            const files = fs.readdirSync(troubleshootingDir);
+            const jsonFiles = files.filter(file => file.endsWith('.json'));
+            for (const file of jsonFiles) {
+                try {
+                    const filePath = path.join(troubleshootingDir, file);
+                    const fileContent = fs.readFileSync(filePath, 'utf-8');
+                    const data = JSON.parse(fileContent);
+                    if (data.id === id || file.replace('.json', '') === id) {
+                        fileName = file;
+                        break;
+                    }
+                }
+                catch (error) {
+                    console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
+                }
             }
         }
         if (!fileName) {

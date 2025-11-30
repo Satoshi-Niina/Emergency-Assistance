@@ -1375,30 +1375,21 @@ export function registerChatRoutes(app) {
     // 保存されたチャット履歴一覧を取得
     app.get('/api/chats/exports', requireAuth, async (req, res) => {
         try {
-            const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
-            if (!fs.existsSync(exportsDir)) {
-                return res.json([]);
-            }
-            // 再帰的にJSONファイルを検索する関数
-            const findJsonFiles = (dir, baseDir = exportsDir) => {
-                const files = [];
-                const items = fs.readdirSync(dir);
-                for (const item of items) {
-                    const itemPath = path.join(dir, item);
-                    const stats = fs.statSync(itemPath);
-                    if (stats.isDirectory()) {
-                        // サブディレクトリを再帰的に検索
-                        files.push(...findJsonFiles(itemPath, baseDir));
-                    }
-                    else if (item.endsWith('.json')) {
+            const isProduction = process.env.NODE_ENV === 'production';
+            let files = [];
+            // 本番環境: Azure BLOBから取得
+            if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+                try {
+                    const { azureStorage } = await import('../lib/azure-storage.js');
+                    const blobs = await azureStorage.listFilesWithDetails('exports/');
+                    const jsonBlobs = blobs.filter(blob => blob.name.endsWith('.json'));
+                    files = await Promise.all(jsonBlobs.map(async (blob) => {
                         try {
-                            const content = fs.readFileSync(itemPath, 'utf8');
+                            const content = await azureStorage.downloadFileAsString(blob.name);
                             const data = JSON.parse(content);
-                            // 相対パスを計算
-                            const relativePath = path.relative(baseDir, itemPath);
-                            files.push({
-                                fileName: relativePath,
-                                filePath: itemPath,
+                            return {
+                                fileName: blob.name.replace('exports/', ''),
+                                filePath: blob.name,
                                 chatId: data.chatId,
                                 userId: data.userId,
                                 exportType: data.exportType,
@@ -1410,18 +1401,70 @@ export function registerChatRoutes(app) {
                                     machineTypeName: '',
                                     machineNumber: '',
                                 },
-                                fileSize: stats.size,
-                                lastModified: stats.mtime,
-                            });
+                                fileSize: blob.properties.contentLength,
+                                lastModified: blob.properties.lastModified,
+                            };
                         }
                         catch (error) {
-                            console.warn(`JSONファイルの読み込みエラー: ${itemPath}`, error);
+                            console.warn(`BLOB読み込みエラー: ${blob.name}`, error);
+                            return null;
+                        }
+                    }));
+                    files = files.filter(file => file !== null);
+                }
+                catch (azureError) {
+                    console.error('❌ Azure BLOB読み込みエラー:', azureError);
+                    files = [];
+                }
+            }
+            else {
+                // 開発環境: ローカルファイルシステムから取得
+                const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+                if (!fs.existsSync(exportsDir)) {
+                    return res.json([]);
+                }
+                const findJsonFiles = (dir, baseDir = exportsDir) => {
+                    const files = [];
+                    const items = fs.readdirSync(dir);
+                    for (const item of items) {
+                        const itemPath = path.join(dir, item);
+                        const stats = fs.statSync(itemPath);
+                        if (stats.isDirectory()) {
+                            files.push(...findJsonFiles(itemPath, baseDir));
+                        }
+                        else if (item.endsWith('.json')) {
+                            try {
+                                const content = fs.readFileSync(itemPath, 'utf8');
+                                const data = JSON.parse(content);
+                                const relativePath = path.relative(baseDir, itemPath);
+                                files.push({
+                                    fileName: relativePath,
+                                    filePath: itemPath,
+                                    chatId: data.chatId,
+                                    userId: data.userId,
+                                    exportType: data.exportType,
+                                    exportTimestamp: data.exportTimestamp,
+                                    messageCount: data.chatData?.messages?.length || 0,
+                                    machineInfo: data.chatData?.machineInfo || {
+                                        selectedMachineType: '',
+                                        selectedMachineNumber: '',
+                                        machineTypeName: '',
+                                        machineNumber: '',
+                                    },
+                                    fileSize: stats.size,
+                                    lastModified: stats.mtime,
+                                });
+                            }
+                            catch (error) {
+                                console.warn(`JSONファイルの読み込みエラー: ${itemPath}`, error);
+                            }
                         }
                     }
-                }
-                return files;
-            };
-            const files = findJsonFiles(exportsDir).sort((a, b) => new Date(b.exportTimestamp).getTime() -
+                    return files;
+                };
+                files = findJsonFiles(exportsDir);
+            }
+            files.sort((a, b) => new Date(b.exportTimestamp).getTime() -
                 new Date(a.exportTimestamp).getTime());
             res.json(files);
         }
@@ -1434,13 +1477,31 @@ export function registerChatRoutes(app) {
     app.get('/api/chats/exports/:fileName', requireAuth, async (req, res) => {
         try {
             const fileName = req.params.fileName;
-            const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
-            const filePath = path.join(exportsDir, fileName);
-            if (!fs.existsSync(filePath)) {
-                return res.status(404).json({ message: 'Export file not found' });
+            const isProduction = process.env.NODE_ENV === 'production';
+            let data = null;
+            // 本番環境: Azure BLOBから取得
+            if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+                try {
+                    const { azureStorage } = await import('../lib/azure-storage.js');
+                    const blobName = `exports/${fileName}`;
+                    const content = await azureStorage.downloadFileAsString(blobName);
+                    data = JSON.parse(content);
+                }
+                catch (azureError) {
+                    console.error('❌ Azure BLOB読み込みエラー:', azureError);
+                    return res.status(404).json({ message: 'Export file not found' });
+                }
             }
-            const content = fs.readFileSync(filePath, 'utf8');
-            const data = JSON.parse(content);
+            else {
+                // 開発環境: ローカルファイルシステムから取得
+                const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+                const filePath = path.join(exportsDir, fileName);
+                if (!fs.existsSync(filePath)) {
+                    return res.status(404).json({ message: 'Export file not found' });
+                }
+                const content = fs.readFileSync(filePath, 'utf8');
+                data = JSON.parse(content);
+            }
             res.json(data);
         }
         catch (error) {

@@ -1603,67 +1603,105 @@ export function registerChatRoutes(app: any): void {
   // 保存されたチャット履歴一覧を取得
   app.get('/api/chats/exports', requireAuth, async (req, res) => {
     try {
-      const exportsDir = path.join(
-        process.cwd(),
-        '..',
-        'knowledge-base',
-        'exports'
-      );
+      const isProduction = process.env.NODE_ENV === 'production';
+      let files = [];
 
-      if (!fs.existsSync(exportsDir)) {
-        return res.json([]);
-      }
+      // 本番環境: Azure BLOBから取得
+      if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+        try {
+          const { azureStorage } = await import('../lib/azure-storage.js');
+          const blobs = await azureStorage.listFilesWithDetails('exports/');
+          const jsonBlobs = blobs.filter(blob => blob.name.endsWith('.json'));
 
-      // 再帰的にJSONファイルを検索する関数
-      const findJsonFiles = (
-        dir: string,
-        baseDir: string = exportsDir
-      ): any[] => {
-        const files: any[] = [];
-        const items = fs.readdirSync(dir);
+          files = await Promise.all(
+            jsonBlobs.map(async (blob) => {
+              try {
+                const content = await azureStorage.downloadFileAsString(blob.name);
+                const data = JSON.parse(content);
 
-        for (const item of items) {
-          const itemPath = path.join(dir, item);
-          const stats = fs.statSync(itemPath);
+                return {
+                  fileName: blob.name.replace('exports/', ''),
+                  filePath: blob.name,
+                  chatId: data.chatId,
+                  userId: data.userId,
+                  exportType: data.exportType,
+                  exportTimestamp: data.exportTimestamp,
+                  messageCount: data.chatData?.messages?.length || 0,
+                  machineInfo: data.chatData?.machineInfo || {
+                    selectedMachineType: '',
+                    selectedMachineNumber: '',
+                    machineTypeName: '',
+                    machineNumber: '',
+                  },
+                  fileSize: blob.properties.contentLength,
+                  lastModified: blob.properties.lastModified,
+                };
+              } catch (error) {
+                console.warn(`BLOB読み込みエラー: ${blob.name}`, error);
+                return null;
+              }
+            })
+          );
 
-          if (stats.isDirectory()) {
-            // サブディレクトリを再帰的に検索
-            files.push(...findJsonFiles(itemPath, baseDir));
-          } else if (item.endsWith('.json')) {
-            try {
-              const content = fs.readFileSync(itemPath, 'utf8');
-              const data = JSON.parse(content);
+          files = files.filter(file => file !== null);
+        } catch (azureError) {
+          console.error('❌ Azure BLOB読み込みエラー:', azureError);
+          files = [];
+        }
+      } else {
+        // 開発環境: ローカルファイルシステムから取得
+        const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
 
-              // 相対パスを計算
-              const relativePath = path.relative(baseDir, itemPath);
-
-              files.push({
-                fileName: relativePath,
-                filePath: itemPath,
-                chatId: data.chatId,
-                userId: data.userId,
-                exportType: data.exportType,
-                exportTimestamp: data.exportTimestamp,
-                messageCount: data.chatData?.messages?.length || 0,
-                machineInfo: data.chatData?.machineInfo || {
-                  selectedMachineType: '',
-                  selectedMachineNumber: '',
-                  machineTypeName: '',
-                  machineNumber: '',
-                },
-                fileSize: stats.size,
-                lastModified: stats.mtime,
-              });
-            } catch (error) {
-              console.warn(`JSONファイルの読み込みエラー: ${itemPath}`, error);
-            }
-          }
+        if (!fs.existsSync(exportsDir)) {
+          return res.json([]);
         }
 
-        return files;
-      };
+        const findJsonFiles = (dir: string, baseDir: string = exportsDir): any[] => {
+          const files: any[] = [];
+          const items = fs.readdirSync(dir);
 
-      const files = findJsonFiles(exportsDir).sort(
+          for (const item of items) {
+            const itemPath = path.join(dir, item);
+            const stats = fs.statSync(itemPath);
+
+            if (stats.isDirectory()) {
+              files.push(...findJsonFiles(itemPath, baseDir));
+            } else if (item.endsWith('.json')) {
+              try {
+                const content = fs.readFileSync(itemPath, 'utf8');
+                const data = JSON.parse(content);
+                const relativePath = path.relative(baseDir, itemPath);
+
+                files.push({
+                  fileName: relativePath,
+                  filePath: itemPath,
+                  chatId: data.chatId,
+                  userId: data.userId,
+                  exportType: data.exportType,
+                  exportTimestamp: data.exportTimestamp,
+                  messageCount: data.chatData?.messages?.length || 0,
+                  machineInfo: data.chatData?.machineInfo || {
+                    selectedMachineType: '',
+                    selectedMachineNumber: '',
+                    machineTypeName: '',
+                    machineNumber: '',
+                  },
+                  fileSize: stats.size,
+                  lastModified: stats.mtime,
+                });
+              } catch (error) {
+                console.warn(`JSONファイルの読み込みエラー: ${itemPath}`, error);
+              }
+            }
+          }
+
+          return files;
+        };
+
+        files = findJsonFiles(exportsDir);
+      }
+
+      files.sort(
         (a, b) =>
           new Date(b.exportTimestamp).getTime() -
           new Date(a.exportTimestamp).getTime()
@@ -1680,20 +1718,33 @@ export function registerChatRoutes(app: any): void {
   app.get('/api/chats/exports/:fileName', requireAuth, async (req, res) => {
     try {
       const fileName = req.params.fileName;
-      const exportsDir = path.join(
-        process.cwd(),
-        '..',
-        'knowledge-base',
-        'exports'
-      );
-      const filePath = path.join(exportsDir, fileName);
+      const isProduction = process.env.NODE_ENV === 'production';
 
-      if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ message: 'Export file not found' });
+      let data = null;
+
+      // 本番環境: Azure BLOBから取得
+      if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+        try {
+          const { azureStorage } = await import('../lib/azure-storage.js');
+          const blobName = `exports/${fileName}`;
+          const content = await azureStorage.downloadFileAsString(blobName);
+          data = JSON.parse(content);
+        } catch (azureError) {
+          console.error('❌ Azure BLOB読み込みエラー:', azureError);
+          return res.status(404).json({ message: 'Export file not found' });
+        }
+      } else {
+        // 開発環境: ローカルファイルシステムから取得
+        const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+        const filePath = path.join(exportsDir, fileName);
+
+        if (!fs.existsSync(filePath)) {
+          return res.status(404).json({ message: 'Export file not found' });
+        }
+
+        const content = fs.readFileSync(filePath, 'utf8');
+        data = JSON.parse(content);
       }
-
-      const content = fs.readFileSync(filePath, 'utf8');
-      const data = JSON.parse(content);
 
       res.json(data);
     } catch (error) {
