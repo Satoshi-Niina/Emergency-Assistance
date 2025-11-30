@@ -24,7 +24,7 @@
     "routes/**/*.ts",
     "lib/**/*.ts",
     "middleware/**/*.ts",
-    "services/**/*.ts",
+    "services/!(knowledgeService).ts",
     "utils/**/*.ts",
     "db/**/*.ts",
     "config/**/*.ts",
