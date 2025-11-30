@@ -37,24 +37,11 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Cache node modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.npm
-            node_modules
-            server/node_modules
-            client/node_modules
-            shared/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
       - name: Install and build shared module (first)
         run: |
           echo "📦 Installing shared dependencies..."
           cd shared
-          npm ci || npm install
+          npm install --no-audit --no-fund
           echo "🔨 Building shared module..."
           npm run build
           echo "✅ Shared module built"
@@ -63,8 +50,7 @@ jobs:
         run: |
           echo "📦 Installing server dependencies..."
           cd server
-          rm -rf node_modules
-          npm ci || npm install
+          npm install --no-audit --no-fund
           echo "✅ Server dependencies installed"
           
           echo "🔍 Verifying critical packages..."
