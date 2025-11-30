@@ -670,51 +670,10 @@ export default function HistoryPage() {
       setEditingItem(null);
       setOriginalEditingItem(null);
 
-      // 一覧を再読み込み（キャッシュを無効化して最新データを取得）
-      // ただし、更新されたアイテムについてはサーバーからのレスポンスデータを優先する
-      setTimeout(async () => {
-        // 更新されたアイテムのIDと画像データを保存
-        const updatedItemId = itemId;
-        const updatedItemImages = normalizedImages;
-
-        // キャッシュバスターを追加して最新データを取得
-        await fetchHistoryData(currentPage);
-
-        // 再取得後、更新されたアイテムの画像データを確実に反映
-        setHistoryItems(prevItems =>
-          prevItems.map(item => {
-            if (item.id === updatedItemId || item.chatId === updatedItemId) {
-              return {
-                ...item,
-                images: updatedItemImages,
-                savedImages: updatedItemImages,
-                jsonData: {
-                  ...item.jsonData,
-                  savedImages: updatedItemImages,
-                },
-              };
-            }
-            return item;
-          })
-        );
-
-        setFilteredItems(prevItems =>
-          prevItems.map(item => {
-            if (item.id === updatedItemId || item.chatId === updatedItemId) {
-              return {
-                ...item,
-                images: updatedItemImages,
-                savedImages: updatedItemImages,
-                jsonData: {
-                  ...item.jsonData,
-                  savedImages: updatedItemImages,
-                },
-              };
-            }
-            return item;
-          })
-        );
-      }, 300);
+      // 一覧を再読み込み（最新データを取得）
+      // サーバーから返された更新済みデータはすでにステートに反映されているため、
+      // ここでは単純に最新データを取得するだけで二重更新を避ける
+      await fetchHistoryData(currentPage);
     } catch (error) {
       console.error('履歴保存エラー:', error);
       const errorMessage =
@@ -1609,8 +1568,18 @@ export default function HistoryPage() {
                                         alt={fileName}
                                         className="w-12 h-12 object-cover rounded border border-gray-300 cursor-pointer hover:opacity-80"
                                         onError={(e) => {
+                                          const img = e.target as HTMLImageElement;
+                                          const currentSrc = img.src;
+                                          
+                                          // 無限ループを防ぐ: すでにfallback URLを試している場合は画像を非表示にする
+                                          if (currentSrc.includes('/api/fault-history/images/')) {
+                                            img.style.display = 'none';
+                                            return;
+                                          }
+                                          
+                                          // 最初のエラーの場合のみfallback URLを試す
                                           const fallbackUrl = `/api/fault-history/images/${fileName}`;
-                                          (e.target as HTMLImageElement).src = fallbackUrl;
+                                          img.src = fallbackUrl;
                                         }}
                                         onClick={() => {
                                           window.open(imageUrl, '_blank');

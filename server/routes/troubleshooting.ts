@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
 import {
   existsSync,
@@ -437,7 +438,27 @@ router.put('/:id', requireAuth, async (req, res) => {
     }
 
     // ファイルに保存
-    writeFileSync(filePath, JSON.stringify(updatedFlowData, null, 2), 'utf8');
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+      // 本番環境: Azure BLOBに保存
+      try {
+        const { azureStorage } = await import('../azure-storage.js');
+        const tempPath = path.join(require('os').tmpdir(), path.basename(filePath));
+        writeFileSync(tempPath, JSON.stringify(updatedFlowData, null, 2), 'utf8');
+        const blobName = `troubleshooting/${path.basename(filePath)}`;
+        await azureStorage.uploadFile(tempPath, blobName);
+        fs.unlinkSync(tempPath);
+        console.log('✅ Azure BLOBにアップロード:', blobName);
+      } catch (uploadError) {
+        console.error('⚠️ Azure BLOBアップロードエラー:', uploadError);
+        throw uploadError;
+      }
+    } else {
+      // 開発環境: ローカルファイルに保存
+      writeFileSync(filePath, JSON.stringify(updatedFlowData, null, 2), 'utf8');
+      console.log('✅ ローカルファイルに保存（開発環境）:', filePath);
+    }
 
     console.log('✅ トラブルシューティング更新成功:', {
       id: updatedFlowData.id,

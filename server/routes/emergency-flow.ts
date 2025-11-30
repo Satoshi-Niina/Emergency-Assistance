@@ -130,9 +130,29 @@ router.post('/update-step-title', async (_req, res) => {
     flowData.steps = steps;
     flowData.updatedAt = new Date().toISOString();
 
-    // JSONファイルを更新
+    // JSONファイルを保存
     const filePath = path.join(troubleshootingDir, fileName);
-    fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf-8');
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+      // 本番環境: Azure BLOBに保存
+      try {
+        const { azureStorage } = await import('../azure-storage.js');
+        const tempPath = path.join(require('os').tmpdir(), fileName);
+        fs.writeFileSync(tempPath, JSON.stringify(flowData, null, 2), 'utf-8');
+        const blobName = `troubleshooting/${fileName}`;
+        await azureStorage.uploadFile(tempPath, blobName);
+        fs.unlinkSync(tempPath);
+        console.log('✅ Azure BLOBにアップロード:', blobName);
+      } catch (uploadError) {
+        console.error('⚠️ Azure BLOBアップロードエラー:', uploadError);
+        throw uploadError;
+      }
+    } else {
+      // 開発環境: ローカルファイルに保存
+      fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf-8');
+      console.log('✅ ローカルファイルに保存（開発環境）:', filePath);
+    }
 
     res.json({ success: true, message: 'タイトルが更新されました' });
   } catch (error) {
@@ -222,7 +242,27 @@ router.post('/', async (_req, res) => {
       }
 
       // JSONファイルに保存
-      fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf-8');
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+        // 本番環境: Azure BLOBに保存
+        try {
+          const { azureStorage } = await import('../azure-storage.js');
+          const tempPath = path.join(require('os').tmpdir(), fileName);
+          fs.writeFileSync(tempPath, JSON.stringify(flowData, null, 2), 'utf-8');
+          const blobName = `troubleshooting/${fileName}`;
+          await azureStorage.uploadFile(tempPath, blobName);
+          fs.unlinkSync(tempPath);
+          console.log('✅ Azure BLOBにアップロード:', blobName);
+        } catch (uploadError) {
+          console.error('⚠️ Azure BLOBアップロードエラー:', uploadError);
+          throw uploadError;
+        }
+      } else {
+        // 開発環境: ローカルファイルに保存
+        fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf-8');
+        console.log('✅ ローカルファイルに保存（開発環境）:', filePath);
+      }
 
       if (isExisting) {
         console.log('✅ 既存フロー更新成功:', {
@@ -1679,7 +1719,27 @@ ${toneInstruction}${questionFlowGuide}${customInstructionText}
       }
 
       // ファイルに保存
-      fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf8');
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      if (isProduction && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+        // 本番環境: Azure BLOBに保存
+        try {
+          const { azureStorage } = await import('../azure-storage.js');
+          const tempPath = path.join(require('os').tmpdir(), path.basename(filePath));
+          fs.writeFileSync(tempPath, JSON.stringify(flowData, null, 2), 'utf8');
+          const blobName = `troubleshooting/${path.basename(filePath)}`;
+          await azureStorage.uploadFile(tempPath, blobName);
+          fs.unlinkSync(tempPath);
+          console.log('✅ Azure BLOBにアップロード:', blobName);
+        } catch (uploadError) {
+          console.error('⚠️ Azure BLOBアップロードエラー:', uploadError);
+          throw uploadError;
+        }
+      } else {
+        // 開発環境: ローカルファイルに保存
+        fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf8');
+        console.log('✅ ローカルファイルに保存（開発環境）:', filePath);
+      }
 
       console.log('✅ 生成フロー保存成功:', {
         id: flowData.id,

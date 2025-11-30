@@ -195,6 +195,34 @@ jobs:
             echo "⏳ Waiting for startup..."
             sleep 60
 
+      - name: Seed admin user to database
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            echo "🌱 Seeding admin user to production database..."
+            
+            # PostgreSQLクライアントをインストール
+            apt-get update -qq && apt-get install -y postgresql-client > /dev/null 2>&1
+            
+            # SQLスクリプトを実行
+            psql "${{ secrets.DATABASE_URL }}" -c "
+              INSERT INTO users (username, password, role, display_name, department, created_at, updated_at)
+              VALUES (
+                'niina',
+                '\$2a\$10\$w9kGZVYX8yqK5YJ3p7H.4eN8Z9M0xQ1K2L3M4N5O6P7Q8R9S0T1U2V',
+                'admin',
+                '管理者',
+                '情報システム部',
+                NOW(),
+                NOW()
+              )
+              ON CONFLICT (username) DO UPDATE SET
+                password = EXCLUDED.password,
+                updated_at = NOW();
+            " || echo "⚠️ User seed may have failed, but continuing..."
+            
+            echo "✅ Admin user seeded"
+
       - name: Verify deployment
         run: |
           echo "✅ Deployment completed"

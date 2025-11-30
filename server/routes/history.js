@@ -309,11 +309,12 @@ router.put('/update-item/:chatId', async (req, res) => {
                     ? JSON.parse(existingRecord[0].jsonData)
                     : existingRecord[0].jsonData || {};
                 // 新しいjsonDataを構築（savedImagesを含む）
+                // 注: !== undefined を使って、空配列も明示的に指定された値として扱う
                 const newJsonData = {
                     ...currentJsonData,
                     ...updatedData,
-                    savedImages: updatedData.savedImages || currentJsonData.savedImages || [],
-                    images: updatedData.images || updatedData.savedImages || currentJsonData.images || [],
+                    savedImages: updatedData.savedImages !== undefined ? updatedData.savedImages : (currentJsonData.savedImages || []),
+                    images: updatedData.images !== undefined ? updatedData.images : (updatedData.savedImages !== undefined ? updatedData.savedImages : (currentJsonData.images || [])),
                     lastModified: new Date().toISOString(),
                     updatedBy: updatedBy || 'user',
                 };
@@ -371,10 +372,13 @@ router.put('/update-item/:chatId', async (req, res) => {
         // 既存のJSONファイルを読み込み
         const fileContent = fs.readFileSync(filePath, 'utf-8');
         const jsonData = JSON.parse(fileContent);
-        // 差分データで更新
+        // 差分データで更新（画像データを明示的に保持）
         const updatedJsonData = {
             ...jsonData,
             ...updatedData,
+            // savedImagesとimagesは明示的に指定されたものを使用（削除も反映）
+            savedImages: updatedData.savedImages !== undefined ? updatedData.savedImages : jsonData.savedImages,
+            images: updatedData.images !== undefined ? updatedData.images : (updatedData.savedImages !== undefined ? updatedData.savedImages : jsonData.images),
             lastUpdated: new Date().toISOString(),
             updatedBy: updatedBy || 'user',
         };
