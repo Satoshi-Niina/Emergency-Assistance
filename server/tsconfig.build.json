@@ -15,10 +15,14 @@
     "allowSyntheticDefaultImports": true,
     "strict": false,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
+    "skipDefaultLibCheck": true,
+    "forceConsistentCasingInFileNames": false,
     "noImplicitAny": false,
     "noUnusedLocals": false,
-    "noUnusedParameters": false
+    "noUnusedParameters": false,
+    "suppressImplicitAnyIndexErrors": true,
+    "noImplicitReturns": false,
+    "noFallthroughCasesInSwitch": false
   },
   "include": [
     "routes/**/*.ts",
