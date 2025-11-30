@@ -32,12 +32,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: 'package-lock.json'
 
       - name: Install dependencies (root workspace)
         run: |
-          npm ci
+          if [ -f "package-lock.json" ]; then
+            echo "📦 Using npm ci with package-lock.json"
+            npm ci
+          else
+            echo "⚠️ package-lock.json not found, using npm install"
+            npm install
+          fi
           echo "✅ Root workspace and all dependencies installed"
 
       - name: Build shared module
