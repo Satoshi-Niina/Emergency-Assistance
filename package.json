@@ -18,7 +18,7 @@
     "postbuild": "echo ✅ Client build completed. Ready for deployment!",
     "deploy-check": "node scripts/check-build-before-push.js",
     "pre-push": "npm run deploy-check",
-    "postinstall": "npm --prefix server ci --no-audit --no-fund || npm --prefix server install && npm --prefix client ci --no-audit --no-fund || npm --prefix client install",
+    "postinstall": "npm --prefix server install --no-audit --no-fund && npm --prefix client install --no-audit --no-fund",
     "docker:prod": "docker-compose up --build",
     "docker:prod:detach": "docker-compose up -d --build",
     "docker:dev": "docker-compose -f docker-compose.dev.yml up --build",
