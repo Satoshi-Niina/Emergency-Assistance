@@ -54,7 +54,7 @@ jobs:
         run: |
           echo "📦 Installing shared dependencies..."
           cd shared
-          npm install --no-audit --no-fund
+          npm ci || npm install
           echo "🔨 Building shared module..."
           npm run build
           echo "✅ Shared module built"
@@ -63,12 +63,17 @@ jobs:
         run: |
           echo "📦 Installing server dependencies..."
           cd server
-          npm install --no-audit --no-fund
+          rm -rf node_modules
+          npm ci || npm install
           echo "✅ Server dependencies installed"
+          
+          echo "🔍 Verifying critical packages..."
+          npm list @azure/storage-blob express-rate-limit fuse.js adm-zip || echo "⚠️ Some packages missing"
 
       - name: Build server
         run: |
           cd server
+          echo "🔨 Building server..."
           npm run build
           echo "✅ Server build completed"
 
