@@ -37,6 +37,7 @@
     "src",
     "uploads",
     "**/*.js",
-    "../client/**/*"
+    "../client/**/*",
+    "services/knowledgeService.ts"
   ]
 }
