@@ -169,6 +169,7 @@ jobs:
                 AZURE_STORAGE_ACCOUNT_KEY="${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}" \
                 AZURE_STORAGE_CONTAINER_NAME=knowledge \
                 BLOB_PREFIX=knowledge-base/ \
+                STORAGE_MODE=azure \
                 OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
                 OPENAI_MAX_TOKENS=2000 \
                 DEBUG_MODE=false \
