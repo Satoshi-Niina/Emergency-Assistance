@@ -1,35 +1,35 @@
-#!/usr/bin/env node
-
 // Azure App Service専用サーバー
 // Windows/Linux環境で確実に動作する最小限のサーバー
 // Version: 2025-11-30T10:05:00+09:00 (Deployment version tracking)
 // Build: ${new Date().toISOString()}
 
-// 環境変数読み込み（ローカル開発のみ、本番では不要）
+// 必要なモジュールインポート
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import fs from 'fs'; // ファイルシステム操作用
 
+// __dirname の取得（ESM で必要）
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Azure App Service environment setup
 if (!process.env.WEBSITE_SITE_NAME) {
   // Azure App Service以外（ローカル環境）でのみ.envを読み込む
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-
   // NODE_ENVに応じて適切な.envファイルを読み込む
   const nodeEnv = process.env.NODE_ENV || 'development';
   const envFile = nodeEnv === 'production' ? '.env.production' : '.env.development';
   const envPath = path.join(__dirname, envFile);
 
   // 指定されたenvファイルが存在するか確認
-  const fsModule = await import('fs');
-  if (fsModule.existsSync(envPath)) {
+  if (fs.existsSync(envPath)) {
     dotenv.config({ path: envPath });
     console.log(`📄 Environment file loaded: ${envFile} (${nodeEnv} mode)`);
     console.log(`📍 Path: ${envPath}`);
   } else {
     // フォールバック: .envファイルを試す
     const fallbackPath = path.join(__dirname, '.env');
-    if (fsModule.existsSync(fallbackPath)) {
+    if (fs.existsSync(fallbackPath)) {
       dotenv.config({ path: fallbackPath });
       console.log(`⚠️ Fallback to .env file (${envFile} not found)`);
     } else {
@@ -37,7 +37,6 @@ if (!process.env.WEBSITE_SITE_NAME) {
     }
   }
 }
-
 // Azure App Service environment setup
 console.log('🚀 Azure Server Starting (ES Module)...');
 console.log('📍 Working directory:', process.cwd());
@@ -56,15 +55,10 @@ console.log('   WEBSITE_HOSTNAME:', process.env.WEBSITE_HOSTNAME || 'not set');
 import express from 'express';
 import { join } from 'path';
 import helmet from 'helmet';
+import session from 'express-session';
 import compression from 'compression';
 import morgan from 'morgan';
-import cors from 'cors';
-import { Pool } from 'pg';
-import { BlobServiceClient } from '@azure/storage-blob';
-import bcrypt from 'bcryptjs';
-import session from 'express-session';
-import fs from 'fs/promises';
-import fsSync from 'fs';
+
 // SQLite削除 - PostgreSQLのみ使用
 import OpenAI from 'openai';
 import multer from 'multer';
@@ -96,7 +90,7 @@ const HEALTH_TOKEN = process.env.HEALTH_TOKEN || ''; // 任意。設定時は /r
 const PORT = process.env.PORT || 3000;
 
 // ==== アプリ初期化 =====
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// __dirname is already defined at the top
 const app = express();
 
 app.disable('x-powered-by');
@@ -5090,9 +5084,9 @@ app.get('/api/images/chat-exports/:fileName', async (req, res) => {
 
     for (const dir of searchDirectories) {
       const filePath = path.join(dir, fileName);
-      if (fsSync.existsSync(filePath)) {
+      if (fs.existsSync(filePath)) {
         console.log('[api/images/chat-exports] ローカルファイルヒット:', { filePath });
-        const buffer = fsSync.readFileSync(filePath);
+        const buffer = fs.readFileSync(filePath);
         setImageHeaders(contentType);
         return res.status(200).send(buffer);
       }
