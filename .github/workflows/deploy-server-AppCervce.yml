@@ -133,7 +133,10 @@ jobs:
           fi
           
           echo "✅ Kudu credentials extracted"
-          KUDU_URL="https://${{ secrets.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net"
+          
+          # App Service名を明示的に設定
+          APP_NAME="emergency-assistantapp-gwgscxcca5chahyb9"
+          KUDU_URL="https://${APP_NAME}.scm.azurewebsites.net"
           echo "Kudu URL: $KUDU_URL"
           
           cd server
@@ -254,7 +257,8 @@ jobs:
           KUDU_USER=$(echo "$PUBLISH_PROFILE" | sed -n 's/.*userName="\([^"]*\)".*/\1/p' | head -1)
           KUDU_PASS=$(echo "$PUBLISH_PROFILE" | sed -n 's/.*userPWD="\([^"]*\)".*/\1/p' | head -1)
           
-          KUDU_URL="https://${{ secrets.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net"
+          APP_NAME="emergency-assistantapp-gwgscxcca5chahyb9"
+          KUDU_URL="https://${APP_NAME}.scm.azurewebsites.net"
           
           # npm installを実行（Windowsパス形式）
           echo "Running npm install..."
