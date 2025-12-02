@@ -1359,32 +1359,143 @@ app.get('/api/ping/detailed', (req, res) => {
 // 7. Storage endpoints
 // 旧モックAPI削除：正式なAPIエンドポイントは下記で実装
 
-// 14. トラブルシューティングAPI
-app.get('/api/troubleshooting/list', (req, res) => {
-  res.json({
-    success: true,
-    data: [],
-    message: 'トラブルシューティング一覧を取得しました（本番環境では空です）',
-    timestamp: new Date().toISOString()
-  });
+// 14. トラブルシューティングAPI（BLOBストレージから取得）
+app.get('/api/troubleshooting/list', async (req, res) => {
+  try {
+    console.log('[api/troubleshooting/list] トラブルシューティング一覧取得リクエスト');
+
+    if (!connectionString) {
+      return res.json({
+        success: true,
+        data: [],
+        message: 'Azure Storage not configured',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.json({
+        success: true,
+        data: [],
+        message: 'Blob service client unavailable',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const listOptions = {
+      prefix: norm('troubleshooting/')
+    };
+
+    const troubleshootingList = [];
+    for await (const blob of containerClient.listBlobsFlat(listOptions)) {
+      if (blob.name.endsWith('.json')) {
+        try {
+          const blockBlobClient = containerClient.getBlockBlobClient(blob.name);
+          const downloadResponse = await blockBlobClient.download();
+
+          if (downloadResponse.readableStreamBody) {
+            const chunks = [];
+            for await (const chunk of downloadResponse.readableStreamBody) {
+              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            }
+            const content = Buffer.concat(chunks).toString('utf-8');
+            const cleanContent = content.replace(/^\uFEFF/, '');
+            const jsonData = JSON.parse(cleanContent);
+
+            troubleshootingList.push({
+              id: jsonData.id || blob.name.split('/').pop().replace('.json', ''),
+              title: jsonData.title || '',
+              description: jsonData.description || '',
+              blobName: blob.name
+            });
+          }
+        } catch (error) {
+          console.error(`[api/troubleshooting/list] ファイル読み込みエラー: ${blob.name}`, error);
+        }
+      }
+    }
+
+    console.log(`[api/troubleshooting/list] 取得成功: ${troubleshootingList.length}件`);
+    res.json({
+      success: true,
+      data: troubleshootingList,
+      message: `トラブルシューティング一覧を取得しました: ${troubleshootingList.length}件`,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/troubleshooting/list] エラー:', error);
+    res.status(500).json({
+      success: false,
+      data: [],
+      message: 'トラブルシューティング一覧の取得に失敗しました',
+      error: error.message
+    });
+  }
 });
 
-// 15. 個別トラブルシューティングファイル取得API
-app.get('/api/troubleshooting/:id', (req, res) => {
-  const { id } = req.params;
-  res.json({
-    success: true,
-    data: {
-      id: id,
-      title: 'サンプルトラブルシューティング',
-      description: '本番環境ではサンプルデータです',
-      steps: [
-        { step: 1, action: '確認', description: '問題を確認する' },
-        { step: 2, action: '対処', description: '適切な対処を行う' }
-      ]
-    },
-    message: `トラブルシューティングファイルを取得しました（本番環境ではサンプル）: ${id}`
-  });
+// 15. 個別トラブルシューティングファイル取得API（BLOBストレージから取得）
+app.get('/api/troubleshooting/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`[api/troubleshooting/:id] 個別ファイル取得リクエスト: ${id}`);
+
+    if (!connectionString) {
+      return res.status(404).json({
+        success: false,
+        message: 'Azure Storage not configured'
+      });
+    }
+
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(404).json({
+        success: false,
+        message: 'Blob service client unavailable'
+      });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blobName = norm(`troubleshooting/${id}.json`);
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+    const exists = await blockBlobClient.exists();
+    if (!exists) {
+      console.warn(`[api/troubleshooting/:id] ファイルが見つかりません: ${blobName}`);
+      return res.status(404).json({
+        success: false,
+        message: `トラブルシューティングファイルが見つかりません: ${id}`
+      });
+    }
+
+    const downloadResponse = await blockBlobClient.download();
+    if (downloadResponse.readableStreamBody) {
+      const chunks = [];
+      for await (const chunk of downloadResponse.readableStreamBody) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      const content = Buffer.concat(chunks).toString('utf-8');
+      const cleanContent = content.replace(/^\uFEFF/, '');
+      const jsonData = JSON.parse(cleanContent);
+
+      console.log(`[api/troubleshooting/:id] 取得成功: ${id}`);
+      res.json({
+        success: true,
+        data: jsonData,
+        message: `トラブルシューティングファイルを取得しました: ${id}`
+      });
+    } else {
+      throw new Error('ダウンロードストリームが利用できません');
+    }
+  } catch (error) {
+    console.error(`[api/troubleshooting/:id] エラー:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'トラブルシューティングファイルの取得に失敗しました',
+      error: error.message
+    });
+  }
 });
 
 // ==== /api/history/* サブルートを先に定義（/:id より前） ====
