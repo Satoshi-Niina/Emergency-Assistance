@@ -58,8 +58,19 @@ import helmet from 'helmet';
 import session from 'express-session';
 import compression from 'compression';
 import morgan from 'morgan';
+import cors from 'cors';
 
-// SQLite削除 - PostgreSQLのみ使用
+// Azure BLOB Storage
+import { BlobServiceClient } from '@azure/storage-blob';
+
+// PostgreSQL
+import pkg from 'pg';
+const { Pool } = pkg;
+
+// Password hashing
+import bcrypt from 'bcryptjs';
+
+// OpenAI
 import OpenAI from 'openai';
 import multer from 'multer';
 
@@ -88,6 +99,25 @@ const STATIC_WEB_APP_URL = cleanEnvValue(
 ) || 'http://localhost:5173';
 const HEALTH_TOKEN = process.env.HEALTH_TOKEN || ''; // 任意。設定時は /ready に x-health-token を要求
 const PORT = process.env.PORT || 3000;
+
+// ==== BLOB Storage Configuration ====
+const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
+
+// ==== OpenAI Configuration ====
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const isOpenAIAvailable = !!OPENAI_API_KEY;
+
+// ==== Version Information ====
+const VERSION = '2025-12-02T10:20:00+09:00';
+
+// 起動時にBLOB設定をログ出力
+console.log('🔧 BLOB Storage Configuration:');
+console.log('   AZURE_STORAGE_CONNECTION_STRING:', connectionString ? `[SET] (length: ${connectionString.length})` : '[NOT SET]');
+console.log('   AZURE_STORAGE_CONTAINER_NAME:', containerName);
+console.log('   AZURE_STORAGE_ACCOUNT_NAME:', process.env.AZURE_STORAGE_ACCOUNT_NAME || 'not set');
+console.log('🤖 OpenAI Configuration:');
+console.log('   OPENAI_API_KEY:', isOpenAIAvailable ? '[SET]' : '[NOT SET]');
 
 // ==== アプリ初期化 =====
 // __dirname is already defined at the top
@@ -135,7 +165,41 @@ app.use(
 app.use(compression());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'tiny' : 'dev'));
 
-// ... (CORS settings omitted for brevity, keeping existing code) ...
+// CORS設定（クロスオリジン対応）
+const corsOptions = {
+  origin: function (origin, callback) {
+    // 許可するオリジンのリスト
+    const allowedOrigins = [
+      FRONTEND_URL,
+      STATIC_WEB_APP_URL,
+      'http://localhost:5173',
+      'http://localhost:5002',
+      'http://localhost:3000'
+    ];
+
+    // オリジンが未定義（直接アクセス）またはリストに含まれる場合は許可
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn('⚠️ CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true, // Cookieを含むリクエストを許可
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Set-Cookie'],
+  maxAge: 86400 // 24時間
+};
+
+app.use(cors(corsOptions));
+
+// プリフライトリクエストへの対応
+app.options('*', cors(corsOptions));
+
+// Body parser middleware
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // BLOBサービスクライアントの初期化（同期的にクライアントを返すのみ）
 const getBlobServiceClient = () => {
