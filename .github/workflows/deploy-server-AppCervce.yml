@@ -64,12 +64,12 @@ jobs:
           <configuration>
             <system.webServer>
               <handlers>
-                <add name="iisnode" path="dist/azure-server.mjs" verb="*" modules="iisnode"/>
+                <add name="iisnode" path="azure-server.mjs" verb="*" modules="iisnode"/>
               </handlers>
               <rewrite>
                 <rules>
                   <rule name="NodeInspector" patternSyntax="ECMAScript" stopProcessing="true">
-                    <match url="^dist/azure-server.mjs\/debug[\/]?" />
+                    <match url="^azure-server.mjs\/debug[\/]?" />
                   </rule>
                   <rule name="StaticContent">
                     <action type="Rewrite" url="public{REQUEST_URI}"/>
@@ -78,7 +78,7 @@ jobs:
                     <conditions>
                       <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="True"/>
                     </conditions>
-                    <action type="Rewrite" url="dist/azure-server.mjs"/>
+                    <action type="Rewrite" url="azure-server.mjs"/>
                   </rule>
                 </rules>
               </rewrite>
