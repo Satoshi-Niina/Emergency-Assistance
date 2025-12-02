@@ -112,53 +112,66 @@ jobs:
           EOF
           echo "✅ web.config created"
       
-      - name: Create deployment package (all source files)
-        timeout-minutes: 5
+      - name: Deploy files directly via Kudu API
         run: |
-          echo "📦 Creating fresh deployment package..."
+          echo "📤 Deploying files directly to App Service via Kudu..."
+          
+          # Kudu認証情報取得
+          PUBLISH_PROFILE=$(az webapp deployment list-publishing-profiles \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+            --xml)
+          
+          KUDU_USER=$(echo "$PUBLISH_PROFILE" | grep -oP '(?<=userName=")[^"]+' | head -1)
+          KUDU_PASS=$(echo "$PUBLISH_PROFILE" | grep -oP '(?<=userPWD=")[^"]+' | head -1)
+          
+          KUDU_URL="https://${{ secrets.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net"
+          
           cd server
           
-          # 一意のタイムスタンプを生成
-          TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
-          COMMIT_SHORT=$(echo "${{ github.sha }}" | cut -c1-8)
+          echo "📝 Uploading main files..."
+          curl -T "azure-server.mjs" "$KUDU_URL/api/vfs/site/wwwroot/azure-server.mjs" -u "$KUDU_USER:$KUDU_PASS"
+          curl -T "package.json" "$KUDU_URL/api/vfs/site/wwwroot/package.json" -u "$KUDU_USER:$KUDU_PASS"
+          curl -T "web.config" "$KUDU_URL/api/vfs/site/wwwroot/web.config" -u "$KUDU_USER:$KUDU_PASS"
           
-          echo "Deployment Timestamp: $TIMESTAMP" > DEPLOY_INFO.txt
-          echo "Git Commit: $COMMIT_SHORT" >> DEPLOY_INFO.txt
-          echo "Workflow Run: ${{ github.run_number }}" >> DEPLOY_INFO.txt
-          echo "Random ID: $RANDOM" >> DEPLOY_INFO.txt
+          echo "📁 Uploading directories..."
+          # routes/
+          find routes -type f | while read file; do
+            curl -T "$file" "$KUDU_URL/api/vfs/site/wwwroot/$file" -u "$KUDU_USER:$KUDU_PASS" --create-dirs
+          done
           
-          # 全ソースファイルをzipに含める（node_modules除外、Azure側でnpm install）
-          echo "Including all source files for fresh deployment..."
-          zip -r ../server-deploy.zip \
-            package.json \
-            package-lock.json \
-            azure-server.mjs \
-            app.js \
-            server.js \
-            fallback-server.js \
-            web.config \
-            DEPLOY_INFO.txt \
-            routes/ \
-            middleware/ \
-            services/ \
-            utils/ \
-            config/ \
-            db/ \
-            lib/ \
-            types/ \
-            -x "*.git*" "*.log" ".npm/*" "*.ts" "tsconfig.*" "*.test.*" "*.spec.*" "dist/*" "node_modules/*" "uploads/*"
+          # middleware/
+          find middleware -type f | while read file; do
+            curl -T "$file" "$KUDU_URL/api/vfs/site/wwwroot/$file" -u "$KUDU_USER:$KUDU_PASS" --create-dirs
+          done
+          
+          # services/
+          find services -type f | while read file; do
+            curl -T "$file" "$KUDU_URL/api/vfs/site/wwwroot/$file" -u "$KUDU_USER:$KUDU_PASS" --create-dirs
+          done
+          
+          # utils/
+          find utils -type f | while read file; do
+            curl -T "$file" "$KUDU_URL/api/vfs/site/wwwroot/$file" -u "$KUDU_USER:$KUDU_PASS" --create-dirs
+          done
+          
+          # config/
+          find config -type f 2>/dev/null | while read file; do
+            curl -T "$file" "$KUDU_URL/api/vfs/site/wwwroot/$file" -u "$KUDU_USER:$KUDU_PASS" --create-dirs
+          done || echo "config/ not found, skipping"
+          
+          # db/
+          find db -type f 2>/dev/null | while read file; do
+            curl -T "$file" "$KUDU_URL/api/vfs/site/wwwroot/$file" -u "$KUDU_USER:$KUDU_PASS" --create-dirs
+          done || echo "db/ not found, skipping"
+          
+          # lib/
+          find lib -type f 2>/dev/null | while read file; do
+            curl -T "$file" "$KUDU_URL/api/vfs/site/wwwroot/$file" -u "$KUDU_USER:$KUDU_PASS" --create-dirs
+          done || echo "lib/ not found, skipping"
           
           cd ..
-          echo "✅ Deployment zip created: server-deploy.zip"
-          ls -lh server-deploy.zip
-          
-          # zipの内容を確認
-          echo "📋 Package contents:"
-          unzip -l server-deploy.zip
-          
-          # azure-server.mjsが含まれているか確認
-          echo "🔍 Verifying azure-server.mjs in package:"
-          unzip -l server-deploy.zip | grep "azure-server.mjs" || echo "❌ ERROR: azure-server.mjs not found in package!"
+          echo "✅ All files uploaded directly via Kudu"
 
       - name: Set environment variables BEFORE deployment
         uses: azure/cli@v1
@@ -217,16 +230,27 @@ jobs:
           
           echo "✅ Old files cleared (if they existed)"
 
-      - name: Deploy to Azure App Service
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
-          package: server-deploy.zip
-
-      - name: Wait for deployment extraction
+      - name: Install dependencies on App Service via Kudu
         run: |
-          echo "⏳ デプロイファイル展開を待機（20秒）..."
-          sleep 20
+          echo "📦 Installing npm dependencies on App Service..."
+          
+          PUBLISH_PROFILE=$(az webapp deployment list-publishing-profiles \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+            --xml)
+          
+          KUDU_USER=$(echo "$PUBLISH_PROFILE" | grep -oP '(?<=userName=")[^"]+' | head -1)
+          KUDU_PASS=$(echo "$PUBLISH_PROFILE" | grep -oP '(?<=userPWD=")[^"]+' | head -1)
+          
+          KUDU_URL="https://${{ secrets.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net"
+          
+          # npm installを実行
+          curl -X POST "$KUDU_URL/api/command" \
+            -u "$KUDU_USER:$KUDU_PASS" \
+            -H "Content-Type: application/json" \
+            -d '{"command":"cd site\\wwwroot && npm install --omit=dev","dir":"site\\wwwroot"}'
+          
+          echo "✅ Dependencies installed"
 
       - name: Set remaining environment variables
         uses: azure/cli@v1
