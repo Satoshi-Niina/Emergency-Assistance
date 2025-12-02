@@ -190,6 +190,33 @@ jobs:
             sleep 5
             echo "✅ App Service stopped"
 
+      - name: Clear old deployment files via Kudu
+        continue-on-error: true
+        run: |
+          echo "🗑️ Clearing old deployment files via Kudu API..."
+          
+          # Kudu認証情報取得
+          PUBLISH_PROFILE=$(az webapp deployment list-publishing-profiles \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+            --xml)
+          
+          KUDU_USER=$(echo "$PUBLISH_PROFILE" | grep -oP '(?<=userName=")[^"]+' | head -1)
+          KUDU_PASS=$(echo "$PUBLISH_PROFILE" | grep -oP '(?<=userPWD=")[^"]+' | head -1)
+          
+          KUDU_URL="https://${{ secrets.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net"
+          
+          echo "Attempting to delete old files: azure-server.mjs, package.json"
+          
+          # 古いファイルを削除（エラーは無視）
+          curl -X DELETE "$KUDU_URL/api/vfs/site/wwwroot/azure-server.mjs" \
+            -u "$KUDU_USER:$KUDU_PASS" || echo "azure-server.mjs not found or already deleted"
+          
+          curl -X DELETE "$KUDU_URL/api/vfs/site/wwwroot/package.json" \
+            -u "$KUDU_USER:$KUDU_PASS" || echo "package.json not found or already deleted"
+          
+          echo "✅ Old files cleared (if they existed)"
+
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v2
         with:
