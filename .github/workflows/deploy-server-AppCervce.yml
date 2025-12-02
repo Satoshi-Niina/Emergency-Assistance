@@ -118,6 +118,11 @@ jobs:
           echo "📦 Creating deployment package..."
           cd server
           
+          # タイムスタンプをREADME.txtとして追加（zipのハッシュを変更するため）
+          echo "Deployment Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)" > DEPLOY_INFO.txt
+          echo "Git Commit: ${{ github.sha }}" >> DEPLOY_INFO.txt
+          echo "Workflow Run: ${{ github.run_number }}" >> DEPLOY_INFO.txt
+          
           # node_modulesを除外してzipを作成（Azure側でインストール）
           # knowledge-baseはBLOBストレージを使用するため含めない
           zip -r ../server-deploy.zip \
@@ -128,6 +133,7 @@ jobs:
             server.js \
             fallback-server.js \
             web.config \
+            DEPLOY_INFO.txt \
             -x "*.git*" "*.log" ".npm/*" "src/*" "*.ts" "tsconfig.*" "*.test.*" "*.spec.*" "dist/*" "node_modules/*"
           
           cd ..
@@ -150,6 +156,19 @@ jobs:
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           package: server-deploy.zip
+
+      - name: Restart Azure App Service (強制的に最新zipを読み込む)
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            echo "🔄 App Serviceを再起動して最新のデプロイパッケージを適用..."
+            az webapp restart \
+              --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
+            
+            echo "⏳ 再起動完了を待機（10秒）..."
+            sleep 10
+            echo "✅ App Service再起動完了"
 
       - name: Set environment variables on Azure App Service
         uses: azure/cli@v1
@@ -213,6 +232,19 @@ jobs:
             " || echo "⚠️ User seed may have failed, but continuing..."
             
             echo "✅ Admin user seeded"
+
+      - name: Restart App Service to load new package
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            echo "🔄 Restarting App Service to ensure new package is loaded..."
+            az webapp restart \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --name ${{ secrets.AZURE_WEBAPP_NAME }}
+            
+            echo "✅ App Service restarted"
+            echo "⏳ Waiting 30 seconds for app to fully start..."
+            sleep 30
 
       - name: Verify deployment
         run: |
