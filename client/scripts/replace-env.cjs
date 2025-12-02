@@ -106,9 +106,33 @@ if (fs.existsSync(htmlPath)) {
   console.log(`   - VITE_BACKEND_SERVICE_URL: ${before.BACKEND} occurrence(s)  "${envVars.VITE_BACKEND_SERVICE_URL || '(empty)'}"`);
   console.log(`   - VITE_API_BASE_URL: ${before.API} occurrence(s)  "${envVars.VITE_API_BASE_URL || '(empty)'}"`);
   console.log(`   - VITE_SERVER_URL: ${before.SERVER} occurrence(s)  "${envVars.VITE_SERVER_URL || '(empty)'}"`);
-  
-  console.log(' Replace-env script completed successfully');
 } else {
   console.error(' dist/index.html not found at:', htmlPath);
   process.exit(1);
 }
+
+// runtime-config.js ファイルを処理
+const runtimeConfigPath = path.join(__dirname, '..', 'dist', 'runtime-config.js');
+
+if (fs.existsSync(runtimeConfigPath)) {
+  let runtimeConfigContent = fs.readFileSync(runtimeConfigPath, 'utf-8');
+
+  // PLACEHOLDER_API_BASE_URL を置換
+  const beforePlaceholder = (runtimeConfigContent.match(/PLACEHOLDER_API_BASE_URL/g) || []).length;
+
+  runtimeConfigContent = runtimeConfigContent.replace(
+    /PLACEHOLDER_API_BASE_URL/g,
+    envVars.VITE_API_BASE_URL || ''
+  );
+
+  // 処理済み runtime-config.js を書き戻し
+  fs.writeFileSync(runtimeConfigPath, runtimeConfigContent, 'utf-8');
+
+  console.log(' Environment variables replaced in dist/runtime-config.js');
+  console.log(`   Replaced PLACEHOLDER_API_BASE_URL: ${beforePlaceholder} occurrence(s)  "${envVars.VITE_API_BASE_URL || '(empty)'}"`);
+} else {
+  console.warn('  runtime-config.js not found at:', runtimeConfigPath);
+  console.warn('  Skipping runtime-config.js replacement');
+}
+
+console.log(' Replace-env script completed successfully');

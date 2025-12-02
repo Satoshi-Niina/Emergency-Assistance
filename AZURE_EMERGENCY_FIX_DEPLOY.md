@@ -82,8 +82,8 @@ GitHub ActionsまたはAzure DevOpsが設定されている場合、自動的に
 ```powershell
 # Azure CLIでデプロイ
 az webapp deployment source config-zip `
-  --resource-group rg-emergency-assistantapp `
-  --name emergency-assistantapp-gwgscxcca5cahyb9 `
+  --resource-group rg-Emergencyassistant-app `
+  --name emergency-assistantapp-gwgscxcca5chahyb9 `
   --src ./deployment-package.zip
 ```
 

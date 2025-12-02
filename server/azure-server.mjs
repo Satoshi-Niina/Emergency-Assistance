@@ -183,7 +183,7 @@ app.use(
 app.use(compression());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'tiny' : 'dev'));
 
-// CORS設定（クロスオリジン対応）
+// CORS設定（クロスオリジン対応 - 本番環境対応版）
 const corsOptions = {
   origin: function (origin, callback) {
     // 許可するオリジンのリスト
@@ -195,12 +195,25 @@ const corsOptions = {
       'http://localhost:3000'
     ];
 
+    console.log('🔍 CORS Check:', {
+      requestOrigin: origin,
+      allowedOrigins: allowedOrigins,
+      willAllow: !origin || allowedOrigins.indexOf(origin) !== -1
+    });
+
     // オリジンが未定義（直接アクセス）またはリストに含まれる場合は許可
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       console.warn('⚠️ CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
+      console.warn('⚠️ Expected origins:', allowedOrigins);
+      // 本番環境でazurestaticapps.netからのリクエストは許可（デバッグ用）
+      if (process.env.NODE_ENV === 'production' && origin && origin.includes('azurestaticapps.net')) {
+        console.warn('⚠️ Allowing azurestaticapps.net origin for debugging');
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
     }
   },
   credentials: true, // Cookieを含むリクエストを許可
