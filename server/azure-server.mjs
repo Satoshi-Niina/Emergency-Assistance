@@ -126,14 +126,32 @@ const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', true);
 
-// Azure App Serviceの認証設定（Easy Auth）の確認
+// Azure App Serviceの認証設定（Easy Auth）の確認と警告
 // X-MS-CLIENT-PRINCIPALヘッダーが存在する場合、Easy Authが有効になっている可能性があります
 app.use((req, res, next) => {
+  // すべてのリクエストに対してEasy Authチェック
   if (req.headers['x-ms-client-principal']) {
-    console.warn('⚠️ Azure App Service Easy Auth is enabled');
-    console.warn('⚠️ X-MS-CLIENT-PRINCIPAL header detected:', req.headers['x-ms-client-principal']);
-    console.warn('⚠️ If you are getting 403 errors, disable Easy Auth in Azure Portal or exclude API endpoints');
+    console.error('=' .repeat(100));
+    console.error('❌❌❌ CRITICAL: AZURE APP SERVICE EASY AUTH DETECTED ❌❌❌');
+    console.error('❌ Path:', req.path);
+    console.error('❌ Method:', req.method);
+    console.error('❌ X-MS-CLIENT-PRINCIPAL header is present');
+    console.error('❌ Easy Authが有効になっているため、APIエンドポイントが403 Forbiddenを返します');
+    console.error('❌');
+    console.error('❌ 修正方法:');
+    console.error('❌   1. Azure Portal > App Service > 認証 > 認証を無効にする');
+    console.error('❌   2. または、Azure Portal > App Service > 認証 > 除外するパス に /api/* を追加');
+    console.error('❌');
+    console.error('❌ 詳細: AZURE_403_ERROR_FIX.md を参照してください');
+    console.error('❌❌❌ EASY AUTH MUST BE DISABLED OR CONFIGURED ❌❌❌');
+    console.error('=' .repeat(100));
   }
+  
+  // APIエンドポイントに対する追加の警告
+  if (req.path.startsWith('/api/') && req.headers['x-ms-client-principal']) {
+    console.error('🚨 APIエンドポイント', req.path, 'がEasy Authによってブロックされています');
+  }
+  
   next();
 });
 
@@ -4672,13 +4690,28 @@ app.put('/api/emergency-flow/:flowId', async (req, res) => {
 // 31. フロー一覧取得エンドポイント
 app.get('/api/emergency-flow/list', async (req, res) => {
   try {
-    console.log('[api/emergency-flow/list] フロー一覧取得リクエスト');
+    console.log('='.repeat(80));
+    console.log('[api/emergency-flow/list] ✅ エンドポイントに到達しました');
+    console.log('[api/emergency-flow/list] タイムスタンプ:', new Date().toISOString());
+    console.log('[api/emergency-flow/list] Request method:', req.method);
+    console.log('[api/emergency-flow/list] Request URL:', req.url);
     console.log('[api/emergency-flow/list] Request headers:', {
       origin: req.headers.origin,
       referer: req.headers.referer,
+      host: req.headers.host,
       cookie: req.headers.cookie ? 'present' : 'missing',
-      'user-agent': req.headers['user-agent']
+      'user-agent': req.headers['user-agent'],
+      'x-ms-client-principal': req.headers['x-ms-client-principal'] ? '**DETECTED**' : 'not present'
     });
+    
+    // Easy Auth検出警告
+    if (req.headers['x-ms-client-principal']) {
+      console.error('❌❌❌ AZURE APP SERVICE EASY AUTH IS ACTIVE ❌❌❌');
+      console.error('❌ このリクエストはEasy Authによってインターセプトされている可能性があります');
+      console.error('❌ 解決方法: Azure PortalでEasy Authを無効化するか、/api/*を除外してください');
+      console.error('❌❌❌ EASY AUTH MUST BE DISABLED FOR API ENDPOINTS ❌❌❌');
+    }
+    console.log('='.repeat(80));
 
     const flows = [];
 
