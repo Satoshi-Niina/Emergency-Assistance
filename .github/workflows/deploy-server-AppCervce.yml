@@ -155,7 +155,7 @@ jobs:
                 VERBOSE_LOGGING=false \
                 SCM_DO_BUILD_DURING_DEPLOYMENT=true \
                 WEBSITE_NODE_DEFAULT_VERSION=20-lts \
-                WEBSITE_RUN_FROM_PACKAGE=0 \
+                WEBSITE_RUN_FROM_PACKAGE=1 \
                 WEBSITE_LOCAL_CACHE_OPTION=Never \
                 WEBSITE_DYNAMIC_CACHE=0
             
