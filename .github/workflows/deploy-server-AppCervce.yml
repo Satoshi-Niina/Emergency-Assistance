@@ -68,36 +68,6 @@ jobs:
           echo "✅ Server dependencies installed"
           echo "📋 Verifying .mjs files exist:"
           ls -lh *.mjs | head -5
-      
-      - name: Create deployment package
-        run: |
-          echo "📦 Creating deployment package..."
-          cd server
-          
-          # デプロイに必要なファイルのみをzipに含める
-          # .mjsファイル、node_modules、package.json、web.config
-          zip -r ../server-deploy.zip \
-            node_modules/ \
-            package.json \
-            package-lock.json \
-            azure-server.mjs \
-            app.js \
-            server.js \
-            fallback-server.js \
-            web.config \
-            -x "*.git*" "*.log" ".npm/*" "src/*" "*.ts" "tsconfig.*" "*.test.*" "*.spec.*" "dist/*"
-          
-          cd ..
-          echo "✅ Deployment zip created: server-deploy.zip"
-          ls -lh server-deploy.zip
-          
-          # zipの内容を確認
-          echo "📋 Package contents (first 30 files):"
-          unzip -l server-deploy.zip | head -30
-          
-          # azure-server.mjsが含まれているか確認
-          echo "🔍 Verifying azure-server.mjs in package:"
-          unzip -l server-deploy.zip | grep "azure-server.mjs" || echo "❌ ERROR: azure-server.mjs not found in package!"
 
       - name: Create web.config for Azure App Service
         run: |
@@ -136,6 +106,36 @@ jobs:
           </configuration>
           EOF
           echo "✅ web.config created"
+      
+      - name: Create deployment package
+        run: |
+          echo "📦 Creating deployment package..."
+          cd server
+          
+          # デプロイに必要なファイルのみをzipに含める
+          # .mjsファイル、node_modules、package.json、web.config
+          zip -r ../server-deploy.zip \
+            node_modules/ \
+            package.json \
+            package-lock.json \
+            azure-server.mjs \
+            app.js \
+            server.js \
+            fallback-server.js \
+            web.config \
+            -x "*.git*" "*.log" ".npm/*" "src/*" "*.ts" "tsconfig.*" "*.test.*" "*.spec.*" "dist/*"
+          
+          cd ..
+          echo "✅ Deployment zip created: server-deploy.zip"
+          ls -lh server-deploy.zip
+          
+          # zipの内容を確認
+          echo "📋 Package contents (first 30 files):"
+          unzip -l server-deploy.zip | head -30
+          
+          # azure-server.mjsが含まれているか確認
+          echo "🔍 Verifying azure-server.mjs in package:"
+          unzip -l server-deploy.zip | grep "azure-server.mjs" || echo "❌ ERROR: azure-server.mjs not found in package!"
 
       # Note: App Service supports zero-downtime deployment
       # No need to stop the service - new files will be deployed seamlessly
