@@ -1,12 +1,13 @@
 ﻿name: Deploy Client (Azure Static Web Apps)
 
 on:
-  # push:
-  #   branches:
-  #     - main
-  #   paths:
-  #     - 'client/**'
-  #     - '.github/workflows/deploy-cliente-azure.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'client/**'
+      - 'shared/**'
+      - '.github/workflows/deploy-cliente-azure.yml'
   workflow_dispatch:
 
 jobs:
@@ -35,7 +36,9 @@ jobs:
 
       - name: Build client
         env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
           VITE_BACKEND_SERVICE_URL: ${{ secrets.VITE_BACKEND_SERVICE_URL }}
+          VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
           NODE_ENV: production
         run: |
           cd client

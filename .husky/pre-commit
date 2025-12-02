@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# クライアントファイルが変更されている場合のみビルド
+if git diff --cached --name-only | grep -q "^client/"; then
+  echo "🔍 Client files changed, building..."
+  cd client && npm run build
+  echo "✅ Client build completed"
+fi

@@ -17,8 +17,9 @@
     "prebuild": "echo 🔨 Building client for production deployment...",
     "postbuild": "echo ✅ Client build completed. Ready for deployment!",
     "deploy-check": "node scripts/check-build-before-push.js",
+    "pre-commit": "pwsh -File scripts/pre-commit.ps1",
+    "commit": "npm run pre-commit && git add . && git commit",
     "pre-push": "npm run deploy-check",
-
     "docker:prod": "docker-compose up --build",
     "docker:prod:detach": "docker-compose up -d --build",
     "docker:dev": "docker-compose -f docker-compose.dev.yml up --build",
@@ -33,6 +34,7 @@
     "autoprefixer": "^10.4.22",
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
+    "husky": "^9.1.7",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.17",
     "vite": "^5.4.21"
