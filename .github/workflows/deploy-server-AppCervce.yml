@@ -112,173 +112,59 @@ jobs:
           EOF
           echo "✅ web.config created"
       
-      - name: Deploy files directly via Kudu API
+      - name: Create deployment package
+        timeout-minutes: 5
         run: |
-          echo "📤 Deploying files directly to App Service via Kudu..."
-          
-          # Kudu認証情報取得
-          echo "Getting publish profile..."
-          PUBLISH_PROFILE=$(az webapp deployment list-publishing-profiles \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-            --name "${{ secrets.AZURE_WEBAPP_NAME }}" \
-            --xml)
-          
-          # XMLからユーザー名とパスワードを抽出
-          KUDU_USER=$(echo "$PUBLISH_PROFILE" | sed -n 's/.*userName="\([^"]*\)".*/\1/p' | head -1)
-          KUDU_PASS=$(echo "$PUBLISH_PROFILE" | sed -n 's/.*userPWD="\([^"]*\)".*/\1/p' | head -1)
-          
-          if [ -z "$KUDU_USER" ] || [ -z "$KUDU_PASS" ]; then
-            echo "❌ Failed to extract Kudu credentials"
-            exit 1
-          fi
-          
-          echo "✅ Kudu credentials extracted"
-          
-          # App Service名を明示的に設定
-          APP_NAME="emergency-assistantapp-gwgscxcca5chahyb9"
-          KUDU_URL="https://${APP_NAME}.scm.azurewebsites.net"
-          echo "Kudu URL: $KUDU_URL"
-          
+          echo "📦 Creating fresh deployment package..."
           cd server
           
-          echo "📝 Uploading main files..."
-          curl -f -T "azure-server.mjs" "${KUDU_URL}/api/vfs/site/wwwroot/azure-server.mjs" -u "${KUDU_USER}:${KUDU_PASS}" || { echo "Failed to upload azure-server.mjs"; exit 1; }
-          echo "✅ azure-server.mjs uploaded"
+          # 一意のデプロイ情報ファイル作成
+          cat > DEPLOY_INFO.txt << EOF
+          Deployment Time: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          Commit SHA: ${{ github.sha }}
+          Run Number: ${{ github.run_number }}
+          Random ID: $(date +%s%N)
+          EOF
           
-          curl -f -T "package.json" "${KUDU_URL}/api/vfs/site/wwwroot/package.json" -u "${KUDU_USER}:${KUDU_PASS}" || { echo "Failed to upload package.json"; exit 1; }
-          echo "✅ package.json uploaded"
+          cat DEPLOY_INFO.txt
           
-          curl -f -T "web.config" "${KUDU_URL}/api/vfs/site/wwwroot/web.config" -u "${KUDU_USER}:${KUDU_PASS}" || { echo "Failed to upload web.config"; exit 1; }
-          echo "✅ web.config uploaded"
-          
-          echo "📁 Uploading directories..."
-          # routes/
-          if [ -d "routes" ]; then
-            find routes -type f -name "*.js" -o -name "*.mjs" -o -name "*.ts" | while read file; do
-              curl -f -T "$file" "${KUDU_URL}/api/vfs/site/wwwroot/$file" -u "${KUDU_USER}:${KUDU_PASS}" --create-dirs || echo "⚠️ Failed: $file"
-            done
-            echo "✅ routes/ uploaded"
-          fi
-          
-          # middleware/
-          if [ -d "middleware" ]; then
-            find middleware -type f -name "*.js" -o -name "*.mjs" -o -name "*.ts" | while read file; do
-              curl -f -T "$file" "${KUDU_URL}/api/vfs/site/wwwroot/$file" -u "${KUDU_USER}:${KUDU_PASS}" --create-dirs || echo "⚠️ Failed: $file"
-            done
-            echo "✅ middleware/ uploaded"
-          fi
-          
-          # services/
-          if [ -d "services" ]; then
-            find services -type f -name "*.js" -o -name "*.mjs" -o -name "*.ts" | while read file; do
-              curl -f -T "$file" "${KUDU_URL}/api/vfs/site/wwwroot/$file" -u "${KUDU_USER}:${KUDU_PASS}" --create-dirs || echo "⚠️ Failed: $file"
-            done
-            echo "✅ services/ uploaded"
-          fi
-          
-          # utils/
-          if [ -d "utils" ]; then
-            find utils -type f -name "*.js" -o -name "*.mjs" -o -name "*.ts" | while read file; do
-              curl -f -T "$file" "${KUDU_URL}/api/vfs/site/wwwroot/$file" -u "${KUDU_USER}:${KUDU_PASS}" --create-dirs || echo "⚠️ Failed: $file"
-            done
-            echo "✅ utils/ uploaded"
-          fi
+          # zipパッケージ作成
+          zip -r ../deploy.zip \
+            package.json \
+            azure-server.mjs \
+            web.config \
+            DEPLOY_INFO.txt \
+            routes/ \
+            middleware/ \
+            services/ \
+            utils/ \
+            -x "*.git*" "*.log" "node_modules/*" "*.ts" "tsconfig.*" "dist/*"
           
           cd ..
-          echo "✅ All files uploaded directly via Kudu"
+          ls -lh deploy.zip
+          sha256sum deploy.zip
 
-      - name: Set environment variables BEFORE deployment
+      - name: Deploy via Azure CLI (ZipDeploy)
         uses: azure/cli@v1
         with:
           inlineScript: |
-            echo "⚙️ Setting app settings BEFORE deployment..."
+            echo "🚀 Deploying via az webapp deployment..."
+            az webapp deployment source config-zip \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --name emergency-assistantapp-gwgscxcca5chahyb9 \
+              --src deploy.zip
+            
+            echo "✅ ZipDeploy completed"
+
+      - name: Set environment variables
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            echo "⚙️ Setting all environment variables..."
             
             az webapp config appsettings set \
               --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-              --name ${{ secrets.AZURE_WEBAPP_NAME }} \
-              --settings \
-                WEBSITE_RUN_FROM_PACKAGE=0 \
-                SCM_DO_BUILD_DURING_DEPLOYMENT=true \
-                WEBSITE_LOCAL_CACHE_OPTION=Never \
-                WEBSITE_DYNAMIC_CACHE=0 \
-                WEBSITES_ENABLE_APP_SERVICE_STORAGE=true \
-                WEBSITE_NODE_DEFAULT_VERSION=20-lts
-            
-            echo "✅ Critical deployment settings configured"
-
-      - name: Stop App Service (確実に古いプロセスを停止)
-        uses: azure/cli@v1
-        with:
-          inlineScript: |
-            echo "🛑 Stopping App Service to clear old processes..."
-            az webapp stop \
-              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-              --name ${{ secrets.AZURE_WEBAPP_NAME }}
-            sleep 5
-            echo "✅ App Service stopped"
-
-      - name: Clear old deployment files via Kudu
-        continue-on-error: true
-        run: |
-          echo "🗑️ Clearing old deployment files via Kudu API..."
-          
-          # Kudu認証情報取得
-          PUBLISH_PROFILE=$(az webapp deployment list-publishing-profiles \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --name ${{ secrets.AZURE_WEBAPP_NAME }} \
-            --xml)
-          
-          KUDU_USER=$(echo "$PUBLISH_PROFILE" | grep -oP '(?<=userName=")[^"]+' | head -1)
-          KUDU_PASS=$(echo "$PUBLISH_PROFILE" | grep -oP '(?<=userPWD=")[^"]+' | head -1)
-          
-          KUDU_URL="https://${{ secrets.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net"
-          
-          echo "Attempting to delete old files: azure-server.mjs, package.json"
-          
-          # 古いファイルを削除（エラーは無視）
-          curl -X DELETE "$KUDU_URL/api/vfs/site/wwwroot/azure-server.mjs" \
-            -u "$KUDU_USER:$KUDU_PASS" || echo "azure-server.mjs not found or already deleted"
-          
-          curl -X DELETE "$KUDU_URL/api/vfs/site/wwwroot/package.json" \
-            -u "$KUDU_USER:$KUDU_PASS" || echo "package.json not found or already deleted"
-          
-          echo "✅ Old files cleared (if they existed)"
-
-      - name: Install dependencies on App Service via Kudu
-        run: |
-          echo "📦 Installing npm dependencies on App Service..."
-          
-          # Kudu認証情報取得（再利用）
-          PUBLISH_PROFILE=$(az webapp deployment list-publishing-profiles \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-            --name "${{ secrets.AZURE_WEBAPP_NAME }}" \
-            --xml)
-          
-          KUDU_USER=$(echo "$PUBLISH_PROFILE" | sed -n 's/.*userName="\([^"]*\)".*/\1/p' | head -1)
-          KUDU_PASS=$(echo "$PUBLISH_PROFILE" | sed -n 's/.*userPWD="\([^"]*\)".*/\1/p' | head -1)
-          
-          APP_NAME="emergency-assistantapp-gwgscxcca5chahyb9"
-          KUDU_URL="https://${APP_NAME}.scm.azurewebsites.net"
-          
-          # npm installを実行（Windowsパス形式）
-          echo "Running npm install..."
-          curl -X POST "${KUDU_URL}/api/command" \
-            -u "${KUDU_USER}:${KUDU_PASS}" \
-            -H "Content-Type: application/json" \
-            -d '{"command":"cd D:\\home\\site\\wwwroot && npm install --omit=dev --no-audit --no-fund","dir":"D:\\home\\site\\wwwroot"}' \
-            || echo "⚠️ npm install may have failed, continuing..."
-          
-          echo "✅ Dependencies installation attempted"
-
-      - name: Set remaining environment variables
-        uses: azure/cli@v1
-        with:
-          inlineScript: |
-            echo "⚙️ Setting application environment variables..."
-            
-            az webapp config appsettings set \
-              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-              --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+              --name emergency-assistantapp-gwgscxcca5chahyb9 \
               --settings \
                 NODE_ENV=production \
                 DATABASE_URL="${{ secrets.DATABASE_URL }}" \
@@ -296,9 +182,15 @@ jobs:
                 OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
                 OPENAI_MAX_TOKENS=2000 \
                 DEBUG_MODE=false \
-                VERBOSE_LOGGING=false
+                VERBOSE_LOGGING=false \
+                WEBSITE_RUN_FROM_PACKAGE=0 \
+                SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+                WEBSITE_LOCAL_CACHE_OPTION=Never \
+                WEBSITE_DYNAMIC_CACHE=0 \
+                WEBSITES_ENABLE_APP_SERVICE_STORAGE=true \
+                WEBSITE_NODE_DEFAULT_VERSION=20-lts
             
-            echo "✅ Application settings configured"
+            echo "✅ All settings configured"
 
       - name: Seed admin user to database
         uses: azure/cli@v1
