@@ -47,7 +47,7 @@ jobs:
           npm run build
           echo "✅ Shared module built"
 
-      - name: Install server dependencies and create deployment zip
+      - name: Install server dependencies
         run: |
           echo "📦 Installing server dependencies..."
           cd server
@@ -63,12 +63,33 @@ jobs:
           echo "🔨 Building server..."
           npm run build
           
-          # node_modulesを含めてzipを作成
-          echo "📦 Creating deployment zip with node_modules..."
-          zip -r ../server-deploy.zip . -x "*.git*" "*.log" ".npm/*" "src/*" "*.ts" "tsconfig.*"
+          echo "✅ Server built successfully"
+          ls -lh dist/ || echo "⚠️ dist/ folder not found"
+      
+      - name: Create deployment package
+        run: |
+          echo "📦 Creating deployment package..."
+          cd server
+          
+          # デプロイに必要なファイルのみをzipに含める
+          # node_modules, dist, package*.json, web.config, *.mjsファイル
+          zip -r ../server-deploy.zip \
+            node_modules/ \
+            dist/ \
+            package.json \
+            package-lock.json \
+            *.mjs \
+            *.js \
+            web.config \
+            -x "*.git*" "*.log" ".npm/*" "src/*" "*.ts" "tsconfig.*" "*.test.*" "*.spec.*"
+          
           cd ..
           echo "✅ Deployment zip created: server-deploy.zip"
           ls -lh server-deploy.zip
+          
+          # zipの内容を確認
+          echo "📋 Package contents:"
+          unzip -l server-deploy.zip | head -20
 
       - name: Create web.config for Azure App Service
         run: |
@@ -111,6 +132,73 @@ jobs:
       # Note: App Service supports zero-downtime deployment
       # No need to stop the service - new files will be deployed seamlessly
 
+      - name: Stop App Service for clean deployment
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            echo "🛑 Stopping App Service for clean deployment..."
+            az webapp stop \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --name ${{ secrets.AZURE_WEBAPP_NAME }}
+            echo "✅ App Service stopped"
+
+      - name: Clean deployment cache
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            echo "🧹 Cleaning deployment cache and old files..."
+            WEBAPP_NAME="${{ secrets.AZURE_WEBAPP_NAME }}"
+            
+            # Kudu APIでファイル削除（確実に古いファイルを削除）
+            CREDS=$(az webapp deployment list-publishing-credentials \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --name "$WEBAPP_NAME" \
+              --query "{username:publishingUserName, password:publishingPassword}" \
+              -o json)
+            
+            USERNAME=$(echo $CREDS | jq -r '.username')
+            PASSWORD=$(echo $CREDS | jq -r '.password')
+            
+            # 主要なファイル/フォルダを個別に削除
+            for path in "node_modules" "dist" "*.js" "*.mjs" "package.json"; do
+              echo "Deleting: $path"
+              curl -X DELETE "https://${WEBAPP_NAME}.scm.azurewebsites.net/api/vfs/site/wwwroot/$path" \
+                -u "$USERNAME:$PASSWORD" \
+                -H "If-Match: *" 2>/dev/null || true
+            done
+            
+            echo "✅ Old files cleared"
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          package: server-deploy.zip
+          
+      - name: Verify deployment package was uploaded
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            echo "🔍 Verifying deployment..."
+            WEBAPP_NAME="${{ secrets.AZURE_WEBAPP_NAME }}"
+            
+            # Kudu APIでファイル確認
+            CREDS=$(az webapp deployment list-publishing-credentials \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --name "$WEBAPP_NAME" \
+              --query "{username:publishingUserName, password:publishingPassword}" \
+              -o json)
+            
+            USERNAME=$(echo $CREDS | jq -r '.username')
+            PASSWORD=$(echo $CREDS | jq -r '.password')
+            
+            # デプロイされたファイルを確認
+            echo "📋 Checking deployed files:"
+            curl -s "https://${WEBAPP_NAME}.scm.azurewebsites.net/api/vfs/site/wwwroot/" \
+              -u "$USERNAME:$PASSWORD" | jq -r '.[].name' | head -10 || echo "⚠️ Could not list files"
+            
+            echo "✅ Deployment verification completed"
+
       - name: Set environment variables on Azure App Service
         uses: azure/cli@v1
         with:
@@ -145,6 +233,19 @@ jobs:
                 WEBSITE_DYNAMIC_CACHE=0
             
             echo "✅ App settings configured successfully"
+
+      - name: Start App Service
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            echo "🚀 Starting App Service with new deployment..."
+            az webapp start \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --name ${{ secrets.AZURE_WEBAPP_NAME }}
+            
+            echo "✅ App Service started"
+            echo "⏳ Waiting for application to warm up..."
+            sleep 30
 
       - name: Seed admin user to database
         uses: azure/cli@v1
