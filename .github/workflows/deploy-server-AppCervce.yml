@@ -4,11 +4,7 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'server/**'
-      - 'shared/**'
-      - 'package.json'
-      - '.github/workflows/deploy-server-AppCervce.yml'
+    # paths設定を削除 - mainへのプッシュで常にデプロイ
   workflow_dispatch:
 
 jobs:
