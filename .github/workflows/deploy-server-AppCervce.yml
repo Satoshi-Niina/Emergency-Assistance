@@ -160,24 +160,52 @@ jobs:
           echo "🔍 Verifying azure-server.mjs in package:"
           unzip -l server-deploy.zip | grep "azure-server.mjs" || echo "❌ ERROR: azure-server.mjs not found in package!"
 
+      - name: Set environment variables BEFORE deployment
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            echo "⚙️ Setting app settings BEFORE deployment..."
+            
+            az webapp config appsettings set \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+              --settings \
+                WEBSITE_RUN_FROM_PACKAGE=0 \
+                SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+                WEBSITE_LOCAL_CACHE_OPTION=Never \
+                WEBSITE_DYNAMIC_CACHE=0 \
+                WEBSITES_ENABLE_APP_SERVICE_STORAGE=true \
+                WEBSITE_NODE_DEFAULT_VERSION=20-lts
+            
+            echo "✅ Critical deployment settings configured"
+
+      - name: Stop App Service (確実に古いプロセスを停止)
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            echo "🛑 Stopping App Service to clear old processes..."
+            az webapp stop \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --name ${{ secrets.AZURE_WEBAPP_NAME }}
+            sleep 5
+            echo "✅ App Service stopped"
+
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           package: server-deploy.zip
 
-      - name: Wait for deployment completion
+      - name: Wait for deployment extraction
         run: |
-          echo "⏳ デプロイ完了とアプリ起動を待機（30秒）..."
-          sleep 30
-          echo "✅ デプロイ完了"
-            echo "✅ App Service再起動完了"
+          echo "⏳ デプロイファイル展開を待機（20秒）..."
+          sleep 20
 
-      - name: Set environment variables on Azure App Service
+      - name: Set remaining environment variables
         uses: azure/cli@v1
         with:
           inlineScript: |
-            echo "⚙️ Setting new app settings..."
+            echo "⚙️ Setting application environment variables..."
             
             az webapp config appsettings set \
               --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
@@ -199,15 +227,9 @@ jobs:
                 OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
                 OPENAI_MAX_TOKENS=2000 \
                 DEBUG_MODE=false \
-                VERBOSE_LOGGING=false \
-                SCM_DO_BUILD_DURING_DEPLOYMENT=true \
-                WEBSITE_NODE_DEFAULT_VERSION=20-lts \
-                WEBSITE_RUN_FROM_PACKAGE=0 \
-                WEBSITE_LOCAL_CACHE_OPTION=Never \
-                WEBSITE_DYNAMIC_CACHE=0 \
-                WEBSITES_ENABLE_APP_SERVICE_STORAGE=true
+                VERBOSE_LOGGING=false
             
-            echo "✅ App settings configured successfully"
+            echo "✅ Application settings configured"
 
       - name: Seed admin user to database
         uses: azure/cli@v1
@@ -237,18 +259,18 @@ jobs:
             
             echo "✅ Admin user seeded"
 
-      - name: Restart App Service to load new package
+      - name: Start App Service with new files
         uses: azure/cli@v1
         with:
           inlineScript: |
-            echo "🔄 Restarting App Service to ensure new package is loaded..."
-            az webapp restart \
+            echo "▶️ Starting App Service with new deployment..."
+            az webapp start \
               --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
               --name ${{ secrets.AZURE_WEBAPP_NAME }}
             
-            echo "✅ App Service restarted"
-            echo "⏳ Waiting 30 seconds for app to fully start..."
-            sleep 30
+            echo "⏳ Waiting 40 seconds for app to fully start..."
+            sleep 40
+            echo "✅ App Service started with new files"
 
       - name: Verify deployment
         run: |
