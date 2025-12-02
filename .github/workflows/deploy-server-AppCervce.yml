@@ -160,61 +160,17 @@ jobs:
           echo "🔍 Verifying azure-server.mjs in package:"
           unzip -l server-deploy.zip | grep "azure-server.mjs" || echo "❌ ERROR: azure-server.mjs not found in package!"
 
-      - name: Stop Azure App Service (古いプロセスを完全停止)
-        uses: azure/cli@v1
-        with:
-          inlineScript: |
-            echo "🛑 App Serviceを完全停止..."
-            az webapp stop \
-              --name ${{ secrets.AZURE_WEBAPP_NAME }} \
-              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
-            
-            echo "⏳ 停止完了を待機（10秒）..."
-            sleep 10
-
-      - name: Clear Azure App Service cache
-        uses: azure/cli@v1
-        with:
-          inlineScript: |
-            echo "🧹 App Serviceのキャッシュをクリア..."
-            
-            # Kudu経由でキャッシュディレクトリをクリア
-            PUBLISH_PROFILE=$(az webapp deployment list-publishing-profiles \
-              --name ${{ secrets.AZURE_WEBAPP_NAME }} \
-              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-              --xml | grep publishUrl | sed -n 's/.*<publishUrl>\(.*\)<\/publishUrl>.*/\1/p' | head -1)
-            
-            echo "Kuduエンドポイント: ${PUBLISH_PROFILE}"
-            
-            # node_modulesとキャッシュを削除
-            KUDU_URL="https://${{ secrets.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net"
-            echo "🗑️ Kudu経由でキャッシュクリア: ${KUDU_URL}"
-
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           package: server-deploy.zip
-          clean: true
 
-      - name: Wait for deployment extraction
+      - name: Wait for deployment completion
         run: |
-          echo "⏳ デプロイファイル展開を待機（40秒）..."
-          sleep 40
-
-      - name: Start Azure App Service (新しいファイルで起動)
-        uses: azure/cli@v1
-        with:
-          inlineScript: |
-            echo "▶️ App Serviceを起動..."
-            az webapp start \
-              --name ${{ secrets.AZURE_WEBAPP_NAME }} \
-              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
-            
-            echo "⏳ 起動完了を待機（30秒）..."
-            sleep 30
-            
-            echo "✅ デプロイ完了"
+          echo "⏳ デプロイ完了とアプリ起動を待機（30秒）..."
+          sleep 30
+          echo "✅ デプロイ完了"
             echo "✅ App Service再起動完了"
 
       - name: Set environment variables on Azure App Service
