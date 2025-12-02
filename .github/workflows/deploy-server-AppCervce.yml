@@ -56,8 +56,14 @@ jobs:
           echo "🧹 Cleaning old node_modules..."
           rm -rf node_modules
           
-          # 本番用の依存関係をインストール
-          npm ci --omit=dev --no-audit --no-fund
+          # 本番用の依存関係をインストール（package-lock.jsonがない場合はnpm install）
+          if [ -f "package-lock.json" ]; then
+            echo "Using npm ci with package-lock.json"
+            npm ci --omit=dev --no-audit --no-fund
+          else
+            echo "⚠️ package-lock.json not found, using npm install"
+            npm install --omit=dev --no-audit --no-fund
+          fi
           
           echo "✅ Server dependencies installed"
           echo "📋 Verifying .mjs files exist:"
