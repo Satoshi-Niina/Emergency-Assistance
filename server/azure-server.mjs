@@ -1498,6 +1498,188 @@ app.get('/api/troubleshooting/:id', async (req, res) => {
   }
 });
 
+// 16. トラブルシューティング保存API（BLOBストレージに保存）
+app.post('/api/troubleshooting', async (req, res) => {
+  try {
+    const flowData = req.body;
+    console.log('[api/troubleshooting POST] トラブルシューティング作成リクエスト:', flowData.id || 'new');
+
+    if (!connectionString) {
+      return res.status(503).json({
+        success: false,
+        message: 'Azure Storage not configured - cannot save to BLOB'
+      });
+    }
+
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({
+        success: false,
+        message: 'Blob service client unavailable'
+      });
+    }
+
+    // IDがない場合は生成
+    if (!flowData.id) {
+      flowData.id = `flow_${Date.now()}`;
+    }
+
+    // タイムスタンプ設定
+    if (!flowData.createdAt) {
+      flowData.createdAt = new Date().toISOString();
+    }
+    flowData.updatedAt = new Date().toISOString();
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blobName = norm(`troubleshooting/${flowData.id}.json`);
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+    // JSON文字列に変換
+    const jsonContent = JSON.stringify(flowData, null, 2);
+    const buffer = Buffer.from(jsonContent, 'utf-8');
+
+    // BLOBにアップロード
+    await blockBlobClient.upload(buffer, buffer.length, {
+      blobHTTPHeaders: {
+        blobContentType: 'application/json'
+      }
+    });
+
+    console.log(`[api/troubleshooting POST] 作成成功: ${flowData.id}`);
+    res.json({
+      success: true,
+      data: flowData,
+      message: `トラブルシューティングを作成しました: ${flowData.id}`
+    });
+  } catch (error) {
+    console.error('[api/troubleshooting POST] エラー:', error);
+    res.status(500).json({
+      success: false,
+      message: 'トラブルシューティングの作成に失敗しました',
+      error: error.message
+    });
+  }
+});
+
+// 17. トラブルシューティング更新API（BLOBストレージに保存）
+app.put('/api/troubleshooting/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const flowData = req.body;
+    console.log(`[api/troubleshooting PUT] トラブルシューティング更新リクエスト: ${id}`);
+
+    if (!connectionString) {
+      return res.status(503).json({
+        success: false,
+        message: 'Azure Storage not configured - cannot save to BLOB'
+      });
+    }
+
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({
+        success: false,
+        message: 'Blob service client unavailable'
+      });
+    }
+
+    // IDを確保
+    flowData.id = id;
+    flowData.updatedAt = new Date().toISOString();
+
+    // 更新履歴を追加
+    if (!flowData.updateHistory) {
+      flowData.updateHistory = [];
+    }
+    flowData.updateHistory.push({
+      timestamp: new Date().toISOString(),
+      updatedFields: Object.keys(flowData),
+      updatedBy: 'user'
+    });
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blobName = norm(`troubleshooting/${id}.json`);
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+    // JSON文字列に変換
+    const jsonContent = JSON.stringify(flowData, null, 2);
+    const buffer = Buffer.from(jsonContent, 'utf-8');
+
+    // BLOBにアップロード（上書き）
+    await blockBlobClient.upload(buffer, buffer.length, {
+      blobHTTPHeaders: {
+        blobContentType: 'application/json'
+      }
+    });
+
+    console.log(`[api/troubleshooting PUT] 更新成功: ${id}`);
+    res.json({
+      success: true,
+      data: flowData,
+      message: `トラブルシューティングを更新しました: ${id}`
+    });
+  } catch (error) {
+    console.error(`[api/troubleshooting PUT] エラー:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'トラブルシューティングの更新に失敗しました',
+      error: error.message
+    });
+  }
+});
+
+// 18. トラブルシューティング削除API（BLOBストレージから削除）
+app.delete('/api/troubleshooting/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`[api/troubleshooting DELETE] トラブルシューティング削除リクエスト: ${id}`);
+
+    if (!connectionString) {
+      return res.status(503).json({
+        success: false,
+        message: 'Azure Storage not configured'
+      });
+    }
+
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({
+        success: false,
+        message: 'Blob service client unavailable'
+      });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blobName = norm(`troubleshooting/${id}.json`);
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+    // 存在確認
+    const exists = await blockBlobClient.exists();
+    if (!exists) {
+      return res.status(404).json({
+        success: false,
+        message: `トラブルシューティングが見つかりません: ${id}`
+      });
+    }
+
+    // 削除実行
+    await blockBlobClient.delete();
+
+    console.log(`[api/troubleshooting DELETE] 削除成功: ${id}`);
+    res.json({
+      success: true,
+      message: `トラブルシューティングを削除しました: ${id}`
+    });
+  } catch (error) {
+    console.error(`[api/troubleshooting DELETE] エラー:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'トラブルシューティングの削除に失敗しました',
+      error: error.message
+    });
+  }
+});
+
 // ==== /api/history/* サブルートを先に定義（/:id より前） ====
 
 // 16. 履歴API（機種・機械番号データ）
