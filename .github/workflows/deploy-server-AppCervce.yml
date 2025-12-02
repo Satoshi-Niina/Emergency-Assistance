@@ -52,19 +52,16 @@ jobs:
           echo "📦 Installing server dependencies..."
           cd server
           
-          # 古いnode_modulesとdistを削除してクリーンインストール
-          echo "🧹 Cleaning old files..."
-          rm -rf node_modules dist
+          # 古いnode_modulesを削除してクリーンインストール
+          echo "🧹 Cleaning old node_modules..."
+          rm -rf node_modules
           
           # 本番用の依存関係をインストール
           npm ci --omit=dev --no-audit --no-fund
           
-          # サーバーをビルド
-          echo "🔨 Building server..."
-          npm run build
-          
-          echo "✅ Server built successfully"
-          ls -lh dist/ || echo "⚠️ dist/ folder not found"
+          echo "✅ Server dependencies installed"
+          echo "📋 Verifying .mjs files exist:"
+          ls -lh *.mjs | head -5
       
       - name: Create deployment package
         run: |
@@ -72,24 +69,29 @@ jobs:
           cd server
           
           # デプロイに必要なファイルのみをzipに含める
-          # node_modules, dist, package*.json, web.config, *.mjsファイル
+          # .mjsファイル、node_modules、package.json、web.config
           zip -r ../server-deploy.zip \
             node_modules/ \
-            dist/ \
             package.json \
             package-lock.json \
-            *.mjs \
-            *.js \
+            azure-server.mjs \
+            app.js \
+            server.js \
+            fallback-server.js \
             web.config \
-            -x "*.git*" "*.log" ".npm/*" "src/*" "*.ts" "tsconfig.*" "*.test.*" "*.spec.*"
+            -x "*.git*" "*.log" ".npm/*" "src/*" "*.ts" "tsconfig.*" "*.test.*" "*.spec.*" "dist/*"
           
           cd ..
           echo "✅ Deployment zip created: server-deploy.zip"
           ls -lh server-deploy.zip
           
           # zipの内容を確認
-          echo "📋 Package contents:"
-          unzip -l server-deploy.zip | head -20
+          echo "📋 Package contents (first 30 files):"
+          unzip -l server-deploy.zip | head -30
+          
+          # azure-server.mjsが含まれているか確認
+          echo "🔍 Verifying azure-server.mjs in package:"
+          unzip -l server-deploy.zip | grep "azure-server.mjs" || echo "❌ ERROR: azure-server.mjs not found in package!"
 
       - name: Create web.config for Azure App Service
         run: |
