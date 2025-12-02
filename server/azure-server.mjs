@@ -1574,10 +1574,13 @@ app.get('/api/history/machine-data', async (req, res) => {
 // エクスポートファイル一覧API
 app.get('/api/history/export-files', async (req, res) => {
   try {
-    console.log('[api/history/export-files] エクスポートファイル一覧取得リクエスト');
+    console.log('[api/history/export-files] ===== エクスポートファイル一覧取得リクエスト開始 =====');
+    console.log('[api/history/export-files] リクエストURL:', req.url);
+    console.log('[api/history/export-files] リクエストメソッド:', req.method);
 
     const items = [];
     const blobServiceClient = getBlobServiceClient();
+    console.log('[api/history/export-files] BLOBサービスクライアント:', blobServiceClient ? '利用可能' : '利用不可');
 
     if (blobServiceClient) {
       try {
@@ -1589,10 +1592,19 @@ app.get('/api/history/export-files', async (req, res) => {
         for await (const blob of containerClient.listBlobsFlat({ prefix })) {
           if (blob.name.endsWith('.json')) {
             const fileName = blob.name.split('/').pop();
+            
+            // ファイル名からタイトルを抽出（例: "タイトル_chatId_timestamp.json"）
+            const fileNameWithoutExt = fileName.replace('.json', '');
+            const parts = fileNameWithoutExt.split('_');
+            const title = parts.length > 0 ? parts[0] : 'タイトルなし';
+            
             items.push({
-              id: fileName.replace('.json', ''),
+              id: fileNameWithoutExt,
               fileName: fileName,
+              title: title,
               blobName: blob.name,
+              createdAt: blob.properties.lastModified?.toISOString() || new Date().toISOString(),
+              exportTimestamp: blob.properties.lastModified?.toISOString() || new Date().toISOString(),
               lastModified: blob.properties.lastModified,
               size: blob.properties.contentLength,
             });
