@@ -1721,80 +1721,6 @@ app.get('/api/history/:id', async (req, res) => {
       }
     }
 
-    // フォールバック: ローカルファイルシステム（開発環境のみ）
-    const projectRoot = path.resolve(__dirname, '..');
-    const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
-
-    if (fsSync.existsSync(exportsDir)) {
-      const files = fsSync.readdirSync(exportsDir);
-      let foundFile = null;
-      let foundData = null;
-
-      for (const file of files) {
-        if (!file.endsWith('.json') || file.includes('.backup.')) continue;
-
-        const fileName = file.replace('.json', '');
-        const uuidMatch = fileName.match(/_([a-f0-9-]{36})_/);
-        const fileId = uuidMatch ? uuidMatch[1] : fileName;
-
-        if (fileId === id || fileName === id || file.includes(id)) {
-          try {
-            const filePath = path.join(exportsDir, file);
-            const content = fsSync.readFileSync(filePath, { encoding: 'utf8' });
-            foundData = JSON.parse(content);
-            foundFile = file;
-            break;
-          } catch (error) {
-            console.error(`ファイル読み込みエラー: ${file}`, error);
-          }
-        }
-      }
-
-      if (foundData) {
-        console.log(`✅ ローカルファイルで見つかりました: ${foundFile}`);
-
-        const savedImages = foundData.savedImages || foundData.images || [];
-        const convertedItem = {
-          id: id,
-          type: 'fault_history',
-          fileName: foundFile,
-          chatId: foundData.chatId || id,
-          userId: foundData.userId || '',
-          exportType: foundData.exportType || 'file_stored',
-          exportTimestamp: foundData.createdAt || new Date().toISOString(),
-          messageCount: foundData.metadata?.total_messages || 0,
-          machineType: foundData.machineType || '',
-          machineNumber: foundData.machineNumber || '',
-          machineInfo: {
-            selectedMachineType: '',
-            selectedMachineNumber: '',
-            machineTypeName: foundData.machineType || '',
-            machineNumber: foundData.machineNumber || '',
-          },
-          title: foundData.title || '',
-          incidentTitle: foundData.title || '',
-          problemDescription: foundData.problemDescription || foundData.description || '',
-          extractedComponents: foundData.extractedComponents || [],
-          extractedSymptoms: foundData.extractedSymptoms || [],
-          possibleModels: foundData.possibleModels || [],
-          conversationHistory: foundData.conversationHistory || foundData.conversation_history || [],
-          metadata: foundData.metadata || {},
-          savedImages: savedImages,
-          images: savedImages,
-          fileSize: 0,
-          lastModified: foundData.lastModified || foundData.updateHistory?.[0]?.timestamp || foundData.createdAt,
-          createdAt: foundData.createdAt,
-          jsonData: {
-            ...foundData,
-            savedImages: savedImages,
-          },
-        };
-
-        console.log(`✅ 履歴アイテム取得完了: ${id} (画像: ${savedImages.length}件)`);
-        return res.json(convertedItem);
-      }
-    }
-
     // 見つからなかった場合
     console.log(`❌ 履歴アイテムが見つかりませんでした: ${id}`);
     res.status(404).json({
@@ -2803,41 +2729,12 @@ app.get('/api/knowledge', async (_req, res) => {
       }
     }
 
-    const dataDir = path.join(process.cwd(), 'knowledge-base', 'data');
-    if (!fsSync.existsSync(dataDir)) {
-      console.log('[api/knowledge] knowledge-base/data/フォルダが存在しません');
-      return res.json({
-        success: true,
-        data: [],
-        total: 0,
-        message: 'knowledge-base/data/フォルダが存在しません'
-      });
-    }
-
-    const files = fsSync.readdirSync(dataDir);
-    const jsonFiles = files.filter((file) => {
-      const fullPath = path.join(dataDir, file);
-      const stats = fsSync.statSync(fullPath);
-      return stats.isFile() && file.toLowerCase().endsWith('.json');
-    });
-
-    const list = jsonFiles.map((file) => {
-      const fullPath = path.join(dataDir, file);
-      const stats = fsSync.statSync(fullPath);
-      return {
-        filename: file,
-        name: path.parse(file).name,
-        size: stats.size,
-        modifiedAt: stats.mtime.toISOString(),
-        path: `/knowledge-base/data/${file}`
-      };
-    });
-
-    console.log(`✅ [api/knowledge] ローカルレスポンス: ${list.length}件`);
+    // BLOBストレージが利用できない場合は空の結果を返す
+    console.log('[api/knowledge] BLOBストレージが利用できません');
     res.json({
       success: true,
-      data: list,
-      total: list.length,
+      data: [],
+      total: 0,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -2919,23 +2816,11 @@ app.get('/api/knowledge/:filename(*)', async (req, res) => {
       });
     }
 
-    const localPath = path.join(process.cwd(), 'knowledge-base', 'data', filename);
-    if (!fsSync.existsSync(localPath)) {
-      return res.status(404).json({
-        success: false,
-        error: 'ファイルが見つかりません'
-      });
-    }
-
-    const fileContent = fsSync.readFileSync(localPath, 'utf-8');
-    const jsonData = JSON.parse(fileContent);
-
-    console.log('[api/knowledge] ローカルファイル取得成功');
-    res.json({
-      success: true,
-      data: jsonData,
-      filename,
-      size: Buffer.byteLength(fileContent, 'utf-8')
+    // BLOBストレージが利用できない場合は404を返す
+    console.log('[api/knowledge] BLOBストレージが利用できません');
+    return res.status(404).json({
+      success: false,
+      error: 'BLOBストレージが利用できません'
     });
   } catch (error) {
     console.error('[api/knowledge] ナレッジファイル取得エラー:', error);
@@ -3499,24 +3384,9 @@ app.post('/api/chat/export', async (req, res) => {
     // BLOBストレージに保存
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
-      // フォールバック: ローカルファイルシステム（開発環境のみ）
-      const projectRoot = path.resolve(__dirname, '..');
-      const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
-
-      if (!fsSync.existsSync(exportsDir)) {
-        fsSync.mkdirSync(exportsDir, { recursive: true });
-      }
-
-      const filePath = path.join(exportsDir, filename);
-      fsSync.writeFileSync(filePath, JSON.stringify(dataToSave, null, 2), 'utf8');
-
-      console.log(`✅ ローカルファイルに保存: ${filename}`);
-      return res.json({
-        success: true,
-        filename: filename,
-        filePath: filePath,
-        storage: 'local_file',
-        chatId: chatId,
+      return res.status(503).json({
+        success: false,
+        error: 'BLOBストレージが利用できません',
         timestamp: new Date().toISOString()
       });
     }
@@ -3678,45 +3548,11 @@ app.get('/api/history/export-list', async (req, res) => {
       }
     }
 
-    // フォールバック: ローカルファイルシステム（開発環境のみ）
-    if (items.length === 0) {
-      const projectRoot = path.resolve(__dirname, '..');
-      const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
-
-      if (fsSync.existsSync(exportsDir)) {
-        try {
-          const files = fsSync.readdirSync(exportsDir);
-          for (const file of files) {
-            if (!file.endsWith('.json') || file.includes('.backup.')) continue;
-
-            const fileNameWithoutExt = file.replace('.json', '');
-            const uuidMatch = fileNameWithoutExt.match(/_([a-f0-9-]{36})_/);
-            const fileId = uuidMatch ? uuidMatch[1] : fileNameWithoutExt;
-
-            const filePath = path.join(exportsDir, file);
-            const stats = fs.statSync(filePath);
-
-            items.push({
-              id: fileId,
-              fileName: file,
-              lastModified: stats.mtime,
-              size: stats.size,
-              source: 'local_file'
-            });
-          }
-
-          console.log(`✅ ローカルから ${items.length} 件取得`);
-        } catch (error) {
-          console.error('[api/history/export-list] ローカルファイル読み込みエラー:', error);
-        }
-      }
-    }
-
     res.json({
       success: true,
       data: items,
       total: items.length,
-      source: items.length > 0 ? items[0].source : 'none',
+      source: items.length > 0 ? 'blob_storage' : 'none',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -3730,139 +3566,24 @@ app.get('/api/history/export-list', async (req, res) => {
   }
 });
 
-// ローカルファイル一覧取得API
+// ローカルファイル一覧取得API（廃止 - BLOBストレージのみ使用）
 app.get('/api/history/local-files', async (req, res) => {
-  try {
-    console.log('[api/history/local-files] ローカルファイル一覧取得リクエスト');
-
-    const fsPromises = fs.promises;
-
-    // 履歴ファイルを保存するディレクトリを指定（環境変数対応）
-    const historyDir = process.env.LOCAL_HISTORY_DIR || path.join(__dirname, 'app-logs', 'history');
-    const exportDir = process.env.LOCAL_EXPORT_DIR || path.join(__dirname, 'app-logs', 'exports');
-
-    let files = [];
-
-    try {
-      // historyディレクトリから.jsonファイルを取得
-      try {
-        const historyFiles = await fsPromises.readdir(historyDir);
-        const historyJsonFiles = historyFiles.filter(file => file.endsWith('.json'));
-        files = [...files, ...historyJsonFiles.map(file => ({ file, dir: 'history' }))];
-      } catch (error) {
-        console.log('[api/history/local-files] historyディレクトリが存在しません');
-      }
-
-      // exportsディレクトリから.jsonファイルを取得
-      try {
-        const exportFiles = await fsPromises.readdir(exportDir);
-        const exportJsonFiles = exportFiles.filter(file => file.endsWith('.json'));
-        files = [...files, ...exportJsonFiles.map(file => ({ file, dir: 'exports' }))];
-      } catch (error) {
-        console.log('[api/history/local-files] exportsディレクトリが存在しません');
-      }
-
-      console.log('[api/history/local-files] ファイル一覧取得成功:', files.length + '件');
-
-      res.json({
-        success: true,
-        files: files.map(f => f.file),
-        directories: files.map(f => ({ file: f.file, directory: f.dir })),
-        total: files.length,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('[api/history/local-files] ディレクトリ読み込みエラー:', error);
-      res.json({
-        success: true,
-        files: [],
-        total: 0,
-        message: 'ローカルファイルディレクトリが見つかりません',
-        timestamp: new Date().toISOString()
-      });
-    }
-  } catch (error) {
-    console.error('[api/history/local-files] ローカルファイル一覧取得エラー:', error);
-    res.status(500).json({
-      success: false,
-      error: 'ローカルファイル一覧の取得に失敗しました',
-      details: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
+  console.log('[api/history/local-files] 廃止されたエンドポイント - BLOBストレージを使用してください');
+  res.status(410).json({
+    success: false,
+    error: 'このエンドポイントは廃止されました。/api/history/export-listを使用してください。',
+    timestamp: new Date().toISOString()
+  });
 });
 
-// ローカルファイル内容取得API
+// ローカルファイル内容取得API（廃止 - BLOBストレージのみ使用）
 app.get('/api/history/local-files/:filename', async (req, res) => {
-  try {
-    const { filename } = req.params;
-    console.log('[api/history/local-files/:filename] ファイル内容取得リクエスト:', filename);
-
-    const fsPromises = fs.promises;
-
-    // セキュリティチェック: ファイル名に不正な文字が含まれていないかチェック
-    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
-      return res.status(400).json({
-        success: false,
-        error: '不正なファイル名です',
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    // 履歴ファイルを保存するディレクトリから検索（環境変数対応）
-    const historyDir = process.env.LOCAL_HISTORY_DIR || path.join(__dirname, 'app-logs', 'history');
-    const exportDir = process.env.LOCAL_EXPORT_DIR || path.join(__dirname, 'app-logs', 'exports');
-
-    let filePath = null;
-
-    // historyディレクトリから検索
-    try {
-      const historyPath = path.join(historyDir, filename);
-      await fsPromises.access(historyPath);
-      filePath = historyPath;
-    } catch (error) {
-      // historyディレクトリにない場合、exportsディレクトリから検索
-      try {
-        const exportPath = path.join(exportDir, filename);
-        await fsPromises.access(exportPath);
-        filePath = exportPath;
-      } catch (error) {
-        // どちらにもない場合
-      }
-    }
-
-    if (!filePath) {
-      return res.status(404).json({
-        success: false,
-        error: 'ファイルが見つかりません',
-        filename: filename,
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    // ファイル内容を読み込み
-    const fileContent = await fsPromises.readFile(filePath, 'utf8');
-    const jsonData = JSON.parse(fileContent);
-
-    console.log('[api/history/local-files/:filename] ファイル内容取得成功:', filename);
-
-    res.json({
-      success: true,
-      filename: filename,
-      content: jsonData,
-      size: fileContent.length,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('[api/history/local-files/:filename] ファイル内容取得エラー:', error);
-    res.status(500).json({
-      success: false,
-      error: 'ファイル内容の取得に失敗しました',
-      details: error.message,
-      filename: req.params.filename,
-      timestamp: new Date().toISOString()
-    });
-  }
+  console.log('[api/history/local-files/:filename] 廃止されたエンドポイント - BLOBストレージを使用してください');
+  res.status(410).json({
+    success: false,
+    error: 'このエンドポイントは廃止されました。/api/history/:idを使用してください。',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // フロー管理API
@@ -5183,53 +4904,12 @@ app.get('/api/emergency-flow/image/:fileName', async (req, res) => {
       console.warn('[api/emergency-flow/image] BLOBクライアント未初期化、ローカル検索を使用します');
     }
 
-    // 2. ローカルファイルを検索
-    const searchDirectories = [
-      path.join(process.cwd(), 'knowledge-base', 'images', 'emergency-flows'),
-      path.join(__dirname, '..', 'knowledge-base', 'images', 'emergency-flows'),
-      path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports'),
-      path.join(__dirname, '..', 'knowledge-base', 'images', 'chat-exports')
-    ].map(p => path.resolve(p));
-
-    console.log('[api/emergency-flow/image] ローカル検索パス:', searchDirectories);
-
-    const findLocalFile = () => {
-      const targetLower = (fileName || '').toLowerCase();
-      for (const dir of searchDirectories) {
-        if (!fsSync.existsSync(dir)) {
-          continue;
-        }
-        const files = fsSync.readdirSync(dir);
-        const exactMatch = files.find(entry => entry === fileName);
-        if (exactMatch) {
-          return path.join(dir, exactMatch);
-        }
-        const caseInsensitiveMatch = files.find(entry => entry.toLowerCase() === targetLower);
-        if (caseInsensitiveMatch) {
-          return path.join(dir, caseInsensitiveMatch);
-        }
-      }
-      return null;
-    };
-
-    const localFilePath = findLocalFile();
-
-    if (localFilePath) {
-      console.log('[api/emergency-flow/image] ローカルファイルヒット:', { localFilePath });
-      const buffer = fsSync.readFileSync(localFilePath);
-      setImageHeaders(contentType);
-      return res.status(200).send(buffer);
-    }
-
-    console.warn('[api/emergency-flow/image] ファイルが見つかりませんでした', {
-      fileName,
-      searchedPaths: searchDirectories
-    });
+    // BLOBで見つからない場合は404を返す
+    console.warn('[api/emergency-flow/image] 画像が見つかりませんでした:', { fileName });
     return res.status(404).json({
       success: false,
-      error: '画像が見つかりません',
-      fileName,
-      searchedPaths: searchDirectories
+      error: '画像が見つかりません（BLOBストレージのみ対応）',
+      fileName
     });
   } catch (error) {
     console.error('[api/emergency-flow/image] 取得エラー:', error);
@@ -5297,26 +4977,11 @@ app.get('/api/images/chat-exports/:fileName', async (req, res) => {
       console.warn('[api/images/chat-exports] BLOBクライアント未初期化');
     }
 
-    // 2. ローカルファイルを検索（開発環境フォールバック）
-    const searchDirectories = [
-      path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports'),
-      path.join(__dirname, '..', 'knowledge-base', 'images', 'chat-exports')
-    ];
-
-    for (const dir of searchDirectories) {
-      const filePath = path.join(dir, fileName);
-      if (fs.existsSync(filePath)) {
-        console.log('[api/images/chat-exports] ローカルファイルヒット:', { filePath });
-        const buffer = fs.readFileSync(filePath);
-        setImageHeaders(contentType);
-        return res.status(200).send(buffer);
-      }
-    }
-
+    // BLOBで見つからない場合は404を返す
     console.log('[api/images/chat-exports] 画像が見つかりませんでした:', { fileName });
     return res.status(404).json({
       success: false,
-      error: '画像が見つかりません',
+      error: '画像が見つかりません（BLOBストレージのみ対応）',
       fileName: fileName
     });
   } catch (error) {
@@ -5764,43 +5429,7 @@ app.delete('/api/history/:id', async (req, res) => {
       }
     }
 
-    // フォールバック: ローカルファイルシステム（開発環境）
-    if (!foundFile && fsSync.existsSync(exportsDir)) {
-      const files = fsSync.readdirSync(exportsDir);
-      const jsonFiles = files.filter(file =>
-        file.endsWith('.json') &&
-        !file.includes('index') &&
-        !file.includes('railway-maintenance-ai-prompt')
-      );
-
-      for (const file of jsonFiles) {
-        const fileName = file.replace('.json', '');
-        const uuidMatch = fileName.match(/_([a-f0-9-]{36})_/);
-        const fileId = uuidMatch ? uuidMatch[1] : fileName;
-
-        if (fileId === id || fileName === id) {
-          foundFile = file;
-          console.log(`✅ ローカルでマッチするファイルを発見: ${foundFile}`);
-
-          // JSONファイルを読み込んで画像情報を取得
-          try {
-            const filePath = path.join(exportsDir, foundFile);
-            const fileContent = fsSync.readFileSync(filePath, 'utf8');
-            jsonData = JSON.parse(fileContent);
-            console.log(`📄 ローカルからJSONファイル読み込み成功: ${foundFile}`);
-          } catch (readError) {
-            console.warn(`⚠️ ローカルからJSONファイル読み込みエラー: ${foundFile}`, readError.message);
-          }
-
-          // ローカルファイルを削除
-          const filePath = path.join(exportsDir, foundFile);
-          fsSync.unlinkSync(filePath);
-          deletedFromLocal = true;
-          console.log(`🗑️ ローカルファイル削除: ${foundFile}`);
-          break;
-        }
-      }
-    }
+    // ローカルファイルシステムは使用しない（BLOBストレージのみ）
 
     if (!foundFile) {
       console.log(`❌ マッチするファイルが見つかりませんでした。検索ID: ${id}`);
@@ -5855,27 +5484,7 @@ app.delete('/api/history/:id', async (req, res) => {
       }
     }
 
-    // ローカルファイルシステムから画像を削除
-    if (fsSync.existsSync(imageDir)) {
-      const imageFiles = fsSync.readdirSync(imageDir);
-      const matchingImages = imageFiles.filter(imgFile => {
-        return imagesToDelete.includes(imgFile) ||
-          (imgFile.includes(id) && (imgFile.endsWith('.jpg') || imgFile.endsWith('.jpeg') || imgFile.endsWith('.png')));
-      });
-
-      matchingImages.forEach(imgFile => {
-        const imgPath = path.join(imageDir, imgFile);
-        try {
-          if (fsSync.existsSync(imgPath)) {
-            fsSync.unlinkSync(imgPath);
-            deletedImagesCount++;
-            console.log(`🗑️ ローカル画像ファイル削除: ${imgFile}`);
-          }
-        } catch (error) {
-          console.warn(`⚠️ ローカル画像ファイル削除エラー: ${imgFile}`, error.message);
-        }
-      });
-    }
+    // ローカルファイルシステムは使用しない（BLOBストレージのみ）
 
     console.log(`✅ 履歴削除完了: ${foundFile}, 画像${deletedImagesCount}件削除`);
 
