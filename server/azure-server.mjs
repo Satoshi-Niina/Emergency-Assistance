@@ -5840,11 +5840,12 @@ if (!clientDistPath) {
     console.warn('📋 Expected to use Vite dev server at http://localhost:5173');
     console.warn('🔧 To build client files, run: npm run build:client');
   } else {
-    console.error('❌ ERROR: Client dist directory not found in any expected location');
-    console.error('📋 Checked paths:', clientDistPaths);
-    console.error('🔍 Current working directory:', process.cwd());
-    console.error('📁 __dirname:', __dirname);
-    process.exit(1);
+    console.warn('⚠️ WARNING: Client dist directory not found in any expected location');
+    console.warn('📋 Checked paths:', clientDistPaths);
+    console.warn('🔍 Current working directory:', process.cwd());
+    console.warn('📁 __dirname:', __dirname);
+    console.warn('⚠️ Server will continue in API-ONLY mode (Frontend should be hosted separately)');
+    // process.exit(1); // ← 削除: APIサーバーとして稼働させるため終了しない
   }
 } else {
   app.use(express.static(clientDistPath, {
