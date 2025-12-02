@@ -112,24 +112,37 @@ jobs:
           echo "📦 Creating deployment package..."
           cd server
           
+          # シンボリックリンクを除外してzipを作成（ネストされたnode_modulesを防ぐ）
+          echo "🔍 Checking for symlinks in node_modules..."
+          find node_modules -type l 2>/dev/null | head -5 || echo "No symlinks found"
+          
           # デプロイに必要なファイルのみをzipに含める
-          # .mjsファイル、node_modules、package.json、web.config
-          zip -r ../server-deploy.zip \
+          # --symlinks オプションでシンボリックリンクをそのまま保存（追跡しない）
+          zip -ry ../server-deploy.zip \
+            --symlinks \
             node_modules/ \
             package.json \
-            package-lock.json \
             azure-server.mjs \
             app.js \
-            server.js \
-            fallback-server.js \
             web.config \
-            -x "*.git*" "*.log" ".npm/*" "src/*" "*.ts" "tsconfig.*" "*.test.*" "*.spec.*" "dist/*"
+            -x "*.git*" "*.log" ".npm/*" "src/*" "*.ts" "tsconfig.*" "*.test.*" "*.spec.*" "dist/*" \
+               "node_modules/*/node_modules/*" \
+               "node_modules/*/*/node_modules/*" \
           
           cd ..
           echo "✅ Deployment zip created: server-deploy.zip"
           ls -lh server-deploy.zip
           
-          # zipの内容を確認
+          # zipの内容の行数を確認（無限ループチェック）
+          FILE_COUNT=$(unzip -l server-deploy.zip | wc -l)
+          echo "📊 Total files in zip: $FILE_COUNT"
+          
+          if [ "$FILE_COUNT" -gt 50000 ]; then
+            echo "❌ ERROR: Too many files ($FILE_COUNT)! Possible nested node_modules"
+            exit 1
+          fi
+          
+          # 最初の30ファイルを表示
           echo "📋 Package contents (first 30 files):"
           unzip -l server-deploy.zip | head -30
           
