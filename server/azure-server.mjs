@@ -4334,7 +4334,7 @@ app.get('/api/_diag/all-routes', (req, res) => {
 // 28. バージョン情報エンドポイント
 app.get('/api/version', (req, res) => {
   res.json({
-    version: 'azure-production-1.0.0',
+    version: VERSION,
     builtAt: new Date().toISOString(),
     environment: 'azure-production',
     timestamp: new Date().toISOString()
