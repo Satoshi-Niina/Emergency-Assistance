@@ -1,5 +1,10 @@
 ﻿name: Deploy Client (Azure Static Web Apps)
 
+# 新しいデプロイが開始されたら古い実行を自動キャンセル
+concurrency:
+  group: deploy-client-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
