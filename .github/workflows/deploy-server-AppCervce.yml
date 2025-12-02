@@ -150,8 +150,8 @@ jobs:
           inlineScript: |
             echo "🚀 Deploying via az webapp deployment..."
             az webapp deployment source config-zip \
-              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-              --name emergency-assistantapp-gwgscxcca5chahyb9 \
+              --resource-group rg-Emergencyassistant-app \
+              --name emergency-assistantapp \
               --src deploy.zip
             
             echo "✅ ZipDeploy completed"
@@ -163,8 +163,8 @@ jobs:
             echo "⚙️ Setting all environment variables..."
             
             az webapp config appsettings set \
-              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-              --name emergency-assistantapp-gwgscxcca5chahyb9 \
+              --resource-group rg-Emergencyassistant-app \
+              --name emergency-assistantapp \
               --settings \
                 NODE_ENV=production \
                 DATABASE_URL="${{ secrets.DATABASE_URL }}" \
