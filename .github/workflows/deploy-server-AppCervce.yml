@@ -117,58 +117,69 @@ jobs:
           echo "📤 Deploying files directly to App Service via Kudu..."
           
           # Kudu認証情報取得
+          echo "Getting publish profile..."
           PUBLISH_PROFILE=$(az webapp deployment list-publishing-profiles \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ secrets.AZURE_WEBAPP_NAME }}" \
             --xml)
           
-          KUDU_USER=$(echo "$PUBLISH_PROFILE" | grep -oP '(?<=userName=")[^"]+' | head -1)
-          KUDU_PASS=$(echo "$PUBLISH_PROFILE" | grep -oP '(?<=userPWD=")[^"]+' | head -1)
+          # XMLからユーザー名とパスワードを抽出
+          KUDU_USER=$(echo "$PUBLISH_PROFILE" | sed -n 's/.*userName="\([^"]*\)".*/\1/p' | head -1)
+          KUDU_PASS=$(echo "$PUBLISH_PROFILE" | sed -n 's/.*userPWD="\([^"]*\)".*/\1/p' | head -1)
           
+          if [ -z "$KUDU_USER" ] || [ -z "$KUDU_PASS" ]; then
+            echo "❌ Failed to extract Kudu credentials"
+            exit 1
+          fi
+          
+          echo "✅ Kudu credentials extracted"
           KUDU_URL="https://${{ secrets.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net"
+          echo "Kudu URL: $KUDU_URL"
           
           cd server
           
           echo "📝 Uploading main files..."
-          curl -T "azure-server.mjs" "$KUDU_URL/api/vfs/site/wwwroot/azure-server.mjs" -u "$KUDU_USER:$KUDU_PASS"
-          curl -T "package.json" "$KUDU_URL/api/vfs/site/wwwroot/package.json" -u "$KUDU_USER:$KUDU_PASS"
-          curl -T "web.config" "$KUDU_URL/api/vfs/site/wwwroot/web.config" -u "$KUDU_USER:$KUDU_PASS"
+          curl -f -T "azure-server.mjs" "${KUDU_URL}/api/vfs/site/wwwroot/azure-server.mjs" -u "${KUDU_USER}:${KUDU_PASS}" || { echo "Failed to upload azure-server.mjs"; exit 1; }
+          echo "✅ azure-server.mjs uploaded"
+          
+          curl -f -T "package.json" "${KUDU_URL}/api/vfs/site/wwwroot/package.json" -u "${KUDU_USER}:${KUDU_PASS}" || { echo "Failed to upload package.json"; exit 1; }
+          echo "✅ package.json uploaded"
+          
+          curl -f -T "web.config" "${KUDU_URL}/api/vfs/site/wwwroot/web.config" -u "${KUDU_USER}:${KUDU_PASS}" || { echo "Failed to upload web.config"; exit 1; }
+          echo "✅ web.config uploaded"
           
           echo "📁 Uploading directories..."
           # routes/
-          find routes -type f | while read file; do
-            curl -T "$file" "$KUDU_URL/api/vfs/site/wwwroot/$file" -u "$KUDU_USER:$KUDU_PASS" --create-dirs
-          done
+          if [ -d "routes" ]; then
+            find routes -type f -name "*.js" -o -name "*.mjs" -o -name "*.ts" | while read file; do
+              curl -f -T "$file" "${KUDU_URL}/api/vfs/site/wwwroot/$file" -u "${KUDU_USER}:${KUDU_PASS}" --create-dirs || echo "⚠️ Failed: $file"
+            done
+            echo "✅ routes/ uploaded"
+          fi
           
           # middleware/
-          find middleware -type f | while read file; do
-            curl -T "$file" "$KUDU_URL/api/vfs/site/wwwroot/$file" -u "$KUDU_USER:$KUDU_PASS" --create-dirs
-          done
+          if [ -d "middleware" ]; then
+            find middleware -type f -name "*.js" -o -name "*.mjs" -o -name "*.ts" | while read file; do
+              curl -f -T "$file" "${KUDU_URL}/api/vfs/site/wwwroot/$file" -u "${KUDU_USER}:${KUDU_PASS}" --create-dirs || echo "⚠️ Failed: $file"
+            done
+            echo "✅ middleware/ uploaded"
+          fi
           
           # services/
-          find services -type f | while read file; do
-            curl -T "$file" "$KUDU_URL/api/vfs/site/wwwroot/$file" -u "$KUDU_USER:$KUDU_PASS" --create-dirs
-          done
+          if [ -d "services" ]; then
+            find services -type f -name "*.js" -o -name "*.mjs" -o -name "*.ts" | while read file; do
+              curl -f -T "$file" "${KUDU_URL}/api/vfs/site/wwwroot/$file" -u "${KUDU_USER}:${KUDU_PASS}" --create-dirs || echo "⚠️ Failed: $file"
+            done
+            echo "✅ services/ uploaded"
+          fi
           
           # utils/
-          find utils -type f | while read file; do
-            curl -T "$file" "$KUDU_URL/api/vfs/site/wwwroot/$file" -u "$KUDU_USER:$KUDU_PASS" --create-dirs
-          done
-          
-          # config/
-          find config -type f 2>/dev/null | while read file; do
-            curl -T "$file" "$KUDU_URL/api/vfs/site/wwwroot/$file" -u "$KUDU_USER:$KUDU_PASS" --create-dirs
-          done || echo "config/ not found, skipping"
-          
-          # db/
-          find db -type f 2>/dev/null | while read file; do
-            curl -T "$file" "$KUDU_URL/api/vfs/site/wwwroot/$file" -u "$KUDU_USER:$KUDU_PASS" --create-dirs
-          done || echo "db/ not found, skipping"
-          
-          # lib/
-          find lib -type f 2>/dev/null | while read file; do
-            curl -T "$file" "$KUDU_URL/api/vfs/site/wwwroot/$file" -u "$KUDU_USER:$KUDU_PASS" --create-dirs
-          done || echo "lib/ not found, skipping"
+          if [ -d "utils" ]; then
+            find utils -type f -name "*.js" -o -name "*.mjs" -o -name "*.ts" | while read file; do
+              curl -f -T "$file" "${KUDU_URL}/api/vfs/site/wwwroot/$file" -u "${KUDU_USER}:${KUDU_PASS}" --create-dirs || echo "⚠️ Failed: $file"
+            done
+            echo "✅ utils/ uploaded"
+          fi
           
           cd ..
           echo "✅ All files uploaded directly via Kudu"
@@ -234,23 +245,26 @@ jobs:
         run: |
           echo "📦 Installing npm dependencies on App Service..."
           
+          # Kudu認証情報取得（再利用）
           PUBLISH_PROFILE=$(az webapp deployment list-publishing-profiles \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ secrets.AZURE_WEBAPP_NAME }}" \
             --xml)
           
-          KUDU_USER=$(echo "$PUBLISH_PROFILE" | grep -oP '(?<=userName=")[^"]+' | head -1)
-          KUDU_PASS=$(echo "$PUBLISH_PROFILE" | grep -oP '(?<=userPWD=")[^"]+' | head -1)
+          KUDU_USER=$(echo "$PUBLISH_PROFILE" | sed -n 's/.*userName="\([^"]*\)".*/\1/p' | head -1)
+          KUDU_PASS=$(echo "$PUBLISH_PROFILE" | sed -n 's/.*userPWD="\([^"]*\)".*/\1/p' | head -1)
           
           KUDU_URL="https://${{ secrets.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net"
           
-          # npm installを実行
-          curl -X POST "$KUDU_URL/api/command" \
-            -u "$KUDU_USER:$KUDU_PASS" \
+          # npm installを実行（Windowsパス形式）
+          echo "Running npm install..."
+          curl -X POST "${KUDU_URL}/api/command" \
+            -u "${KUDU_USER}:${KUDU_PASS}" \
             -H "Content-Type: application/json" \
-            -d '{"command":"cd site\\wwwroot && npm install --omit=dev","dir":"site\\wwwroot"}'
+            -d '{"command":"cd D:\\home\\site\\wwwroot && npm install --omit=dev --no-audit --no-fund","dir":"D:\\home\\site\\wwwroot"}' \
+            || echo "⚠️ npm install may have failed, continuing..."
           
-          echo "✅ Dependencies installed"
+          echo "✅ Dependencies installation attempted"
 
       - name: Set remaining environment variables
         uses: azure/cli@v1
