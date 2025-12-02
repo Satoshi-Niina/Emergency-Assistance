@@ -112,19 +112,23 @@ jobs:
           EOF
           echo "✅ web.config created"
       
-      - name: Create deployment package (without node_modules)
+      - name: Create deployment package (all source files)
         timeout-minutes: 5
         run: |
-          echo "📦 Creating deployment package..."
+          echo "📦 Creating fresh deployment package..."
           cd server
           
-          # タイムスタンプをREADME.txtとして追加（zipのハッシュを変更するため）
-          echo "Deployment Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)" > DEPLOY_INFO.txt
-          echo "Git Commit: ${{ github.sha }}" >> DEPLOY_INFO.txt
-          echo "Workflow Run: ${{ github.run_number }}" >> DEPLOY_INFO.txt
+          # 一意のタイムスタンプを生成
+          TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
+          COMMIT_SHORT=$(echo "${{ github.sha }}" | cut -c1-8)
           
-          # node_modulesを除外してzipを作成（Azure側でインストール）
-          # knowledge-baseはBLOBストレージを使用するため含めない
+          echo "Deployment Timestamp: $TIMESTAMP" > DEPLOY_INFO.txt
+          echo "Git Commit: $COMMIT_SHORT" >> DEPLOY_INFO.txt
+          echo "Workflow Run: ${{ github.run_number }}" >> DEPLOY_INFO.txt
+          echo "Random ID: $RANDOM" >> DEPLOY_INFO.txt
+          
+          # 全ソースファイルをzipに含める（node_modules除外、Azure側でnpm install）
+          echo "Including all source files for fresh deployment..."
           zip -r ../server-deploy.zip \
             package.json \
             package-lock.json \
@@ -134,7 +138,15 @@ jobs:
             fallback-server.js \
             web.config \
             DEPLOY_INFO.txt \
-            -x "*.git*" "*.log" ".npm/*" "src/*" "*.ts" "tsconfig.*" "*.test.*" "*.spec.*" "dist/*" "node_modules/*"
+            routes/ \
+            middleware/ \
+            services/ \
+            utils/ \
+            config/ \
+            db/ \
+            lib/ \
+            types/ \
+            -x "*.git*" "*.log" ".npm/*" "*.ts" "tsconfig.*" "*.test.*" "*.spec.*" "dist/*" "node_modules/*" "uploads/*"
           
           cd ..
           echo "✅ Deployment zip created: server-deploy.zip"
@@ -148,26 +160,30 @@ jobs:
           echo "🔍 Verifying azure-server.mjs in package:"
           unzip -l server-deploy.zip | grep "azure-server.mjs" || echo "❌ ERROR: azure-server.mjs not found in package!"
 
-      # Note: Azure App Service automatically replaces files during deployment
-      # WEBSITE_RUN_FROM_PACKAGE=1 ensures clean deployment from zip
-
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           package: server-deploy.zip
 
-      - name: Restart Azure App Service (強制的に最新zipを読み込む)
+      - name: Wait for deployment extraction
+        run: |
+          echo "⏳ デプロイファイル展開を待機（30秒）..."
+          sleep 30
+
+      - name: Restart Azure App Service (強制的に最新ファイルを適用)
         uses: azure/cli@v1
         with:
           inlineScript: |
-            echo "🔄 App Serviceを再起動して最新のデプロイパッケージを適用..."
+            echo "🔄 App Serviceを再起動して最新ファイルを適用..."
             az webapp restart \
               --name ${{ secrets.AZURE_WEBAPP_NAME }} \
               --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
             
-            echo "⏳ 再起動完了を待機（10秒）..."
-            sleep 10
+            echo "⏳ 再起動完了を待機（20秒）..."
+            sleep 20
+            
+            echo "✅ 再起動完了"
             echo "✅ App Service再起動完了"
 
       - name: Set environment variables on Azure App Service
@@ -199,9 +215,10 @@ jobs:
                 VERBOSE_LOGGING=false \
                 SCM_DO_BUILD_DURING_DEPLOYMENT=true \
                 WEBSITE_NODE_DEFAULT_VERSION=20-lts \
-                WEBSITE_RUN_FROM_PACKAGE=1 \
+                WEBSITE_RUN_FROM_PACKAGE=0 \
                 WEBSITE_LOCAL_CACHE_OPTION=Never \
-                WEBSITE_DYNAMIC_CACHE=0
+                WEBSITE_DYNAMIC_CACHE=0 \
+                WEBSITES_ENABLE_APP_SERVICE_STORAGE=true
             
             echo "✅ App settings configured successfully"
 
