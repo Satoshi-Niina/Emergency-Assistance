@@ -37,27 +37,6 @@ jobs:
           cd server
           npm ci --omit=dev
 
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Stop App Service for clean deployment
-        run: |
-          echo "🛑 Stopping App Service for clean deployment..."
-          az webapp stop --name emergency-assistantapp --resource-group rg-Emergencyassistant-app
-          echo "✅ App Service stopped"
-
-      - name: Clean wwwroot directory
-        run: |
-          echo "🧹 Cleaning old files from wwwroot..."
-          az webapp deploy --resource-group rg-Emergencyassistant-app \
-            --name emergency-assistantapp \
-            --type static \
-            --src-path /dev/null \
-            --clean true || echo "⚠️ Clean command not supported, will overwrite with new files"
-          echo "✅ Old files cleaned"
-
       - name: Create web.config
         run: |
           cat > server/web.config << 'EOF'
@@ -95,12 +74,7 @@ jobs:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: ./server
           clean: true
-
-      - name: Start App Service
-        run: |
-          echo "▶️ Starting App Service..."
-          az webapp start --name emergency-assistantapp --resource-group rg-Emergencyassistant-app
-          echo "✅ App Service started"
+          restart: true
 
       - name: Wait and verify deployment
         run: |
