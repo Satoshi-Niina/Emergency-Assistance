@@ -4418,6 +4418,39 @@ app.get('/api/_diag/status', (req, res) => {
   });
 });
 
+// Seed admin user endpoint
+app.get('/api/_diag/seed-admin', async (req, res) => {
+  try {
+    if (!dbPool) {
+      return res.status(500).json({ error: 'Database not available' });
+    }
+
+    // Delete existing admin
+    await dbQuery('DELETE FROM users WHERE username = $1', ['admin']);
+
+    // Insert admin user (password: admin)
+    const adminHash = '$2a$10$N9qo8uLOickgx2ZMRZoMye6IjF4N/fU6.kcXLX3fLgO.F7o4g7X6m';
+    await dbQuery(
+      'INSERT INTO users (username, password, display_name, role, department, description) VALUES ($1, $2, $3, $4, $5, $6)',
+      ['admin', adminHash, 'Administrator', 'admin', 'System Administration', 'Default admin account']
+    );
+
+    const usersResult = await dbQuery('SELECT id, username, role, display_name FROM users ORDER BY id');
+
+    res.json({
+      success: true,
+      message: 'Admin user seeded successfully',
+      users: usersResult.rows
+    });
+  } catch (error) {
+    console.error('Seed admin error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // 30.             
 app.post('/api/emergency-flow/generate', async (req, res) => {
   try {
