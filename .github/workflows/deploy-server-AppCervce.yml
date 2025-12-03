@@ -67,14 +67,66 @@ jobs:
           </configuration>
           EOF
 
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: emergency-assistantapp
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./server
-          clean: true
-          restart: true
+      - name: Get publish profile credentials
+        id: publishprofile
+        run: |
+          PUBLISH_PROFILE='${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}'
+          USERNAME=$(echo "$PUBLISH_PROFILE" | grep -oP 'userName="\K[^"]+' | head -1)
+          PASSWORD=$(echo "$PUBLISH_PROFILE" | grep -oP 'userPWD="\K[^"]+' | head -1)
+          echo "::add-mask::$PASSWORD"
+          echo "username=$USERNAME" >> $GITHUB_OUTPUT
+          echo "password=$PASSWORD" >> $GITHUB_OUTPUT
+
+      - name: Stop App Service and clean files
+        run: |
+          USERNAME="${{ steps.publishprofile.outputs.username }}"
+          PASSWORD="${{ steps.publishprofile.outputs.password }}"
+          
+          echo "🛑 Stopping app..."
+          curl -X POST "https://emergency-assistantapp.scm.azurewebsites.net/api/app/stop" \
+            -u "$USERNAME:$PASSWORD" || echo "⚠️ Stop failed, continuing..."
+          
+          sleep 5
+          
+          echo "🧹 Deleting old files..."
+          curl -X DELETE "https://emergency-assistantapp.scm.azurewebsites.net/api/vfs/site/wwwroot/" \
+            -u "$USERNAME:$PASSWORD" \
+            -H "If-Match: *" || echo "⚠️ Delete failed, will overwrite..."
+          
+          echo "✅ Clean completed"
+
+      - name: Create deployment package
+        run: |
+          cd server
+          zip -r ../deploy.zip . -x '*.git*' -x '*.log' -x '*.ts' -x 'tsconfig.*' -x 'dist/*' -x 'src/*' -x '.env*' -x 'test/*' -x 'tests/*'
+          cd ..
+          echo "📦 Package size: $(du -h deploy.zip | cut -f1)"
+
+      - name: Deploy via Kudu ZipDeploy
+        run: |
+          USERNAME="${{ steps.publishprofile.outputs.username }}"
+          PASSWORD="${{ steps.publishprofile.outputs.password }}"
+          
+          echo "🚀 Deploying package..."
+          curl -X POST "https://emergency-assistantapp.scm.azurewebsites.net/api/zipdeploy?isAsync=false" \
+            -u "$USERNAME:$PASSWORD" \
+            -H "Content-Type: application/zip" \
+            --data-binary @deploy.zip \
+            --max-time 600 \
+            -v
+          
+          echo "✅ Deployment completed"
+
+      - name: Start App Service
+        run: |
+          USERNAME="${{ steps.publishprofile.outputs.username }}"
+          PASSWORD="${{ steps.publishprofile.outputs.password }}"
+          
+          echo "▶️ Starting app..."
+          curl -X POST "https://emergency-assistantapp.scm.azurewebsites.net/api/app/start" \
+            -u "$USERNAME:$PASSWORD"
+          
+          echo "✅ App started"
 
       - name: Wait and verify deployment
         run: |
@@ -91,4 +143,4 @@ jobs:
             fi
             [ $i -lt 3 ] && sleep 15
           done
-          echo "⚠️ Health check failed, but deployment completed"
+          echo "⚠️ Health check failed, check app logs"
