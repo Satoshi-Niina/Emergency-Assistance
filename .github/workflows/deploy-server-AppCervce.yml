@@ -147,23 +147,39 @@ jobs:
           echo "📋 Package contents preview:"
           unzip -l deploy.zip | grep -E "(azure-server|src/api|deployment-info)" | head -20
 
-      - name: Deploy via Azure CLI
+      - name: Deploy via Azure ZipDeploy API
         run: |
           echo "🚀 Deploying package to Azure..."
-          az webapp deploy \
+          
+          # Get deployment credentials
+          CREDS=$(az webapp deployment list-publishing-credentials \
             --name emergency-assistantapp \
             --resource-group rg-Emergencyassistant-app \
-            --src-path deploy.zip \
-            --type zip \
-            --clean true \
-            --restart true \
-            --timeout 600
+            --query "{username:publishingUserName, password:publishingPassword}" \
+            -o json)
+          
+          USERNAME=$(echo $CREDS | jq -r .username)
+          PASSWORD=$(echo $CREDS | jq -r .password)
+          
+          echo "::add-mask::$PASSWORD"
+          
+          # Deploy using ZipDeploy API
+          curl -X POST \
+            "https://emergency-assistantapp.scm.azurewebsites.net/api/zipdeploy" \
+            -u "$USERNAME:$PASSWORD" \
+            -H "Content-Type: application/zip" \
+            --data-binary @deploy.zip \
+            --max-time 600 \
+            -w "\nHTTP_CODE:%{http_code}\n" \
+            -v
+          
           echo "✅ Deployment completed"
 
       - name: Start App Service
         run: |
           echo "▶️ Starting app service..."
           az webapp start --name emergency-assistantapp --resource-group rg-Emergencyassistant-app
+          sleep 10
           echo "✅ App started"
 
       - name: Wait and verify deployment
