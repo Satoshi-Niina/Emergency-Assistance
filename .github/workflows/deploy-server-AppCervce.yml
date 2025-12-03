@@ -17,25 +17,52 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 完全な履歴を取得してバージョン管理
+
+      - name: Generate deployment metadata
+        id: metadata
+        run: |
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          COMMIT_TIME=$(git log -1 --format=%cI)
+          BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+          echo "commit_time=$COMMIT_TIME" >> $GITHUB_OUTPUT
+          echo "build_time=$BUILD_TIME" >> $GITHUB_OUTPUT
+          echo "📋 Deployment Metadata:"
+          echo "   Commit: $COMMIT_SHA"
+          echo "   Time: $BUILD_TIME"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: |
-            shared/package-lock.json
-            server/package-lock.json
+          # npm cacheを無効化して常に最新の依存関係をインストール
+          # cache: 'npm'
 
       - name: Install shared dependencies
         run: |
           cd shared
-          npm ci --omit=dev
+          npm ci --omit=dev --no-cache
 
       - name: Install server dependencies
         run: |
           cd server
-          npm ci --omit=dev
+          npm ci --omit=dev --no-cache
+          
+      - name: Create deployment metadata file
+        run: |
+          cd server
+          cat > deployment-info.json << EOF
+          {
+            "commit_sha": "${{ steps.metadata.outputs.commit_sha }}",
+            "commit_time": "${{ steps.metadata.outputs.commit_time }}",
+            "build_time": "${{ steps.metadata.outputs.build_time }}",
+            "workflow_run": "${{ github.run_number }}",
+            "deployed_by": "GitHub Actions"
+          }
+          EOF
+          cat deployment-info.json
 
       - name: Create web.config
         run: |
@@ -77,70 +104,161 @@ jobs:
           echo "username=$USERNAME" >> $GITHUB_OUTPUT
           echo "password=$PASSWORD" >> $GITHUB_OUTPUT
 
-      - name: Stop App Service and clean files
+      - name: Stop App Service (force clean deployment)
         run: |
           USERNAME="${{ steps.publishprofile.outputs.username }}"
           PASSWORD="${{ steps.publishprofile.outputs.password }}"
           
-          echo "🛑 Stopping app..."
+          echo "🛑 Stopping app service..."
           curl -X POST "https://emergency-assistantapp.scm.azurewebsites.net/api/app/stop" \
-            -u "$USERNAME:$PASSWORD" || echo "⚠️ Stop failed, continuing..."
+            -u "$USERNAME:$PASSWORD" || echo "⚠️ Stop request sent"
           
-          sleep 5
+          sleep 10
+
+      - name: Clear all caches and old files
+        run: |
+          USERNAME="${{ steps.publishprofile.outputs.username }}"
+          PASSWORD="${{ steps.publishprofile.outputs.password }}"
           
-          echo "🧹 Deleting old files..."
+          echo "🧹 Cleaning deployment cache..."
+          # Kuduのデプロイキャッシュをクリア
+          curl -X DELETE "https://emergency-assistantapp.scm.azurewebsites.net/api/vfs/site/deployments/" \
+            -u "$USERNAME:$PASSWORD" \
+            -H "If-Match: *" 2>/dev/null || true
+          
+          echo "🧹 Removing old application files..."
+          # wwwrootを完全削除
           curl -X DELETE "https://emergency-assistantapp.scm.azurewebsites.net/api/vfs/site/wwwroot/" \
             -u "$USERNAME:$PASSWORD" \
-            -H "If-Match: *" || echo "⚠️ Delete failed, will overwrite..."
+            -H "If-Match: *" || echo "⚠️ Cleanup in progress..."
           
+          sleep 5
           echo "✅ Clean completed"
+
+      - name: Verify files to be deployed
+        run: |
+          cd server
+          echo "📋 Verifying critical files:"
+          ls -lh azure-server.mjs deployment-info.json package.json
+          echo ""
+          echo "📂 Checking src/api structure:"
+          find src/api -name "*.js" | head -20
+          echo ""
+          echo "📊 Total files to deploy:"
+          find . -type f | wc -l
 
       - name: Create deployment package
         run: |
           cd server
-          zip -r ../deploy.zip . -x '*.git*' -x '*.log' -x '*.ts' -x 'tsconfig.*' -x 'dist/*' -x '.env*' -x 'test/*' -x 'tests/*'
+          echo "📦 Creating ZIP package..."
+          # src/api を必ず含める、.tsファイルは除外
+          zip -r ../deploy.zip . \
+            -x '*.git*' \
+            -x '*.log' \
+            -x '*.ts' \
+            -x 'tsconfig.*' \
+            -x 'dist/*' \
+            -x '.env*' \
+            -x 'test/*' \
+            -x 'tests/*' \
+            -x '*.map'
           cd ..
-          echo "📦 Package size: $(du -h deploy.zip | cut -f1)"
+          
+          ZIP_SIZE=$(du -h deploy.zip | cut -f1)
+          echo "📦 Package created: $ZIP_SIZE"
+          
+          # ZIPの内容を確認
+          echo "📋 Package contents preview:"
+          unzip -l deploy.zip | grep -E "(azure-server|src/api|deployment-info)" | head -20
 
-      - name: Deploy via Kudu ZipDeploy
+      - name: Deploy via Kudu ZipDeploy (with cache busting)
         run: |
           USERNAME="${{ steps.publishprofile.outputs.username }}"
           PASSWORD="${{ steps.publishprofile.outputs.password }}"
           
-          echo "🚀 Deploying package..."
-          curl -X POST "https://emergency-assistantapp.scm.azurewebsites.net/api/zipdeploy?isAsync=false" \
+          echo "🚀 Deploying package to Azure..."
+          # SCM_DO_BUILD_DURING_DEPLOYMENT=falseでキャッシュを無効化
+          RESPONSE=$(curl -X POST \
+            "https://emergency-assistantapp.scm.azurewebsites.net/api/zipdeploy?isAsync=false" \
             -u "$USERNAME:$PASSWORD" \
             -H "Content-Type: application/zip" \
+            -H "Cache-Control: no-cache, no-store, must-revalidate" \
             --data-binary @deploy.zip \
             --max-time 600 \
-            -v
+            -w "\nHTTP_CODE:%{http_code}\n" \
+            -v 2>&1)
           
-          echo "✅ Deployment completed"
+          echo "$RESPONSE"
+          
+          if echo "$RESPONSE" | grep -q "HTTP_CODE:200"; then
+            echo "✅ Deployment request successful"
+          else
+            echo "❌ Deployment may have failed"
+            exit 1
+          fi
 
-      - name: Start App Service
+      - name: Clear App Service cache and restart
         run: |
           USERNAME="${{ steps.publishprofile.outputs.username }}"
           PASSWORD="${{ steps.publishprofile.outputs.password }}"
           
-          echo "▶️ Starting app..."
+          echo "🔄 Clearing application cache..."
+          # Node.js キャッシュをクリア
+          curl -X POST "https://emergency-assistantapp.scm.azurewebsites.net/api/command" \
+            -u "$USERNAME:$PASSWORD" \
+            -H "Content-Type: application/json" \
+            -d '{"command":"del /s /q D:\\home\\site\\wwwroot\\node_modules\\.cache","dir":"D:\\home"}' \
+            2>/dev/null || true
+          
+          sleep 5
+          
+          echo "▶️ Starting app service..."
           curl -X POST "https://emergency-assistantapp.scm.azurewebsites.net/api/app/start" \
             -u "$USERNAME:$PASSWORD"
           
-          echo "✅ App started"
+          echo "✅ App restart initiated"
 
       - name: Wait and verify deployment
         run: |
-          echo "⏳ Waiting 30 seconds for app to start..."
-          sleep 30
+          echo "⏳ Waiting 45 seconds for app to fully start..."
+          sleep 45
           
           APP_URL="https://emergency-assistantapp.azurewebsites.net"
-          for i in 1 2 3; do
-            echo "Attempt $i/3: Health check..."
-            if curl -f -s "$APP_URL/api/health" > /dev/null; then
-              echo "✅ Deployment successful"
-              curl -s "$APP_URL/api/health/detailed" || true
-              exit 0
+          EXPECTED_COMMIT="${{ steps.metadata.outputs.commit_sha }}"
+          
+          echo "🔍 Verifying deployment..."
+          for i in 1 2 3 4 5; do
+            echo "Attempt $i/5: Health check..."
+            
+            HEALTH_RESPONSE=$(curl -s "$APP_URL/api/health/full" || echo "failed")
+            
+            if [ "$HEALTH_RESPONSE" != "failed" ]; then
+              echo "✅ Server is responding"
+              echo "$HEALTH_RESPONSE" | jq . || echo "$HEALTH_RESPONSE"
+              
+              # バージョン情報を確認
+              VERSION_INFO=$(curl -s "$APP_URL/api/version" || echo "{}")
+              echo "📋 Deployed version:"
+              echo "$VERSION_INFO" | jq . || echo "$VERSION_INFO"
+              
+              # deployment-info.jsonの確認
+              DEPLOY_INFO=$(curl -s "$APP_URL/deployment-info.json" || echo "{}")
+              DEPLOYED_COMMIT=$(echo "$DEPLOY_INFO" | jq -r '.commit_sha' 2>/dev/null || echo "unknown")
+              
+              echo "📋 Deployment info:"
+              echo "$DEPLOY_INFO" | jq . || echo "$DEPLOY_INFO"
+              
+              if [ "$DEPLOYED_COMMIT" = "$EXPECTED_COMMIT" ]; then
+                echo "✅ Deployment verified: Correct version deployed"
+                exit 0
+              else
+                echo "⚠️ Version mismatch - Expected: $EXPECTED_COMMIT, Got: $DEPLOYED_COMMIT"
+              fi
             fi
-            [ $i -lt 3 ] && sleep 15
+            
+            [ $i -lt 5 ] && sleep 20
           done
-          echo "⚠️ Health check failed, check app logs"
+          
+          echo "❌ Deployment verification failed"
+          echo "Please check application logs manually"
+          exit 1

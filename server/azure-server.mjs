@@ -793,21 +793,40 @@ app.get('/api/health/detailed', (req, res) => {
 
 //                            
 app.get('/api/version', (req, res) => {
+  // deployment-info.jsonを読み込んで正確なデプロイ情報を返す
+  let deploymentInfo = {};
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const deployInfoPath = path.join(__dirname, 'deployment-info.json');
+    if (fs.existsSync(deployInfoPath)) {
+      deploymentInfo = JSON.parse(fs.readFileSync(deployInfoPath, 'utf8'));
+    }
+  } catch (error) {
+    console.warn('Could not read deployment-info.json:', error.message);
+  }
+
   const buildInfo = {
-    version: '2025-11-30T10:05:00+09:00',
-    buildTimestamp: new Date().toISOString(),
-    deploymentInfo: {
-      commitSha: process.env.SCM_COMMIT_ID || 'unknown',
-      buildId: process.env.BUILD_BUILDID || 'unknown',
-      deploymentId: process.env.WEBSITE_INSTANCE_ID || 'unknown',
+    version: VERSION,
+    currentTime: new Date().toISOString(),
+    deployment: {
+      commit_sha: deploymentInfo.commit_sha || process.env.SCM_COMMIT_ID || 'unknown',
+      commit_time: deploymentInfo.commit_time || 'unknown',
+      build_time: deploymentInfo.build_time || 'unknown',
+      workflow_run: deploymentInfo.workflow_run || 'unknown',
+      deployed_by: deploymentInfo.deployed_by || 'unknown'
+    },
+    azure: {
+      instanceId: process.env.WEBSITE_INSTANCE_ID || 'unknown',
       hostname: process.env.WEBSITE_HOSTNAME || 'unknown',
       siteName: process.env.WEBSITE_SITE_NAME || 'unknown'
     },
-    nodeVersion: process.version,
-    platform: process.platform,
-    uptime: process.uptime(),
+    runtime: {
+      nodeVersion: process.version,
+      platform: process.platform,
+      uptime: process.uptime()
+    },
     environment: process.env.NODE_ENV || 'production',
-    lastModified: '2025-11-30T10:05:00+09:00',
     features: {
       blobStorage: !!connectionString,
       database: !!dbPool,
@@ -816,6 +835,22 @@ app.get('/api/version', (req, res) => {
   };
 
   res.json(buildInfo);
+});
+
+// Serve deployment-info.json for verification
+app.get('/deployment-info.json', (req, res) => {
+  const fs = require('fs');
+  const path = require('path');
+  const deployInfoPath = path.join(__dirname, 'deployment-info.json');
+  
+  if (fs.existsSync(deployInfoPath)) {
+    res.sendFile(deployInfoPath);
+  } else {
+    res.status(404).json({
+      error: 'Deployment info not available',
+      message: 'This file is created during CI/CD deployment'
+    });
+  }
 });
 
 // Full database testing health check (        )
