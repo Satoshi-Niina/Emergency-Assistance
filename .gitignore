@@ -283,6 +283,9 @@ docker/data/
 !scripts/pre-commit.ps1
 !client/scripts/replace-env.cjs
 !client/scripts/.gitkeep
+# ⚠️ IMPORTANT: server/src/api/ contains Azure Functions handlers - DO NOT EXCLUDE
+!server/src/
+!server/src/**
 scripts/
 
 # Documentation (not needed in production deployment)

@@ -5772,6 +5772,25 @@ app.get('/api/uploads/:filename', async (req, res) => {
   app.handle(req, res);
 });
 
+// Root endpoint - API server info
+app.get('/', (req, res) => {
+  res.json({
+    service: 'Emergency Assistance API Server',
+    version: VERSION,
+    status: 'running',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'production',
+    frontend: FRONTEND_URL,
+    endpoints: {
+      health: '/api/health',
+      healthDetailed: '/api/health/detailed',
+      healthFull: '/api/health/full',
+      version: '/api/version'
+    },
+    message: 'このサーバーはAPIサーバーです。フロントエンドは別URLでホストされています。'
+  });
+});
+
 // ===== 404                          =====
 app.use((req, res, next) => {
   console.warn('   404 Not Found:', {
