@@ -1114,10 +1114,19 @@ app.post('/api/auth/login', async (req, res) => {
         console.error('[auth/login]               ');
         console.error('[auth/login]                                ');
         console.error('[auth/login]     : scripts/seed-admin-user.sql          ');
+        
+        // Check total user count to debug "missing users" issue
+        try {
+          const countResult = await dbQuery('SELECT COUNT(*) as count FROM users');
+          console.log('[auth/login] Total users in DB:', countResult.rows[0].count);
+        } catch (e) {
+          console.error('[auth/login] Failed to count users:', e.message);
+        }
+
         return res.status(401).json({
           success: false,
           error: 'USER_NOT_FOUND',
-          message: '                      ',
+          message: '                      (DBにユーザーが存在しません)',
           debug: process.env.NODE_ENV !== 'production' ? {
             hint: '                   seed-admin-user.sql          '
           } : undefined
@@ -5875,6 +5884,67 @@ if (!clientDistPath) {
     res.sendFile(indexPath);
   });
 }
+
+// Generic Files API for Blob Storage (Missing in original migration)
+app.get('/api/files/:filename', async (req, res) => {
+  try {
+    const { filename } = req.params;
+    console.log(`[api/files] Request for: ${filename}`);
+
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({ error: 'Blob storage not available' });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    
+    // Try different possible paths
+    // 1. Direct match (if filename contains path)
+    // 2. documents/ folder
+    // 3. uploads/ folder
+    // 4. images/ folder
+    const possiblePaths = [
+      norm(filename),
+      norm(`documents/${filename}`),
+      norm(`uploads/${filename}`),
+      norm(`images/${filename}`)
+    ];
+
+    for (const blobPath of possiblePaths) {
+      try {
+        const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
+        if (await blockBlobClient.exists()) {
+          console.log(`[api/files] Found at: ${blobPath}`);
+          const downloadResponse = await blockBlobClient.download();
+          
+          if (downloadResponse.contentType) {
+            res.setHeader('Content-Type', downloadResponse.contentType);
+          }
+          res.setHeader('Cache-Control', 'public, max-age=86400');
+          
+          downloadResponse.readableStreamBody.pipe(res);
+          return;
+        }
+      } catch (e) {
+        // Ignore error and try next path
+      }
+    }
+
+    console.log(`[api/files] Not found: ${filename}`);
+    res.status(404).json({ error: 'File not found' });
+
+  } catch (error) {
+    console.error('[api/files] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Also add /api/uploads for compatibility
+app.get('/api/uploads/:filename', async (req, res) => {
+  // Redirect to /api/files logic
+  req.url = `/api/files/${req.params.filename}`;
+  app.handle(req, res);
+});
 
 // ===== 404                          =====
 app.use((req, res, next) => {
