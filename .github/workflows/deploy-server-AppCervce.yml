@@ -13,7 +13,7 @@ on:
 
 jobs:
   build-and-deploy:
-    runs-on: windows-1
+    runs-on: ubuntu-latest
     name: Build and Deploy Server
     timeout-minutes: 10
 
@@ -47,19 +47,19 @@ jobs:
           cd server
           
           # package-lock.jsonがあればci、なければinstall
-          if (Test-Path package-lock.json) {
+          if [ -f package-lock.json ]; then
             npm ci --omit=dev --no-audit --no-fund
-          } else {
+          else
             npm install --omit=dev --no-audit --no-fund
-          }
+          fi
           
           echo "✅ Dependencies installed"
           echo "📊 Installed packages:"
-          Get-ChildItem node_modules | Select-Object -First 20
+          ls node_modules | head -20
 
       - name: 📝 Create web.config
         run: |
-          $content = @"
+          cat > server/web.config << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <configuration>
             <system.webServer>
@@ -92,19 +92,19 @@ jobs:
               <httpErrors existingResponse="PassThrough" />
             </system.webServer>
           </configuration>
-          "@
-          Set-Content -Path server/web.config -Value $content -Encoding UTF8
+          EOF
           echo "✅ web.config created"
 
       - name: 📝 Create deployment info
         run: |
           cd server
-          $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC"
-          $content = "Deployment Timestamp: $timestamp`nCommit SHA: ${{ github.sha }}`nRun Number: ${{ github.run_number }}"
-          Set-Content -Path DEPLOY_INFO.txt -Value $content
+          timestamp=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
+          echo "Deployment Timestamp: $timestamp" > DEPLOY_INFO.txt
+          echo "Commit SHA: ${{ github.sha }}" >> DEPLOY_INFO.txt
+          echo "Run Number: ${{ github.run_number }}" >> DEPLOY_INFO.txt
           
           echo "📋 Deployment Info:"
-          Get-Content DEPLOY_INFO.txt
+          cat DEPLOY_INFO.txt
 
       - name: ⏸️ Stop App Service for clean deployment
         uses: azure/cli@v1
@@ -112,13 +112,13 @@ jobs:
           inlineScript: |
             echo "⏸️ Stopping App Service for clean deployment..."
             
-            az webapp stop `
-              --resource-group rg-Emergencyassistant-app `
+            az webapp stop \
+              --resource-group rg-Emergencyassistant-app \
               --name emergency-assistantapp
             
             echo "✅ App Service stopped"
             echo "⏳ Waiting 10 seconds..."
-            Start-Sleep -Seconds 10
+            sleep 10
 
       - name: 🗑️ Delete all files in wwwroot (Complete Clean)
         uses: azure/cli@v1
@@ -128,26 +128,26 @@ jobs:
             echo "🗑️ Deleting all files in wwwroot..."
             
             # wwwrootフォルダ内のすべてのファイルとフォルダを削除
-            $folders = @("node_modules", "routes", "middleware", "services", "utils", "db", "config", "public")
-            $files = @("azure-server.mjs", "package.json", "package-lock.json", "web.config", "DEPLOY_INFO.txt")
+            folders=("node_modules" "routes" "middleware" "services" "utils" "db" "config" "public")
+            files=("azure-server.mjs" "package.json" "package-lock.json" "web.config" "DEPLOY_INFO.txt")
             
             # フォルダを削除
-            foreach ($folder in $folders) {
+            for folder in "${folders[@]}"; do
               echo "Deleting folder: $folder"
-              az rest --method delete `
-                --uri "https://emergency-assistantapp.scm.azurewebsites.net/api/vfs/site/wwwroot/${folder}/?recursive=true" `
-                --resource "https://management.azure.com/" `
+              az rest --method delete \
+                --uri "https://emergency-assistantapp.scm.azurewebsites.net/api/vfs/site/wwwroot/${folder}/?recursive=true" \
+                --resource "https://management.azure.com/" \
                 || echo "Folder $folder not found or already deleted"
-            }
+            done
             
             # ファイルを削除
-            foreach ($file in $files) {
+            for file in "${files[@]}"; do
               echo "Deleting file: $file"
-              az rest --method delete `
-                --uri "https://emergency-assistantapp.scm.azurewebsites.net/api/vfs/site/wwwroot/${file}" `
-                --resource "https://management.azure.com/" `
+              az rest --method delete \
+                --uri "https://emergency-assistantapp.scm.azurewebsites.net/api/vfs/site/wwwroot/${file}" \
+                --resource "https://management.azure.com/" \
                 || echo "File $file not found or already deleted"
-            }
+            done
             
             echo "✅ All old files deleted - Ready for clean deployment"
 
@@ -156,25 +156,25 @@ jobs:
           echo "📦 Creating deployment package..."
           cd server
           
-          # zipパッケージ作成 (7zを使用)
+          # zipパッケージ作成 (zipコマンド使用)
           # node_modulesを含める
           # 不要なファイルを除外
-          7z a -tzip ../deploy.zip . `
-            -xr!*.git* `
-            -xr!*.log `
-            -xr!*.ts `
-            -xr!tsconfig.* `
-            -xr!dist `
-            -xr!src `
-            -xr!.env* `
-            -xr!test `
-            -xr!tests
+          zip -r ../deploy.zip . \
+            -x '*.git*' \
+            -x '*.log' \
+            -x '*.ts' \
+            -x 'tsconfig.*' \
+            -x 'dist/*' \
+            -x 'src/*' \
+            -x '.env*' \
+            -x 'test/*' \
+            -x 'tests/*'
           
           cd ..
           echo "✅ Package created:"
-          Get-Item deploy.zip | Select-Object Name, Length
+          ls -lh deploy.zip
           echo "📊 Package hash:"
-          Get-FileHash deploy.zip -Algorithm SHA256
+          sha256sum deploy.zip
 
       - name: 🚀 Deploy to Azure App Service
         uses: azure/cli@v1
@@ -183,10 +183,10 @@ jobs:
             echo "🚀 Deploying to Azure App Service..."
             
             # ZipDeployを実行
-            az webapp deployment source config-zip `
-              --resource-group rg-Emergencyassistant-app `
-              --name emergency-assistantapp `
-              --src deploy.zip `
+            az webapp deployment source config-zip \
+              --resource-group rg-Emergencyassistant-app \
+              --name emergency-assistantapp \
+              --src deploy.zip \
               --timeout 1800
             
             echo "✅ ZipDeploy completed"
@@ -197,32 +197,32 @@ jobs:
           inlineScript: |
             echo "⚙️ Setting environment variables..."
             
-            az webapp config appsettings set `
-              --resource-group rg-Emergencyassistant-app `
-              --name emergency-assistantapp `
-              --settings `
-                NODE_ENV=production `
-                DATABASE_URL="${{ secrets.DATABASE_URL }}" `
-                PG_SSL="${{ secrets.PG_SSL }}" `
-                SESSION_SECRET="${{ secrets.SESSION_SECRET }}" `
-                JWT_SECRET="${{ secrets.JWT_SECRET }}" `
-                FRONTEND_URL="${{ secrets.FRONTEND_URL }}" `
-                STATIC_WEB_APP_URL="${{ secrets.STATIC_WEB_APP_URL }}" `
-                AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" `
-                AZURE_STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" `
-                AZURE_STORAGE_ACCOUNT_KEY="${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}" `
-                AZURE_STORAGE_CONTAINER_NAME=knowledge `
-                BLOB_PREFIX=knowledge-base/ `
-                STORAGE_MODE=azure `
-                OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" `
-                OPENAI_MAX_TOKENS=2000 `
-                DEBUG_MODE=false `
-                VERBOSE_LOGGING=false `
-                WEBSITE_RUN_FROM_PACKAGE=0 `
-                SCM_DO_BUILD_DURING_DEPLOYMENT=false `
-                WEBSITE_LOCAL_CACHE_OPTION=Never `
-                WEBSITE_DYNAMIC_CACHE=0 `
-                WEBSITES_ENABLE_APP_SERVICE_STORAGE=true `
+            az webapp config appsettings set \
+              --resource-group rg-Emergencyassistant-app \
+              --name emergency-assistantapp \
+              --settings \
+                NODE_ENV=production \
+                DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+                PG_SSL="${{ secrets.PG_SSL }}" \
+                SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
+                JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+                FRONTEND_URL="${{ secrets.FRONTEND_URL }}" \
+                STATIC_WEB_APP_URL="${{ secrets.STATIC_WEB_APP_URL }}" \
+                AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
+                AZURE_STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
+                AZURE_STORAGE_ACCOUNT_KEY="${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}" \
+                AZURE_STORAGE_CONTAINER_NAME=knowledge \
+                BLOB_PREFIX=knowledge-base/ \
+                STORAGE_MODE=azure \
+                OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+                OPENAI_MAX_TOKENS=2000 \
+                DEBUG_MODE=false \
+                VERBOSE_LOGGING=false \
+                WEBSITE_RUN_FROM_PACKAGE=0 \
+                SCM_DO_BUILD_DURING_DEPLOYMENT=false \
+                WEBSITE_LOCAL_CACHE_OPTION=Never \
+                WEBSITE_DYNAMIC_CACHE=0 \
+                WEBSITES_ENABLE_APP_SERVICE_STORAGE=true \
                 WEBSITE_NODE_DEFAULT_VERSION=20-lts
             
             echo "✅ Environment variables configured"
@@ -233,12 +233,12 @@ jobs:
           inlineScript: |
             echo "▶️ Starting App Service with new deployment..."
             
-            az webapp start `
-              --resource-group rg-Emergencyassistant-app `
+            az webapp start \
+              --resource-group rg-Emergencyassistant-app \
               --name emergency-assistantapp
             
             echo "⏳ Waiting 45 seconds for app to fully start..."
-            Start-Sleep -Seconds 45
+            sleep 45
             echo "✅ App Service started successfully with clean deployment"
 
       - name: ✅ Verify deployment
@@ -246,38 +246,31 @@ jobs:
           echo "✅ Deployment completed"
           echo "🔍 Verifying deployment..."
           
-          $APP_URL = "https://emergency-assistantapp-gwgscxcca5chahyb9.japanwest-01.azurewebsites.net"
+          APP_URL="https://emergency-assistantapp-gwgscxcca5chahyb9.japanwest-01.azurewebsites.net"
           
           # Health check（最大3回リトライ）
-          for ($i=1; $i -le 3; $i++) {
+          for i in 1 2 3; do
             echo "Attempt $i/3: Checking /api/health..."
             
-            try {
-              $response = Invoke-WebRequest -Uri "$APP_URL/api/health" -Method Get -ErrorAction Stop
-              if ($response.StatusCode -eq 200) {
-                echo "✅ Health check PASSED (HTTP 200)"
-                
-                # Version check
-                echo ""
-                echo "📊 Checking deployment version..."
-                try {
-                  $v = Invoke-RestMethod -Uri "$APP_URL/api/version"
-                  echo ($v | ConvertTo-Json -Depth 2)
-                } catch {
-                  echo "Version endpoint failed: $_"
-                }
-                
-                break
-              }
-            } catch {
-              echo "⚠️ Health check failed: $_"
-            }
+            if curl -f -s "$APP_URL/api/health" > /dev/null; then
+              echo "✅ Health check PASSED (HTTP 200)"
+              
+              # Version check
+              echo ""
+              echo "📊 Checking deployment version..."
+              curl -s "$APP_URL/api/version" | jq '.' || echo "Version endpoint response:"
+              curl -s "$APP_URL/api/version"
+              
+              break
+            else
+              echo "⚠️ Health check failed"
+            fi
             
-            if ($i -lt 3) {
+            if [ $i -lt 3 ]; then
               echo "Waiting 10 seconds before retry..."
-              Start-Sleep -Seconds 10
-            }
-          }
+              sleep 10
+            fi
+          done
           
           echo ""
           echo "📊 Deployment Summary:"
