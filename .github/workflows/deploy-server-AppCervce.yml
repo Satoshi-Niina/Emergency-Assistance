@@ -1,4 +1,4 @@
-name: Deploy Server (Azure App Service)
+name: Deploy Server to Azure App Service
 
 # 新しいデプロイが開始されたら古い実行を自動キャンセル
 concurrency:
@@ -9,72 +9,57 @@ on:
   push:
     branches:
       - main
-    # paths設定を削除 - mainへのプッシュで常にデプロイ
   workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    name: Build and Deploy Server to Azure App Service
+    name: Build and Deploy Server
     timeout-minutes: 30
 
     steps:
-      - name: Checkout code
+      - name: 📥 Checkout code
         uses: actions/checkout@v4
         with:
-          submodules: false
           fetch-depth: 1
-          lfs: false
 
-      - name: Verify package-lock.json exists
-        run: |
-          echo "📋 Checking for package-lock.json files..."
-          ls -la package-lock.json || echo "❌ Root package-lock.json not found"
-          ls -la client/package-lock.json || echo "❌ Client package-lock.json not found"
-          ls -la server/package-lock.json || echo "⚠️ Server package-lock.json not found (expected)"
-
-      - name: Setup Node.js
+      - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
 
-      - name: Login to Azure
+      - name: 🔐 Login to Azure
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Install and build shared module (first)
+      - name: 📦 Install shared module
         run: |
           echo "📦 Installing shared dependencies..."
           cd shared
-          npm install --no-audit --no-fund
-          echo "🔨 Building shared module..."
+          npm ci --omit=dev --no-audit --no-fund
           npm run build
           echo "✅ Shared module built"
 
-      - name: Install server dependencies
+      - name: 📦 Install server dependencies
         run: |
           echo "📦 Installing server dependencies..."
           cd server
           
-          # 古いnode_modulesを削除してクリーンインストール
-          echo "🧹 Cleaning old node_modules..."
-          rm -rf node_modules
-          
-          # 本番用の依存関係をインストール（package-lock.jsonがない場合はnpm install）
+          # package-lock.jsonがあればci、なければinstall
           if [ -f "package-lock.json" ]; then
-            echo "Using npm ci with package-lock.json"
             npm ci --omit=dev --no-audit --no-fund
           else
-            echo "⚠️ package-lock.json not found, using npm install"
             npm install --omit=dev --no-audit --no-fund
           fi
           
-          echo "✅ Server dependencies installed"
-          echo "📋 Verifying .mjs files exist:"
-          ls -lh *.mjs | head -5
+          echo "✅ Dependencies installed"
+          echo "📊 Installed packages:"
+          ls -la node_modules | head -20
 
-      - name: Create web.config for Azure App Service
+      - name: 📝 Create web.config
         run: |
           cat > server/web.config << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
@@ -111,56 +96,117 @@ jobs:
           </configuration>
           EOF
           echo "✅ web.config created"
-      
-      - name: Create deployment package
-        timeout-minutes: 5
+
+      - name: 📝 Create deployment info
         run: |
-          echo "📦 Creating fresh deployment package..."
           cd server
-          
-          # 一意のデプロイ情報ファイル作成
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
           cat > DEPLOY_INFO.txt << EOF
-          Deployment Time: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          Deployment Timestamp: $TIMESTAMP
           Commit SHA: ${{ github.sha }}
+          Commit Short: ${GITHUB_SHA:0:8}
           Run Number: ${{ github.run_number }}
-          Random ID: $(date +%s%N)
+          Run ID: ${{ github.run_id }}
+          Actor: ${{ github.actor }}
+          Ref: ${{ github.ref }}
           EOF
           
+          echo "📋 Deployment Info:"
           cat DEPLOY_INFO.txt
+
+      - name: ⏸️ Stop App Service for clean deployment
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            echo "⏸️ Stopping App Service for clean deployment..."
+            
+            az webapp stop \
+              --resource-group rg-Emergencyassistant-app \
+              --name emergency-assistantapp
+            
+            echo "✅ App Service stopped"
+            echo "⏳ Waiting 10 seconds..."
+            sleep 10
+
+      - name: 🗑️ Delete all files in wwwroot (Complete Clean)
+        uses: azure/cli@v1
+        continue-on-error: true
+        with:
+          inlineScript: |
+            echo "🗑️ Deleting all files in wwwroot..."
+            
+            # wwwrootフォルダ内のすべてのファイルとフォルダを削除
+            # Kudu API経由で削除（再帰的）
+            FOLDERS=("node_modules" "routes" "middleware" "services" "utils" "db" "config" "public")
+            FILES=("azure-server.mjs" "package.json" "package-lock.json" "web.config" "DEPLOY_INFO.txt")
+            
+            # フォルダを削除
+            for folder in "${FOLDERS[@]}"; do
+              echo "Deleting folder: $folder"
+              az rest --method delete \
+                --uri "https://emergency-assistantapp.scm.azurewebsites.net/api/vfs/site/wwwroot/${folder}/?recursive=true" \
+                --resource "https://management.azure.com/" \
+                || echo "Folder $folder not found or already deleted"
+            done
+            
+            # ファイルを削除
+            for file in "${FILES[@]}"; do
+              echo "Deleting file: $file"
+              az rest --method delete \
+                --uri "https://emergency-assistantapp.scm.azurewebsites.net/api/vfs/site/wwwroot/${file}" \
+                --resource "https://management.azure.com/" \
+                || echo "File $file not found or already deleted"
+            done
+            
+            echo "✅ All old files deleted - Ready for clean deployment"
+
+      - name: 📦 Create deployment package
+        run: |
+          echo "📦 Creating deployment package..."
+          cd server
           
-          # zipパッケージ作成
+          # zipパッケージ作成（必要なファイルのみ）
           zip -r ../deploy.zip \
             package.json \
+            package-lock.json \
             azure-server.mjs \
             web.config \
             DEPLOY_INFO.txt \
+            node_modules/ \
             routes/ \
             middleware/ \
             services/ \
             utils/ \
-            -x "*.git*" "*.log" "node_modules/*" "*.ts" "tsconfig.*" "dist/*"
+            db/ \
+            config/ \
+            -x "*.ts" "*.map" "*tsconfig*" "*.git*" "*.log" "*test*" "*spec*"
           
           cd ..
+          echo "✅ Package created"
           ls -lh deploy.zip
+          echo "📊 Package hash:"
           sha256sum deploy.zip
 
-      - name: Deploy via Azure CLI (ZipDeploy)
+      - name: 🚀 Deploy to Azure App Service
         uses: azure/cli@v1
         with:
           inlineScript: |
-            echo "🚀 Deploying via az webapp deployment..."
+            echo "🚀 Deploying to Azure App Service..."
+            
+            # ZipDeployを実行
             az webapp deployment source config-zip \
               --resource-group rg-Emergencyassistant-app \
               --name emergency-assistantapp \
-              --src deploy.zip
+              --src deploy.zip \
+              --timeout 1800
             
             echo "✅ ZipDeploy completed"
 
-      - name: Set environment variables
+      - name: ⚙️ Configure environment variables
         uses: azure/cli@v1
         with:
           inlineScript: |
-            echo "⚙️ Setting all environment variables..."
+            echo "⚙️ Setting environment variables..."
             
             az webapp config appsettings set \
               --resource-group rg-Emergencyassistant-app \
@@ -184,71 +230,66 @@ jobs:
                 DEBUG_MODE=false \
                 VERBOSE_LOGGING=false \
                 WEBSITE_RUN_FROM_PACKAGE=0 \
-                SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+                SCM_DO_BUILD_DURING_DEPLOYMENT=false \
                 WEBSITE_LOCAL_CACHE_OPTION=Never \
                 WEBSITE_DYNAMIC_CACHE=0 \
                 WEBSITES_ENABLE_APP_SERVICE_STORAGE=true \
                 WEBSITE_NODE_DEFAULT_VERSION=20-lts
             
-            echo "✅ All settings configured"
+            echo "✅ Environment variables configured"
 
-      - name: Seed admin user to database
-        uses: azure/cli@v1
-        with:
-          inlineScript: |
-            echo "🌱 Seeding admin user to production database..."
-            
-            # PostgreSQLクライアントをインストール
-            apt-get update -qq && apt-get install -y postgresql-client > /dev/null 2>&1
-            
-            # SQLスクリプトを実行
-            psql "${{ secrets.DATABASE_URL }}" -c "
-              INSERT INTO users (username, password, role, display_name, department, created_at, updated_at)
-              VALUES (
-                'niina',
-                '\$2a\$10\$w9kGZVYX8yqK5YJ3p7H.4eN8Z9M0xQ1K2L3M4N5O6P7Q8R9S0T1U2V',
-                'admin',
-                '管理者',
-                '情報システム部',
-                NOW(),
-                NOW()
-              )
-              ON CONFLICT (username) DO UPDATE SET
-                password = EXCLUDED.password,
-                updated_at = NOW();
-            " || echo "⚠️ User seed may have failed, but continuing..."
-            
-            echo "✅ Admin user seeded"
-
-      - name: Start App Service with new files
+      - name: ▶️ Start App Service with new deployment
         uses: azure/cli@v1
         with:
           inlineScript: |
             echo "▶️ Starting App Service with new deployment..."
-            az webapp start \
-              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-              --name ${{ secrets.AZURE_WEBAPP_NAME }}
             
-            echo "⏳ Waiting 40 seconds for app to fully start..."
-            sleep 40
-            echo "✅ App Service started with new files"
+            az webapp start \
+              --resource-group rg-Emergencyassistant-app \
+              --name emergency-assistantapp
+            
+            echo "⏳ Waiting 45 seconds for app to fully start..."
+            sleep 45
+            echo "✅ App Service started successfully with clean deployment"
 
-      - name: Verify deployment
+      - name: ✅ Verify deployment
         run: |
           echo "✅ Deployment completed"
-          echo "🔍 Checking application health..."
+          echo "🔍 Verifying deployment..."
           
-          # ヘルスチェック
-          HEALTH_URL="https://${{ secrets.AZURE_WEBAPP_NAME }}.azurewebsites.net/health"
-          echo "🏥 Checking health endpoint: $HEALTH_URL"
+          APP_URL="https://emergency-assistantapp-gwgscxcca5chahyb9.japanwest-01.azurewebsites.net"
           
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || echo "000")
+          # Health check（最大3回リトライ）
+          for i in 1 2 3; do
+            echo "Attempt $i/3: Checking /api/health..."
+            
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL/api/health" || echo "000")
+            
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Health check PASSED (HTTP 200)"
+              
+              # Version check
+              echo ""
+              echo "📊 Checking deployment version..."
+              curl -s "$APP_URL/api/version" | jq '.' || echo "Version endpoint failed"
+              
+              break
+            else
+              echo "⚠️ Health check returned HTTP $HTTP_CODE"
+              
+              if [ $i -lt 3 ]; then
+                echo "Waiting 10 seconds before retry..."
+                sleep 10
+              fi
+            fi
+          done
           
-          if [ "$RESPONSE" = "200" ]; then
-            echo "✅ Health check passed (HTTP $RESPONSE)"
-          else
-            echo "⚠️ Health check returned HTTP $RESPONSE"
-            echo "   This may be normal if the app is still starting up"
-          fi
+          echo ""
+          echo "📊 Deployment Summary:"
+          echo "  - Commit: ${{ github.sha }}"
+          echo "  - Run: ${{ github.run_number }}"
+          echo "  - URL: $APP_URL"
+          echo ""
+          echo "🎉 Deployment workflow completed!"
 
-# Trigger: 2025-11-30 15:30 - Deploy with environment variable management
+# Trigger: Simplified and reliable deployment workflow
