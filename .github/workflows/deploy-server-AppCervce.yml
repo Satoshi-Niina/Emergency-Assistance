@@ -172,7 +172,7 @@ jobs:
           cd server
           
           # zipパッケージ作成 (zipコマンド使用)
-          # node_modulesを含める
+          # node_modulesは除外し、App Service側でnpm installを実行
           # 不要なファイルを除外
           zip -r ../deploy.zip . \
             -x '*.git*' \
@@ -183,7 +183,8 @@ jobs:
             -x 'src/*' \
             -x '.env*' \
             -x 'test/*' \
-            -x 'tests/*'
+            -x 'tests/*' \
+            -x 'node_modules/*'
           
           cd ..
           echo "✅ Package created:"
@@ -233,7 +234,7 @@ jobs:
                 OPENAI_MAX_TOKENS=2000 \
                 DEBUG_MODE=false \
                 VERBOSE_LOGGING=false \
-                SCM_DO_BUILD_DURING_DEPLOYMENT=false \
+                SCM_DO_BUILD_DURING_DEPLOYMENT=true \
                 WEBSITE_LOCAL_CACHE_OPTION=Never \
                 WEBSITE_DYNAMIC_CACHE=0 \
                 WEBSITES_ENABLE_APP_SERVICE_STORAGE=true \
