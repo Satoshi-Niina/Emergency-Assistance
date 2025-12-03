@@ -1,51 +1,51 @@
-// Azure App Service専用サーバー
-// Windows/Linux環境で確実に動作する最小限のサーバー
+// Azure App Service      
+// Windows/Linux                  
 // Version: 2025-11-30T10:05:00+09:00 (Deployment version tracking)
 // Build: ${new Date().toISOString()}
 
-// 必要なモジュールインポート
+//              
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import path from 'path';
-import fs from 'fs'; // ファイルシステム操作用
+import fs from 'fs'; //            
 
-// __dirname の取得（ESM で必要）
+// __dirname     ESM     
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Azure App Service environment setup
 if (!process.env.WEBSITE_SITE_NAME) {
-  // Azure App Service以外（ローカル環境）でのみ.envを読み込む
-  // NODE_ENVに応じて適切な.envファイルを読み込む
+  // Azure App Service             .env     
+  // NODE_ENV       .env         
   const nodeEnv = process.env.NODE_ENV || 'development';
   const envFile = nodeEnv === 'production' ? '.env.production' : '.env.development';
   const envPath = path.join(__dirname, envFile);
 
-  // 指定されたenvファイルが存在するか確認
+  //      env            
   if (fs.existsSync(envPath)) {
     dotenv.config({ path: envPath });
-    console.log(`📄 Environment file loaded: ${envFile} (${nodeEnv} mode)`);
-    console.log(`📍 Path: ${envPath}`);
+    console.log(`  Environment file loaded: ${envFile} (${nodeEnv} mode)`);
+    console.log(`  Path: ${envPath}`);
   } else {
-    // フォールバック: .envファイルを試す
+    //        : .env       
     const fallbackPath = path.join(__dirname, '.env');
     if (fs.existsSync(fallbackPath)) {
       dotenv.config({ path: fallbackPath });
-      console.log(`⚠️ Fallback to .env file (${envFile} not found)`);
+      console.log(`   Fallback to .env file (${envFile} not found)`);
     } else {
-      console.warn(`⚠️ No environment file found. Using system environment variables only.`);
+      console.warn(`   No environment file found. Using system environment variables only.`);
     }
   }
 }
 // Azure App Service environment setup
-console.log('🚀 Azure Server Starting (ES Module)...');
-console.log('📍 Working directory:', process.cwd());
-console.log('🗂️ __filename equivalent:', import.meta.url);
-console.log('🌍 Environment:', process.env.NODE_ENV || 'production');
-console.log('🔌 Port:', process.env.PORT || 'not set');
+console.log('  Azure Server Starting (ES Module)...');
+console.log('  Working directory:', process.cwd());
+console.log('   __filename equivalent:', import.meta.url);
+console.log('  Environment:', process.env.NODE_ENV || 'production');
+console.log('  Port:', process.env.PORT || 'not set');
 
 // Azure App Service specific environment variables
-console.log('📋 Azure Environment Variables:');
+console.log('  Azure Environment Variables:');
 console.log('   WEBSITE_SITE_NAME:', process.env.WEBSITE_SITE_NAME || 'not set');
 console.log('   WEBSITE_RESOURCE_GROUP:', process.env.WEBSITE_RESOURCE_GROUP || 'not set');
 console.log('   WEBSITE_OWNER_NAME:', process.env.WEBSITE_OWNER_NAME || 'not set');
@@ -74,11 +74,11 @@ import bcrypt from 'bcryptjs';
 import OpenAI from 'openai';
 import multer from 'multer';
 
-// ==== まず環境値（ログより前に宣言）=====
-// Azure Static Web Apps のデフォルトURL
+// ====                =====
+// Azure Static Web Apps       URL
 const DEFAULT_STATIC_WEB_APP_URL = 'https://witty-river-012f39e00.1.azurestaticapps.net';
 
-// 環境変数から引用符を削除するヘルパー関数
+//                     
 const cleanEnvValue = (value) => {
   if (!value) return null;
   return value.trim().replace(/^["']|["']$/g, '').trim();
@@ -97,7 +97,7 @@ const STATIC_WEB_APP_URL = cleanEnvValue(
   process.env.FRONTEND_URL ||
   (process.env.NODE_ENV === 'production' ? DEFAULT_STATIC_WEB_APP_URL : 'http://localhost:5173')
 ) || 'http://localhost:5173';
-const HEALTH_TOKEN = process.env.HEALTH_TOKEN || ''; // 任意。設定時は /ready に x-health-token を要求
+const HEALTH_TOKEN = process.env.HEALTH_TOKEN || ''; //         /ready   x-health-token    
 const PORT = process.env.PORT || 3000;
 
 // ==== BLOB Storage Configuration ====
@@ -119,51 +119,51 @@ const upload = multer({
   },
 });
 
-// 起動時にBLOB設定をログ出力
-console.log('🔧 BLOB Storage Configuration:');
+//     BLOB       
+console.log('  BLOB Storage Configuration:');
 console.log('   AZURE_STORAGE_CONNECTION_STRING:', connectionString ? `[SET] (length: ${connectionString.length})` : '[NOT SET]');
 console.log('   AZURE_STORAGE_CONTAINER_NAME:', containerName);
 console.log('   AZURE_STORAGE_ACCOUNT_NAME:', process.env.AZURE_STORAGE_ACCOUNT_NAME || 'not set');
-console.log('🤖 OpenAI Configuration:');
+console.log('  OpenAI Configuration:');
 console.log('   OPENAI_API_KEY:', isOpenAIAvailable ? '[SET]' : '[NOT SET]');
 
-// ==== アプリ初期化 =====
+// ====        =====
 // __dirname is already defined at the top
 const app = express();
 
 app.disable('x-powered-by');
 app.set('trust proxy', true);
 
-// Azure App Serviceの認証設定（Easy Auth）の確認と警告
-// X-MS-CLIENT-PRINCIPALヘッダーが存在する場合、Easy Authが有効になっている可能性があります
+// Azure App Service      Easy Auth       
+// X-MS-CLIENT-PRINCIPAL            Easy Auth                 
 app.use((req, res, next) => {
-  // すべてのリクエストに対してEasy Authチェック
+  //              Easy Auth    
   if (req.headers['x-ms-client-principal']) {
     console.error('=' .repeat(100));
-    console.error('❌❌❌ CRITICAL: AZURE APP SERVICE EASY AUTH DETECTED ❌❌❌');
-    console.error('❌ Path:', req.path);
-    console.error('❌ Method:', req.method);
-    console.error('❌ X-MS-CLIENT-PRINCIPAL header is present');
-    console.error('❌ Easy Authが有効になっているため、APIエンドポイントが403 Forbiddenを返します');
-    console.error('❌');
-    console.error('❌ 修正方法:');
-    console.error('❌   1. Azure Portal > App Service > 認証 > 認証を無効にする');
-    console.error('❌   2. または、Azure Portal > App Service > 認証 > 除外するパス に /api/* を追加');
-    console.error('❌');
-    console.error('❌ 詳細: AZURE_403_ERROR_FIX.md を参照してください');
-    console.error('❌❌❌ EASY AUTH MUST BE DISABLED OR CONFIGURED ❌❌❌');
+    console.error('    CRITICAL: AZURE APP SERVICE EASY AUTH DETECTED    ');
+    console.error('  Path:', req.path);
+    console.error('  Method:', req.method);
+    console.error('  X-MS-CLIENT-PRINCIPAL header is present');
+    console.error('  Easy Auth            API        403 Forbidden     ');
+    console.error(' ');
+    console.error('      :');
+    console.error('    1. Azure Portal > App Service >    >         ');
+    console.error('    2.     Azure Portal > App Service >    >          /api/*    ');
+    console.error(' ');
+    console.error('    : AZURE_403_ERROR_FIX.md          ');
+    console.error('    EASY AUTH MUST BE DISABLED OR CONFIGURED    ');
     console.error('=' .repeat(100));
   }
   
-  // APIエンドポイントに対する追加の警告
+  // API                
   if (req.path.startsWith('/api/') && req.headers['x-ms-client-principal']) {
-    console.error('🚨 APIエンドポイント', req.path, 'がEasy Authによってブロックされています');
+    console.error('  API       ', req.path, ' Easy Auth              ');
   }
   
   next();
 });
 
-// 本番ミドルウェア群
+//          
 const storageAccountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
 const storageUrl = storageAccountName
   ? `https://${storageAccountName}.blob.core.windows.net`
@@ -191,10 +191,10 @@ app.use(
 app.use(compression());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'tiny' : 'dev'));
 
-// CORS設定（クロスオリジン対応 - 本番環境対応版）
+// CORS             -         
 const corsOptions = {
   origin: function (origin, callback) {
-    // 許可するオリジンのリスト
+    //             
     const allowedOrigins = [
       FRONTEND_URL,
       STATIC_WEB_APP_URL,
@@ -203,51 +203,51 @@ const corsOptions = {
       'http://localhost:3000'
     ];
 
-    console.log('🔍 CORS Check:', {
+    console.log('  CORS Check:', {
       requestOrigin: origin,
       allowedOrigins: allowedOrigins,
       willAllow: !origin || allowedOrigins.indexOf(origin) !== -1
     });
 
-    // オリジンが未定義（直接アクセス）またはリストに含まれる場合は許可
+    //                                 
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      console.warn('⚠️ CORS blocked origin:', origin);
-      console.warn('⚠️ Expected origins:', allowedOrigins);
-      // 本番環境でazurestaticapps.netからのリクエストは許可（デバッグ用）
+      console.warn('   CORS blocked origin:', origin);
+      console.warn('   Expected origins:', allowedOrigins);
+      //      azurestaticapps.net                  
       if (process.env.NODE_ENV === 'production' && origin && origin.includes('azurestaticapps.net')) {
-        console.warn('⚠️ Allowing azurestaticapps.net origin for debugging');
+        console.warn('   Allowing azurestaticapps.net origin for debugging');
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
       }
     }
   },
-  credentials: true, // Cookieを含むリクエストを許可
+  credentials: true, // Cookie           
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   exposedHeaders: ['Set-Cookie'],
-  maxAge: 86400 // 24時間
+  maxAge: 86400 // 24  
 };
 
 app.use(cors(corsOptions));
 
-// プリフライトリクエストへの対応
+//                
 app.options('*', cors(corsOptions));
 
 // Body parser middleware
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// BLOBサービスクライアントの初期化（同期的にクライアントを返すのみ）
+// BLOB                               
 const getBlobServiceClient = () => {
-  console.log('🔍 getBlobServiceClient called');
+  console.log('  getBlobServiceClient called');
 
   if (!connectionString || !connectionString.trim()) {
     const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
     if (accountName && accountName.trim()) {
-      console.log('⚠️ AZURE_STORAGE_CONNECTION_STRING is not configured, trying Managed Identity...');
+      console.log('   AZURE_STORAGE_CONNECTION_STRING is not configured, trying Managed Identity...');
       try {
         const { DefaultAzureCredential } = require('@azure/identity');
         const credential = new DefaultAzureCredential();
@@ -255,35 +255,35 @@ const getBlobServiceClient = () => {
           `https://${accountName.trim()}.blob.core.windows.net`,
           credential
         );
-        console.log('✅ BLOB service client initialized with Managed Identity');
+        console.log('  BLOB service client initialized with Managed Identity');
         return client;
       } catch (error) {
-        console.error('❌ Failed to initialize BLOB service client with Managed Identity:', error);
+        console.error('  Failed to initialize BLOB service client with Managed Identity:', error);
         return null;
       }
     } else {
-      console.warn('⚠️ AZURE_STORAGE_CONNECTION_STRING and AZURE_STORAGE_ACCOUNT_NAME are not set');
+      console.warn('   AZURE_STORAGE_CONNECTION_STRING and AZURE_STORAGE_ACCOUNT_NAME are not set');
       return null;
     }
   }
 
   try {
     const client = BlobServiceClient.fromConnectionString(connectionString.trim());
-    console.log('✅ BLOB service client initialized successfully');
+    console.log('  BLOB service client initialized successfully');
     return client;
   } catch (error) {
-    console.error('❌ BLOB service client initialization failed:', error);
+    console.error('  BLOB service client initialization failed:', error);
     return null;
   }
 };
 
-// パス正規化ヘルパー
-// 環境変数からBLOBストレージのベースパスを取得（柔軟性のため）
+//          
+//       BLOB                      
 const BASE = (process.env.AZURE_KNOWLEDGE_BASE_PATH ?? 'knowledge-base')
   .replace(/^[\\/]+|[\\/]+$/g, '');
 
-// 起動時にBASE設定をログ出力
-console.log('📁 BLOB Base Path Configuration:');
+//     BASE       
+console.log('  BLOB Base Path Configuration:');
 console.log('   AZURE_KNOWLEDGE_BASE_PATH:', process.env.AZURE_KNOWLEDGE_BASE_PATH || 'not set (using default)');
 console.log('   Resolved BASE:', BASE);
 console.log('   Container Name:', containerName);
@@ -297,10 +297,10 @@ const toPosixPath = (value) => String(value ?? '').replace(/\\/g, '/');
 const sanitizeKnowledgeRelativePath = (raw) => {
   const normalized = toPosixPath(raw).trim();
   if (!normalized) {
-    throw new Error('ファイル名が指定されていません');
+    throw new Error('               ');
   }
   if (normalized.includes('..')) {
-    throw new Error('不正なファイルパスです');
+    throw new Error('           ');
   }
   return normalized.replace(/^\/+/, '');
 };
@@ -308,8 +308,8 @@ const sanitizeKnowledgeRelativePath = (raw) => {
 const buildKnowledgeBlobPath = (file) =>
   toPosixPath(`${KNOWLEDGE_DATA_PREFIX}${sanitizeKnowledgeRelativePath(file)}`);
 
-// norm関数: BASEパスとサブパスを結合
-// 例: norm('images/test.jpg') => 'knowledge-base/images/test.jpg'
+// norm  : BASE          
+//  : norm('images/test.jpg') => 'knowledge-base/images/test.jpg'
 const norm = (p) =>
   [BASE, String(p || '')]
     .filter(Boolean)
@@ -317,40 +317,40 @@ const norm = (p) =>
     .replace(/\\+/g, '/')
     .replace(/\/+/g, '/');
 
-// データベース接続プール
+//            
 let dbPool = null; // PostgreSQL
 
-// データベース接続初期化（PostgreSQLのみ）
+//             PostgreSQL   
 function initializeDatabase() {
-  // PostgreSQL接続文字列取得
+  // PostgreSQL       
   const databaseUrl = process.env.DATABASE_URL ||
     process.env.POSTGRES_URL ||
     process.env.AZURE_POSTGRESQL_CONNECTIONSTRING;
 
   if (!databaseUrl) {
-    console.error('❌ Database URL not found in any environment variable:');
+    console.error('  Database URL not found in any environment variable:');
     console.error('   - DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
     console.error('   - POSTGRES_URL:', process.env.POSTGRES_URL ? 'Set' : 'Not set');
     console.error('   - AZURE_POSTGRESQL_CONNECTIONSTRING:', process.env.AZURE_POSTGRESQL_CONNECTIONSTRING ? 'Set' : 'Not set');
-    console.warn('⚠️ Running without database connection');
+    console.warn('   Running without database connection');
     return false;
   }
 
   try {
-    console.log('🔗 Initializing database connection...');
-    console.log('📊 Database URL source:', databaseUrl === process.env.DATABASE_URL ? 'DATABASE_URL' :
+    console.log('  Initializing database connection...');
+    console.log('  Database URL source:', databaseUrl === process.env.DATABASE_URL ? 'DATABASE_URL' :
       databaseUrl === process.env.POSTGRES_URL ? 'POSTGRES_URL' : 'AZURE_POSTGRESQL_CONNECTIONSTRING');
-    console.log('📊 Database URL length:', databaseUrl ? databaseUrl.length : 0);
-    // 接続文字列の一部を表示（機密情報をマスク）
+    console.log('  Database URL length:', databaseUrl ? databaseUrl.length : 0);
+    //                      
     if (databaseUrl) {
       const urlParts = databaseUrl.split('@');
       if (urlParts.length > 1) {
-        console.log('📊 Database host:', urlParts[urlParts.length - 1].split('/')[0]);
+        console.log('  Database host:', urlParts[urlParts.length - 1].split('/')[0]);
       } else {
-        console.log('📊 Database URL preview:', databaseUrl.substring(0, 30) + '...');
+        console.log('  Database URL preview:', databaseUrl.substring(0, 30) + '...');
       }
     }
-    console.log('🔒 PG_SSL:', process.env.PG_SSL || 'not set');
+    console.log('  PG_SSL:', process.env.PG_SSL || 'not set');
 
     const sslConfig = process.env.PG_SSL === 'require'
       ? { rejectUnauthorized: false }
@@ -361,48 +361,48 @@ function initializeDatabase() {
     dbPool = new Pool({
       connectionString: databaseUrl,
       ssl: sslConfig,
-      max: 10, // 接続数を増やす
-      min: 2, // 最小接続数を維持
-      idleTimeoutMillis: 30000, // アイドルタイムアウト30秒
-      connectionTimeoutMillis: 10000, // 接続タイムアウト10秒
-      query_timeout: 30000, // クエリタイムアウト30秒
-      statement_timeout: 30000, // ステートメントタイムアウト30秒
-      keepAlive: true, // Keep-aliveを有効化
-      keepAliveInitialDelayMillis: 10000, // Keep-alive初期遅延10秒
-      allowExitOnIdle: false, // プロセス終了を防ぐ
+      max: 10, //        
+      min: 2, //         
+      idleTimeoutMillis: 30000, //           30 
+      connectionTimeoutMillis: 10000, //         10 
+      query_timeout: 30000, //          30 
+      statement_timeout: 30000, //              30 
+      keepAlive: true, // Keep-alive    
+      keepAliveInitialDelayMillis: 10000, // Keep-alive    10 
+      allowExitOnIdle: false, //          
     });
 
-    console.log('✅ Database pool initialized for Azure production');
+    console.log('  Database pool initialized for Azure production');
 
-    // 接続プールをウォームアップ（複数接続を事前作成）
-    console.log('🔥 Warming up database connection pool...');
+    //                         
+    console.log('  Warming up database connection pool...');
     const warmupPromises = [];
     for (let i = 0; i < 2; i++) {
       warmupPromises.push(
         dbPool.connect()
           .then(client => {
-            console.log(`✅ Warmup connection ${i + 1} established`);
+            console.log(`  Warmup connection ${i + 1} established`);
             client.release();
           })
           .catch(err => {
-            console.error(`❌ Warmup connection ${i + 1} failed:`, err.message);
+            console.error(`  Warmup connection ${i + 1} failed:`, err.message);
           })
       );
     }
 
     Promise.all(warmupPromises)
-      .then(() => console.log('✅ Connection pool warmup completed'))
-      .catch(() => console.warn('⚠️ Some warmup connections failed'));
+      .then(() => console.log('  Connection pool warmup completed'))
+      .catch(() => console.warn('   Some warmup connections failed'));
 
-    // データベース接続テスト
+    //            
     dbPool.connect()
       .then(client => {
-        console.log('✅ Database connection test successful');
+        console.log('  Database connection test successful');
         return client.query('SELECT version()');
       })
       .then(result => {
-        console.log('📊 PostgreSQL version:', result.rows[0].version.split(' ')[0] + ' ' + result.rows[0].version.split(' ')[1]);
-        // テーブル存在確認
+        console.log('  PostgreSQL version:', result.rows[0].version.split(' ')[0] + ' ' + result.rows[0].version.split(' ')[1]);
+        //         
         return dbPool.query(`
           SELECT table_name
           FROM information_schema.tables
@@ -413,27 +413,27 @@ function initializeDatabase() {
       })
       .then(result => {
         const existingTables = result.rows.map(row => row.table_name);
-        console.log('📊 Existing tables:', existingTables.join(', ') || 'None found');
+        console.log('  Existing tables:', existingTables.join(', ') || 'None found');
         if (!existingTables.includes('users')) {
-          console.warn('⚠️ users table missing - user management will fail');
+          console.warn('   users table missing - user management will fail');
         }
         if (!existingTables.includes('machines')) {
-          console.warn('⚠️ machines table missing - machine management will fail');
+          console.warn('   machines table missing - machine management will fail');
         }
       })
       .catch(err => {
-        console.error('❌ Database connection or table check failed:', err.message);
+        console.error('  Database connection or table check failed:', err.message);
       });
 
-    // 接続テスト（非同期で実行、エラーでもサーバーは継続）
+    //                           
     setTimeout(async () => {
       try {
         const client = await dbPool.connect();
         const result = await client.query('SELECT NOW() as current_time, version() as version');
-        console.log('✅ Database connection test successful:', result.rows[0]);
+        console.log('  Database connection test successful:', result.rows[0]);
 
-        // PostgreSQL用テーブル作成
-        console.log('🔧 Creating PostgreSQL tables if not exist...');
+        // PostgreSQL       
+        console.log('  Creating PostgreSQL tables if not exist...');
         await client.query(`
           CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
@@ -474,43 +474,43 @@ function initializeDatabase() {
           CREATE INDEX IF NOT EXISTS idx_chat_history_machine_number ON chat_history(machine_number);
           CREATE INDEX IF NOT EXISTS idx_chat_history_created_at ON chat_history(created_at);
         `);
-        console.log('✅ PostgreSQL tables created/verified');
+        console.log('  PostgreSQL tables created/verified');
 
-        // デフォルト管理者ユーザーの作成
+        //                
         const adminCheck = await client.query('SELECT id FROM users WHERE username = $1', ['admin']);
         if (adminCheck.rows.length === 0) {
           const hashedPassword = bcrypt.hashSync('admin', 10);
           await client.query(
             'INSERT INTO users (username, password, display_name, role, department) VALUES ($1, $2, $3, $4, $5)',
-            ['admin', hashedPassword, '管理者', 'admin', 'システム管理']
+            ['admin', hashedPassword, '   ', 'admin', '      ']
           );
-          console.log('✅ Default admin user created (username: admin, password: admin)');
+          console.log('  Default admin user created (username: admin, password: admin)');
         }
 
         await client.release();
       } catch (err) {
-        console.warn('⚠️ Database connection test failed:', err.message);
-        console.warn('⚠️ Server will continue running without database features');
-        // DB接続に失敗してもサーバーは継続
+        console.warn('   Database connection test failed:', err.message);
+        console.warn('   Server will continue running without database features');
+        // DB               
       }
     }, 1000);
 
     return true;
   } catch (error) {
-    console.error('❌ Database initialization failed:', error);
+    console.error('  Database initialization failed:', error);
     return false;
   }
 }
 
-// PostgreSQLデータベースクエリヘルパー
+// PostgreSQL             
 async function dbQuery(sql, params = [], retries = 3) {
   if (dbPool) {
-    // PostgreSQL: 非同期クエリ（リトライロジック付き）
+    // PostgreSQL:                   
     let lastError;
     for (let attempt = 1; attempt <= retries; attempt++) {
       let client;
       try {
-        // タイムアウト付きで接続取得
+        //              
         const connectPromise = dbPool.connect();
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Connection timeout')), 5000)
@@ -518,16 +518,16 @@ async function dbQuery(sql, params = [], retries = 3) {
 
         client = await Promise.race([connectPromise, timeoutPromise]);
 
-        // クエリ実行
+        //      
         const result = await client.query(sql, params);
         return result;
       } catch (error) {
         lastError = error;
-        console.error(`❌ Database query attempt ${attempt}/${retries} failed:`, error.message);
+        console.error(`  Database query attempt ${attempt}/${retries} failed:`, error.message);
 
-        // 接続エラーの場合はリトライ
+        //              
         if (attempt < retries && (error.message.includes('timeout') || error.message.includes('connect'))) {
-          console.log(`🔄 Retrying in ${attempt * 500}ms...`);
+          console.log(`  Retrying in ${attempt * 500}ms...`);
           await new Promise(resolve => setTimeout(resolve, attempt * 500));
           continue;
         }
@@ -537,7 +537,7 @@ async function dbQuery(sql, params = [], retries = 3) {
           try {
             client.release();
           } catch (releaseError) {
-            console.error('❌ Error releasing client:', releaseError.message);
+            console.error('  Error releasing client:', releaseError.message);
           }
         }
       }
@@ -548,55 +548,55 @@ async function dbQuery(sql, params = [], retries = 3) {
   }
 }
 
-// データベース接続を初期化
+//             
 initializeDatabase();
 
-// スタートアップ時にマイグレーションを実行
+//                     
 async function startupSequence() {
   try {
-    console.log('🚀 Starting Azure application startup sequence...');
+    console.log('  Starting Azure application startup sequence...');
 
-    // BLOBコンテナの初期化と確認
+    // BLOB           
     const blobClient = getBlobServiceClient();
     if (blobClient) {
-      console.log('🔄 Verifying BLOB container accessibility...');
+      console.log('  Verifying BLOB container accessibility...');
       try {
         const containerClient = blobClient.getContainerClient(containerName);
         const exists = await containerClient.exists();
 
         if (!exists) {
-          console.log(`⚠️ Container '${containerName}' does not exist. Creating...`);
+          console.log(`   Container '${containerName}' does not exist. Creating...`);
           await containerClient.create({
             access: 'blob'
           });
-          console.log(`✅ Container '${containerName}' created successfully`);
+          console.log(`  Container '${containerName}' created successfully`);
         } else {
-          console.log(`✅ Container '${containerName}' exists`);
+          console.log(`  Container '${containerName}' exists`);
         }
 
-        // プロパティ確認
+        //        
         const properties = await containerClient.getProperties();
-        console.log(`📊 Container properties:`, {
+        console.log(`  Container properties:`, {
           lastModified: properties.lastModified,
           publicAccess: properties.blobPublicAccess || 'none'
         });
 
       } catch (blobError) {
-        console.error('❌ BLOB container verification failed:', blobError.message);
-        // BLOBエラーは致命的ではないとして続行するか、ここで停止するか要検討
-        // 今回は警告を出して続行
+        console.error('  BLOB container verification failed:', blobError.message);
+        // BLOB                               
+        //            
       }
     }
 
     // FIXME: Temporarily disable migrations to isolate EISDIR
-    // データベースマイグレーションを実行
-    // データベースマイグレーション実行（強制版）
-    console.log('🔄 Skipping database migrations (EISDIR debug)...');
+    //                  
+    //                      
+    console.log('  Skipping database migrations (EISDIR debug)...');
     try {
       // await runMigrations();
-      console.log('✅ Database migrations skipped (EISDIR debug)');
+      console.log('  Database migrations skipped (EISDIR debug)');
 
-      // マイグレーション後のテーブル確認
+      //                 
       if (dbPool) {
         const client = await dbPool.connect();
         const tablesResult = await client.query(`
@@ -607,32 +607,32 @@ async function startupSequence() {
         `);
         await client.release();
 
-        console.log('📋 Database tables after migration:', tablesResult.rows.map(r => r.table_name));
+        console.log('  Database tables after migration:', tablesResult.rows.map(r => r.table_name));
 
         if (tablesResult.rows.length === 0) {
-          console.warn('⚠️ No required tables found after migration');
-          console.warn('⚠️ Manual database setup may be required');
+          console.warn('   No required tables found after migration');
+          console.warn('   Manual database setup may be required');
         }
       }
     } catch (migrationError) {
-      console.warn('⚠️ Database migration failed:', migrationError.message);
-      console.warn('⚠️ Manual execution of EMERGENCY_DATABASE_SETUP.sql may be required');
+      console.warn('   Database migration failed:', migrationError.message);
+      console.warn('   Manual execution of EMERGENCY_DATABASE_SETUP.sql may be required');
     }
 
-    console.log('✅ Azure startup sequence completed successfully');
-    console.log('🎉 Production server is ready for operation');
+    console.log('  Azure startup sequence completed successfully');
+    console.log('  Production server is ready for operation');
   } catch (error) {
-    console.error('❌ Azure startup sequence failed:', error);
-    console.warn('⚠️ Server will continue running, but some features may not work properly');
-    console.warn('⚠️ Please check database and BLOB storage connections');
-    // 起動は継続（警告のみ）
+    console.error('  Azure startup sequence failed:', error);
+    console.warn('   Server will continue running, but some features may not work properly');
+    console.warn('   Please check database and BLOB storage connections');
+    //            
   }
 }
 
-// 非同期でスタートアップシーケンスを実行
+//                    
 startupSequence();
 
-// セッション管理の設定（CORS対応修正版）
+//            CORS      
 const isAzureHosted = !!process.env.WEBSITE_SITE_NAME;
 const isProductionEnv = (process.env.NODE_ENV || '').toLowerCase() === 'production';
 const sessionCookieSecure = process.env.SESSION_COOKIE_SECURE
@@ -646,7 +646,7 @@ const sessionCookieHttpOnly = process.env.SESSION_COOKIE_HTTPONLY
   : false;
 const sessionCookieDomain = cleanEnvValue(process.env.SESSION_COOKIE_DOMAIN) || undefined;
 
-console.log('✅ Session cookie settings:', {
+console.log('  Session cookie settings:', {
   secure: sessionCookieSecure,
   sameSite: sessionCookieSameSite,
   httpOnly: sessionCookieHttpOnly,
@@ -660,17 +660,17 @@ app.use(session({
   cookie: {
     secure: sessionCookieSecure,
     httpOnly: sessionCookieHttpOnly,
-    maxAge: 24 * 60 * 60 * 1000, // 24時間
+    maxAge: 24 * 60 * 60 * 1000, // 24  
     sameSite: sessionCookieSameSite,
     domain: sessionCookieDomain,
-    path: '/' // すべてのパスで有効
+    path: '/' //          
   },
-  name: 'emergency.session', // セッション名を変更
-  proxy: true, // Azure App Serviceでプロキシを使用する場合
-  rolling: false // セッション更新を無効化
+  name: 'emergency.session', //          
+  proxy: true, // Azure App Service            
+  rolling: false //            
 }));
 
-// セッションデバッグミドルウェア（本番環境でのトラブルシューティング用）
+//                                    
 app.use((req, res, next) => {
   if (req.path.startsWith('/api/')) {
     console.log('[Session Debug]', {
@@ -690,19 +690,19 @@ app.use((req, res, next) => {
   next();
 });
 
-// ===== ヘルスエンドポイント =====
-// BLOBストレージ単体テストAPI
+// =====            =====
+// BLOB          API
 const ok = (_req, res) => res.status(200).send('ok');
 
-// liveness：軽量・常に200
+// liveness      200
 app.get('/live', ok);
 
-// readiness：最低限の自己診断（重い外部依存はソフト評価）
+// readiness                       
 app.get('/ready', (req, res) => {
   if (HEALTH_TOKEN && req.headers['x-health-token'] !== HEALTH_TOKEN) {
     return res.status(401).json({ status: 'unauthorized' });
   }
-  const essentials = ['NODE_ENV']; // 必須ENVなどを列挙
+  const essentials = ['NODE_ENV']; //   ENV     
   const missing = essentials.filter(k => !process.env[k]);
   const ready = missing.length === 0;
   res.status(200).json({
@@ -712,14 +712,14 @@ app.get('/ready', (req, res) => {
   });
 });
 
-// 互換エンドポイント（即200）
+//            200 
 app.get('/ping', ok);
 app.get('/api/ping', ok);
 app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));
 app.get('/api/health', (_req, res) => res.status(200).json({ status: 'ok' }));
 
-// 詳細なヘルスチェックエンドポイント（詳細情報が必要な場合用）
-// Health check endpoint with timeout protection (詳細版)
+//                               
+// Health check endpoint with timeout protection (   )
 app.get('/api/health/detailed', (req, res) => {
   // Set response timeout to prevent hanging
   const timeout = setTimeout(() => {
@@ -775,7 +775,7 @@ app.get('/api/health/detailed', (req, res) => {
   res.status(200).json(healthResponse);
 });
 
-// デプロイバージョン確認エンドポイント（デプロイ検証用）
+//                            
 app.get('/api/version', (req, res) => {
   const buildInfo = {
     version: '2025-11-30T10:05:00+09:00',
@@ -802,7 +802,7 @@ app.get('/api/version', (req, res) => {
   res.json(buildInfo);
 });
 
-// Full database testing health check (別エンドポイント)
+// Full database testing health check (        )
 app.get('/api/health/full', async (req, res) => {
   let dbStatus = 'not_initialized';
   let dbTestResult = null;
@@ -868,7 +868,7 @@ app.get('/api/health/full', async (req, res) => {
   });
 });
 
-// BLOB診断エンドポイント（包括的テスト）
+// BLOB                 
 app.get('/api/_diag/blob-test', async (req, res) => {
   const diagnostics = {
     timestamp: new Date().toISOString(),
@@ -895,13 +895,13 @@ app.get('/api/_diag/blob-test', async (req, res) => {
   };
 
   try {
-    // 1. BLOB クライアント初期化テスト
+    // 1. BLOB             
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
       diagnostics.client.error = 'BLOB service client is null';
       return res.status(503).json({
         success: false,
-        message: 'BLOBストレージクライアントの初期化に失敗しました',
+        message: 'BLOB                      ',
         diagnostics
       });
     }
@@ -909,27 +909,27 @@ app.get('/api/_diag/blob-test', async (req, res) => {
     diagnostics.client.initialized = true;
     diagnostics.connectionString.valid = true;
 
-    // 2. コンテナ存在確認
+    // 2.         
     const containerClient = blobServiceClient.getContainerClient(containerName);
     const containerExists = await containerClient.exists();
     diagnostics.container.exists = containerExists;
 
-    // 3. コンテナ作成テスト（存在しない場合）
+    // 3.                   
     if (!containerExists) {
       try {
         await containerClient.create({ access: 'blob' });
         diagnostics.container.canCreate = true;
         diagnostics.container.exists = true;
-        console.log(`✅ Diagnostic: Container '${containerName}' created`);
+        console.log(`  Diagnostic: Container '${containerName}' created`);
       } catch (createError) {
         diagnostics.container.error = createError.message;
         diagnostics.container.canCreate = false;
       }
     } else {
-      diagnostics.container.canCreate = true; // 既に存在する
+      diagnostics.container.canCreate = true; //       
     }
 
-    // 4. 書き込みテスト
+    // 4.        
     if (diagnostics.container.exists) {
       try {
         const testBlobName = `_diagnostic/test-${Date.now()}.txt`;
@@ -941,9 +941,9 @@ app.get('/api/_diag/blob-test', async (req, res) => {
         });
 
         diagnostics.permissions.canWrite = true;
-        console.log(`✅ Diagnostic: Write test successful`);
+        console.log(`  Diagnostic: Write test successful`);
 
-        // 5. 読み取りテスト
+        // 5.        
         try {
           const downloadResponse = await blockBlobClient.download();
           const chunks = [];
@@ -954,12 +954,12 @@ app.get('/api/_diag/blob-test', async (req, res) => {
 
           if (downloadedContent === testContent) {
             diagnostics.permissions.canRead = true;
-            console.log(`✅ Diagnostic: Read test successful`);
+            console.log(`  Diagnostic: Read test successful`);
           }
 
-          // テストファイルを削除
+          //           
           await blockBlobClient.delete();
-          console.log(`✅ Diagnostic: Test file deleted`);
+          console.log(`  Diagnostic: Test file deleted`);
         } catch (readError) {
           diagnostics.permissions.error = `Read failed: ${readError.message}`;
         }
@@ -968,7 +968,7 @@ app.get('/api/_diag/blob-test', async (req, res) => {
       }
     }
 
-    // 診断結果の判定
+    //        
     const allTestsPassed =
       diagnostics.client.initialized &&
       diagnostics.container.exists &&
@@ -978,8 +978,8 @@ app.get('/api/_diag/blob-test', async (req, res) => {
     res.status(allTestsPassed ? 200 : 500).json({
       success: allTestsPassed,
       message: allTestsPassed
-        ? 'BLOBストレージは正常に動作しています'
-        : 'BLOBストレージに問題があります',
+        ? 'BLOB                '
+        : 'BLOB             ',
       diagnostics
     });
 
@@ -987,7 +987,7 @@ app.get('/api/_diag/blob-test', async (req, res) => {
     diagnostics.client.error = error.message;
     res.status(500).json({
       success: false,
-      message: 'BLOB診断中にエラーが発生しました',
+      message: 'BLOB              ',
       error: error.message,
       diagnostics
     });
@@ -995,7 +995,7 @@ app.get('/api/_diag/blob-test', async (req, res) => {
 });
 
 
-// 環境情報（詳細版）
+//          
 app.get('/api/_diag/env', (req, res) => {
   res.json({
     success: true,
@@ -1025,12 +1025,12 @@ app.get('/api/_diag/env', (req, res) => {
       idleCount: dbPool ? dbPool.idleCount : 0,
       waitingCount: dbPool ? dbPool.waitingCount : 0
     },
-    message: '環境変数情報（本番環境）',
+    message: '            ',
     timestamp: new Date().toISOString()
   });
 });
 
-// 役割をフロントエンドの期待に合わせて正規化
+//                      
 const normalizeUserRole = (rawRole) => {
   if (!rawRole) return 'employee';
   const normalized = String(rawRole).trim().toLowerCase();
@@ -1040,12 +1040,12 @@ const normalizeUserRole = (rawRole) => {
   return 'employee';
 };
 
-// 認証エンドポイント（データベース認証）
+//                    
 app.post('/api/auth/login', async (req, res) => {
   const origin = req.headers.origin;
-  console.log('🔐 Login request from origin:', origin);
-  console.log('🔐 Request headers:', JSON.stringify(req.headers, null, 2));
-  console.log('🔐 Request body:', JSON.stringify(req.body, null, 2));
+  console.log('  Login request from origin:', origin);
+  console.log('  Request headers:', JSON.stringify(req.headers, null, 2));
+  console.log('  Request body:', JSON.stringify(req.body, null, 2));
 
   try {
     const { username, password } = req.body || {};
@@ -1059,35 +1059,35 @@ app.post('/api/auth/login', async (req, res) => {
       dbPoolStatus: !!dbPool
     });
 
-    // 入力検証
+    //     
     if (!username || !password) {
       return res.status(400).json({
         success: false,
         error: 'bad_request',
-        message: 'ユーザー名とパスワードが必要です'
+        message: '                '
       });
     }
 
-    // データベース接続がない場合はエラー
+    //                  
     if (!dbPool) {
       console.error('[auth/login] No database connection available');
       return res.status(500).json({
         success: false,
         error: 'database_unavailable',
-        message: 'データベース接続が利用できません'
+        message: '                '
       });
     }
 
     try {
-      // データベースからユーザーを検索
-      console.log('[auth/login] ユーザー検索開始:', { username });
+      //                
+      console.log('[auth/login]         :', { username });
 
       const result = await dbQuery(
         'SELECT id, username, password, role, display_name, department FROM users WHERE username = $1 LIMIT 1',
         [username]
       );
 
-      console.log('[auth/login] ユーザー検索結果:', {
+      console.log('[auth/login]         :', {
         found: result.rows.length > 0,
         userCount: result.rows.length,
         query: 'SELECT ... FROM users WHERE username = $1',
@@ -1095,55 +1095,55 @@ app.post('/api/auth/login', async (req, res) => {
       });
 
       if (result.rows.length === 0) {
-        console.error('[auth/login] ❌ ユーザーが見つかりません');
-        console.error('[auth/login] データベースに管理者ユーザーが作成されていない可能性があります');
-        console.error('[auth/login] 解決方法: scripts/seed-admin-user.sql を実行してください');
+        console.error('[auth/login]               ');
+        console.error('[auth/login]                                ');
+        console.error('[auth/login]     : scripts/seed-admin-user.sql          ');
         return res.status(401).json({
           success: false,
           error: 'USER_NOT_FOUND',
-          message: 'ユーザー名またはパスワードが正しくありません',
+          message: '                      ',
           debug: process.env.NODE_ENV !== 'production' ? {
-            hint: 'データベースにユーザーが存在しません。seed-admin-user.sqlを実行してください。'
+            hint: '                   seed-admin-user.sql          '
           } : undefined
         });
       }
 
       const foundUser = result.rows[0];
       const normalizedRole = normalizeUserRole(foundUser.role);
-      console.log('[auth/login] ユーザー情報取得:', {
+      console.log('[auth/login]         :', {
         id: foundUser.id,
         username: foundUser.username,
         role: foundUser.role,
         normalizedRole
       });
 
-      // パスワード比較（bcryptjs）
-      console.log('[auth/login] パスワード比較開始');
-      console.log('[auth/login] 入力パスワード長:', password.length);
-      console.log('[auth/login] DB保存ハッシュ長:', foundUser.password.length);
-      console.log('[auth/login] ハッシュプレフィックス:', foundUser.password.substring(0, 7));
+      //         bcryptjs 
+      console.log('[auth/login]          ');
+      console.log('[auth/login]         :', password.length);
+      console.log('[auth/login] DB       :', foundUser.password.length);
+      console.log('[auth/login]            :', foundUser.password.substring(0, 7));
 
       const isPasswordValid = await bcrypt.compare(password, foundUser.password);
-      console.log('[auth/login] パスワード比較結果:', { isValid: isPasswordValid });
+      console.log('[auth/login]          :', { isValid: isPasswordValid });
 
       if (!isPasswordValid) {
-        console.error('[auth/login] ❌ パスワードが一致しません');
-        console.error('[auth/login] 入力されたパスワードとDBのハッシュが一致しません');
-        console.error('[auth/login] ローカルと本番でパスワードが異なる可能性があります');
+        console.error('[auth/login]               ');
+        console.error('[auth/login]            DB            ');
+        console.error('[auth/login]                          ');
         return res.status(401).json({
           success: false,
           error: 'INVALID_PASSWORD',
-          message: 'ユーザー名またはパスワードが正しくありません',
+          message: '                      ',
           debug: process.env.NODE_ENV !== 'production' ? {
-            hint: 'パスワードが一致しません。正しいパスワードで再試行してください。'
+            hint: '                                '
           } : undefined
         });
       }
 
-      // 成功レスポンス
+      //        
       console.log('[auth/login] Login successful:', { username, role: normalizedRole, originalRole: foundUser.role });
 
-      // セッションにユーザー情報を保存
+      //                
       req.session.user = {
         id: foundUser.id,
         username: foundUser.username,
@@ -1162,14 +1162,14 @@ app.post('/api/auth/login', async (req, res) => {
         department: foundUser.department
       };
 
-      // セッションを明示的に保存（クロスオリジン対応）
+      //                        
       req.session.save((saveErr) => {
         if (saveErr) {
           console.error('[auth/login] Session save error:', saveErr);
           return res.status(500).json({
             success: false,
             error: 'session_save_failed',
-            message: 'セッションの保存に失敗しました'
+            message: '               '
           });
         }
 
@@ -1180,14 +1180,14 @@ app.post('/api/auth/login', async (req, res) => {
           role: normalizedRole
         });
 
-        // Set-Cookieヘッダーの確認
+        // Set-Cookie       
         const setCookieHeader = res.getHeader('Set-Cookie');
         console.log('[auth/login] Set-Cookie header:', setCookieHeader);
 
         res.json({
           success: true,
           user: responseUser,
-          message: 'ログインに成功しました',
+          message: '           ',
           debug: process.env.NODE_ENV !== 'production' ? {
             sessionID: req.sessionID,
             sessionSaved: true
@@ -1208,7 +1208,7 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(500).json({
         success: false,
         error: 'database_error',
-        message: 'データベースエラーが発生しました'
+        message: '                '
       });
     }
 
@@ -1222,9 +1222,9 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// ===== 全29個のAPIエンドポイント（本番環境用） =====
+// =====  29  API               =====
 
-// 1. 認証ハンドシェイクエンドポイント
+// 1.                 
 app.get('/api/auth/handshake', (req, res) => {
   res.json({
     ok: true,
@@ -1235,10 +1235,10 @@ app.get('/api/auth/handshake', (req, res) => {
   });
 });
 
-// 2. 現在のユーザー情報取得エンドポイント
-// セッション認証エンドポイント（デバッグ強化版）
+// 2.                   
+//                        
 app.get('/api/auth/me', (req, res) => {
-  console.log('[api/auth/me] セッション確認:', {
+  console.log('[api/auth/me]        :', {
     sessionId: req.sessionID,
     hasSession: !!req.session,
     hasUser: !!req.session.user,
@@ -1250,7 +1250,7 @@ app.get('/api/auth/me', (req, res) => {
     timestamp: new Date().toISOString()
   });
 
-  // すべてのCookieをログ出力（デバッグ用）
+  //     Cookie            
   if (req.headers.cookie) {
     const cookies = req.headers.cookie.split(';').map(c => c.trim());
     console.log('[api/auth/me] Received cookies:', cookies);
@@ -1279,7 +1279,7 @@ app.get('/api/auth/me', (req, res) => {
     res.json({
       success: true,
       user: normalizedUser,
-      message: 'セッションからユーザー情報を取得しました',
+      message: '                    ',
       debug: {
         sessionId: req.sessionID,
         userRole: normalizedRole,
@@ -1295,7 +1295,7 @@ app.get('/api/auth/me', (req, res) => {
 
     res.status(401).json({
       success: false,
-      message: 'ログインしていません',
+      message: '          ',
       debug: {
         sessionId: req.sessionID,
         hasSession: !!req.session,
@@ -1306,56 +1306,56 @@ app.get('/api/auth/me', (req, res) => {
   }
 });
 
-// 3. 管理者権限チェックエンドポイント
+// 3.                 
 app.get('/api/auth/check-admin', (req, res) => {
   if (req.session.user && normalizeUserRole(req.session.user.role) === 'admin') {
     res.json({
       success: true,
-      message: '管理者権限が確認されました',
+      message: '             ',
       user: req.session.user
     });
   } else {
     res.status(403).json({
       success: false,
-      message: '管理者権限がありません'
+      message: '           '
     });
   }
 });
 
-// 4. 一般ユーザー権限チェックエンドポイント
+// 4.                    
 app.get('/api/auth/check-employee', (req, res) => {
   if (req.session.user && normalizeUserRole(req.session.user.role) === 'employee') {
     res.json({
       success: true,
-      message: '従業員権限が確認されました',
+      message: '             ',
       user: req.session.user
     });
   } else {
     res.status(403).json({
       success: false,
-      message: '従業員権限がありません'
+      message: '           '
     });
   }
 });
 
-// 5. ログアウトエンドポイント
+// 5.             
 app.post('/api/auth/logout', (req, res) => {
   req.session.destroy((err) => {
     if (err) {
       console.error('Session destruction error:', err);
       return res.status(500).json({
         success: false,
-        message: 'ログアウトに失敗しました'
+        message: '            '
       });
     }
     res.json({
       success: true,
-      message: 'ログアウトしました'
+      message: '         '
     });
   });
 });
 
-// 6. Ping endpoint（詳細版 - 既に /api/ping は上で定義済み）
+// 6. Ping endpoint     -    /api/ping         
 app.get('/api/ping/detailed', (req, res) => {
   res.json({
     ping: 'pong',
@@ -1365,12 +1365,12 @@ app.get('/api/ping/detailed', (req, res) => {
 });
 
 // 7. Storage endpoints
-// 旧モックAPI削除：正式なAPIエンドポイントは下記で実装
+//     API      API             
 
-// 14. トラブルシューティングAPI（BLOBストレージから取得）
+// 14.            API BLOB          
 app.get('/api/troubleshooting/list', async (req, res) => {
   try {
-    console.log('[api/troubleshooting/list] トラブルシューティング一覧取得リクエスト');
+    console.log('[api/troubleshooting/list]                     ');
 
     if (!connectionString) {
       return res.json({
@@ -1420,34 +1420,34 @@ app.get('/api/troubleshooting/list', async (req, res) => {
             });
           }
         } catch (error) {
-          console.error(`[api/troubleshooting/list] ファイル読み込みエラー: ${blob.name}`, error);
+          console.error(`[api/troubleshooting/list]            : ${blob.name}`, error);
         }
       }
     }
 
-    console.log(`[api/troubleshooting/list] 取得成功: ${troubleshootingList.length}件`);
+    console.log(`[api/troubleshooting/list]     : ${troubleshootingList.length} `);
     res.json({
       success: true,
       data: troubleshootingList,
-      message: `トラブルシューティング一覧を取得しました: ${troubleshootingList.length}件`,
+      message: `                    : ${troubleshootingList.length} `,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/troubleshooting/list] エラー:', error);
+    console.error('[api/troubleshooting/list]    :', error);
     res.status(500).json({
       success: false,
       data: [],
-      message: 'トラブルシューティング一覧の取得に失敗しました',
+      message: '                       ',
       error: error.message
     });
   }
 });
 
-// 15. 個別トラブルシューティングファイル取得API（BLOBストレージから取得）
+// 15.                    API BLOB          
 app.get('/api/troubleshooting/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`[api/troubleshooting/:id] 個別ファイル取得リクエスト: ${id}`);
+    console.log(`[api/troubleshooting/:id]              : ${id}`);
 
     if (!connectionString) {
       return res.status(404).json({
@@ -1470,10 +1470,10 @@ app.get('/api/troubleshooting/:id', async (req, res) => {
 
     const exists = await blockBlobClient.exists();
     if (!exists) {
-      console.warn(`[api/troubleshooting/:id] ファイルが見つかりません: ${blobName}`);
+      console.warn(`[api/troubleshooting/:id]             : ${blobName}`);
       return res.status(404).json({
         success: false,
-        message: `トラブルシューティングファイルが見つかりません: ${id}`
+        message: `                       : ${id}`
       });
     }
 
@@ -1487,30 +1487,30 @@ app.get('/api/troubleshooting/:id', async (req, res) => {
       const cleanContent = content.replace(/^\uFEFF/, '');
       const jsonData = JSON.parse(cleanContent);
 
-      console.log(`[api/troubleshooting/:id] 取得成功: ${id}`);
+      console.log(`[api/troubleshooting/:id]     : ${id}`);
       res.json({
         success: true,
         data: jsonData,
-        message: `トラブルシューティングファイルを取得しました: ${id}`
+        message: `                      : ${id}`
       });
     } else {
-      throw new Error('ダウンロードストリームが利用できません');
+      throw new Error('                   ');
     }
   } catch (error) {
-    console.error(`[api/troubleshooting/:id] エラー:`, error);
+    console.error(`[api/troubleshooting/:id]    :`, error);
     res.status(500).json({
       success: false,
-      message: 'トラブルシューティングファイルの取得に失敗しました',
+      message: '                         ',
       error: error.message
     });
   }
 });
 
-// 16. トラブルシューティング保存API（BLOBストレージに保存）
+// 16.              API BLOB         
 app.post('/api/troubleshooting', async (req, res) => {
   try {
     const flowData = req.body;
-    console.log('[api/troubleshooting POST] トラブルシューティング作成リクエスト:', flowData.id || 'new');
+    console.log('[api/troubleshooting POST]                   :', flowData.id || 'new');
 
     if (!connectionString) {
       return res.status(503).json({
@@ -1527,12 +1527,12 @@ app.post('/api/troubleshooting', async (req, res) => {
       });
     }
 
-    // IDがない場合は生成
+    // ID        
     if (!flowData.id) {
       flowData.id = `flow_${Date.now()}`;
     }
 
-    // タイムスタンプ設定
+    //          
     if (!flowData.createdAt) {
       flowData.createdAt = new Date().toISOString();
     }
@@ -1542,39 +1542,39 @@ app.post('/api/troubleshooting', async (req, res) => {
     const blobName = norm(`troubleshooting/${flowData.id}.json`);
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
-    // JSON文字列に変換
+    // JSON      
     const jsonContent = JSON.stringify(flowData, null, 2);
     const buffer = Buffer.from(jsonContent, 'utf-8');
 
-    // BLOBにアップロード
+    // BLOB       
     await blockBlobClient.upload(buffer, buffer.length, {
       blobHTTPHeaders: {
         blobContentType: 'application/json'
       }
     });
 
-    console.log(`[api/troubleshooting POST] 作成成功: ${flowData.id}`);
+    console.log(`[api/troubleshooting POST]     : ${flowData.id}`);
     res.json({
       success: true,
       data: flowData,
-      message: `トラブルシューティングを作成しました: ${flowData.id}`
+      message: `                  : ${flowData.id}`
     });
   } catch (error) {
-    console.error('[api/troubleshooting POST] エラー:', error);
+    console.error('[api/troubleshooting POST]    :', error);
     res.status(500).json({
       success: false,
-      message: 'トラブルシューティングの作成に失敗しました',
+      message: '                     ',
       error: error.message
     });
   }
 });
 
-// 17. トラブルシューティング更新API（BLOBストレージに保存）
+// 17.              API BLOB         
 app.put('/api/troubleshooting/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const flowData = req.body;
-    console.log(`[api/troubleshooting PUT] トラブルシューティング更新リクエスト: ${id}`);
+    console.log(`[api/troubleshooting PUT]                   : ${id}`);
 
     if (!connectionString) {
       return res.status(503).json({
@@ -1591,11 +1591,11 @@ app.put('/api/troubleshooting/:id', async (req, res) => {
       });
     }
 
-    // IDを確保
+    // ID   
     flowData.id = id;
     flowData.updatedAt = new Date().toISOString();
 
-    // 更新履歴を追加
+    //        
     if (!flowData.updateHistory) {
       flowData.updateHistory = [];
     }
@@ -1609,38 +1609,38 @@ app.put('/api/troubleshooting/:id', async (req, res) => {
     const blobName = norm(`troubleshooting/${id}.json`);
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
-    // JSON文字列に変換
+    // JSON      
     const jsonContent = JSON.stringify(flowData, null, 2);
     const buffer = Buffer.from(jsonContent, 'utf-8');
 
-    // BLOBにアップロード（上書き）
+    // BLOB            
     await blockBlobClient.upload(buffer, buffer.length, {
       blobHTTPHeaders: {
         blobContentType: 'application/json'
       }
     });
 
-    console.log(`[api/troubleshooting PUT] 更新成功: ${id}`);
+    console.log(`[api/troubleshooting PUT]     : ${id}`);
     res.json({
       success: true,
       data: flowData,
-      message: `トラブルシューティングを更新しました: ${id}`
+      message: `                  : ${id}`
     });
   } catch (error) {
-    console.error(`[api/troubleshooting PUT] エラー:`, error);
+    console.error(`[api/troubleshooting PUT]    :`, error);
     res.status(500).json({
       success: false,
-      message: 'トラブルシューティングの更新に失敗しました',
+      message: '                     ',
       error: error.message
     });
   }
 });
 
-// 18. トラブルシューティング削除API（BLOBストレージから削除）
+// 18.              API BLOB          
 app.delete('/api/troubleshooting/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`[api/troubleshooting DELETE] トラブルシューティング削除リクエスト: ${id}`);
+    console.log(`[api/troubleshooting DELETE]                   : ${id}`);
 
     if (!connectionString) {
       return res.status(503).json({
@@ -1661,46 +1661,46 @@ app.delete('/api/troubleshooting/:id', async (req, res) => {
     const blobName = norm(`troubleshooting/${id}.json`);
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
-    // 存在確認
+    //     
     const exists = await blockBlobClient.exists();
     if (!exists) {
       return res.status(404).json({
         success: false,
-        message: `トラブルシューティングが見つかりません: ${id}`
+        message: `                   : ${id}`
       });
     }
 
-    // 削除実行
+    //     
     await blockBlobClient.delete();
 
-    console.log(`[api/troubleshooting DELETE] 削除成功: ${id}`);
+    console.log(`[api/troubleshooting DELETE]     : ${id}`);
     res.json({
       success: true,
-      message: `トラブルシューティングを削除しました: ${id}`
+      message: `                  : ${id}`
     });
   } catch (error) {
-    console.error(`[api/troubleshooting DELETE] エラー:`, error);
+    console.error(`[api/troubleshooting DELETE]    :`, error);
     res.status(500).json({
       success: false,
-      message: 'トラブルシューティングの削除に失敗しました',
+      message: '                     ',
       error: error.message
     });
   }
 });
 
-// ==== /api/history/* サブルートを先に定義（/:id より前） ====
+// ==== /api/history/*            /:id      ====
 
-// 16. 履歴API（機種・機械番号データ）
+// 16.   API            
 app.get('/api/history/machine-data', async (req, res) => {
   try {
-    console.log('[api/history] 機種・機械番号データ取得リクエスト');
+    console.log('[api/history]                  ');
 
     if (!dbPool) {
       return res.json({
         success: true,
         machineTypes: [],
         machines: [],
-        message: 'データベース接続が設定されていません',
+        message: '                  ',
         timestamp: new Date().toISOString()
       });
     }
@@ -1718,7 +1718,7 @@ app.get('/api/history/machine-data', async (req, res) => {
     `);
     await client.release();
 
-    // データを整形
+    //       
     const machineTypes = [];
     const machines = [];
     const typeMap = new Map();
@@ -1751,42 +1751,42 @@ app.get('/api/history/machine-data', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/history] 機種・機械番号データ取得エラー:', error);
+    console.error('[api/history]                :', error);
     res.status(500).json({
       success: false,
-      error: '機種・機械番号データの取得に失敗しました',
+      error: '                    ',
       details: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// エクスポートファイル一覧API
+//             API
 app.get('/api/history/export-files', async (req, res) => {
   try {
-    console.log('[api/history/export-files] ===== エクスポートファイル一覧取得リクエスト開始 =====');
-    console.log('[api/history/export-files] リクエストURL:', req.url);
-    console.log('[api/history/export-files] リクエストメソッド:', req.method);
+    console.log('[api/history/export-files] =====                       =====');
+    console.log('[api/history/export-files]      URL:', req.url);
+    console.log('[api/history/export-files]          :', req.method);
 
     const items = [];
     const blobServiceClient = getBlobServiceClient();
-    console.log('[api/history/export-files] BLOBサービスクライアント:', blobServiceClient ? '利用可能' : '利用不可');
+    console.log('[api/history/export-files] BLOB          :', blobServiceClient ? '    ' : '    ');
 
     if (blobServiceClient) {
       try {
         const containerClient = blobServiceClient.getContainerClient(containerName);
         const prefix = norm('exports/');
 
-        console.log(`🔍 BLOBストレージからエクスポート取得: prefix=${prefix}, container=${containerName}`);
+        console.log(`  BLOB               : prefix=${prefix}, container=${containerName}`);
 
         for await (const blob of containerClient.listBlobsFlat({ prefix })) {
           if (blob.name.endsWith('.json')) {
             const fileName = blob.name.split('/').pop();
             
-            // ファイル名からタイトルを抽出（例: "タイトル_chatId_timestamp.json"）
+            //                 : "    _chatId_timestamp.json" 
             const fileNameWithoutExt = fileName.replace('.json', '');
             const parts = fileNameWithoutExt.split('_');
-            const title = parts.length > 0 ? parts[0] : 'タイトルなし';
+            const title = parts.length > 0 ? parts[0] : '      ';
             
             items.push({
               id: fileNameWithoutExt,
@@ -1800,14 +1800,14 @@ app.get('/api/history/export-files', async (req, res) => {
             });
           }
         }
-        console.log(`✅ BLOBから ${items.length} 件のエクスポート取得`);
+        console.log(`  BLOB   ${items.length}           `);
       } catch (error) {
-        console.error('❌ BLOB読み込みエラー:', error);
-        console.error('❌ エラー詳細:', error instanceof Error ? error.stack : error);
-        // BLOBエラーでも空配列を返す（フォールバック）
+        console.error('  BLOB       :', error);
+        console.error('       :', error instanceof Error ? error.stack : error);
+        // BLOB                    
       }
     } else {
-      console.warn('⚠️ BLOBサービスクライアントが利用できません');
+      console.warn('   BLOB                  ');
     }
 
     res.json({
@@ -1817,33 +1817,33 @@ app.get('/api/history/export-files', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/history/export-files] エラー:', error);
-    console.error('[api/history/export-files] エラー詳細:', error instanceof Error ? error.stack : error);
+    console.error('[api/history/export-files]    :', error);
+    console.error('[api/history/export-files]      :', error instanceof Error ? error.stack : error);
     res.status(500).json({
       success: false,
-      error: 'エクスポートファイル一覧の取得に失敗しました',
+      error: '                      ',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// ==== 履歴詳細取得API（/:id - 最後に定義） ====
-// 履歴詳細取得API（BLOBストレージ優先 - 本番環境対応）
+// ====       API /:id -        ====
+//       API BLOB        -        
 app.get('/api/history/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    console.log(`📋 履歴アイテム取得リクエスト: ${id}`);
+    console.log(`               : ${id}`);
 
-    // BLOBストレージから取得を試行（本番環境優先）
+    // BLOB                    
     const blobServiceClient = getBlobServiceClient();
     if (blobServiceClient) {
       try {
         const containerClient = blobServiceClient.getContainerClient(containerName);
         const prefix = norm('exports/');
 
-        console.log(`🔍 BLOBストレージから検索: prefix=${prefix}, id=${id}`);
+        console.log(`  BLOB         : prefix=${prefix}, id=${id}`);
 
         for await (const blob of containerClient.listBlobsFlat({ prefix })) {
           if (!blob.name.endsWith('.json') || blob.name.includes('.backup.')) continue;
@@ -1854,7 +1854,7 @@ app.get('/api/history/:id', async (req, res) => {
           const fileId = uuidMatch ? uuidMatch[1] : fileNameWithoutExt;
 
           if (fileId === id || fileNameWithoutExt === id || fileName.includes(id)) {
-            console.log(`✅ BLOBで見つかりました: ${blob.name}`);
+            console.log(`  BLOB        : ${blob.name}`);
 
             const blockBlobClient = containerClient.getBlockBlobClient(blob.name);
             const downloadResponse = await blockBlobClient.download();
@@ -1867,9 +1867,9 @@ app.get('/api/history/:id', async (req, res) => {
             const foundData = JSON.parse(content);
             const foundFile = fileName;
 
-            // 以降の処理は同じ
+            //         
             const savedImages = foundData.savedImages || foundData.images || [];
-            console.log('🖼️ 取得した画像データ:', {
+            console.log('            :', {
               id,
               fileName: foundFile,
               savedImagesLength: savedImages.length
@@ -1912,40 +1912,40 @@ app.get('/api/history/:id', async (req, res) => {
               source: 'blob_storage'
             };
 
-            console.log(`✅ 履歴アイテム取得完了(BLOB): ${id}`);
+            console.log(`            (BLOB): ${id}`);
             return res.json(convertedItem);
           }
         }
 
-        console.log(`❌ BLOBで見つかりませんでした: ${id}`);
+        console.log(`  BLOB           : ${id}`);
       } catch (blobError) {
-        console.error('❌ BLOBストレージエラー:', blobError);
+        console.error('  BLOB        :', blobError);
       }
     }
 
-    // 見つからなかった場合
-    console.log(`❌ 履歴アイテムが見つかりませんでした: ${id}`);
+    //           
+    console.log(`                   : ${id}`);
     res.status(404).json({
       success: false,
-      error: '指定された履歴が見つかりませんでした',
+      error: '                  ',
     });
   } catch (error) {
-    console.error('❌ 履歴詳細取得エラー:', error);
+    console.error('           :', error);
     res.status(500).json({
       success: false,
-      error: '履歴の取得に失敗しました',
+      error: '            ',
       details: error.message
     });
   }
 });
 
-// NOTE: /api/history/machine-data は1178行目で定義済み（重複削除）
+// NOTE: /api/history/machine-data  1178             
 
-// ユーザー管理API
+//       API
 app.get('/api/users', async (req, res) => {
   try {
-    console.log('[api/users] ユーザー一覧取得リクエスト');
-    console.log('📊 Request details:', {
+    console.log('[api/users]              ');
+    console.log('  Request details:', {
       method: req.method,
       url: req.url,
       userAgent: req.get('User-Agent'),
@@ -1954,11 +1954,11 @@ app.get('/api/users', async (req, res) => {
     });
 
     if (!dbPool) {
-      console.warn('⚠️ No database connection available');
+      console.warn('   No database connection available');
       return res.json({
         success: true,
         data: [],
-        message: 'データベース接続が設定されていません',
+        message: '                  ',
         timestamp: new Date().toISOString()
       });
     }
@@ -1969,7 +1969,7 @@ app.get('/api/users', async (req, res) => {
       ORDER BY created_at DESC
     `);
 
-    console.log('[api/users] ユーザー一覧取得成功:', result.rows.length + '件');
+    console.log('[api/users]           :', result.rows.length + ' ');
 
     res.json({
       success: true,
@@ -1978,26 +1978,26 @@ app.get('/api/users', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/users] ユーザー一覧取得エラー:', error);
+    console.error('[api/users]            :', error);
     res.status(500).json({
       success: false,
-      error: 'ユーザー一覧の取得に失敗しました',
+      error: '                ',
       details: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// ユーザー追加API
+//       API
 app.post('/api/users', async (req, res) => {
   try {
     const { username, password, display_name, role = 'employee', department } = req.body;
-    console.log('[api/users] ユーザー追加リクエスト:', { username, display_name, role, department });
+    console.log('[api/users]            :', { username, display_name, role, department });
 
     if (!username || !password || !display_name) {
       return res.status(400).json({
         success: false,
-        error: 'ユーザー名、パスワード、表示名は必須です',
+        error: '                    ',
         timestamp: new Date().toISOString()
       });
     }
@@ -2005,12 +2005,12 @@ app.post('/api/users', async (req, res) => {
     if (!dbPool) {
       return res.status(503).json({
         success: false,
-        error: 'データベース接続が設定されていません',
+        error: '                  ',
         timestamp: new Date().toISOString()
       });
     }
 
-    // パスワードをハッシュ化（本来はbcryptを使用すべき）
+    //                bcrypt       
     const bcrypt = await import('bcrypt');
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -2021,43 +2021,43 @@ app.post('/api/users', async (req, res) => {
     );
     await client.release();
 
-    console.log('[api/users] ユーザー追加完了:', result.rows[0]);
+    console.log('[api/users]         :', result.rows[0]);
 
     res.status(201).json({
       success: true,
       data: result.rows[0],
-      message: 'ユーザーが正常に追加されました',
+      message: '               ',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/users] ユーザー追加エラー:', error);
+    console.error('[api/users]          :', error);
     if (error.code === '23505') {
       return res.status(409).json({
         success: false,
-        error: 'そのユーザー名は既に使用されています',
+        error: '                  ',
         timestamp: new Date().toISOString()
       });
     }
     res.status(500).json({
       success: false,
-      error: 'ユーザーの追加に失敗しました',
+      error: '              ',
       details: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// ユーザー更新API
+//       API
 app.put('/api/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { username, display_name, role, department } = req.body;
-    console.log('[api/users] ユーザー更新リクエスト:', { id, username, display_name, role, department });
+    console.log('[api/users]            :', { id, username, display_name, role, department });
 
     if (!username || !display_name) {
       return res.status(400).json({
         success: false,
-        error: 'ユーザー名と表示名は必須です',
+        error: '              ',
         timestamp: new Date().toISOString()
       });
     }
@@ -2065,7 +2065,7 @@ app.put('/api/users/:id', async (req, res) => {
     if (!dbPool) {
       return res.status(503).json({
         success: false,
-        error: 'データベース接続が設定されていません',
+        error: '                  ',
         timestamp: new Date().toISOString()
       });
     }
@@ -2080,48 +2080,48 @@ app.put('/api/users/:id', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: '指定されたユーザーが見つかりません',
+        error: '                 ',
         id,
         timestamp: new Date().toISOString()
       });
     }
 
-    console.log('[api/users] ユーザー更新完了:', result.rows[0]);
+    console.log('[api/users]         :', result.rows[0]);
 
     res.json({
       success: true,
       data: result.rows[0],
-      message: 'ユーザーが正常に更新されました',
+      message: '               ',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/users] ユーザー更新エラー:', error);
+    console.error('[api/users]          :', error);
     if (error.code === '23505') {
       return res.status(409).json({
         success: false,
-        error: 'そのユーザー名は既に使用されています',
+        error: '                  ',
         timestamp: new Date().toISOString()
       });
     }
     res.status(500).json({
       success: false,
-      error: 'ユーザーの更新に失敗しました',
+      error: '              ',
       details: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// ユーザー削除API
+//       API
 app.delete('/api/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('[api/users] ユーザー削除リクエスト:', { id });
+    console.log('[api/users]            :', { id });
 
     if (!dbPool) {
       return res.status(503).json({
         success: false,
-        error: 'データベース接続が設定されていません',
+        error: '                  ',
         timestamp: new Date().toISOString()
       });
     }
@@ -2136,41 +2136,41 @@ app.delete('/api/users/:id', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: '指定されたユーザーが見つかりません',
+        error: '                 ',
         id,
         timestamp: new Date().toISOString()
       });
     }
 
-    console.log('[api/users] ユーザー削除完了:', result.rows[0]);
+    console.log('[api/users]         :', result.rows[0]);
 
     res.json({
       success: true,
       data: result.rows[0],
-      message: 'ユーザーを削除しました',
+      message: '           ',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/users] ユーザー削除エラー:', error);
+    console.error('[api/users]          :', error);
     res.status(500).json({
       success: false,
-      error: 'ユーザーの削除に失敗しました',
+      error: '              ',
       details: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// 機種一覧API
+//     API
 app.get('/api/machines/machine-types', async (req, res) => {
   try {
-    console.log('[api/machines] 機種一覧取得リクエスト');
+    console.log('[api/machines]            ');
 
     if (!dbPool) {
       return res.json({
         success: true,
         data: [],
-        message: 'データベース接続が設定されていません',
+        message: '                  ',
         timestamp: new Date().toISOString()
       });
     }
@@ -2183,7 +2183,7 @@ app.get('/api/machines/machine-types', async (req, res) => {
     `);
     await client.release();
 
-    console.log('[api/machines] 機種一覧取得成功:', result.rows.length + '件');
+    console.log('[api/machines]         :', result.rows.length + ' ');
 
     res.json({
       success: true,
@@ -2192,26 +2192,26 @@ app.get('/api/machines/machine-types', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/machines] 機種一覧取得エラー:', error);
+    console.error('[api/machines]          :', error);
     res.status(500).json({
       success: false,
-      error: '機種一覧の取得に失敗しました',
+      error: '              ',
       details: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// 機種追加API
+//     API
 app.post('/api/machines/machine-types', async (req, res) => {
   try {
     const { machine_type_name } = req.body;
-    console.log('[api/machines] 機種追加リクエスト:', { machine_type_name });
+    console.log('[api/machines]          :', { machine_type_name });
 
     if (!machine_type_name) {
       return res.status(400).json({
         success: false,
-        error: '機種名は必須です',
+        error: '        ',
         timestamp: new Date().toISOString()
       });
     }
@@ -2219,7 +2219,7 @@ app.post('/api/machines/machine-types', async (req, res) => {
     if (!dbPool) {
       return res.status(503).json({
         success: false,
-        error: 'データベース接続が設定されていません',
+        error: '                  ',
         timestamp: new Date().toISOString()
       });
     }
@@ -2231,36 +2231,36 @@ app.post('/api/machines/machine-types', async (req, res) => {
     );
     await client.release();
 
-    console.log('[api/machines] 機種追加完了:', result.rows[0]);
+    console.log('[api/machines]       :', result.rows[0]);
 
     res.status(201).json({
       success: true,
       data: result.rows[0],
-      message: '機種が正常に追加されました',
+      message: '             ',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/machines] 機種追加エラー:', error);
+    console.error('[api/machines]        :', error);
     res.status(500).json({
       success: false,
-      error: '機種の追加に失敗しました',
+      error: '            ',
       details: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// 機種更新API
+//     API
 app.put('/api/machines/machine-types/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { machine_type_name } = req.body;
-    console.log('[api/machines] 機種更新リクエスト:', { id, machine_type_name });
+    console.log('[api/machines]          :', { id, machine_type_name });
 
     if (!machine_type_name) {
       return res.status(400).json({
         success: false,
-        error: '機種名は必須です',
+        error: '        ',
         timestamp: new Date().toISOString()
       });
     }
@@ -2268,7 +2268,7 @@ app.put('/api/machines/machine-types/:id', async (req, res) => {
     if (!dbPool) {
       return res.status(503).json({
         success: false,
-        error: 'データベース接続が設定されていません',
+        error: '                  ',
         timestamp: new Date().toISOString()
       });
     }
@@ -2283,41 +2283,41 @@ app.put('/api/machines/machine-types/:id', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: '指定された機種が見つかりません',
+        error: '               ',
         id,
         timestamp: new Date().toISOString()
       });
     }
 
-    console.log('[api/machines] 機種更新完了:', result.rows[0]);
+    console.log('[api/machines]       :', result.rows[0]);
 
     res.json({
       success: true,
       data: result.rows[0],
-      message: '機種が正常に更新されました',
+      message: '             ',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/machines] 機種更新エラー:', error);
+    console.error('[api/machines]        :', error);
     res.status(500).json({
       success: false,
-      error: '機種の更新に失敗しました',
+      error: '            ',
       details: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// 機種削除API
+//     API
 app.delete('/api/machines/machine-types/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('[api/machines] 機種削除リクエスト:', { id });
+    console.log('[api/machines]          :', { id });
 
     if (!dbPool) {
       return res.status(503).json({
         success: false,
-        error: 'データベース接続が設定されていません',
+        error: '                  ',
         timestamp: new Date().toISOString()
       });
     }
@@ -2332,24 +2332,24 @@ app.delete('/api/machines/machine-types/:id', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: '指定された機種が見つかりません',
+        error: '               ',
         id,
         timestamp: new Date().toISOString()
       });
     }
 
-    console.log('[api/machines] 機種削除完了:', result.rows[0]);
+    console.log('[api/machines]       :', result.rows[0]);
 
     res.json({
       success: true,
       data: result.rows[0],
-      message: '機種を削除しました',
+      message: '         ',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/machines] 機種削除エラー:', error);
+    console.error('[api/machines]        :', error);
 
-    // 外部キー制約エラーの判定
+    //             
     const isForeignKeyError = error.code === '23503' ||
       error.message.includes('foreign key') ||
       error.message.includes('violates foreign key constraint');
@@ -2357,8 +2357,8 @@ app.delete('/api/machines/machine-types/:id', async (req, res) => {
     if (isForeignKeyError) {
       return res.status(409).json({
         success: false,
-        error: 'この機種に紐づく機械番号が存在するため削除できません',
-        details: '先に紐づいている機械番号を削除してください',
+        error: '                          ',
+        details: '                     ',
         errorCode: 'FOREIGN_KEY_CONSTRAINT',
         timestamp: new Date().toISOString()
       });
@@ -2366,18 +2366,18 @@ app.delete('/api/machines/machine-types/:id', async (req, res) => {
 
     res.status(500).json({
       success: false,
-      error: '機種の削除に失敗しました',
+      error: '            ',
       details: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// 機械データ取得API（ルートエンドポイント - 後方互換性のため）
+//        API            -          
 app.get('/api/machines', async (req, res) => {
   try {
-    console.log('[api/machines] 機械データ取得リクエスト（ルートエンドポイント）');
-    console.log('📊 Request details:', {
+    console.log('[api/machines]                         ');
+    console.log('  Request details:', {
       method: req.method,
       url: req.url,
       userAgent: req.get('User-Agent'),
@@ -2386,24 +2386,24 @@ app.get('/api/machines', async (req, res) => {
     });
 
     if (!dbPool) {
-      console.warn('⚠️ No database connection available for machines API');
+      console.warn('   No database connection available for machines API');
       return res.json({
         success: true,
         machineTypes: [],
         machines: [],
-        message: 'データベース接続が設定されていません',
+        message: '                  ',
         timestamp: new Date().toISOString()
       });
     }
 
-    // 機種一覧を取得
+    //        
     const typesResult = await dbQuery(`
       SELECT id, machine_type_name
       FROM machine_types
       ORDER BY machine_type_name
     `);
 
-    // 機械番号一覧を取得
+    //          
     const machinesResult = await dbQuery(`
       SELECT m.id, m.machine_number, m.machine_type_id, mt.machine_type_name
       FROM machines m
@@ -2411,7 +2411,7 @@ app.get('/api/machines', async (req, res) => {
       ORDER BY mt.machine_type_name, m.machine_number
     `);
 
-    console.log('[api/machines] 機械データ取得成功:', {
+    console.log('[api/machines]          :', {
       machineTypes: typesResult.rows.length,
       machines: machinesResult.rows.length
     });
@@ -2423,27 +2423,27 @@ app.get('/api/machines', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/machines] 機械データ取得エラー:', error);
+    console.error('[api/machines]           :', error);
     res.status(500).json({
       success: false,
-      error: '機械データの取得に失敗しました',
+      error: '               ',
       details: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// 機械番号一覧API（機種ID指定）
+//       API   ID   
 app.get('/api/machines/machines', async (req, res) => {
   try {
     const { type_id } = req.query;
-    console.log('[api/machines] 機械番号一覧取得リクエスト:', { type_id });
+    console.log('[api/machines]              :', { type_id });
 
     if (!dbPool) {
       return res.json({
         success: true,
         data: [],
-        message: 'データベース接続が設定されていません',
+        message: '                  ',
         timestamp: new Date().toISOString()
       });
     }
@@ -2462,7 +2462,7 @@ app.get('/api/machines/machines', async (req, res) => {
     const result = await client.query(query, params);
     await client.release();
 
-    console.log('[api/machines] 機械番号一覧取得成功:', result.rows.length + '件');
+    console.log('[api/machines]           :', result.rows.length + ' ');
 
     res.json({
       success: true,
@@ -2471,26 +2471,26 @@ app.get('/api/machines/machines', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/machines] 機械番号一覧取得エラー:', error);
+    console.error('[api/machines]            :', error);
     res.status(500).json({
       success: false,
-      error: '機械番号一覧の取得に失敗しました',
+      error: '                ',
       details: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// 機械番号追加API
+//       API
 app.post('/api/machines', async (req, res) => {
   try {
     const { machine_number, machine_type_id } = req.body;
-    console.log('[api/machines] 機械番号追加リクエスト:', { machine_number, machine_type_id });
+    console.log('[api/machines]            :', { machine_number, machine_type_id });
 
     if (!machine_number || !machine_type_id) {
       return res.status(400).json({
         success: false,
-        error: '機械番号と機種IDは必須です',
+        error: '       ID     ',
         timestamp: new Date().toISOString()
       });
     }
@@ -2498,7 +2498,7 @@ app.post('/api/machines', async (req, res) => {
     if (!dbPool) {
       return res.status(503).json({
         success: false,
-        error: 'データベース接続が設定されていません',
+        error: '                  ',
         timestamp: new Date().toISOString()
       });
     }
@@ -2510,36 +2510,36 @@ app.post('/api/machines', async (req, res) => {
     );
     await client.release();
 
-    console.log('[api/machines] 機械番号追加完了:', result.rows[0]);
+    console.log('[api/machines]         :', result.rows[0]);
 
     res.status(201).json({
       success: true,
       data: result.rows[0],
-      message: '機械番号が正常に追加されました',
+      message: '               ',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/machines] 機械番号追加エラー:', error);
+    console.error('[api/machines]          :', error);
     res.status(500).json({
       success: false,
-      error: '機械番号の追加に失敗しました',
+      error: '              ',
       details: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// 機械番号更新API
+//       API
 app.put('/api/machines/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { machine_number, machine_type_id } = req.body;
-    console.log('[api/machines] 機械番号更新リクエスト:', { id, machine_number, machine_type_id });
+    console.log('[api/machines]            :', { id, machine_number, machine_type_id });
 
     if (!machine_number || !machine_type_id) {
       return res.status(400).json({
         success: false,
-        error: '機械番号と機種IDは必須です',
+        error: '       ID     ',
         timestamp: new Date().toISOString()
       });
     }
@@ -2547,7 +2547,7 @@ app.put('/api/machines/:id', async (req, res) => {
     if (!dbPool) {
       return res.status(503).json({
         success: false,
-        error: 'データベース接続が設定されていません',
+        error: '                  ',
         timestamp: new Date().toISOString()
       });
     }
@@ -2562,41 +2562,41 @@ app.put('/api/machines/:id', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: '指定された機械番号が見つかりません',
+        error: '                 ',
         id,
         timestamp: new Date().toISOString()
       });
     }
 
-    console.log('[api/machines] 機械番号更新完了:', result.rows[0]);
+    console.log('[api/machines]         :', result.rows[0]);
 
     res.json({
       success: true,
       data: result.rows[0],
-      message: '機械番号が正常に更新されました',
+      message: '               ',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/machines] 機械番号更新エラー:', error);
+    console.error('[api/machines]          :', error);
     res.status(500).json({
       success: false,
-      error: '機械番号の更新に失敗しました',
+      error: '              ',
       details: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// 機械番号削除API
+//       API
 app.delete('/api/machines/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('[api/machines] 機械番号削除リクエスト:', { id });
+    console.log('[api/machines]            :', { id });
 
     if (!dbPool) {
       return res.status(503).json({
         success: false,
-        error: 'データベース接続が設定されていません',
+        error: '                  ',
         timestamp: new Date().toISOString()
       });
     }
@@ -2611,24 +2611,24 @@ app.delete('/api/machines/:id', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: '指定された機械番号が見つかりません',
+        error: '                 ',
         id,
         timestamp: new Date().toISOString()
       });
     }
 
-    console.log('[api/machines] 機械番号削除完了:', result.rows[0]);
+    console.log('[api/machines]         :', result.rows[0]);
 
     res.json({
       success: true,
       data: result.rows[0],
-      message: '機械番号を削除しました',
+      message: '           ',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/machines] 機械番号削除エラー:', error);
+    console.error('[api/machines]          :', error);
 
-    // 外部キー制約エラーの判定
+    //             
     const isForeignKeyError = error.code === '23503' ||
       error.message.includes('foreign key') ||
       error.message.includes('violates foreign key constraint');
@@ -2636,8 +2636,8 @@ app.delete('/api/machines/:id', async (req, res) => {
     if (isForeignKeyError) {
       return res.status(409).json({
         success: false,
-        error: 'この機械番号に紐づくデータが存在するため削除できません',
-        details: '先に関連データを削除してください',
+        error: '                           ',
+        details: '                ',
         errorCode: 'FOREIGN_KEY_CONSTRAINT',
         timestamp: new Date().toISOString()
       });
@@ -2645,16 +2645,16 @@ app.delete('/api/machines/:id', async (req, res) => {
 
     res.status(500).json({
       success: false,
-      error: '機械番号の削除に失敗しました',
+      error: '              ',
       details: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// BLOBストレージ関連API
+// BLOB       API
 
-// ファイル一覧取得API
+//         API
 app.get('/api/storage/list', async (req, res) => {
   try {
     const prefix = req.query.prefix;
@@ -2664,16 +2664,16 @@ app.get('/api/storage/list', async (req, res) => {
       });
     }
 
-    console.log('🔍 Storage list request:', { prefix });
+    console.log('  Storage list request:', { prefix });
 
     if (!connectionString) {
-      console.warn('⚠️ Azure Storage not configured, returning empty list');
+      console.warn('   Azure Storage not configured, returning empty list');
       return res.json([]);
     }
 
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
-      console.warn('⚠️ Blob service client unavailable, returning empty list');
+      console.warn('   Blob service client unavailable, returning empty list');
       return res.json([]);
     }
     const containerClient = blobServiceClient.getContainerClient(containerName);
@@ -2692,10 +2692,10 @@ app.get('/api/storage/list', async (req, res) => {
       });
     }
 
-    console.log(`📁 Found ${blobs.length} blobs with prefix: ${prefix}`);
+    console.log(`  Found ${blobs.length} blobs with prefix: ${prefix}`);
     res.json(blobs);
   } catch (error) {
-    console.error('❌ Storage list error:', error);
+    console.error('  Storage list error:', error);
     res.status(500).json({
       error: 'storage_list_error',
       message: error.message
@@ -2703,7 +2703,7 @@ app.get('/api/storage/list', async (req, res) => {
   }
 });
 
-// ファイル内容取得API
+//         API
 app.get('/api/storage/get', async (req, res) => {
   try {
     const name = req.query.name;
@@ -2713,7 +2713,7 @@ app.get('/api/storage/get', async (req, res) => {
       });
     }
 
-    console.log('📄 Storage get request:', { name });
+    console.log('  Storage get request:', { name });
 
     if (!connectionString) {
       return res.status(500).json({
@@ -2739,7 +2739,7 @@ app.get('/api/storage/get', async (req, res) => {
       }
       const content = Buffer.concat(chunks).toString('utf-8');
 
-      // BOM除去
+      // BOM  
       const cleanContent = content.replace(/^\uFEFF/, '');
 
       res.json({
@@ -2754,7 +2754,7 @@ app.get('/api/storage/get', async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('❌ Storage get error:', error);
+    console.error('  Storage get error:', error);
     res.status(500).json({
       error: 'storage_get_error',
       message: error.message
@@ -2762,7 +2762,7 @@ app.get('/api/storage/get', async (req, res) => {
   }
 });
 
-// ファイル保存API
+//       API
 app.post('/api/storage/save', async (req, res) => {
   try {
     const { name, content } = req.body;
@@ -2772,7 +2772,7 @@ app.post('/api/storage/save', async (req, res) => {
       });
     }
 
-    console.log('💾 Storage save request:', { name, contentLength: content.length });
+    console.log('  Storage save request:', { name, contentLength: content.length });
 
     if (!connectionString) {
       return res.status(500).json({
@@ -2795,7 +2795,7 @@ app.post('/api/storage/save', async (req, res) => {
       }
     });
 
-    console.log(`✅ File saved: ${name}`);
+    console.log(`  File saved: ${name}`);
     res.json({
       success: true,
       message: 'File saved successfully',
@@ -2803,7 +2803,7 @@ app.post('/api/storage/save', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('❌ Storage save error:', error);
+    console.error('  Storage save error:', error);
     res.status(500).json({
       error: 'storage_save_error',
       message: error.message
@@ -2811,7 +2811,7 @@ app.post('/api/storage/save', async (req, res) => {
   }
 });
 
-// ファイル削除API
+//       API
 app.delete('/api/storage/delete', async (req, res) => {
   try {
     const name = req.query.name;
@@ -2821,7 +2821,7 @@ app.delete('/api/storage/delete', async (req, res) => {
       });
     }
 
-    console.log('🗑️ Storage delete request:', { name });
+    console.log('   Storage delete request:', { name });
 
     if (!connectionString) {
       return res.status(500).json({
@@ -2840,7 +2840,7 @@ app.delete('/api/storage/delete', async (req, res) => {
 
     await blockBlobClient.delete();
 
-    console.log(`✅ File deleted: ${name}`);
+    console.log(`  File deleted: ${name}`);
     res.json({
       success: true,
       message: 'File deleted successfully',
@@ -2848,7 +2848,7 @@ app.delete('/api/storage/delete', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('❌ Storage delete error:', error);
+    console.error('  Storage delete error:', error);
     res.status(500).json({
       error: 'storage_delete_error',
       message: error.message
@@ -2856,10 +2856,10 @@ app.delete('/api/storage/delete', async (req, res) => {
   }
 });
 
-// ナレッジデータAPI - 一覧取得
+//        API -     
 app.get('/api/knowledge', async (_req, res) => {
   try {
-    console.log('[api/knowledge] ナレッジデータ一覧リクエスト');
+    console.log('[api/knowledge]               ');
 
     if (connectionString) {
       try {
@@ -2867,7 +2867,7 @@ app.get('/api/knowledge', async (_req, res) => {
         if (!blobServiceClient) {
           return res.status(503).json({
             success: false,
-            error: 'BLOBストレージが利用できません',
+            error: 'BLOB             ',
             details: 'Blob service client unavailable'
           });
         }
@@ -2875,7 +2875,7 @@ app.get('/api/knowledge', async (_req, res) => {
         const containerClient = blobServiceClient.getContainerClient(containerName);
         const containerExists = await containerClient.exists();
         if (!containerExists) {
-          console.warn('[api/knowledge] Azureコンテナが存在しません:', containerName);
+          console.warn('[api/knowledge] Azure           :', containerName);
           return res.json({
             success: true,
             data: [],
@@ -2914,7 +2914,7 @@ app.get('/api/knowledge', async (_req, res) => {
           });
         }
 
-        console.log(`✅ [api/knowledge] Azureレスポンス: ${items.length}件`);
+        console.log(`  [api/knowledge] Azure     : ${items.length} `);
         return res.json({
           success: true,
           data: items,
@@ -2922,17 +2922,17 @@ app.get('/api/knowledge', async (_req, res) => {
           timestamp: new Date().toISOString()
         });
       } catch (azureError) {
-        console.error('[api/knowledge] Azure取得エラー:', azureError);
+        console.error('[api/knowledge] Azure     :', azureError);
         return res.status(500).json({
           success: false,
-          error: 'ナレッジベースデータの取得に失敗しました',
+          error: '                    ',
           details: azureError instanceof Error ? azureError.message : 'Unknown error'
         });
       }
     }
 
-    // BLOBストレージが利用できない場合は空の結果を返す
-    console.log('[api/knowledge] BLOBストレージが利用できません');
+    // BLOB                      
+    console.log('[api/knowledge] BLOB             ');
     res.json({
       success: true,
       data: [],
@@ -2940,25 +2940,25 @@ app.get('/api/knowledge', async (_req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/knowledge] ナレッジデータ取得エラー:', error);
+    console.error('[api/knowledge]             :', error);
     res.status(500).json({
       success: false,
-      error: 'ナレッジベースデータの取得に失敗しました',
+      error: '                    ',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
 
-// ナレッジデータAPI - 個別取得
+//        API -     
 app.get('/api/knowledge/:filename(*)', async (req, res) => {
   try {
     const { filename } = req.params;
-    console.log(`[api/knowledge] ナレッジファイル取得: ${filename}`);
+    console.log(`[api/knowledge]           : ${filename}`);
 
     if (!filename) {
       return res.status(400).json({
         success: false,
-        error: 'ファイル名が指定されていません'
+        error: '               '
       });
     }
 
@@ -2968,7 +2968,7 @@ app.get('/api/knowledge/:filename(*)', async (req, res) => {
         if (!blobServiceClient) {
           return res.status(503).json({
             success: false,
-            error: 'BLOBストレージが利用できません',
+            error: 'BLOB             ',
             details: 'Blob service client unavailable'
           });
         }
@@ -2982,7 +2982,7 @@ app.get('/api/knowledge/:filename(*)', async (req, res) => {
         if (!exists) {
           return res.status(404).json({
             success: false,
-            error: 'ファイルが見つかりません'
+            error: '            '
           });
         }
 
@@ -2993,7 +2993,7 @@ app.get('/api/knowledge/:filename(*)', async (req, res) => {
         const jsonData = JSON.parse(content);
         const properties = await blockBlobClient.getProperties();
 
-        console.log('[api/knowledge] Azureファイル取得成功');
+        console.log('[api/knowledge] Azure        ');
         return res.json({
           success: true,
           data: jsonData,
@@ -3002,10 +3002,10 @@ app.get('/api/knowledge/:filename(*)', async (req, res) => {
           modifiedAt: properties.lastModified?.toISOString()
         });
       } catch (azureError) {
-        console.error('[api/knowledge] Azureファイル取得エラー:', azureError);
+        console.error('[api/knowledge] Azure         :', azureError);
         return res.status(500).json({
           success: false,
-          error: 'ナレッジベースファイルの取得に失敗しました',
+          error: '                     ',
           details: azureError instanceof Error ? azureError.message : 'Unknown error'
         });
       }
@@ -3014,30 +3014,30 @@ app.get('/api/knowledge/:filename(*)', async (req, res) => {
     if (!filename.toLowerCase().endsWith('.json')) {
       return res.status(400).json({
         success: false,
-        error: 'JSONファイルのみ取得可能です'
+        error: 'JSON            '
       });
     }
 
-    // BLOBストレージが利用できない場合は404を返す
-    console.log('[api/knowledge] BLOBストレージが利用できません');
+    // BLOB               404   
+    console.log('[api/knowledge] BLOB             ');
     return res.status(404).json({
       success: false,
-      error: 'BLOBストレージが利用できません'
+      error: 'BLOB             '
     });
   } catch (error) {
-    console.error('[api/knowledge] ナレッジファイル取得エラー:', error);
+    console.error('[api/knowledge]              :', error);
     res.status(500).json({
       success: false,
-      error: 'ナレッジベースファイルの取得に失敗しました',
+      error: '                     ',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
 
-// 17. ナレッジベースAPI
+// 17.        API
 app.get('/api/knowledge-base', async (req, res) => {
   try {
-    console.log('[api/knowledge-base] ナレッジベース取得リクエスト');
+    console.log('[api/knowledge-base]               ');
 
     if (!connectionString) {
       console.warn('[api/knowledge-base] Azure Storage connection string not configured');
@@ -3067,7 +3067,7 @@ app.get('/api/knowledge-base', async (req, res) => {
       console.error('[api/knowledge-base] Container client creation failed:', containerError);
       return res.status(503).json({
         success: false,
-        error: 'BLOBストレージコンテナへの接続に失敗しました',
+        error: 'BLOB                    ',
         details: containerError instanceof Error ? containerError.message : 'Unknown error',
         timestamp: new Date().toISOString()
       });
@@ -3104,25 +3104,25 @@ app.get('/api/knowledge-base', async (req, res) => {
               });
             }
           } catch (error) {
-            console.warn(`⚠️ Failed to parse document ${blob.name}:`, error.message);
+            console.warn(`   Failed to parse document ${blob.name}:`, error.message);
           }
         }
       }
     } catch (blobListError) {
-      console.error('[api/knowledge-base] BLOB一覧取得エラー:', blobListError);
+      console.error('[api/knowledge-base] BLOB       :', blobListError);
       const isDnsError = blobListError.message && blobListError.message.includes('ENOTFOUND');
       return res.status(503).json({
         success: false,
-        error: 'BLOBストレージへの接続に失敗しました',
+        error: 'BLOB                ',
         details: isDnsError
-          ? 'ストレージアカウント名が正しくないか、ストレージアカウントが存在しません。Azure Portalでストレージアカウント名を確認してください。'
+          ? '                                     Azure Portal                      '
           : blobListError.message,
         errorType: isDnsError ? 'DNS_ERROR' : 'BLOB_ERROR',
         timestamp: new Date().toISOString()
       });
     }
 
-    console.log('[api/knowledge-base] ナレッジベース取得成功:', documents.length + '件');
+    console.log('[api/knowledge-base]            :', documents.length + ' ');
 
     res.json({
       success: true,
@@ -3131,14 +3131,14 @@ app.get('/api/knowledge-base', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/knowledge-base] ナレッジベース取得エラー:', error);
+    console.error('[api/knowledge-base]             :', error);
     const isDnsError = error.message && error.message.includes('ENOTFOUND');
     const isBlobError = error.message && (error.message.includes('BLOB') || error.message.includes('blob'));
     res.status(500).json({
       success: false,
-      error: 'ナレッジベースの取得に失敗しました',
+      error: '                 ',
       details: isDnsError
-        ? 'ストレージアカウント名が正しくないか、ストレージアカウントが存在しません。Azure Portalでストレージアカウント名を確認してください。'
+        ? '                                     Azure Portal                      '
         : error.message,
       errorType: isDnsError ? 'DNS_ERROR' : isBlobError ? 'BLOB_ERROR' : 'UNKNOWN_ERROR',
       timestamp: new Date().toISOString()
@@ -3146,14 +3146,14 @@ app.get('/api/knowledge-base', async (req, res) => {
   }
 });
 
-// ドキュメント管理API - 一覧取得
+//         API -     
 app.get('/api/documents', async (req, res) => {
   try {
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
       return res.status(503).json({
         success: false,
-        error: 'BLOBストレージが利用できません',
+        error: 'BLOB             ',
         timestamp: new Date().toISOString()
       });
     }
@@ -3180,16 +3180,16 @@ app.get('/api/documents', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/documents] エラー:', error);
+    console.error('[api/documents]    :', error);
     res.status(500).json({
       success: false,
-      error: 'ドキュメント一覧の取得に失敗しました',
+      error: '                  ',
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// ドキュメント管理API - アップロード
+//         API -       
 app.post('/api/documents', async (req, res) => {
   try {
     const { filename, content, contentType } = req.body;
@@ -3197,7 +3197,7 @@ app.post('/api/documents', async (req, res) => {
     if (!filename || !content) {
       return res.status(400).json({
         success: false,
-        error: 'ファイル名とコンテンツが必要です',
+        error: '                ',
         timestamp: new Date().toISOString()
       });
     }
@@ -3206,7 +3206,7 @@ app.post('/api/documents', async (req, res) => {
     if (!blobServiceClient) {
       return res.status(503).json({
         success: false,
-        error: 'BLOBストレージが利用できません',
+        error: 'BLOB             ',
         timestamp: new Date().toISOString()
       });
     }
@@ -3222,24 +3222,24 @@ app.post('/api/documents', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'ドキュメントをアップロードしました',
+      message: '                 ',
       data: { filename },
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/documents] アップロードエラー:', error);
+    console.error('[api/documents]          :', error);
     res.status(500).json({
       success: false,
-      error: 'ドキュメントのアップロードに失敗しました',
+      error: '                    ',
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// 18. 応急処置フローAPI
+// 18.        API
 app.get('/api/emergency-flows', async (req, res) => {
   try {
-    console.log('[api/emergency-flows] 応急処置フロー取得リクエスト');
+    console.log('[api/emergency-flows]               ');
 
     if (!connectionString) {
       return res.json({
@@ -3291,12 +3291,12 @@ app.get('/api/emergency-flows', async (req, res) => {
             });
           }
         } catch (error) {
-          console.warn(`⚠️ Failed to parse flow ${blob.name}:`, error.message);
+          console.warn(`   Failed to parse flow ${blob.name}:`, error.message);
         }
       }
     }
 
-    console.log('[api/emergency-flows] 応急処置フロー取得成功:', flows.length + '件');
+    console.log('[api/emergency-flows]            :', flows.length + ' ');
 
     res.json({
       success: true,
@@ -3305,21 +3305,21 @@ app.get('/api/emergency-flows', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/emergency-flows] 応急処置フロー取得エラー:', error);
+    console.error('[api/emergency-flows]             :', error);
     res.status(500).json({
       success: false,
-      error: '応急処置フローの取得に失敗しました',
+      error: '                 ',
       details: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// 19. 応急処置フローAPI（単数形 - クライアント互換性のため）
-// 20. RAG設定API
+// 19.        API     -              
+// 20. RAG  API
 app.get('/api/settings/rag', (req, res) => {
   try {
-    console.log('[api/settings/rag] リクエスト受信');
+    console.log('[api/settings/rag]        ');
     res.json({
       success: true,
       data: {
@@ -3327,25 +3327,25 @@ app.get('/api/settings/rag', (req, res) => {
         model: 'gpt-3.5-turbo',
         temperature: 0.7,
         maxTokens: 1000,
-        message: 'RAG設定は本番環境では無効です'
+        message: 'RAG             '
       },
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/settings/rag] エラー:', error);
+    console.error('[api/settings/rag]    :', error);
     res.status(500).json({
       success: false,
-      error: 'RAG設定の取得に失敗しました',
+      error: 'RAG            ',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// AI支援設定API
+// AI    API
 app.get('/api/ai-assist/settings', (req, res) => {
   try {
-    console.log('[api/ai-assist/settings] リクエスト受信');
+    console.log('[api/ai-assist/settings]        ');
     res.json({
       success: true,
       data: {
@@ -3358,10 +3358,10 @@ app.get('/api/ai-assist/settings', (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/ai-assist/settings] エラー:', error);
+    console.error('[api/ai-assist/settings]    :', error);
     res.status(500).json({
       success: false,
-      error: 'AI支援設定の取得に失敗しました',
+      error: 'AI              ',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
@@ -3371,13 +3371,13 @@ app.get('/api/ai-assist/settings', (req, res) => {
 app.post('/api/ai-assist/settings', (req, res) => {
   res.json({
     success: true,
-    message: 'AI支援設定を更新しました',
+    message: 'AI           ',
     data: req.body,
     timestamp: new Date().toISOString()
   });
 });
 
-// RAG設定API(別エンドポイント)
+// RAG  API(        )
 app.get('/api/config/rag', (req, res) => {
   res.json({
     success: true,
@@ -3386,16 +3386,16 @@ app.get('/api/config/rag', (req, res) => {
       model: 'gpt-3.5-turbo',
       temperature: 0.7,
       maxTokens: 1000,
-      message: 'RAG設定は本番環境では無効です'
+      message: 'RAG             '
     },
     timestamp: new Date().toISOString()
   });
 });
 
-// ナレッジベース統計API
+//          API
 app.get('/api/knowledge-base/stats', async (req, res) => {
   try {
-    console.log('[api/knowledge-base/stats] リクエスト受信');
+    console.log('[api/knowledge-base/stats]        ');
     res.json({
       success: true,
       data: {
@@ -3406,20 +3406,20 @@ app.get('/api/knowledge-base/stats', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/knowledge-base/stats] エラー:', error);
+    console.error('[api/knowledge-base/stats]    :', error);
     res.status(500).json({
       success: false,
-      error: 'ナレッジベース統計の取得に失敗しました',
+      error: '                   ',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// 管理画面ダッシュボードAPI
+//            API
 app.get('/api/admin/dashboard', async (req, res) => {
   try {
-    console.log('[api/admin/dashboard] リクエスト受信');
+    console.log('[api/admin/dashboard]        ');
     res.json({
       success: true,
       data: {
@@ -3431,19 +3431,19 @@ app.get('/api/admin/dashboard', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/admin/dashboard] エラー:', error);
+    console.error('[api/admin/dashboard]    :', error);
     res.status(500).json({
       success: false,
-      error: 'ダッシュボードデータの取得に失敗しました',
+      error: '                    ',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// NOTE: /api/history/export-files は1249行目で定義済み（重複削除）
+// NOTE: /api/history/export-files  1249             
 
-// フィルターデータ取得API
+//           API
 app.get('/api/history/exports/filter-data', async (req, res) => {
   try {
     res.json({
@@ -3458,20 +3458,20 @@ app.get('/api/history/exports/filter-data', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: 'フィルターデータの取得に失敗しました',
+      error: '                  ',
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// 21. チャット履歴取得API
+// 21.         API
 app.get('/api/chat-history', async (req, res) => {
   try {
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
       return res.status(503).json({
         success: false,
-        error: 'BLOBストレージが利用できません',
+        error: 'BLOB             ',
         timestamp: new Date().toISOString()
       });
     }
@@ -3498,21 +3498,21 @@ app.get('/api/chat-history', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/chat-history] エラー:', error);
+    console.error('[api/chat-history]    :', error);
     res.status(500).json({
       success: false,
-      error: 'チャット履歴の取得に失敗しました',
+      error: '                ',
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// チャット履歴保存API
+//         API
 app.post('/api/chat-history', (req, res) => {
   const { messages, chatId, machineType, machineNumber } = req.body;
   res.json({
     success: true,
-    message: 'チャット履歴を保存しました（本番環境では無効です）',
+    message: '                         ',
     data: {
       chatId: chatId || 'mock-chat-id',
       machineType: machineType || 'unknown',
@@ -3523,27 +3523,27 @@ app.post('/api/chat-history', (req, res) => {
   });
 });
 
-// チャットエクスポートAPI（BLOBストレージに保存）
+//           API BLOB         
 app.post('/api/chat/export', async (req, res) => {
   try {
     const exportData = req.body;
-    console.log('[api/chat/export] エクスポートリクエスト:', {
+    console.log('[api/chat/export]            :', {
       chatId: exportData.chatId,
       title: exportData.title,
       hasImages: !!exportData.savedImages
     });
 
-    // ファイル名を生成
+    //         
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const chatId = exportData.chatId || `chat-${Date.now()}`;
     const titleSlug = (exportData.title || 'untitled').replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '_').substring(0, 50);
     const filename = `${titleSlug}_${chatId}_${timestamp}.json`;
 
-    // 画像URLをBLOBストレージパスに正規化
+    //   URL BLOB           
     let normalizedImages = [];
     if (exportData.savedImages && Array.isArray(exportData.savedImages)) {
       normalizedImages = exportData.savedImages.map(image => {
-        // ファイル名を抽出
+        //         
         let fileName = '';
         if (image.fileName) {
           fileName = image.fileName.includes('/')
@@ -3555,14 +3555,14 @@ app.post('/api/chat/export', async (req, res) => {
           const pathParts = image.path.split(/[/\\]/);
           fileName = pathParts[pathParts.length - 1];
         } else if (image.url) {
-          // URLからファイル名を抽出
+          // URL          
           const urlParts = image.url.split('/');
           fileName = urlParts[urlParts.length - 1];
         } else if (image.originalFileName) {
           fileName = image.originalFileName;
         }
 
-        // BLOBストレージのAPIパスに統一
+        // BLOB      API     
         return {
           ...image,
           fileName: fileName,
@@ -3573,22 +3573,22 @@ app.post('/api/chat/export', async (req, res) => {
       });
     }
 
-    // メタデータを追加
+    //         
     const dataToSave = {
       ...exportData,
       savedImages: normalizedImages,
-      images: normalizedImages, // 互換性のため
+      images: normalizedImages, //       
       exportTimestamp: new Date().toISOString(),
       exportType: 'blob_stored',
       version: '1.0'
     };
 
-    // BLOBストレージに保存
+    // BLOB        
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
       return res.status(503).json({
         success: false,
-        error: 'BLOBストレージが利用できません',
+        error: 'BLOB             ',
         timestamp: new Date().toISOString()
       });
     }
@@ -3614,7 +3614,7 @@ app.post('/api/chat/export', async (req, res) => {
         }
       );
 
-      console.log(`✅ BLOBストレージに保存: ${blobName}`);
+      console.log(`  BLOB        : ${blobName}`);
 
       res.json({
         success: true,
@@ -3626,24 +3626,24 @@ app.post('/api/chat/export', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     } catch (blobError) {
-      console.error('[api/chat/export] BLOBストレージエラー:', blobError);
+      console.error('[api/chat/export] BLOB        :', blobError);
       throw blobError;
     }
   } catch (error) {
-    console.error('[api/chat/export] エクスポートエラー:', error);
+    console.error('[api/chat/export]          :', error);
     res.status(500).json({
       success: false,
-      error: 'チャットのエクスポートに失敗しました',
+      error: '                  ',
       details: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// 履歴データ取得API
+//        API
 app.get('/api/history', async (req, res) => {
   try {
-    console.log('[api/history] 履歴データ取得リクエスト');
+    console.log('[api/history]             ');
 
     const { limit = 50, offset = 0, machineType, machineNumber } = req.query;
 
@@ -3651,16 +3651,16 @@ app.get('/api/history', async (req, res) => {
       return res.json({
         success: true,
         data: [],
-        message: 'データベース接続が設定されていません',
+        message: '                  ',
         timestamp: new Date().toISOString()
       });
     }
 
-    // PostgreSQLとSQLiteで異なるプレースホルダーを使用
+    // PostgreSQL SQLite               
     const isPostgres = !!dbPool;
     let paramIndex = 1;
 
-    // 履歴データを取得 (support_history テーブルを使用)
+    //          (support_history        )
     let query = `
       SELECT
         h.id,
@@ -3689,7 +3689,7 @@ app.get('/api/history', async (req, res) => {
 
     const result = await dbQuery(query, params);
 
-    console.log('[api/history] 履歴データ取得成功:', result.rows.length + '件');
+    console.log('[api/history]          :', result.rows.length + ' ');
 
     res.json({
       success: true,
@@ -3700,31 +3700,31 @@ app.get('/api/history', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/history] 履歴データ取得エラー:', error);
+    console.error('[api/history]           :', error);
     res.status(500).json({
       success: false,
-      error: '履歴データの取得に失敗しました',
+      error: '               ',
       details: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// 履歴ファイル一覧取得API（BLOBストレージ優先）
+//           API BLOB        
 app.get('/api/history/export-list', async (req, res) => {
   try {
-    console.log('[api/history/export-list] 履歴ファイル一覧取得リクエスト');
+    console.log('[api/history/export-list]                ');
 
     const items = [];
 
-    // BLOBストレージから取得（本番環境優先）
+    // BLOB                 
     const blobServiceClient = getBlobServiceClient();
     if (blobServiceClient) {
       try {
         const containerClient = blobServiceClient.getContainerClient(containerName);
         const prefix = norm('exports/');
 
-        console.log(`🔍 BLOBストレージから一覧取得: prefix=${prefix}`);
+        console.log(`  BLOB           : prefix=${prefix}`);
 
         for await (const blob of containerClient.listBlobsFlat({ prefix })) {
           if (!blob.name.endsWith('.json') || blob.name.includes('.backup.')) continue;
@@ -3744,9 +3744,9 @@ app.get('/api/history/export-list', async (req, res) => {
           });
         }
 
-        console.log(`✅ BLOBから ${items.length} 件取得`);
+        console.log(`  BLOB   ${items.length}    `);
       } catch (blobError) {
-        console.error('❌ BLOBストレージエラー:', blobError);
+        console.error('  BLOB        :', blobError);
       }
     }
 
@@ -3758,46 +3758,46 @@ app.get('/api/history/export-list', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/history/export-list] エラー:', error);
+    console.error('[api/history/export-list]    :', error);
     res.status(500).json({
       success: false,
-      error: '履歴ファイル一覧の取得に失敗しました',
+      error: '                  ',
       details: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// ローカルファイル一覧取得API（廃止 - BLOBストレージのみ使用）
+//             API    - BLOB          
 app.get('/api/history/local-files', async (req, res) => {
-  console.log('[api/history/local-files] 廃止されたエンドポイント - BLOBストレージを使用してください');
+  console.log('[api/history/local-files]              - BLOB              ');
   res.status(410).json({
     success: false,
-    error: 'このエンドポイントは廃止されました。/api/history/export-listを使用してください。',
+    error: '                  /api/history/export-list          ',
     timestamp: new Date().toISOString()
   });
 });
 
-// ローカルファイル内容取得API（廃止 - BLOBストレージのみ使用）
+//             API    - BLOB          
 app.get('/api/history/local-files/:filename', async (req, res) => {
-  console.log('[api/history/local-files/:filename] 廃止されたエンドポイント - BLOBストレージを使用してください');
+  console.log('[api/history/local-files/:filename]              - BLOB              ');
   res.status(410).json({
     success: false,
-    error: 'このエンドポイントは廃止されました。/api/history/:idを使用してください。',
+    error: '                  /api/history/:id          ',
     timestamp: new Date().toISOString()
   });
 });
 
-// フロー管理API
+//      API
 app.get('/api/flows', async (req, res) => {
   try {
-    console.log('[api/flows] フロー一覧取得リクエスト');
+    console.log('[api/flows]             ');
 
     if (!dbPool) {
       return res.json({
         success: true,
         data: [],
-        message: 'データベース接続が設定されていません',
+        message: '                  ',
         timestamp: new Date().toISOString()
       });
     }
@@ -3810,7 +3810,7 @@ app.get('/api/flows', async (req, res) => {
     `);
     await client.release();
 
-    console.log('[api/flows] フロー一覧取得成功:', result.rows.length + '件');
+    console.log('[api/flows]          :', result.rows.length + ' ');
 
     res.json({
       success: true,
@@ -3819,26 +3819,26 @@ app.get('/api/flows', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/flows] フロー一覧取得エラー:', error);
+    console.error('[api/flows]           :', error);
     res.status(500).json({
       success: false,
-      error: 'フロー一覧の取得に失敗しました',
+      error: '               ',
       details: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// 23. データベース接続チェックAPI
+// 23.             API
 app.get('/api/db-check', async (req, res) => {
   try {
-    console.log('[api/db-check] データベース接続チェックリクエスト');
+    console.log('[api/db-check]                  ');
 
     if (!dbPool) {
       return res.json({
         success: true,
         connected: false,
-        message: 'データベース接続プールが初期化されていません',
+        message: '                      ',
         details: {
           environment: 'azure-production',
           database: 'not_initialized',
@@ -3849,7 +3849,7 @@ app.get('/api/db-check', async (req, res) => {
       });
     }
 
-    // 接続タイムアウトを設定
+    //            
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('Database connection timeout')), 30000);
     });
@@ -3861,7 +3861,7 @@ app.get('/api/db-check', async (req, res) => {
     res.json({
       success: true,
       connected: true,
-      message: 'データベース接続チェック成功',
+      message: '              ',
       details: {
         environment: 'azure-production',
         database: 'connected',
@@ -3877,11 +3877,11 @@ app.get('/api/db-check', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/db-check] エラー:', error);
+    console.error('[api/db-check]    :', error);
     res.status(500).json({
       success: false,
       connected: false,
-      message: 'データベース接続チェック失敗',
+      message: '              ',
       details: {
         environment: 'azure-production',
         database: 'connection_failed',
@@ -3895,17 +3895,17 @@ app.get('/api/db-check', async (req, res) => {
   }
 });
 
-// システムチェック用のエンドポイント（/api/system-check/db-check）
+//                   /api/system-check/db-check 
 app.get('/api/system-check/db-check', async (req, res) => {
   try {
-    console.log('[api/system-check/db-check] データベース接続チェックリクエスト');
+    console.log('[api/system-check/db-check]                  ');
 
     if (!dbPool) {
       return res.json({
         success: false,
         status: 'ERROR',
         connected: false,
-        message: 'データベース接続プールが初期化されていません',
+        message: '                      ',
         details: {
           environment: 'azure-production',
           database: 'not_initialized',
@@ -3916,7 +3916,7 @@ app.get('/api/system-check/db-check', async (req, res) => {
       });
     }
 
-    // 接続タイムアウトを設定
+    //            
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('Database connection timeout')), 30000);
     });
@@ -3929,7 +3929,7 @@ app.get('/api/system-check/db-check', async (req, res) => {
       success: true,
       status: 'OK',
       connected: true,
-      message: 'データベース接続チェック成功',
+      message: '              ',
       db_time: result.rows[0].current_time,
       version: result.rows[0].version,
       details: {
@@ -3947,12 +3947,12 @@ app.get('/api/system-check/db-check', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/system-check/db-check] エラー:', error);
+    console.error('[api/system-check/db-check]    :', error);
     res.json({
       success: false,
       status: 'ERROR',
       connected: false,
-      message: error.message || 'データベース接続チェック失敗',
+      message: error.message || '              ',
       error: error.message,
       details: {
         environment: 'azure-production',
@@ -3967,12 +3967,12 @@ app.get('/api/system-check/db-check', async (req, res) => {
   }
 });
 
-// 24. GPT接続チェックAPI
+// 24. GPT      API
 app.post('/api/gpt-check', (req, res) => {
   res.json({
     success: true,
     connected: false,
-    message: 'GPT接続チェック（本番環境では無効です）',
+    message: 'GPT                  ',
     details: {
       environment: 'azure-production',
       apiKey: 'not_configured',
@@ -3982,18 +3982,18 @@ app.post('/api/gpt-check', (req, res) => {
   });
 });
 
-// システムチェック用のGPT接続チェックエンドポイント（/api/system-check/gpt-check）
+//           GPT              /api/system-check/gpt-check 
 app.post('/api/system-check/gpt-check', (req, res) => {
-  console.log('[api/system-check/gpt-check] GPT接続チェックリクエスト');
+  console.log('[api/system-check/gpt-check] GPT           ');
 
-  // OpenAI APIキーの設定を確認
+  // OpenAI API        
   if (!isOpenAIAvailable) {
     return res.json({
       success: false,
       status: 'ERROR',
       connected: false,
-      message: 'OpenAI APIキーが設定されていません',
-      error: 'APIキーが未設定または無効です',
+      message: 'OpenAI API            ',
+      error: 'API             ',
       details: {
         environment: 'azure-production',
         apiKey: 'not_configured',
@@ -4003,12 +4003,12 @@ app.post('/api/system-check/gpt-check', (req, res) => {
     });
   }
 
-  // APIキーが設定されている場合
+  // API            
   res.json({
     success: true,
     status: 'OK',
     connected: true,
-    message: 'OpenAI APIキーが設定されています',
+    message: 'OpenAI API           ',
     details: {
       environment: 'azure-production',
       apiKey: 'configured',
@@ -4018,7 +4018,7 @@ app.post('/api/system-check/gpt-check', (req, res) => {
   });
 });
 
-// 25. GPT APIエンドポイント（本番環境で有効化）
+// 25. GPT API                 
 app.post('/api/chatgpt', async (req, res) => {
   try {
     const { text, useOnlyKnowledgeBase = false } = req.body;
@@ -4033,7 +4033,7 @@ app.post('/api/chatgpt', async (req, res) => {
       return res.json({
         success: false,
         response: 'OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable.',
-        message: 'GPT機能を利用するにはOpenAI APIキーの設定が必要です',
+        message: 'GPT         OpenAI API          ',
         details: {
           environment: 'azure-production',
           apiKeyConfigured: false,
@@ -4043,7 +4043,7 @@ app.post('/api/chatgpt', async (req, res) => {
       });
     }
 
-    // OpenAI APIを使用した実際の処理
+    // OpenAI API          
     try {
       if (!openaiClient) {
         throw new Error('OpenAI client not initialized');
@@ -4051,10 +4051,10 @@ app.post('/api/chatgpt', async (req, res) => {
 
       console.log('[api/chatgpt] Sending request to OpenAI...');
 
-      // システムプロンプトを構築
-      const systemPrompt = `あなたは鉄道車両の保守・点検を支援するAIアシスタントです。
-ユーザーからの質問に対して、専門的かつ分かりやすく回答してください。
-安全性を最優先に考え、緊急時には適切な対応手順を提示してください。`;
+      //             
+      const systemPrompt = `                   AI         
+                                  
+                                 `;
 
       const messages = [
         { role: 'system', content: systemPrompt },
@@ -4068,7 +4068,7 @@ app.post('/api/chatgpt', async (req, res) => {
         max_tokens: 1000
       });
 
-      const response = completion.choices[0]?.message?.content || '応答を生成できませんでした。';
+      const response = completion.choices[0]?.message?.content || '              ';
 
       console.log('[api/chatgpt] OpenAI response received:', {
         responseLength: response.length,
@@ -4078,7 +4078,7 @@ app.post('/api/chatgpt', async (req, res) => {
       res.json({
         success: true,
         response: response,
-        message: 'GPT応答を取得しました',
+        message: 'GPT         ',
         details: {
           inputText: text?.substring(0, 100) + '...',
           useOnlyKnowledgeBase: useOnlyKnowledgeBase,
@@ -4091,15 +4091,15 @@ app.post('/api/chatgpt', async (req, res) => {
     } catch (apiError) {
       console.error('[api/chatgpt] OpenAI API error:', apiError);
 
-      // エラーの詳細をログ出力
+      //            
       if (apiError.response) {
         console.error('API Error Response:', apiError.response.status, apiError.response.data);
       }
 
       res.json({
         success: false,
-        response: 'AI応答の生成中にエラーが発生しました。しばらくしてから再度お試しください。',
-        message: 'OpenAI API呼び出しエラー',
+        response: 'AI                                    ',
+        message: 'OpenAI API       ',
         details: {
           environment: 'azure-production',
           error: apiError.message,
@@ -4113,7 +4113,7 @@ app.post('/api/chatgpt', async (req, res) => {
     console.error('[api/chatgpt] Error:', error);
     res.status(500).json({
       success: false,
-      response: 'GPT処理中にエラーが発生しました',
+      response: 'GPT              ',
       message: error.message,
       details: {
         environment: 'azure-production',
@@ -4124,14 +4124,14 @@ app.post('/api/chatgpt', async (req, res) => {
   }
 });
 
-// チャット送信API（テスト用 - 認証不要）
+//       API      -      
 app.post('/api/chats/:id/send-test', async (req, res) => {
   try {
     const { id } = req.params;
     const { chatData, exportType } = req.body;
 
-    console.log('✅ /chats/:id/send-test エンドポイントに到達しました！');
-    console.log('🔍 テスト用チャット送信リクエスト受信:', {
+    console.log('  /chats/:id/send-test                ');
+    console.log('                   :', {
       method: req.method,
       url: req.url,
       originalUrl: req.originalUrl,
@@ -4143,7 +4143,7 @@ app.post('/api/chats/:id/send-test', async (req, res) => {
       machineInfo: chatData?.machineInfo,
     });
 
-    // チャットデータの検証
+    //           
     if (!chatData || !chatData.messages || !Array.isArray(chatData.messages)) {
       return res.status(400).json({
         error: 'Invalid chat data format',
@@ -4151,42 +4151,42 @@ app.post('/api/chats/:id/send-test', async (req, res) => {
       });
     }
 
-    // プロジェクトルートパス解決（ESM用）
+    //               ESM  
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
     const projectRoot = path.resolve(__dirname, '..');
     const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
-    console.log(`📁 エクスポート保存先ディレクトリ: ${exportsDir}`);
+    console.log(`                 : ${exportsDir}`);
 
     if (!fs.existsSync(exportsDir)) {
       fs.mkdirSync(exportsDir, { recursive: true });
-      console.log('✅ exports フォルダを作成しました:', exportsDir);
+      console.log('  exports            :', exportsDir);
     }
 
-    // チャットデータをJSONファイルとして保存
+    //         JSON         
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
-    // ユーザーメッセージから事象情報を抽出してファイル名に使用
+    //                             
     const userMessages = chatData.messages.filter((m) => !m.isAiResponse);
-    console.log('🔍 事象抽出 - ユーザーメッセージ:', userMessages);
+    console.log('       -          :', userMessages);
 
     const textMessages = userMessages
       .map((m) => m.content)
       .filter((content) => content && !content.trim().startsWith('data:image/'))
       .join('\n')
       .trim();
-    console.log('🔍 事象抽出 - テキストメッセージ:', textMessages);
+    console.log('       -          :', textMessages);
 
-    let incidentTitle = '事象なし';
+    let incidentTitle = '    ';
     if (textMessages) {
       incidentTitle = textMessages.split('\n')[0].trim();
-      console.log('🔍 事象抽出 - 抽出されたタイトル:', incidentTitle);
+      console.log('       -          :', incidentTitle);
     } else {
-      incidentTitle = '画像による故障報告';
-      console.log('🔍 事象抽出 - デフォルトタイトル使用:', incidentTitle);
+      incidentTitle = '         ';
+      console.log('       -            :', incidentTitle);
     }
 
-    // ファイル名用に事象内容をサニタイズ
+    //                  
     const sanitizedTitle = incidentTitle
       .replace(/[<>:"/\\|?*]/g, '')
       .replace(/\s+/g, '_')
@@ -4195,16 +4195,16 @@ app.post('/api/chats/:id/send-test', async (req, res) => {
     const fileName = `${sanitizedTitle}_${id}_${timestamp}.json`;
     const filePath = path.join(exportsDir, fileName);
 
-    // 画像を個別ファイルとして保存
+    //               
     const imagesDir = path.join(projectRoot, 'knowledge-base', 'images', 'chat-exports');
-    console.log(`📁 画像保存先ディレクトリ: ${imagesDir}`);
+    console.log(`             : ${imagesDir}`);
 
     if (!fs.existsSync(imagesDir)) {
       fs.mkdirSync(imagesDir, { recursive: true });
-      console.log('✅ 画像ディレクトリを作成:', imagesDir);
+      console.log('             :', imagesDir);
     }
 
-    // チャットメッセージから画像を抽出してファイルとして保存
+    //                            
     const savedImages = [];
     const cleanedChatData = JSON.parse(JSON.stringify(chatData));
 
@@ -4218,7 +4218,7 @@ app.post('/api/chats/:id/send-test', async (req, res) => {
           const imageFileName = `chat_image_${id}_${imageTimestamp}.jpg`;
           const imagePath = path.join(imagesDir, imageFileName);
 
-          // 画像を120pxにリサイズして保存
+          //    120px         
           const sharp = (await import('sharp')).default;
           const resizedBuffer = await sharp(buffer)
             .resize(120, 120, {
@@ -4251,16 +4251,16 @@ app.post('/api/chats/:id/send-test', async (req, res) => {
               });
 
               imageSavedPath = imageBlobName;
-              console.log(`✅ 画像ファイルを保存しました (BLOB): ${imageBlobName}`);
+              console.log(`                (BLOB): ${imageBlobName}`);
             } else {
-              console.warn('⚠️ BLOBストレージが利用できないため、ローカルに保存します');
+              console.warn('   BLOB                         ');
               fs.writeFileSync(imagePath, resizedBuffer);
               imageSavedPath = imagePath;
             }
           } else {
             fs.writeFileSync(imagePath, resizedBuffer);
             imageSavedPath = imagePath;
-            console.log('✅ 画像ファイルを保存しました（120pxにリサイズ）:', imagePath);
+            console.log('                120px      :', imagePath);
           }
 
           const imageUrl = storageMode === 'hybrid' || storageMode === 'blob' || storageMode === 'azure'
@@ -4277,13 +4277,13 @@ app.post('/api/chats/:id/send-test', async (req, res) => {
             blobPath: `images/chat-exports/${imageFileName}`
           });
         } catch (imageError) {
-          console.warn('画像保存エラー:', imageError);
-          message.content = '[画像データ削除]';
+          console.warn('       :', imageError);
+          message.content = '[       ]';
         }
       }
     }
 
-    // JSONデータを構築
+    // JSON      
     const jsonData = {
       chatId: id,
       userId: 'test-user',
@@ -4299,39 +4299,39 @@ app.post('/api/chats/:id/send-test', async (req, res) => {
       }
     };
 
-    // JSONファイルとして保存
+    // JSON         
     const jsonContent = JSON.stringify(jsonData, null, 2);
     fs.writeFileSync(filePath, jsonContent, { encoding: 'utf8' });
-    console.log(`✅ チャットエクスポート成功: ${filePath}`);
+    console.log(`              : ${filePath}`);
 
     res.json({
       success: true,
-      message: 'チャット履歴をエクスポートしました',
+      message: '                 ',
       filePath: filePath,
       fileName: fileName,
       savedImages: savedImages.length,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('❌ チャット送信エラー:', error);
+    console.error('           :', error);
     res.status(500).json({
       success: false,
-      error: 'チャット送信に失敗しました',
+      error: '             ',
       details: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// 26. 診断用エンドポイント - ルート一覧（動的生成）
+// 26.            -            
 app.get('/api/_diag/routes', (req, res) => {
-  // Express appからすべての登録済みルートを抽出
+  // Express app                
   const routes = [];
 
   function extractRoutes(stack, basePath = '') {
     stack.forEach((middleware) => {
       if (middleware.route) {
-        // ルートが直接登録されている場合
+        //                
         const methods = Object.keys(middleware.route.methods).map(m => m.toUpperCase()).join(', ');
         routes.push({
           path: basePath + middleware.route.path,
@@ -4339,7 +4339,7 @@ app.get('/api/_diag/routes', (req, res) => {
           type: 'route'
         });
       } else if (middleware.name === 'router' && middleware.handle.stack) {
-        // ルーターがネストされている場合
+        //                
         const routerPath = middleware.regexp.source
           .replace('\\/?', '')
           .replace('(?=\\/|$)', '')
@@ -4353,7 +4353,7 @@ app.get('/api/_diag/routes', (req, res) => {
 
   extractRoutes(app._router.stack);
 
-  // 重要なエンドポイントをハイライト
+  //                 
   const criticalEndpoints = [
     '/api/emergency-flow/list',
     '/api/history/machine-data',
@@ -4370,12 +4370,12 @@ app.get('/api/_diag/routes', (req, res) => {
     totalRoutes: routes.length,
     routes: routes.sort((a, b) => a.path.localeCompare(b.path)),
     criticalEndpoints: criticalStatus,
-    message: `${routes.length}個のルートが登録されています`,
+    message: `${routes.length}              `,
     timestamp: new Date().toISOString()
   });
 });
 
-// 27. 診断用エンドポイント - 全ルート詳細（簡易版）
+// 27.            -            
 app.get('/api/_diag/all-routes', (req, res) => {
   const routes = [];
 
@@ -4396,7 +4396,7 @@ app.get('/api/_diag/all-routes', (req, res) => {
   });
 });
 
-// 28. バージョン情報エンドポイント
+// 28.               
 app.get('/api/version', (req, res) => {
   res.json({
     version: VERSION,
@@ -4406,7 +4406,7 @@ app.get('/api/version', (req, res) => {
   });
 });
 
-// 29. 追加の診断エンドポイント
+// 29.             
 app.get('/api/_diag/status', (req, res) => {
   res.json({
     success: true,
@@ -4414,11 +4414,11 @@ app.get('/api/_diag/status', (req, res) => {
     environment: 'azure-production',
     apiEndpoints: 31,
     timestamp: new Date().toISOString(),
-    message: '全31個のAPIエンドポイントが正常に動作しています'
+    message: ' 31  API                  '
   });
 });
 
-// 30. フロー生成エンドポイント
+// 30.             
 app.post('/api/emergency-flow/generate', async (req, res) => {
   try {
     const { keyword } = req.body;
@@ -4426,60 +4426,60 @@ app.post('/api/emergency-flow/generate', async (req, res) => {
     if (!keyword || typeof keyword !== 'string') {
       return res.status(400).json({
         success: false,
-        error: 'キーワードが必要です',
+        error: '          ',
       });
     }
 
-    console.log(`🔄 フロー生成開始: キーワード=${keyword}`);
+    console.log(`         :      =${keyword}`);
 
-    // OpenAIクライアントが利用可能かチェック
+    // OpenAI                
     if (!openaiClient) {
       return res.status(503).json({
         success: false,
-        error: 'OpenAI APIが利用できません。',
+        error: 'OpenAI API         ',
         details: 'OpenAI client not available',
       });
     }
 
-    // AI支援設定のデフォルト値
-    const toneInstruction = '親しみやすく、わかりやすい表現で説明してください。';
+    // AI           
+    const toneInstruction = '                         ';
 
     const completion = await openaiClient.chat.completions.create({
       model: 'gpt-4',
       messages: [
         {
           role: 'system',
-          content: `あなたは鉄道保守用車（軌道モーターカー）の故障診断と応急処置の専門家です。
-以下の形式で一問一答形式の詳細な応急処置フローを生成してください：
+          content: `                                     
+                                 
 
-**必須フォーマット:**
-1. タイトル：[具体的な問題名]
+**        :**
+1.      [       ]
 
-2. ステップ形式（一問一答）:
-   各ステップは1つの質問または1つの作業指示にしてください。
+2.             :
+         1       1              
 
-   **通常ステップ（step）:**
-   手順1：[1つの具体的な質問または作業指示]
-   説明：[簡潔な説明と実施方法]
+   **       step :**
+     1 [1               ]
+      [          ]
 
-   **条件分岐ステップ（decision）:**
-   条件分岐：[判断が必要な状況]
-   説明：[判断基準の説明]
-   選択肢1：[選択肢1の内容]
-   選択肢2：[選択肢2の内容]
-   選択肢3：[選択肢3の内容]
-   選択肢4：[選択肢4の内容]
+   **         decision :**
+        [        ]
+      [       ]
+      1 [   1   ]
+      2 [   2   ]
+      3 [   3   ]
+      4 [   4   ]
 
-**重要な要求事項:**
-- ステップは細かく分ける（1ステップ=1つの質問または1つの作業）
-- 各ステップは簡潔に（50-100文字程度）
-- 判断や条件分岐が必要な箇所では必ず条件分岐ステップを作成
-- 安全確認は最初のステップに必ず含める
+**       :**
+-             1    =1       1     
+-           50-100     
+-                             
+-                   
 ${toneInstruction}`,
         },
         {
           role: 'user',
-          content: `以下の故障状況に対する応急処置フローを一問一答形式で生成してください：${keyword}`,
+          content: `                                   ${keyword}`,
         },
       ],
       temperature: 0.7,
@@ -4488,10 +4488,10 @@ ${toneInstruction}`,
 
     const generatedText = completion.choices[0]?.message?.content;
     if (!generatedText) {
-      throw new Error('フロー生成に失敗しました');
+      throw new Error('            ');
     }
 
-    console.log('✅ フロー生成成功');
+    console.log('         ');
 
     res.json({
       success: true,
@@ -4502,26 +4502,26 @@ ${toneInstruction}`,
       },
     });
   } catch (error) {
-    console.error('❌ フロー生成エラー:', error);
+    console.error('          :', error);
     res.status(500).json({
       success: false,
-      error: 'フロー生成に失敗しました',
+      error: '            ',
       details: error.message,
     });
   }
 });
 
-// 30. フロー保存エンドポイント（新規作成）
+// 30.                   
 app.post('/api/emergency-flow', async (req, res) => {
   try {
     const flowData = req.body;
-    console.log('[api/emergency-flow] フロー保存リクエスト:', {
+    console.log('[api/emergency-flow]           :', {
       id: flowData.id,
       title: flowData.title,
       stepsCount: flowData.steps?.length || 0
     });
 
-    // 画像URLを正規化
+    //   URL    
     const normalizedSteps = flowData.steps?.map(step => {
       if (step.images && Array.isArray(step.images)) {
         const normalizedImages = step.images.map(image => {
@@ -4560,21 +4560,21 @@ app.post('/api/emergency-flow', async (req, res) => {
       version: '1.0'
     };
 
-    // ファイル名を生成
+    //         
     const fileName = flowData.id ? `${flowData.id}.json` : `flow-${Date.now()}.json`;
 
-    // BLOBストレージに保存
+    // BLOB        
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
       return res.status(503).json({
         success: false,
-        error: 'BLOBストレージが利用できません'
+        error: 'BLOB             '
       });
     }
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
     if (!(await containerClient.exists())) {
-      console.log(`[api/emergency-flow] コンテナ '${containerName}' が存在しないため作成します...`);
+      console.log(`[api/emergency-flow]      '${containerName}'              ...`);
       await containerClient.createIfNotExists();
     }
     const blobName = norm(`troubleshooting/${fileName}`);
@@ -4596,7 +4596,7 @@ app.post('/api/emergency-flow', async (req, res) => {
       }
     );
 
-    console.log(`✅ フロー保存成功: ${blobName}`);
+    console.log(`         : ${blobName}`);
 
     res.json({
       success: true,
@@ -4606,8 +4606,8 @@ app.post('/api/emergency-flow', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/emergency-flow] 保存エラー:', error);
-    console.error('[api/emergency-flow] エラー詳細:', {
+    console.error('[api/emergency-flow]      :', error);
+    console.error('[api/emergency-flow]      :', {
       message: error.message,
       stack: error.stack,
       name: error.name,
@@ -4615,26 +4615,26 @@ app.post('/api/emergency-flow', async (req, res) => {
     });
     res.status(500).json({
       success: false,
-      error: 'フローの保存に失敗しました',
+      error: '             ',
       details: error.message,
       errorCode: error.code || 'UNKNOWN'
     });
   }
 });
 
-// フロー更新エンドポイント
+//             
 app.put('/api/emergency-flow/:flowId', async (req, res) => {
   try {
     const { flowId } = req.params;
     const flowData = req.body;
 
-    console.log('[api/emergency-flow] フロー更新リクエスト:', {
+    console.log('[api/emergency-flow]           :', {
       flowId: flowId,
       title: flowData.title,
       stepsCount: flowData.steps?.length || 0
     });
 
-    // 画像URLを正規化
+    //   URL    
     const normalizedSteps = flowData.steps?.map(step => {
       if (step.images && Array.isArray(step.images)) {
         const normalizedImages = step.images.map(image => {
@@ -4674,18 +4674,18 @@ app.put('/api/emergency-flow/:flowId', async (req, res) => {
       version: '1.0'
     };
 
-    // BLOBストレージに保存
+    // BLOB        
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
       return res.status(503).json({
         success: false,
-        error: 'BLOBストレージが利用できません'
+        error: 'BLOB             '
       });
     }
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
     if (!(await containerClient.exists())) {
-      console.log(`[api/emergency-flow] コンテナ '${containerName}' が存在しないため作成します...`);
+      console.log(`[api/emergency-flow]      '${containerName}'              ...`);
       await containerClient.createIfNotExists();
     }
     const fileName = `${flowId}.json`;
@@ -4708,7 +4708,7 @@ app.put('/api/emergency-flow/:flowId', async (req, res) => {
       }
     );
 
-    console.log(`✅ フロー更新成功: ${blobName}`);
+    console.log(`         : ${blobName}`);
 
     res.json({
       success: true,
@@ -4718,8 +4718,8 @@ app.put('/api/emergency-flow/:flowId', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/emergency-flow] 更新エラー:', error);
-    console.error('[api/emergency-flow] エラー詳細:', {
+    console.error('[api/emergency-flow]      :', error);
+    console.error('[api/emergency-flow]      :', {
       message: error.message,
       stack: error.stack,
       name: error.name,
@@ -4727,19 +4727,19 @@ app.put('/api/emergency-flow/:flowId', async (req, res) => {
     });
     res.status(500).json({
       success: false,
-      error: 'フローの更新に失敗しました',
+      error: '             ',
       details: error.message,
       errorCode: error.code || 'UNKNOWN'
     });
   }
 });
 
-// 31. フロー一覧取得エンドポイント
+// 31.               
 app.get('/api/emergency-flow/list', async (req, res) => {
   try {
     console.log('='.repeat(80));
-    console.log('[api/emergency-flow/list] ✅ エンドポイントに到達しました');
-    console.log('[api/emergency-flow/list] タイムスタンプ:', new Date().toISOString());
+    console.log('[api/emergency-flow/list]                 ');
+    console.log('[api/emergency-flow/list]        :', new Date().toISOString());
     console.log('[api/emergency-flow/list] Request method:', req.method);
     console.log('[api/emergency-flow/list] Request URL:', req.url);
     console.log('[api/emergency-flow/list] Request headers:', {
@@ -4751,27 +4751,27 @@ app.get('/api/emergency-flow/list', async (req, res) => {
       'x-ms-client-principal': req.headers['x-ms-client-principal'] ? '**DETECTED**' : 'not present'
     });
     
-    // Easy Auth検出警告
+    // Easy Auth    
     if (req.headers['x-ms-client-principal']) {
-      console.error('❌❌❌ AZURE APP SERVICE EASY AUTH IS ACTIVE ❌❌❌');
-      console.error('❌ このリクエストはEasy Authによってインターセプトされている可能性があります');
-      console.error('❌ 解決方法: Azure PortalでEasy Authを無効化するか、/api/*を除外してください');
-      console.error('❌❌❌ EASY AUTH MUST BE DISABLED FOR API ENDPOINTS ❌❌❌');
+      console.error('    AZURE APP SERVICE EASY AUTH IS ACTIVE    ');
+      console.error('          Easy Auth                        ');
+      console.error('      : Azure Portal Easy Auth        /api/*         ');
+      console.error('    EASY AUTH MUST BE DISABLED FOR API ENDPOINTS    ');
     }
     console.log('='.repeat(80));
 
     const flows = [];
 
-    // BLOB接続文字列の確認
+    // BLOB        
     if (!connectionString || !connectionString.trim()) {
-      console.warn('[api/emergency-flow/list] ⚠️ AZURE_STORAGE_CONNECTION_STRING is not configured');
-      console.warn('[api/emergency-flow/list] ⚠️ Connection string length:', connectionString ? connectionString.length : 0);
-      console.warn('[api/emergency-flow/list] ⚠️ Returning empty flow list');
+      console.warn('[api/emergency-flow/list]    AZURE_STORAGE_CONNECTION_STRING is not configured');
+      console.warn('[api/emergency-flow/list]    Connection string length:', connectionString ? connectionString.length : 0);
+      console.warn('[api/emergency-flow/list]    Returning empty flow list');
       return res.json({
         success: true,
         data: flows,
         total: flows.length,
-        message: 'BLOBストレージが設定されていません',
+        message: 'BLOB               ',
         timestamp: new Date().toISOString()
       });
     }
@@ -4779,15 +4779,15 @@ app.get('/api/emergency-flow/list', async (req, res) => {
     const blobServiceClient = getBlobServiceClient();
 
     if (!blobServiceClient) {
-      console.warn('[api/emergency-flow/list] ⚠️ BLOBサービスクライアントが利用できません');
-      console.warn('[api/emergency-flow/list] ⚠️ AZURE_STORAGE_CONNECTION_STRING:', connectionString ? 'Set' : 'Not set');
-      console.warn('[api/emergency-flow/list] ⚠️ AZURE_STORAGE_ACCOUNT_NAME:', process.env.AZURE_STORAGE_ACCOUNT_NAME || 'Not set');
-      console.warn('[api/emergency-flow/list] ⚠️ AZURE_STORAGE_CONTAINER_NAME:', containerName);
+      console.warn('[api/emergency-flow/list]    BLOB                  ');
+      console.warn('[api/emergency-flow/list]    AZURE_STORAGE_CONNECTION_STRING:', connectionString ? 'Set' : 'Not set');
+      console.warn('[api/emergency-flow/list]    AZURE_STORAGE_ACCOUNT_NAME:', process.env.AZURE_STORAGE_ACCOUNT_NAME || 'Not set');
+      console.warn('[api/emergency-flow/list]    AZURE_STORAGE_CONTAINER_NAME:', containerName);
       return res.json({
         success: true,
         data: flows,
         total: flows.length,
-        message: 'BLOBサービスクライアントが利用できません',
+        message: 'BLOB                  ',
         timestamp: new Date().toISOString()
       });
     }
@@ -4796,17 +4796,17 @@ app.get('/api/emergency-flow/list', async (req, res) => {
       const containerClient = blobServiceClient.getContainerClient(containerName);
       const prefix = norm('troubleshooting/');
 
-      console.log(`🔍 BLOBストレージからフロー取得: prefix=${prefix}, container=${containerName}`);
+      console.log(`  BLOB            : prefix=${prefix}, container=${containerName}`);
 
-      // コンテナの存在確認
+      //          
       const containerExists = await containerClient.exists();
       if (!containerExists) {
-        console.error(`❌ コンテナが存在しません: ${containerName}`);
+        console.error(`             : ${containerName}`);
         return res.json({
           success: true,
           data: flows,
           total: flows.length,
-          message: `コンテナ "${containerName}" が存在しません`,
+          message: `     "${containerName}"        `,
           timestamp: new Date().toISOString()
         });
       }
@@ -4823,29 +4823,29 @@ app.get('/api/emergency-flow/list', async (req, res) => {
           });
         }
       }
-      console.log(`✅ BLOBから ${flows.length} 件のフロー取得`);
+      console.log(`  BLOB   ${flows.length}        `);
     } catch (blobError) {
-      console.error('❌ BLOB読み込みエラー:', blobError);
-      console.error('❌ エラー詳細:', blobError instanceof Error ? blobError.stack : blobError);
-      console.error('❌ エラーメッセージ:', blobError instanceof Error ? blobError.message : 'Unknown error');
+      console.error('  BLOB       :', blobError);
+      console.error('       :', blobError instanceof Error ? blobError.stack : blobError);
+      console.error('          :', blobError instanceof Error ? blobError.message : 'Unknown error');
 
-      // エラーの種類に応じた詳細なログ
+      //                
       if (blobError instanceof Error) {
         if (blobError.message.includes('ENOTFOUND')) {
-          console.error('❌ DNS解決エラー: ストレージアカウント名が正しくない可能性があります');
+          console.error('  DNS     :                          ');
         } else if (blobError.message.includes('403') || blobError.message.includes('Forbidden')) {
-          console.error('❌ 認証エラー: ストレージアカウントキーまたは接続文字列が正しくない可能性があります');
+          console.error('       :                                   ');
         } else if (blobError.message.includes('404') || blobError.message.includes('Not Found')) {
-          console.error('❌ リソースが見つかりません: コンテナまたはプレフィックスが存在しない可能性があります');
+          console.error('              :                             ');
         }
       }
 
-      // BLOBエラーでも空配列を返す（フォールバック）
+      // BLOB                    
       return res.json({
         success: true,
         data: flows,
         total: flows.length,
-        message: 'BLOBストレージからの読み込みに失敗しました',
+        message: 'BLOB                   ',
         error: blobError instanceof Error ? blobError.message : 'Unknown error',
         timestamp: new Date().toISOString()
       });
@@ -4858,42 +4858,42 @@ app.get('/api/emergency-flow/list', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('❌ フロー一覧取得エラー:', error);
-    console.error('❌ エラー詳細:', error instanceof Error ? error.stack : error);
-    console.error('❌ エラーメッセージ:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('            :', error);
+    console.error('       :', error instanceof Error ? error.stack : error);
+    console.error('          :', error instanceof Error ? error.message : 'Unknown error');
 
-    // 403エラーの場合は詳細なログを出力
+    // 403               
     if (error instanceof Error && (error.message.includes('403') || error.message.includes('Forbidden'))) {
-      console.error('❌ 403 Forbidden エラーが発生しました');
-      console.error('❌ 考えられる原因:');
-      console.error('   1. Azure App Serviceの認証設定（Easy Auth）が有効になっている');
-      console.error('   2. セッションクッキーが正しく送信されていない');
-      console.error('   3. CORS設定の問題');
-      console.error('   4. BLOBストレージの認証情報が正しくない');
+      console.error('  403 Forbidden           ');
+      console.error('         :');
+      console.error('   1. Azure App Service      Easy Auth          ');
+      console.error('   2.                      ');
+      console.error('   3. CORS     ');
+      console.error('   4. BLOB                ');
     }
 
     res.status(500).json({
       success: false,
-      error: 'フロー一覧の取得に失敗しました',
+      error: '               ',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// チャットエクスポートAPI
+//           API
 app.post('/api/chats/:chatId/export', async (req, res) => {
   try {
     const { chatId } = req.params;
-    console.log('[api/chats/export] エクスポートリクエスト:', chatId);
+    console.log('[api/chats/export]            :', chatId);
 
-    // リクエストボディからエクスポートデータを取得
+    //                       
     const exportData = req.body;
 
-    // チャットメッセージをフォーマット
+    //                 
     const formattedData = {
       chatId: chatId,
-      title: exportData.title || `チャット履歴 ${new Date().toISOString().split('T')[0]}`,
+      title: exportData.title || `       ${new Date().toISOString().split('T')[0]}`,
       machineType: exportData.machineType || '',
       machineNumber: exportData.machineNumber || '',
       messages: exportData.messages || [],
@@ -4903,7 +4903,7 @@ app.post('/api/chats/:chatId/export', async (req, res) => {
       version: '1.0'
     };
 
-    // 画像URLを正規化
+    //   URL    
     if (formattedData.savedImages && Array.isArray(formattedData.savedImages)) {
       formattedData.savedImages = formattedData.savedImages.map(image => {
         let fileName = '';
@@ -4927,17 +4927,17 @@ app.post('/api/chats/:chatId/export', async (req, res) => {
       });
     }
 
-    // ファイル名を生成
+    //         
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const titleSlug = (formattedData.title || 'chat').replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '_').substring(0, 50);
     const filename = `${titleSlug}_${chatId}_${timestamp}.json`;
 
-    // BLOBストレージに保存
+    // BLOB        
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
       return res.status(503).json({
         success: false,
-        error: 'BLOBストレージが利用できません'
+        error: 'BLOB             '
       });
     }
 
@@ -4961,7 +4961,7 @@ app.post('/api/chats/:chatId/export', async (req, res) => {
       }
     );
 
-    console.log(`✅ チャットエクスポート成功: ${blobName}`);
+    console.log(`              : ${blobName}`);
 
     res.json({
       success: true,
@@ -4971,27 +4971,27 @@ app.post('/api/chats/:chatId/export', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/chats/export] エラー:', error);
+    console.error('[api/chats/export]    :', error);
     res.status(500).json({
       success: false,
-      error: 'チャットのエクスポートに失敗しました',
+      error: '                  ',
       details: error.message
     });
   }
 });
 
-// 画像アップロードAPI（応急処置フロー用）
+//         API          
 app.post('/api/emergency-flow/upload-image', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        error: '画像ファイルが見つかりません'
+        error: '              '
       });
     }
 
     const { stepId } = req.body;
-    console.log('[api/emergency-flow/upload-image] 画像アップロード:', {
+    console.log('[api/emergency-flow/upload-image]         :', {
       fileName: req.file.originalname,
       size: req.file.size,
       stepId: stepId
@@ -5001,11 +5001,11 @@ app.post('/api/emergency-flow/upload-image', upload.single('image'), async (req,
     if (!blobServiceClient) {
       return res.status(503).json({
         success: false,
-        error: 'BLOBストレージが利用できません'
+        error: 'BLOB             '
       });
     }
 
-    // ファイル名を生成（タイムスタンプ付き）
+    //                    
     const timestamp = Date.now();
     const ext = path.extname(req.file.originalname);
     const baseName = path.basename(req.file.originalname, ext);
@@ -5015,7 +5015,7 @@ app.post('/api/emergency-flow/upload-image', upload.single('image'), async (req,
     const blobName = norm(`images/emergency-flows/${fileName}`);
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
-    // 画像をBLOBにアップロード
+    //    BLOB       
     await blockBlobClient.uploadData(req.file.buffer, {
       blobHTTPHeaders: {
         blobContentType: req.file.mimetype
@@ -5027,7 +5027,7 @@ app.post('/api/emergency-flow/upload-image', upload.single('image'), async (req,
       }
     });
 
-    console.log(`✅ 画像アップロード成功: ${blobName}`);
+    console.log(`            : ${blobName}`);
 
     const imageUrl = `/api/emergency-flow/image/${fileName}`;
 
@@ -5041,19 +5041,19 @@ app.post('/api/emergency-flow/upload-image', upload.single('image'), async (req,
       isDuplicate: false
     });
   } catch (error) {
-    console.error('[api/emergency-flow/upload-image] エラー:', error);
+    console.error('[api/emergency-flow/upload-image]    :', error);
     res.status(500).json({
       success: false,
-      error: '画像のアップロードに失敗しました',
+      error: '                ',
       details: error.message
     });
   }
 });
 
-// 応急復旧フロー画像配信API（BLOB優先、ローカルフォールバック）
+//            API BLOB               
 app.get('/api/emergency-flow/image/:fileName', async (req, res) => {
   const { fileName } = req.params;
-  console.log('[api/emergency-flow/image] リクエスト受信:', { fileName });
+  console.log('[api/emergency-flow/image]        :', { fileName });
 
   const setImageHeaders = (contentType) => {
     res.header('Access-Control-Allow-Origin', '*');
@@ -5075,7 +5075,7 @@ app.get('/api/emergency-flow/image/:fileName', async (req, res) => {
   const contentType = mimeTypes[extension] || 'application/octet-stream';
 
   try {
-    // 1. BLOBストレージから取得
+    // 1. BLOB         
     const blobServiceClient = getBlobServiceClient();
     if (blobServiceClient) {
       try {
@@ -5084,7 +5084,7 @@ app.get('/api/emergency-flow/image/:fileName', async (req, res) => {
         const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
         if (await blockBlobClient.exists()) {
-          console.log('[api/emergency-flow/image] BLOBヒット:', { blobName });
+          console.log('[api/emergency-flow/image] BLOB   :', { blobName });
           const downloadResponse = await blockBlobClient.download();
           const chunks = [];
           if (downloadResponse.readableStreamBody) {
@@ -5095,38 +5095,38 @@ app.get('/api/emergency-flow/image/:fileName', async (req, res) => {
             setImageHeaders(contentType);
             return res.status(200).send(buffer);
           }
-          console.warn('[api/emergency-flow/image] readableStreamBody が空でした');
+          console.warn('[api/emergency-flow/image] readableStreamBody      ');
         } else {
-          console.log('[api/emergency-flow/image] BLOB未存在、ローカル検索へフォールバック:', { blobName });
+          console.log('[api/emergency-flow/image] BLOB                  :', { blobName });
         }
       } catch (blobError) {
-        console.error('[api/emergency-flow/image] BLOB取得エラー（フォールバック継続）:', blobError);
+        console.error('[api/emergency-flow/image] BLOB                :', blobError);
       }
     } else {
-      console.warn('[api/emergency-flow/image] BLOBクライアント未初期化、ローカル検索を使用します');
+      console.warn('[api/emergency-flow/image] BLOB                       ');
     }
 
-    // BLOBで見つからない場合は404を返す
-    console.warn('[api/emergency-flow/image] 画像が見つかりませんでした:', { fileName });
+    // BLOB          404   
+    console.warn('[api/emergency-flow/image]              :', { fileName });
     return res.status(404).json({
       success: false,
-      error: '画像が見つかりません（BLOBストレージのみ対応）',
+      error: '           BLOB          ',
       fileName
     });
   } catch (error) {
-    console.error('[api/emergency-flow/image] 取得エラー:', error);
+    console.error('[api/emergency-flow/image]      :', error);
     return res.status(500).json({
       success: false,
-      error: '画像の取得に失敗しました',
+      error: '            ',
       details: error instanceof Error ? error.message : String(error)
     });
   }
 });
 
-// チャット画像配信API
+//         API
 app.get('/api/images/chat-exports/:fileName', async (req, res) => {
   const { fileName } = req.params;
-  console.log('[api/images/chat-exports] リクエスト受信:', { fileName });
+  console.log('[api/images/chat-exports]        :', { fileName });
 
   const setImageHeaders = (contentType) => {
     res.header('Access-Control-Allow-Origin', '*');
@@ -5148,7 +5148,7 @@ app.get('/api/images/chat-exports/:fileName', async (req, res) => {
   const contentType = mimeTypes[extension] || 'application/octet-stream';
 
   try {
-    // 1. BLOBストレージから取得
+    // 1. BLOB         
     const blobServiceClient = getBlobServiceClient();
     if (blobServiceClient) {
       try {
@@ -5157,7 +5157,7 @@ app.get('/api/images/chat-exports/:fileName', async (req, res) => {
         const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
         if (await blockBlobClient.exists()) {
-          console.log('[api/images/chat-exports] BLOBヒット:', { blobName });
+          console.log('[api/images/chat-exports] BLOB   :', { blobName });
           const downloadResponse = await blockBlobClient.download();
           const chunks = [];
           if (downloadResponse.readableStreamBody) {
@@ -5168,35 +5168,35 @@ app.get('/api/images/chat-exports/:fileName', async (req, res) => {
             setImageHeaders(contentType);
             return res.status(200).send(buffer);
           }
-          console.warn('[api/images/chat-exports] readableStreamBody が空でした');
+          console.warn('[api/images/chat-exports] readableStreamBody      ');
         } else {
-          console.log('[api/images/chat-exports] BLOB未存在:', { blobName });
+          console.log('[api/images/chat-exports] BLOB   :', { blobName });
         }
       } catch (blobError) {
-        console.error('[api/images/chat-exports] BLOB取得エラー:', blobError);
+        console.error('[api/images/chat-exports] BLOB     :', blobError);
       }
     } else {
-      console.warn('[api/images/chat-exports] BLOBクライアント未初期化');
+      console.warn('[api/images/chat-exports] BLOB          ');
     }
 
-    // BLOBで見つからない場合は404を返す
-    console.log('[api/images/chat-exports] 画像が見つかりませんでした:', { fileName });
+    // BLOB          404   
+    console.log('[api/images/chat-exports]              :', { fileName });
     return res.status(404).json({
       success: false,
-      error: '画像が見つかりません（BLOBストレージのみ対応）',
+      error: '           BLOB          ',
       fileName: fileName
     });
   } catch (error) {
-    console.error('[api/images/chat-exports] 取得エラー:', error);
+    console.error('[api/images/chat-exports]      :', error);
     return res.status(500).json({
       success: false,
-      error: '画像の取得に失敗しました',
+      error: '            ',
       details: error instanceof Error ? error.message : String(error)
     });
   }
 });
 
-// チャット画像アップロードAPI（リトライロジック付き）
+//             API            
 app.post('/api/history/upload-image', upload.single('image'), async (req, res) => {
   const maxRetries = 3;
   let lastError = null;
@@ -5206,11 +5206,11 @@ app.post('/api/history/upload-image', upload.single('image'), async (req, res) =
       if (!req.file) {
         return res.status(400).json({
           success: false,
-          error: '画像ファイルが見つかりません'
+          error: '              '
         });
       }
 
-      console.log(`[api/history/upload-image] 画像アップロード試行 ${attempt}/${maxRetries}:`, {
+      console.log(`[api/history/upload-image]            ${attempt}/${maxRetries}:`, {
         fileName: req.file.originalname,
         size: req.file.size,
         mimetype: req.file.mimetype
@@ -5221,12 +5221,12 @@ app.post('/api/history/upload-image', upload.single('image'), async (req, res) =
         console.error('[api/history/upload-image] BLOB service client is not available');
         return res.status(503).json({
           success: false,
-          error: 'BLOBストレージが利用できません',
-          details: 'BLOB接続が設定されていません。サーバーログを確認してください。'
+          error: 'BLOB             ',
+          details: 'BLOB                             '
         });
       }
 
-      // ファイル名を生成（タイムスタンプ付き）
+      //                    
       const timestamp = Date.now();
       const ext = path.extname(req.file.originalname);
       const baseName = path.basename(req.file.originalname, ext);
@@ -5236,15 +5236,15 @@ app.post('/api/history/upload-image', upload.single('image'), async (req, res) =
       const blobName = norm(`images/chat-exports/${fileName}`);
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
-      // コンテナの存在確認（必要に応じて作成）
+      //                    
       const containerExists = await containerClient.exists();
       if (!containerExists) {
-        console.log(`[api/history/upload-image] コンテナ '${containerName}' が存在しないため作成します...`);
+        console.log(`[api/history/upload-image]      '${containerName}'              ...`);
         await containerClient.createIfNotExists();
-        console.log(`[api/history/upload-image] コンテナ '${containerName}' を作成しました`);
+        console.log(`[api/history/upload-image]      '${containerName}'        `);
       }
 
-      // 画像をBLOBにアップロード（タイムアウト付き）
+      //    BLOB                 
       const uploadPromise = blockBlobClient.uploadData(req.file.buffer, {
         blobHTTPHeaders: {
           blobContentType: req.file.mimetype
@@ -5261,9 +5261,9 @@ app.post('/api/history/upload-image', upload.single('image'), async (req, res) =
 
       await Promise.race([uploadPromise, timeoutPromise]);
 
-      console.log(`✅ チャット画像アップロード成功: ${blobName}`);
+      console.log(`                : ${blobName}`);
 
-      // APIエンドポイント経由のURLを返す（Blob直接URLではなく）
+      // API          URL    Blob  URL     
       const imageUrl = `/api/images/chat-exports/${fileName}`;
 
       return res.json({
@@ -5275,11 +5275,11 @@ app.post('/api/history/upload-image', upload.single('image'), async (req, res) =
       });
     } catch (error) {
       lastError = error;
-      console.error(`[api/history/upload-image] 試行 ${attempt}/${maxRetries} エラー:`, error.message);
+      console.error(`[api/history/upload-image]    ${attempt}/${maxRetries}    :`, error.message);
 
-      // DNSエラーの場合は詳細情報をログ出力
+      // DNS                
       if (error.message && error.message.includes('ENOTFOUND')) {
-        console.error('[api/history/upload-image] DNS解決エラー:', {
+        console.error('[api/history/upload-image] DNS     :', {
           message: error.message,
           connectionString: connectionString ? `Set (length: ${connectionString.length})` : 'Not set',
           accountName: process.env.AZURE_STORAGE_ACCOUNT_NAME || 'Not set',
@@ -5287,40 +5287,40 @@ app.post('/api/history/upload-image', upload.single('image'), async (req, res) =
         });
       }
 
-      // 最後の試行でない場合、リトライ
+      //                
       if (attempt < maxRetries) {
-        const retryDelay = attempt * 1000; // 1秒、2秒、3秒...
-        console.log(`[api/history/upload-image] ${retryDelay}ms後にリトライします...`);
+        const retryDelay = attempt * 1000; // 1  2  3 ...
+        console.log(`[api/history/upload-image] ${retryDelay}ms         ...`);
         await new Promise(resolve => setTimeout(resolve, retryDelay));
         continue;
       }
     }
   }
 
-  // すべてのリトライが失敗した場合
-  console.error('[api/history/upload-image] すべてのリトライが失敗しました:', lastError);
+  //                
+  console.error('[api/history/upload-image]                :', lastError);
   const errorMessage = lastError?.message || 'Unknown error';
   const isDnsError = errorMessage.includes('ENOTFOUND');
 
   return res.status(500).json({
     success: false,
-    error: '画像のアップロードに失敗しました',
+    error: '                ',
     details: isDnsError
-      ? 'BLOBストレージへの接続に失敗しました。ストレージアカウント名を確認してください。'
+      ? 'BLOB                                      '
       : errorMessage,
     retries: maxRetries,
     errorType: isDnsError ? 'DNS_ERROR' : 'BLOB_ERROR'
   });
 });
 
-// チャット送信API（本番用 - 認証付き）
+//       API     -      
 app.post('/api/chats/:chatId/send', async (req, res) => {
   try {
     const { chatId } = req.params;
     const { chatData, exportType } = req.body;
 
-    console.log('✅ /api/chats/:chatId/send エンドポイントに到達');
-    console.log('🔍 チャット送信リクエスト:', {
+    console.log('  /api/chats/:chatId/send           ');
+    console.log('             :', {
       method: req.method,
       url: req.url,
       chatId: chatId,
@@ -5329,7 +5329,7 @@ app.post('/api/chats/:chatId/send', async (req, res) => {
       machineInfo: chatData?.machineInfo
     });
 
-    // チャットデータの検証
+    //           
     if (!chatData || !chatData.messages || !Array.isArray(chatData.messages)) {
       return res.status(400).json({
         error: 'Invalid chat data format',
@@ -5341,14 +5341,14 @@ app.post('/api/chats/:chatId/send', async (req, res) => {
     if (!blobServiceClient) {
       return res.status(503).json({
         success: false,
-        error: 'BLOBストレージが利用できません'
+        error: 'BLOB             '
       });
     }
 
-    // タイムスタンプを生成
+    //           
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
-    // ユーザーメッセージから事象情報を抽出してファイル名に使用
+    //                             
     const userMessages = chatData.messages.filter((m) => !m.isAiResponse);
     const textMessages = userMessages
       .map((m) => m.content)
@@ -5356,14 +5356,14 @@ app.post('/api/chats/:chatId/send', async (req, res) => {
       .join('\n')
       .trim();
 
-    let incidentTitle = '事象なし';
+    let incidentTitle = '    ';
     if (textMessages) {
       incidentTitle = textMessages.split('\n')[0].trim();
     } else {
-      incidentTitle = '画像による故障報告';
+      incidentTitle = '         ';
     }
 
-    // ファイル名用に事象内容をサニタイズ
+    //                  
     const sanitizedTitle = incidentTitle
       .replace(/[<>:"/\\|?*]/g, '')
       .replace(/\s+/g, '_')
@@ -5371,7 +5371,7 @@ app.post('/api/chats/:chatId/send', async (req, res) => {
 
     const fileName = `${sanitizedTitle}_${chatId}_${timestamp}.json`;
 
-    // チャットメッセージから画像を抽出してBLOBに保存
+    //                   BLOB   
     const savedImages = [];
     const cleanedChatData = JSON.parse(JSON.stringify(chatData));
 
@@ -5398,7 +5398,7 @@ app.post('/api/chats/:chatId/send', async (req, res) => {
             }
           });
 
-          // APIエンドポイント経由のURLを返す（Blob直接URLではなく）
+          // API          URL    Blob  URL     
           const imageUrl = `/api/images/chat-exports/${imageFileName}`;
           savedImages.push({
             fileName: imageFileName,
@@ -5407,16 +5407,16 @@ app.post('/api/chats/:chatId/send', async (req, res) => {
             timestamp: imageTimestamp
           });
 
-          // メッセージ内容を画像参照に置き換え
-          message.content = `[画像: ${imageFileName}]`;
+          //                  
+          message.content = `[  : ${imageFileName}]`;
           message.imageUrl = imageUrl;
         } catch (error) {
-          console.error('画像保存エラー:', error);
+          console.error('       :', error);
         }
       }
     }
 
-    // チャットデータをJSONとして保存
+    //         JSON     
     const exportData = {
       chatId: chatId,
       title: `${incidentTitle} (${chatId})`,
@@ -5429,7 +5429,7 @@ app.post('/api/chats/:chatId/send', async (req, res) => {
       version: '1.0'
     };
 
-    // BLOBストレージに保存
+    // BLOB        
     const containerClient = blobServiceClient.getContainerClient(containerName);
     const blobName = norm(`exports/${fileName}`);
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
@@ -5449,12 +5449,12 @@ app.post('/api/chats/:chatId/send', async (req, res) => {
       }
     );
 
-    console.log(`✅ チャットデータ保存成功: ${blobName}`);
-    console.log(`📊 保存された画像数: ${savedImages.length}`);
+    console.log(`             : ${blobName}`);
+    console.log(`          : ${savedImages.length}`);
 
     res.json({
       success: true,
-      message: 'チャットを送信しました',
+      message: '           ',
       chatId: chatId,
       fileName: fileName,
       blobName: blobName,
@@ -5462,33 +5462,33 @@ app.post('/api/chats/:chatId/send', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/chats/send] エラー:', error);
+    console.error('[api/chats/send]    :', error);
     res.status(500).json({
       success: false,
-      error: 'チャットの送信に失敗しました',
+      error: '              ',
       details: error.message
     });
   }
 });
 
-// 応急復旧フロー詳細取得API
+//            API
 app.get('/api/emergency-flow/detail/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`[api/emergency-flow/detail] フロー詳細取得: ${id}`);
+    console.log(`[api/emergency-flow/detail]        : ${id}`);
 
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
-      console.error(`❌ BLOBサービスクライアントが利用できません: ${id}`);
+      console.error(`  BLOB                  : ${id}`);
       return res.status(503).json({
         success: false,
-        error: 'BLOBストレージが利用できません'
+        error: 'BLOB             '
       });
     }
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
     const blobName = norm(`troubleshooting/${id}.json`);
-    console.log(`🔍 BLOB取得試行: ${blobName}, container=${containerName}`);
+    console.log(`  BLOB    : ${blobName}, container=${containerName}`);
     const blobClient = containerClient.getBlobClient(blobName);
 
     try {
@@ -5496,33 +5496,33 @@ app.get('/api/emergency-flow/detail/:id', async (req, res) => {
       const downloaded = await streamToBuffer(downloadResponse.readableStreamBody);
       const flowData = JSON.parse(downloaded.toString('utf-8'));
 
-      console.log(`✅ フロー詳細取得成功: ${id}`);
+      console.log(`           : ${id}`);
 
       res.json({
         success: true,
         data: flowData
       });
     } catch (blobError) {
-      console.error(`❌ BLOB取得エラー: ${blobName}`, blobError);
-      console.error(`❌ エラー詳細:`, blobError instanceof Error ? blobError.stack : blobError);
+      console.error(`  BLOB     : ${blobName}`, blobError);
+      console.error(`       :`, blobError instanceof Error ? blobError.stack : blobError);
       res.status(404).json({
         success: false,
-        error: 'フロー詳細が見つかりません',
+        error: '             ',
         details: blobError instanceof Error ? blobError.message : 'Unknown error'
       });
     }
   } catch (error) {
-    console.error('[api/emergency-flow/detail] エラー:', error);
-    console.error('[api/emergency-flow/detail] エラー詳細:', error instanceof Error ? error.stack : error);
+    console.error('[api/emergency-flow/detail]    :', error);
+    console.error('[api/emergency-flow/detail]      :', error instanceof Error ? error.stack : error);
     res.status(500).json({
       success: false,
-      error: 'フロー詳細の取得に失敗しました',
+      error: '               ',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
 
-// ヘルパー関数: Streamをバッファに変換
+//       : Stream        
 async function streamToBuffer(readableStream) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -5536,17 +5536,17 @@ async function streamToBuffer(readableStream) {
   });
 }
 
-// 個別エクスポートJSONファイル取得API
+//         JSON      API
 app.get('/api/history/exports/:fileName', async (req, res) => {
   try {
     const { fileName } = req.params;
-    console.log(`[api/history/exports] ファイル取得: ${fileName}`);
+    console.log(`[api/history/exports]       : ${fileName}`);
 
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
       return res.status(503).json({
         success: false,
-        error: 'BLOBストレージが利用できません',
+        error: 'BLOB             ',
       });
     }
 
@@ -5560,20 +5560,20 @@ app.get('/api/history/exports/:fileName', async (req, res) => {
     res.setHeader('Content-Type', contentType);
     downloadResponse.readableStreamBody.pipe(res);
   } catch (error) {
-    console.error('❌ ファイル取得エラー:', error);
+    console.error('           :', error);
     res.status(404).json({
       success: false,
-      error: 'ファイルが見つかりません',
+      error: '            ',
       details: error.message,
     });
   }
 });
 
-// 履歴削除API（ファイルベース・BLOBストレージ対応）
+//     API         BLOB        
 app.delete('/api/history/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`🗑️ 履歴削除リクエスト: ${id}`);
+    console.log(`            : ${id}`);
 
     const projectRoot = path.resolve(__dirname, '..');
     const exportsDir = path.join(projectRoot, 'knowledge-base', 'exports');
@@ -5584,7 +5584,7 @@ app.delete('/api/history/:id', async (req, res) => {
     let deletedFromBlob = false;
     let deletedFromLocal = false;
 
-    // BLOBストレージから削除（本番環境優先）
+    // BLOB                 
     const blobServiceClient = getBlobServiceClient();
     if (blobServiceClient) {
       try {
@@ -5601,9 +5601,9 @@ app.delete('/api/history/:id', async (req, res) => {
 
           if (fileId === id || fileNameWithoutExt === id) {
             foundFile = fileName;
-            console.log(`✅ BLOBストレージでマッチするファイルを発見: ${foundFile}`);
+            console.log(`  BLOB                  : ${foundFile}`);
 
-            // JSONファイルを読み込んで画像情報を取得
+            // JSON                 
             const blobClient = containerClient.getBlobClient(blob.name);
             try {
               const downloadResponse = await blobClient.download();
@@ -5614,36 +5614,36 @@ app.delete('/api/history/:id', async (req, res) => {
                 }
               }
               jsonData = JSON.parse(content);
-              console.log(`📄 BLOBからJSONファイル読み込み成功: ${foundFile}`);
+              console.log(`  BLOB  JSON          : ${foundFile}`);
             } catch (readError) {
-              console.warn(`⚠️ BLOBからJSONファイル読み込みエラー: ${foundFile}`, readError.message);
+              console.warn(`   BLOB  JSON           : ${foundFile}`, readError.message);
             }
 
-            // BLOBストレージから削除
+            // BLOB         
             await blobClient.delete();
             deletedFromBlob = true;
-            console.log(`🗑️ BLOBストレージから削除: ${blob.name}`);
+            console.log(`   BLOB         : ${blob.name}`);
             break;
           }
         }
       } catch (blobError) {
-        console.error('❌ BLOBストレージ削除エラー:', blobError);
+        console.error('  BLOB          :', blobError);
       }
     }
 
-    // ローカルファイルシステムは使用しない（BLOBストレージのみ）
+    //                    BLOB        
 
     if (!foundFile) {
-      console.log(`❌ マッチするファイルが見つかりませんでした。検索ID: ${id}`);
+      console.log(`                         ID: ${id}`);
       return res.status(404).json({
         success: false,
-        error: '履歴が見つかりません',
+        error: '          ',
         searchId: id,
         timestamp: new Date().toISOString()
       });
     }
 
-    // 画像ファイルを削除
+    //          
     const imagesToDelete = [];
     if (jsonData && jsonData.savedImages && Array.isArray(jsonData.savedImages)) {
       jsonData.savedImages.forEach((img) => {
@@ -5656,12 +5656,12 @@ app.delete('/api/history/:id', async (req, res) => {
           }
         }
       });
-      console.log(`📋 JSON内の画像ファイル数: ${imagesToDelete.length}`);
+      console.log(`  JSON         : ${imagesToDelete.length}`);
     }
 
     let deletedImagesCount = 0;
 
-    // BLOBストレージから画像を削除
+    // BLOB            
     if (blobServiceClient) {
       try {
         const containerClient = blobServiceClient.getContainerClient(containerName);
@@ -5675,24 +5675,24 @@ app.delete('/api/history/:id', async (req, res) => {
               const blobClient = containerClient.getBlobClient(blob.name);
               await blobClient.delete();
               deletedImagesCount++;
-              console.log(`🗑️ BLOBストレージから画像削除: ${imageFileName}`);
+              console.log(`   BLOB           : ${imageFileName}`);
             } catch (error) {
-              console.warn(`⚠️ BLOBストレージから画像削除エラー: ${imageFileName}`, error.message);
+              console.warn(`   BLOB              : ${imageFileName}`, error.message);
             }
           }
         }
       } catch (blobError) {
-        console.error('❌ BLOBストレージ画像削除エラー:', blobError);
+        console.error('  BLOB            :', blobError);
       }
     }
 
-    // ローカルファイルシステムは使用しない（BLOBストレージのみ）
+    //                    BLOB        
 
-    console.log(`✅ 履歴削除完了: ${foundFile}, 画像${deletedImagesCount}件削除`);
+    console.log(`        : ${foundFile},   ${deletedImagesCount}   `);
 
     res.json({
       success: true,
-      message: '履歴を削除しました',
+      message: '         ',
       id: id,
       fileName: foundFile,
       deletedFromBlob: deletedFromBlob,
@@ -5701,10 +5701,10 @@ app.delete('/api/history/:id', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('❌ 履歴削除エラー:', error);
+    console.error('         :', error);
     res.status(500).json({
       success: false,
-      error: '履歴の削除に失敗しました',
+      error: '            ',
       details: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
       timestamp: new Date().toISOString()
@@ -5712,24 +5712,24 @@ app.delete('/api/history/:id', async (req, res) => {
   }
 });
 
-// 個別フローJSONファイル取得API
+//      JSON      API
 app.get('/api/emergency-flow/:fileName', async (req, res) => {
   try {
     const { fileName } = req.params;
-    console.log(`[api/emergency-flow] ファイル取得: ${fileName}`);
+    console.log(`[api/emergency-flow]       : ${fileName}`);
 
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
-      console.error(`❌ BLOBサービスクライアントが利用できません: ${fileName}`);
+      console.error(`  BLOB                  : ${fileName}`);
       return res.status(503).json({
         success: false,
-        error: 'BLOBストレージが利用できません',
+        error: 'BLOB             ',
       });
     }
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
     const blobName = norm(`troubleshooting/${fileName}`);
-    console.log(`🔍 BLOB取得試行: ${blobName}, container=${containerName}`);
+    console.log(`  BLOB    : ${blobName}, container=${containerName}`);
     const blobClient = containerClient.getBlobClient(blobName);
 
     const downloadResponse = await blobClient.download();
@@ -5738,27 +5738,27 @@ app.get('/api/emergency-flow/:fileName', async (req, res) => {
     res.setHeader('Content-Type', contentType);
     downloadResponse.readableStreamBody.pipe(res);
   } catch (error) {
-    console.error('❌ ファイル取得エラー:', error);
-    console.error('❌ エラー詳細:', error instanceof Error ? error.stack : error);
+    console.error('           :', error);
+    console.error('       :', error instanceof Error ? error.stack : error);
     res.status(404).json({
       success: false,
-      error: 'ファイルが見つかりません',
+      error: '            ',
       details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
 
-// 画像ファイル取得API（汎用）
+//         API    
 app.get('/api/images/:category/:fileName', async (req, res) => {
   try {
     const { category, fileName } = req.params;
-    console.log(`[api/images] 画像取得: ${category}/${fileName}`);
+    console.log(`[api/images]     : ${category}/${fileName}`);
 
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
       return res.status(503).json({
         success: false,
-        error: 'BLOBストレージが利用できません',
+        error: 'BLOB             ',
       });
     }
 
@@ -5770,24 +5770,24 @@ app.get('/api/images/:category/:fileName', async (req, res) => {
     const contentType = downloadResponse.contentType || 'image/jpeg';
 
     res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'public, max-age=86400'); // 1日キャッシュ
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // 1      
     downloadResponse.readableStreamBody.pipe(res);
   } catch (error) {
-    console.error('❌ 画像取得エラー:', error);
+    console.error('         :', error);
     res.status(404).json({
       success: false,
-      error: '画像が見つかりません',
+      error: '          ',
       details: error.message,
     });
   }
 });
 
-// ===== 静的配信（Vite出力） & SPA =====
-// Azure App Service対応：複数のパス候補を試行
+// =====      Vite    & SPA =====
+// Azure App Service             
 const clientDistPaths = [
-  join(__dirname, 'client/dist'),      // Azureでの実際の配置
-  join(__dirname, '../client/dist'),   // ローカル開発用
-  join(process.cwd(), 'client/dist')   // プロセス実行パス基準
+  join(__dirname, 'client/dist'),      // Azure       
+  join(__dirname, '../client/dist'),   //        
+  join(process.cwd(), 'client/dist')   //           
 ];
 
 let clientDistPath = null;
@@ -5795,41 +5795,41 @@ for (const testPath of clientDistPaths) {
   const indexPath = join(testPath, 'index.html');
   if (fs.existsSync(indexPath)) {
     clientDistPath = testPath;
-    console.log('✅ Client files found at:', clientDistPath);
+    console.log('  Client files found at:', clientDistPath);
     break;
   } else {
-    console.log('❌ Client files not found at:', testPath);
+    console.log('  Client files not found at:', testPath);
   }
 }
 
 if (!clientDistPath) {
   if (process.env.NODE_ENV === 'development') {
-    console.warn('⚠️ Client dist directory not found - Running in API-only mode');
-    console.warn('📋 Expected to use Vite dev server at http://localhost:5173');
-    console.warn('🔧 To build client files, run: npm run build:client');
+    console.warn('   Client dist directory not found - Running in API-only mode');
+    console.warn('  Expected to use Vite dev server at http://localhost:5173');
+    console.warn('  To build client files, run: npm run build:client');
   } else {
-    console.warn('⚠️ WARNING: Client dist directory not found in any expected location');
-    console.warn('📋 Checked paths:', clientDistPaths);
-    console.warn('🔍 Current working directory:', process.cwd());
-    console.warn('📁 __dirname:', __dirname);
-    console.warn('⚠️ Server will continue in API-ONLY mode (Frontend should be hosted separately)');
-    // process.exit(1); // ← 削除: APIサーバーとして稼働させるため終了しない
+    console.warn('   WARNING: Client dist directory not found in any expected location');
+    console.warn('  Checked paths:', clientDistPaths);
+    console.warn('  Current working directory:', process.cwd());
+    console.warn('  __dirname:', __dirname);
+    console.warn('   Server will continue in API-ONLY mode (Frontend should be hosted separately)');
+    // process.exit(1); //     : API                   
   }
 } else {
   app.use(express.static(clientDistPath, {
     maxAge: '7d', etag: true, lastModified: true, immutable: true
   }));
 
-  // API以外は index.html へ（API定義の「後ろ」に置く）
+  // API    index.html   API           
   app.get(/^(?!\/api).*/, (_req, res) => {
     const indexPath = join(clientDistPath, 'index.html');
     res.sendFile(indexPath);
   });
 }
 
-// ===== 404ハンドラー（すべてのルートの後、エラーハンドラの前）=====
+// ===== 404                          =====
 app.use((req, res, next) => {
-  console.warn('⚠️ 404 Not Found:', {
+  console.warn('   404 Not Found:', {
     method: req.method,
     url: req.url,
     path: req.path,
@@ -5845,15 +5845,15 @@ app.use((req, res, next) => {
     timestamp: new Date().toISOString()
   });
 
-  // 404エラーの詳細をログに記録
+  // 404            
   if (req.path.startsWith('/api/')) {
-    console.error('❌ API endpoint not found:', req.path);
-    console.error('❌ This could indicate:');
+    console.error('  API endpoint not found:', req.path);
+    console.error('  This could indicate:');
     console.error('   1. Route not registered in azure-server.mjs');
     console.error('   2. IIS/iisnode routing issue');
     console.error('   3. Request not reaching Express app');
 
-    // 類似のルートを検索
+    //          
     const allRoutes = [];
     app._router.stack.forEach((middleware) => {
       if (middleware.route) {
@@ -5867,7 +5867,7 @@ app.use((req, res, next) => {
     );
 
     if (similarRoutes.length > 0) {
-      console.warn('💡 Similar routes found:', similarRoutes);
+      console.warn('  Similar routes found:', similarRoutes);
     }
   }
 
@@ -5880,9 +5880,9 @@ app.use((req, res, next) => {
   });
 });
 
-// ===== エラーハンドラ（最後尾）=====
+// =====             =====
 app.use((err, req, res, _next) => {
-  console.error('❌ Unhandled Error:', {
+  console.error('  Unhandled Error:', {
     message: err.message,
     stack: err.stack,
     url: req.url,
@@ -5891,9 +5891,9 @@ app.use((err, req, res, _next) => {
     timestamp: new Date().toISOString()
   });
 
-  // Application Insightsが設定されていれば、エラーを送信
+  // Application Insights                
   if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
-    console.log('📊 Error logged to Application Insights');
+    console.log('  Error logged to Application Insights');
   }
 
   res.status(500).json({
@@ -5903,14 +5903,14 @@ app.use((err, req, res, _next) => {
   });
 });
 
-// ===== サーバー起動準備 =====
-// サーバー起動は最後に行う（ファイルの最後を参照）
+// =====          =====
+//                         
 
-// サーバーインスタンスを先に宣言（後で初期化）
+//                       
 let server;
 
 const shutdown = (sig) => () => {
-  console.log(`↩️  Received ${sig}, shutting down gracefully...`);
+  console.log(`    Received ${sig}, shutting down gracefully...`);
   if (server) {
     server.close(() => {
       if (dbPool) {
@@ -5931,83 +5931,83 @@ const shutdown = (sig) => () => {
 process.on('SIGTERM', shutdown('SIGTERM'));
 process.on('SIGINT', shutdown('SIGINT'));
 
-// 未処理の例外をキャッチ（ログのみ、プロセスは継続）
+//                          
 process.on('uncaughtException', (err) => {
-  console.error('⚠️ Uncaught Exception (continuing):', err);
+  console.error('   Uncaught Exception (continuing):', err);
   console.error('Stack trace:', err.stack);
-  // プロセスを終了させない - ログのみ記録
+  //             -       
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('⚠️ Unhandled Promise Rejection (continuing):', reason);
+  console.error('   Unhandled Promise Rejection (continuing):', reason);
   console.error('Promise:', promise);
-  // プロセスを終了させない - ログのみ記録
+  //             -       
 });
 
-// サーバー起動（これが必須！）
+//               
 server = app.listen(PORT, '0.0.0.0', async () => {
   console.log('');
-  console.log('🎉 ================================================');
-  console.log('🚀 Azure Production Server Started Successfully!');
-  console.log('🎉 ================================================');
+  console.log('  ================================================');
+  console.log('  Azure Production Server Started Successfully!');
+  console.log('  ================================================');
   console.log('');
-  console.log(`📍 Server listening on: http://0.0.0.0:${PORT}`);
-  console.log(`🌐 Public URL: https://${process.env.WEBSITE_HOSTNAME || 'localhost'}`);
-  console.log(`🔧 Environment: ${process.env.NODE_ENV || 'production'}`);
-  console.log(`📦 Node Version: ${process.version}`);
-  console.log(`⏰ Started at: ${new Date().toISOString()}`);
+  console.log(`  Server listening on: http://0.0.0.0:${PORT}`);
+  console.log(`  Public URL: https://${process.env.WEBSITE_HOSTNAME || 'localhost'}`);
+  console.log(`  Environment: ${process.env.NODE_ENV || 'production'}`);
+  console.log(`  Node Version: ${process.version}`);
+  console.log(`  Started at: ${new Date().toISOString()}`);
   console.log('');
 
-  // BLOB接続のテスト（起動時）
-  console.log('🔍 Testing BLOB connection...');
+  // BLOB           
+  console.log('  Testing BLOB connection...');
 
-  // 接続文字列からAccountNameを抽出してログ出力
+  //        AccountName         
   if (connectionString) {
     try {
       const accountNameMatch = connectionString.match(/AccountName=([^;]+)/);
       if (accountNameMatch) {
         const accountName = accountNameMatch[1];
-        console.log(`🔍 Storage Account Name from connection string: ${accountName}`);
-        console.log(`🔍 Expected BLOB URL: https://${accountName}.blob.core.windows.net`);
+        console.log(`  Storage Account Name from connection string: ${accountName}`);
+        console.log(`  Expected BLOB URL: https://${accountName}.blob.core.windows.net`);
       } else {
-        console.warn('⚠️ Could not extract AccountName from connection string');
+        console.warn('   Could not extract AccountName from connection string');
       }
     } catch (parseError) {
-      console.warn('⚠️ Error parsing connection string:', parseError.message);
+      console.warn('   Error parsing connection string:', parseError.message);
     }
   }
 
-  // BLOB接続テストを非同期で実行（サーバー起動をブロックしない）
+  // BLOB                            
   (async () => {
     try {
-      console.log('🔍 Starting BLOB connection test...');
+      console.log('  Starting BLOB connection test...');
       const blobServiceClient = getBlobServiceClient();
       if (blobServiceClient) {
         try {
           const containerClient = blobServiceClient.getContainerClient(containerName);
-          console.log(`🔍 Attempting to check container: ${containerName}`);
+          console.log(`  Attempting to check container: ${containerName}`);
           const exists = await containerClient.exists();
           if (exists) {
-            console.log(`✅ BLOB Storage: Connected (container: ${containerName})`);
+            console.log(`  BLOB Storage: Connected (container: ${containerName})`);
           } else {
-            console.warn(`⚠️ BLOB Storage: Connected but container '${containerName}' does not exist`);
-            console.warn('⚠️ Attempting to create container...');
+            console.warn(`   BLOB Storage: Connected but container '${containerName}' does not exist`);
+            console.warn('   Attempting to create container...');
             try {
               await containerClient.createIfNotExists();
-              console.log(`✅ BLOB Storage: Container '${containerName}' created successfully`);
+              console.log(`  BLOB Storage: Container '${containerName}' created successfully`);
             } catch (createError) {
-              console.error(`❌ BLOB Storage: Failed to create container: ${createError.message}`);
-              console.error(`❌ Error details:`, createError instanceof Error ? createError.stack : createError);
+              console.error(`  BLOB Storage: Failed to create container: ${createError.message}`);
+              console.error(`  Error details:`, createError instanceof Error ? createError.stack : createError);
             }
           }
         } catch (testError) {
-          console.error(`❌ BLOB Storage: Connection test failed: ${testError.message}`);
-          console.error(`❌ Error type: ${testError.constructor.name}`);
-          console.error(`❌ Error details:`, testError instanceof Error ? testError.stack : testError);
+          console.error(`  BLOB Storage: Connection test failed: ${testError.message}`);
+          console.error(`  Error type: ${testError.constructor.name}`);
+          console.error(`  Error details:`, testError instanceof Error ? testError.stack : testError);
 
-          // DNSエラーの場合、接続文字列のAccountNameを確認
+          // DNS             AccountName   
           if (testError.message && testError.message.includes('ENOTFOUND')) {
-            console.error('❌ DNS resolution failed - this usually means:');
+            console.error('  DNS resolution failed - this usually means:');
             console.error('   1. The storage account name in the connection string is incorrect');
             console.error('   2. The storage account does not exist');
             console.error('   3. Network connectivity issues');
@@ -6018,7 +6018,7 @@ server = app.listen(PORT, '0.0.0.0', async () => {
                 console.error(`   Please verify this matches your actual Azure Storage account name`);
               }
             }
-            // AZURE_STORAGE_ACCOUNT_NAME環境変数も確認
+            // AZURE_STORAGE_ACCOUNT_NAME       
             if (process.env.AZURE_STORAGE_ACCOUNT_NAME) {
               console.error(`   AZURE_STORAGE_ACCOUNT_NAME env var: ${process.env.AZURE_STORAGE_ACCOUNT_NAME}`);
             } else {
@@ -6027,70 +6027,68 @@ server = app.listen(PORT, '0.0.0.0', async () => {
           }
         }
       } else {
-        console.warn('⚠️ BLOB Storage: Not configured or connection failed');
-        console.warn('⚠️ getBlobServiceClient() returned null');
-        console.warn('⚠️ Connection string:', connectionString ? `Set (length: ${connectionString.length})` : 'Not set');
+        console.warn('   BLOB Storage: Not configured or connection failed');
+        console.warn('   getBlobServiceClient() returned null');
+        console.warn('   Connection string:', connectionString ? `Set (length: ${connectionString.length})` : 'Not set');
       }
     } catch (error) {
-      console.error('❌ BLOB connection test error:', error);
+      console.error('  BLOB connection test error:', error);
     }
   })();
   console.log('');
 
-  console.log('📋 Available Endpoints:');
-  console.log('   GET  /health - ヘルスチェック');
+  console.log('  Available Endpoints:');
+  console.log('   GET  /health -        ');
   console.log('   GET  /api/ping - Ping');
-  console.log('   POST /api/auth/login - ログイン');
-  console.log('   GET  /api/auth/me - 現在のユーザー');
-  console.log('   GET  /api/users - ユーザー一覧');
-  console.log('   POST /api/users - ユーザー作成');
-  console.log('   PUT  /api/users/:id - ユーザー更新');
-  console.log('   DELETE /api/users/:id - ユーザー削除');
-  console.log('   GET  /api/machines - 機械データ');
-  console.log('   POST /api/machines - 機械作成');
-  console.log('   PUT  /api/machines/:id - 機械更新');
-  console.log('   DELETE /api/machines/:id - 機械削除');
-  console.log('   GET  /ready - ヘルスチェック');
+  console.log('   POST /api/auth/login -     ');
+  console.log('   GET  /api/auth/me -        ');
+  console.log('   GET  /api/users -       ');
+  console.log('   POST /api/users -       ');
+  console.log('   PUT  /api/users/:id -       ');
+  console.log('   DELETE /api/users/:id -       ');
+  console.log('   GET  /api/machines -      ');
+  console.log('   POST /api/machines -     ');
+  console.log('   PUT  /api/machines/:id -     ');
+  console.log('   DELETE /api/machines/:id -     ');
+  console.log('   GET  /ready -        ');
   console.log('');
-  console.log('✅ Server is ready to accept connections!');
-  console.log('🎉 ================================================');
+  console.log('  Server is ready to accept connections!');
+  console.log('  ================================================');
 });
 
-// エラーハンドリング
+//          
 server.on('error', (error) => {
-  console.error('❌ Server error:', error);
-  console.error('❌ Error code:', error.code);
-  console.error('❌ Error message:', error.message);
-  console.error('❌ Error stack:', error.stack);
+  console.error('  Server error:', error);
+  console.error('  Error code:', error.code);
+  console.error('  Error message:', error.message);
+  console.error('  Error stack:', error.stack);
 
   if (error.code === 'EADDRINUSE') {
-    console.error(`❌ Port ${PORT} is already in use`);
+    console.error(`  Port ${PORT} is already in use`);
     process.exit(1);
   } else if (error.code === 'EACCES') {
-    console.error(`❌ Permission denied to bind to port ${PORT}`);
+    console.error(`  Permission denied to bind to port ${PORT}`);
     process.exit(1);
   } else {
-    console.error('❌ Unexpected server error, but continuing...');
+    console.error('  Unexpected server error, but continuing...');
   }
 });
 
-// 追加のグローバルエラーハンドラー
+//                 
 process.on('uncaughtException', (error) => {
-  console.error('💥 Uncaught Exception:', error);
-  console.error('💥 Stack:', error.stack);
-  // Azure App Serviceではプロセスを継続（再起動はAzureが管理）
-  console.log('⚠️ Server continuing after uncaught exception...');
+  console.error('  Uncaught Exception:', error);
+  console.error('  Stack:', error.stack);
+  // Azure App Service              Azure    
+  console.log('   Server continuing after uncaught exception...');
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('💥 Unhandled Rejection at:', promise);
-  console.error('💥 Reason:', reason);
-  // Azure App Serviceではプロセスを継続
-  console.log('⚠️ Server continuing after unhandled rejection...');
+  console.error('  Unhandled Rejection at:', promise);
+  console.error('  Reason:', reason);
+  // Azure App Service         
+  console.log('   Server continuing after unhandled rejection...');
 });
 
-console.log('✅ Global error handlers registered');
+console.log('  Global error handlers registered');
 
 export default app;
- 
- 
