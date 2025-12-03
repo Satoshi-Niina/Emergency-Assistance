@@ -166,6 +166,44 @@ jobs:
             
             echo "✅ All old files deleted - Ready for clean deployment"
 
+      - name: ⚙️ Configure environment variables BEFORE deployment
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            echo "⚙️ Setting environment variables BEFORE deployment..."
+            
+            az webapp config appsettings set \
+              --resource-group rg-Emergencyassistant-app \
+              --name emergency-assistantapp-node20 \
+              --settings \
+                NODE_ENV=production \
+                DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+                PG_SSL="${{ secrets.PG_SSL }}" \
+                SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
+                JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+                FRONTEND_URL="${{ secrets.FRONTEND_URL }}" \
+                STATIC_WEB_APP_URL="${{ secrets.STATIC_WEB_APP_URL }}" \
+                AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
+                AZURE_STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
+                AZURE_STORAGE_ACCOUNT_KEY="${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}" \
+                AZURE_STORAGE_CONTAINER_NAME=knowledge \
+                BLOB_PREFIX=knowledge-base/ \
+                STORAGE_MODE=azure \
+                OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+                OPENAI_MAX_TOKENS=2000 \
+                DEBUG_MODE=false \
+                VERBOSE_LOGGING=false \
+                SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+                ENABLE_ORYX_BUILD=true \
+                ORYX_APP_TYPE=node \
+                WEBSITE_LOCAL_CACHE_OPTION=Never \
+                WEBSITE_DYNAMIC_CACHE=0 \
+                WEBSITES_ENABLE_APP_SERVICE_STORAGE=true \
+                WEBSITE_NODE_DEFAULT_VERSION=20.11.1
+            
+            echo "✅ Environment variables configured BEFORE deployment"
+            sleep 5
+
       - name: 📦 Create deployment package (with package.json for Oryx)
         run: |
           echo "📦 Creating deployment package for Oryx build..."
@@ -211,57 +249,8 @@ jobs:
               --timeout 600
             
             echo "✅ ZipDeploy completed"
-            echo "⏳ Waiting for Oryx build to complete (checking deployment logs)..."
+            echo "⏳ Waiting 30 seconds for Oryx build and startup..."
             sleep 30
-
-      - name: ⚙️ Configure environment variables and Node.js version
-        uses: azure/cli@v1
-        with:
-          inlineScript: |
-            echo "⚙️ Setting environment variables..."
-            
-            az webapp config appsettings set \
-              --resource-group rg-Emergencyassistant-app \
-              --name emergency-assistantapp-node20 \
-              --settings \
-                NODE_ENV=production \
-                DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-                PG_SSL="${{ secrets.PG_SSL }}" \
-                SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
-                JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-                FRONTEND_URL="${{ secrets.FRONTEND_URL }}" \
-                STATIC_WEB_APP_URL="${{ secrets.STATIC_WEB_APP_URL }}" \
-                AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
-                AZURE_STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
-                AZURE_STORAGE_ACCOUNT_KEY="${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}" \
-                AZURE_STORAGE_CONTAINER_NAME=knowledge \
-                BLOB_PREFIX=knowledge-base/ \
-                STORAGE_MODE=azure \
-                OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-                OPENAI_MAX_TOKENS=2000 \
-                DEBUG_MODE=false \
-                VERBOSE_LOGGING=false \
-                SCM_DO_BUILD_DURING_DEPLOYMENT=true \
-                ENABLE_ORYX_BUILD=true \
-                ORYX_APP_TYPE=node \
-                PRE_BUILD_SCRIPT_PATH="" \
-                POST_BUILD_SCRIPT_PATH="" \
-                WEBSITE_LOCAL_CACHE_OPTION=Never \
-                WEBSITE_DYNAMIC_CACHE=0 \
-                WEBSITES_ENABLE_APP_SERVICE_STORAGE=true \
-                WEBSITE_NODE_DEFAULT_VERSION=20.11.1
-            
-            echo "✅ Environment variables configured"
-            
-            # Windows App ServiceのNode.jsバージョンを明示的に設定
-            echo "⚙️ Setting Node.js version for Windows App Service..."
-            az webapp config set \
-              --resource-group rg-Emergencyassistant-app \
-              --name emergency-assistantapp-node20 \
-              --use-32bit-worker-process false
-            
-            echo "⏳ Waiting 15 seconds for settings to propagate..."
-            sleep 15
 
       - name: ▶️ Start App Service with new deployment
         uses: azure/cli@v1
