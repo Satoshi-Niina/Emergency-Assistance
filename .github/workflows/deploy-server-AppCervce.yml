@@ -94,46 +94,22 @@ jobs:
           </configuration>
           EOF
 
-      - name: Get publish profile credentials
-        id: publishprofile
-        run: |
-          PUBLISH_PROFILE='${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}'
-          USERNAME=$(echo "$PUBLISH_PROFILE" | grep -oP 'userName="\K[^"]+' | head -1)
-          PASSWORD=$(echo "$PUBLISH_PROFILE" | grep -oP 'userPWD="\K[^"]+' | head -1)
-          echo "::add-mask::$PASSWORD"
-          echo "username=$USERNAME" >> $GITHUB_OUTPUT
-          echo "password=$PASSWORD" >> $GITHUB_OUTPUT
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Stop App Service (force clean deployment)
         run: |
-          USERNAME="${{ steps.publishprofile.outputs.username }}"
-          PASSWORD="${{ steps.publishprofile.outputs.password }}"
-          
           echo "🛑 Stopping app service..."
-          curl -X POST "https://emergency-assistantapp.scm.azurewebsites.net/api/app/stop" \
-            -u "$USERNAME:$PASSWORD" || echo "⚠️ Stop request sent"
-          
+          az webapp stop --name emergency-assistantapp --resource-group rg-Emergencyassistant-app || echo "⚠️ Stop request sent"
           sleep 10
 
-      - name: Clear all caches and old files
+      - name: Clear deployment cache
         run: |
-          USERNAME="${{ steps.publishprofile.outputs.username }}"
-          PASSWORD="${{ steps.publishprofile.outputs.password }}"
-          
-          echo "🧹 Cleaning deployment cache..."
-          # Kuduのデプロイキャッシュをクリア
-          curl -X DELETE "https://emergency-assistantapp.scm.azurewebsites.net/api/vfs/site/deployments/" \
-            -u "$USERNAME:$PASSWORD" \
-            -H "If-Match: *" 2>/dev/null || true
-          
-          echo "🧹 Removing old application files..."
-          # wwwrootを完全削除
-          curl -X DELETE "https://emergency-assistantapp.scm.azurewebsites.net/api/vfs/site/wwwroot/" \
-            -u "$USERNAME:$PASSWORD" \
-            -H "If-Match: *" || echo "⚠️ Cleanup in progress..."
-          
+          echo "🧹 Restarting app to clear cache..."
+          az webapp restart --name emergency-assistantapp --resource-group rg-Emergencyassistant-app || true
           sleep 5
-          echo "✅ Clean completed"
 
       - name: Verify files to be deployed
         run: |
@@ -171,52 +147,24 @@ jobs:
           echo "📋 Package contents preview:"
           unzip -l deploy.zip | grep -E "(azure-server|src/api|deployment-info)" | head -20
 
-      - name: Deploy via Kudu ZipDeploy (with cache busting)
+      - name: Deploy via Azure CLI
         run: |
-          USERNAME="${{ steps.publishprofile.outputs.username }}"
-          PASSWORD="${{ steps.publishprofile.outputs.password }}"
-          
           echo "🚀 Deploying package to Azure..."
-          # SCM_DO_BUILD_DURING_DEPLOYMENT=falseでキャッシュを無効化
-          RESPONSE=$(curl -X POST \
-            "https://emergency-assistantapp.scm.azurewebsites.net/api/zipdeploy?isAsync=false" \
-            -u "$USERNAME:$PASSWORD" \
-            -H "Content-Type: application/zip" \
-            -H "Cache-Control: no-cache, no-store, must-revalidate" \
-            --data-binary @deploy.zip \
-            --max-time 600 \
-            -w "\nHTTP_CODE:%{http_code}\n" \
-            -v 2>&1)
-          
-          echo "$RESPONSE"
-          
-          if echo "$RESPONSE" | grep -q "HTTP_CODE:200"; then
-            echo "✅ Deployment request successful"
-          else
-            echo "❌ Deployment may have failed"
-            exit 1
-          fi
+          az webapp deploy \
+            --name emergency-assistantapp \
+            --resource-group rg-Emergencyassistant-app \
+            --src-path deploy.zip \
+            --type zip \
+            --clean true \
+            --restart true \
+            --timeout 600
+          echo "✅ Deployment completed"
 
-      - name: Clear App Service cache and restart
+      - name: Start App Service
         run: |
-          USERNAME="${{ steps.publishprofile.outputs.username }}"
-          PASSWORD="${{ steps.publishprofile.outputs.password }}"
-          
-          echo "🔄 Clearing application cache..."
-          # Node.js キャッシュをクリア
-          curl -X POST "https://emergency-assistantapp.scm.azurewebsites.net/api/command" \
-            -u "$USERNAME:$PASSWORD" \
-            -H "Content-Type: application/json" \
-            -d '{"command":"del /s /q D:\\home\\site\\wwwroot\\node_modules\\.cache","dir":"D:\\home"}' \
-            2>/dev/null || true
-          
-          sleep 5
-          
           echo "▶️ Starting app service..."
-          curl -X POST "https://emergency-assistantapp.scm.azurewebsites.net/api/app/start" \
-            -u "$USERNAME:$PASSWORD"
-          
-          echo "✅ App restart initiated"
+          az webapp start --name emergency-assistantapp --resource-group rg-Emergencyassistant-app
+          echo "✅ App started"
 
       - name: Wait and verify deployment
         run: |
