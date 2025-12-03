@@ -195,6 +195,15 @@ jobs:
         uses: azure/cli@v1
         with:
           inlineScript: |
+            echo "⚙️ Removing conflicting app settings..."
+            
+            # WEBSITE_RUN_FROM_PACKAGE を削除（ZipDeploy と競合するため）
+            az webapp config appsettings delete \
+              --resource-group rg-Emergencyassistant-app \
+              --name emergency-assistantapp \
+              --setting-names WEBSITE_RUN_FROM_PACKAGE \
+              || echo "WEBSITE_RUN_FROM_PACKAGE not found (OK)"
+            
             echo "⚙️ Setting environment variables..."
             
             az webapp config appsettings set \
@@ -218,7 +227,6 @@ jobs:
                 OPENAI_MAX_TOKENS=2000 \
                 DEBUG_MODE=false \
                 VERBOSE_LOGGING=false \
-                WEBSITE_RUN_FROM_PACKAGE=0 \
                 SCM_DO_BUILD_DURING_DEPLOYMENT=false \
                 WEBSITE_LOCAL_CACHE_OPTION=Never \
                 WEBSITE_DYNAMIC_CACHE=0 \
