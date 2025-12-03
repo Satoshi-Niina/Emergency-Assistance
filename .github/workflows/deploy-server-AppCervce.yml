@@ -166,14 +166,18 @@ jobs:
             
             echo "✅ All old files deleted - Ready for clean deployment"
 
-      - name: 📦 Create deployment package
+      - name: 📦 Create deployment package (with package.json for Oryx)
         run: |
-          echo "📦 Creating deployment package..."
+          echo "📦 Creating deployment package for Oryx build..."
           cd server
           
-          # zipパッケージ作成 (zipコマンド使用)
-          # node_modulesは除外し、App Service側でnpm installを実行
-          # 不要なファイルを除外
+          # Oryxが正しくNode.js 20を使用するように設定
+          echo "Node.js version specification:"
+          echo "  - .nvmrc: $(cat .nvmrc)"
+          echo "  - package.json engines.node: $(cat package.json | grep -A1 'engines' | grep node)"
+          
+          # zipパッケージ作成 (package.json, .nvmrcを含める)
+          # node_modulesは除外し、Oryxにビルドさせる
           zip -r ../deploy.zip . \
             -x '*.git*' \
             -x '*.log' \
@@ -189,16 +193,17 @@ jobs:
           cd ..
           echo "✅ Package created:"
           ls -lh deploy.zip
-          echo "📊 Package hash:"
-          sha256sum deploy.zip
+          echo "📊 Package contents (first 20 files):"
+          unzip -l deploy.zip | head -25
 
-      - name: 🚀 Deploy to Azure App Service
+      - name: 🚀 Deploy to Azure App Service (with Oryx build)
         uses: azure/cli@v1
         with:
           inlineScript: |
-            echo "🚀 Deploying to Azure App Service..."
+            echo "🚀 Deploying to Azure App Service with Oryx build..."
             
-            # ZipDeployを実行（タイムアウト10分）
+            # Kudu ZipDeploy API経由でデプロイ（Oryxビルドを強制実行）
+            # SCM_DO_BUILD_DURING_DEPLOYMENT=trueの場合、Oryxが自動的にNode.js 20をインストール
             az webapp deployment source config-zip \
               --resource-group rg-Emergencyassistant-app \
               --name emergency-assistantapp \
@@ -206,6 +211,8 @@ jobs:
               --timeout 600
             
             echo "✅ ZipDeploy completed"
+            echo "⏳ Waiting for Oryx build to complete (checking deployment logs)..."
+            sleep 30
 
       - name: ⚙️ Configure environment variables and Node.js version
         uses: azure/cli@v1
@@ -236,10 +243,13 @@ jobs:
                 VERBOSE_LOGGING=false \
                 SCM_DO_BUILD_DURING_DEPLOYMENT=true \
                 ENABLE_ORYX_BUILD=true \
+                ORYX_APP_TYPE=node \
+                PRE_BUILD_SCRIPT_PATH="" \
+                POST_BUILD_SCRIPT_PATH="" \
                 WEBSITE_LOCAL_CACHE_OPTION=Never \
                 WEBSITE_DYNAMIC_CACHE=0 \
                 WEBSITES_ENABLE_APP_SERVICE_STORAGE=true \
-                WEBSITE_NODE_DEFAULT_VERSION=~20
+                WEBSITE_NODE_DEFAULT_VERSION=20.11.1
             
             echo "✅ Environment variables configured"
             
