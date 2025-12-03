@@ -1079,14 +1079,36 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Azure Functions           Express      
     res.status(result.status);
+    
+    // Set-Cookie ヘッダーを除外してセッションに保存
     if (result.headers) {
       Object.entries(result.headers).forEach(([key, value]) => {
-        res.setHeader(key, value);
+        if (key.toLowerCase() !== 'set-cookie') {
+          res.setHeader(key, value);
+        }
       });
     }
 
     if (result.body) {
       const bodyData = typeof result.body === 'string' ? JSON.parse(result.body) : result.body;
+      
+      // ログイン成功時にExpressセッションにユーザー情報を保存
+      if (result.status === 200 && bodyData.success && bodyData.user) {
+        req.session.user = {
+          id: bodyData.user.id,
+          username: bodyData.user.username,
+          displayName: bodyData.user.displayName,
+          role: normalizeUserRole(bodyData.user.role),
+          department: bodyData.user.department
+        };
+        console.log('[auth/login] Session updated:', {
+          sessionId: req.sessionID,
+          userId: req.session.user.id,
+          username: req.session.user.username,
+          role: req.session.user.role
+        });
+      }
+      
       res.json(bodyData);
     } else {
       res.end();
@@ -5770,25 +5792,6 @@ app.get('/api/uploads/:filename', async (req, res) => {
   // Redirect to /api/files logic
   req.url = `/api/files/${req.params.filename}`;
   app.handle(req, res);
-});
-
-// Root endpoint - API server info
-app.get('/', (req, res) => {
-  res.json({
-    service: 'Emergency Assistance API Server',
-    version: VERSION,
-    status: 'running',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'production',
-    frontend: FRONTEND_URL,
-    endpoints: {
-      health: '/api/health',
-      healthDetailed: '/api/health/detailed',
-      healthFull: '/api/health/full',
-      version: '/api/version'
-    },
-    message: 'このサーバーはAPIサーバーです。フロントエンドは別URLでホストされています。'
-  });
 });
 
 // ===== 404                          =====
