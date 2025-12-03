@@ -111,6 +111,14 @@ const isOpenAIAvailable = !!OPENAI_API_KEY;
 // ==== Version Information ====
 const VERSION = '2025-12-02T10:20:00+09:00';
 
+// ==== Multer (file upload) configuration ====
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
+});
+
 // 起動時にBLOB設定をログ出力
 console.log('🔧 BLOB Storage Configuration:');
 console.log('   AZURE_STORAGE_CONNECTION_STRING:', connectionString ? `[SET] (length: ${connectionString.length})` : '[NOT SET]');
@@ -5785,7 +5793,7 @@ const clientDistPaths = [
 let clientDistPath = null;
 for (const testPath of clientDistPaths) {
   const indexPath = join(testPath, 'index.html');
-  if (fsSync.existsSync(indexPath)) {
+  if (fs.existsSync(indexPath)) {
     clientDistPath = testPath;
     console.log('✅ Client files found at:', clientDistPath);
     break;
