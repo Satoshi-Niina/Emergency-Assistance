@@ -1056,189 +1056,43 @@ const normalizeUserRole = (rawRole) => {
   return 'employee';
 };
 
-//                    
+//                   - Azure Functions         
+const authLoginHandler = require('./src/api/auth/login/index.js');
+
 app.post('/api/auth/login', async (req, res) => {
-  const origin = req.headers.origin;
-  console.log('  Login request from origin:', origin);
-  console.log('  Request headers:', JSON.stringify(req.headers, null, 2));
-  console.log('  Request body:', JSON.stringify(req.body, null, 2));
-
   try {
-    const { username, password } = req.body || {};
+    // Azure Functions        Express          
+    const context = {
+      log: (...args) => console.log('[auth/login]', ...args),
+      error: (...args) => console.error('[auth/login ERROR]', ...args)
+    };
 
-    console.log('[auth/login] Login attempt:', {
-      username,
-      hasPassword: !!password,
-      passwordLength: password ? password.length : 0,
-      origin: origin,
-      timestamp: new Date().toISOString(),
-      dbPoolStatus: !!dbPool
-    });
+    const request = {
+      method: req.method,
+      url: req.url,
+      headers: req.headers,
+      json: async () => req.body,
+      text: async () => JSON.stringify(req.body)
+    };
 
-    //     
-    if (!username || !password) {
-      return res.status(400).json({
-        success: false,
-        error: 'bad_request',
-        message: '                '
+    const result = await authLoginHandler(context, request);
+
+    // Azure Functions           Express      
+    res.status(result.status);
+    if (result.headers) {
+      Object.entries(result.headers).forEach(([key, value]) => {
+        res.setHeader(key, value);
       });
     }
 
-    //                  
-    if (!dbPool) {
-      console.error('[auth/login] No database connection available');
-      return res.status(500).json({
-        success: false,
-        error: 'database_unavailable',
-        message: '                '
-      });
+    if (result.body) {
+      const bodyData = typeof result.body === 'string' ? JSON.parse(result.body) : result.body;
+      res.json(bodyData);
+    } else {
+      res.end();
     }
-
-    try {
-      //                
-      console.log('[auth/login]         :', { username });
-
-      const result = await dbQuery(
-        'SELECT id, username, password, role, display_name, department FROM users WHERE username = $1 LIMIT 1',
-        [username]
-      );
-
-      console.log('[auth/login]         :', {
-        found: result.rows.length > 0,
-        userCount: result.rows.length,
-        query: 'SELECT ... FROM users WHERE username = $1',
-        searchUsername: username
-      });
-
-      if (result.rows.length === 0) {
-        console.error('[auth/login]               ');
-        console.error('[auth/login]                                ');
-        console.error('[auth/login]     : scripts/seed-admin-user.sql          ');
-        
-        // Check total user count to debug "missing users" issue
-        try {
-          const countResult = await dbQuery('SELECT COUNT(*) as count FROM users');
-          console.log('[auth/login] Total users in DB:', countResult.rows[0].count);
-        } catch (e) {
-          console.error('[auth/login] Failed to count users:', e.message);
-        }
-
-        return res.status(401).json({
-          success: false,
-          error: 'USER_NOT_FOUND',
-          message: '                      (DBにユーザーが存在しません)',
-          debug: process.env.NODE_ENV !== 'production' ? {
-            hint: '                   seed-admin-user.sql          '
-          } : undefined
-        });
-      }
-
-      const foundUser = result.rows[0];
-      const normalizedRole = normalizeUserRole(foundUser.role);
-      console.log('[auth/login]         :', {
-        id: foundUser.id,
-        username: foundUser.username,
-        role: foundUser.role,
-        normalizedRole
-      });
-
-      //         bcryptjs 
-      console.log('[auth/login]          ');
-      console.log('[auth/login]         :', password.length);
-      console.log('[auth/login] DB       :', foundUser.password.length);
-      console.log('[auth/login]            :', foundUser.password.substring(0, 7));
-
-      const isPasswordValid = await bcrypt.compare(password, foundUser.password);
-      console.log('[auth/login]          :', { isValid: isPasswordValid });
-
-      if (!isPasswordValid) {
-        console.error('[auth/login]               ');
-        console.error('[auth/login]            DB            ');
-        console.error('[auth/login]                          ');
-        return res.status(401).json({
-          success: false,
-          error: 'INVALID_PASSWORD',
-          message: '                      ',
-          debug: process.env.NODE_ENV !== 'production' ? {
-            hint: '                                '
-          } : undefined
-        });
-      }
-
-      //        
-      console.log('[auth/login] Login successful:', { username, role: normalizedRole, originalRole: foundUser.role });
-
-      //                
-      req.session.user = {
-        id: foundUser.id,
-        username: foundUser.username,
-        role: normalizedRole,
-        displayName: foundUser.display_name,
-        department: foundUser.department
-      };
-      req.session.userRole = normalizedRole;
-
-      const responseUser = {
-        id: foundUser.id,
-        username: foundUser.username,
-        role: normalizedRole,
-        displayName: foundUser.display_name,
-        display_name: foundUser.display_name,
-        department: foundUser.department
-      };
-
-      //                        
-      req.session.save((saveErr) => {
-        if (saveErr) {
-          console.error('[auth/login] Session save error:', saveErr);
-          return res.status(500).json({
-            success: false,
-            error: 'session_save_failed',
-            message: '               '
-          });
-        }
-
-        console.log('[auth/login] Session saved successfully:', {
-          sessionID: req.sessionID,
-          userId: foundUser.id,
-          username: foundUser.username,
-          role: normalizedRole
-        });
-
-        // Set-Cookie       
-        const setCookieHeader = res.getHeader('Set-Cookie');
-        console.log('[auth/login] Set-Cookie header:', setCookieHeader);
-
-        res.json({
-          success: true,
-          user: responseUser,
-          message: '           ',
-          debug: process.env.NODE_ENV !== 'production' ? {
-            sessionID: req.sessionID,
-            sessionSaved: true
-          } : undefined
-        });
-      });
-
-    } catch (dbError) {
-      console.error('[auth/login] Database error:', dbError);
-      console.error('[auth/login] Error details:', {
-        message: dbError.message,
-        code: dbError.code,
-        stack: dbError.stack?.split('\n').slice(0, 3).join('\n'),
-        dbPoolStatus: !!dbPool,
-        databaseUrlSet: !!process.env.DATABASE_URL,
-        databaseUrlLength: process.env.DATABASE_URL ? process.env.DATABASE_URL.length : 0
-      });
-      return res.status(500).json({
-        success: false,
-        error: 'database_error',
-        message: '                '
-      });
-    }
-
   } catch (error) {
-    console.error('[auth/login] Login error:', error);
+    console.error('[auth/login] Handler error:', error);
     res.status(500).json({
       success: false,
       error: 'internal_error',
@@ -1786,68 +1640,44 @@ app.get('/api/history/machine-data', async (req, res) => {
   }
 });
 
-//             API
+//             API - Azure Functions        
+const historyHandler = require('./src/api/history/index.js');
+
 app.get('/api/history/export-files', async (req, res) => {
   try {
-    console.log('[api/history/export-files] =====                       =====');
-    console.log('[api/history/export-files]      URL:', req.url);
-    console.log('[api/history/export-files]          :', req.method);
+    const context = {
+      log: (...args) => console.log('[api/history]', ...args),
+      error: (...args) => console.error('[api/history ERROR]', ...args)
+    };
 
-    const items = [];
-    const blobServiceClient = getBlobServiceClient();
-    console.log('[api/history/export-files] BLOB          :', blobServiceClient ? '    ' : '    ');
+    const request = {
+      method: req.method,
+      url: req.url,
+      headers: req.headers,
+      params: { action: 'export-files' },
+      query: req.query
+    };
 
-    if (blobServiceClient) {
-      try {
-        const containerClient = blobServiceClient.getContainerClient(containerName);
-        const prefix = norm('exports/');
-
-        console.log(`  BLOB               : prefix=${prefix}, container=${containerName}`);
-
-        for await (const blob of containerClient.listBlobsFlat({ prefix })) {
-          if (blob.name.endsWith('.json')) {
-            const fileName = blob.name.split('/').pop();
-            
-            //                 : "    _chatId_timestamp.json" 
-            const fileNameWithoutExt = fileName.replace('.json', '');
-            const parts = fileNameWithoutExt.split('_');
-            const title = parts.length > 0 ? parts[0] : '      ';
-            
-            items.push({
-              id: fileNameWithoutExt,
-              fileName: fileName,
-              title: title,
-              blobName: blob.name,
-              createdAt: blob.properties.lastModified?.toISOString() || new Date().toISOString(),
-              exportTimestamp: blob.properties.lastModified?.toISOString() || new Date().toISOString(),
-              lastModified: blob.properties.lastModified,
-              size: blob.properties.contentLength,
-            });
-          }
-        }
-        console.log(`  BLOB   ${items.length}           `);
-      } catch (error) {
-        console.error('  BLOB       :', error);
-        console.error('       :', error instanceof Error ? error.stack : error);
-        // BLOB                    
-      }
-    } else {
-      console.warn('   BLOB                  ');
+    const result = await historyHandler(context, request);
+    
+    res.status(result.status);
+    if (result.headers) {
+      Object.entries(result.headers).forEach(([key, value]) => {
+        res.setHeader(key, value);
+      });
     }
-
-    res.json({
-      success: true,
-      data: items,
-      total: items.length,
-      timestamp: new Date().toISOString()
-    });
+    
+    if (result.body) {
+      const bodyData = typeof result.body === 'string' ? JSON.parse(result.body) : result.body;
+      res.json(bodyData);
+    } else {
+      res.end();
+    }
   } catch (error) {
-    console.error('[api/history/export-files]    :', error);
-    console.error('[api/history/export-files]      :', error instanceof Error ? error.stack : error);
+    console.error('[api/history/export-files] Error:', error);
     res.status(500).json({
       success: false,
-      error: '                      ',
-      details: error instanceof Error ? error.message : 'Unknown error',
+      error: 'Internal server error',
       timestamp: new Date().toISOString()
     });
   }
@@ -1966,48 +1796,44 @@ app.get('/api/history/:id', async (req, res) => {
 
 // NOTE: /api/history/machine-data  1178             
 
-//       API
+//       API - Azure Functions        
+const usersHandler = require('./src/api/users/index.js');
+
 app.get('/api/users', async (req, res) => {
   try {
-    console.log('[api/users]              ');
-    console.log('  Request details:', {
+    const context = {
+      log: (...args) => console.log('[api/users]', ...args),
+      error: (...args) => console.error('[api/users ERROR]', ...args),
+      res: {}
+    };
+
+    const request = {
       method: req.method,
       url: req.url,
-      userAgent: req.get('User-Agent'),
-      origin: req.get('Origin'),
-      timestamp: new Date().toISOString()
-    });
+      headers: req.headers
+    };
 
-    if (!dbPool) {
-      console.warn('   No database connection available');
-      return res.json({
-        success: true,
-        data: [],
-        message: '                  ',
-        timestamp: new Date().toISOString()
+    await usersHandler(context, request);
+    
+    const result = context.res;
+    res.status(result.status || 200);
+    if (result.headers) {
+      Object.entries(result.headers).forEach(([key, value]) => {
+        res.setHeader(key, value);
       });
     }
-
-    const result = await dbQuery(`
-      SELECT id, username, display_name, role, department, created_at
-      FROM users
-      ORDER BY created_at DESC
-    `);
-
-    console.log('[api/users]           :', result.rows.length + ' ');
-
-    res.json({
-      success: true,
-      data: result.rows,
-      total: result.rows.length,
-      timestamp: new Date().toISOString()
-    });
+    
+    if (result.body) {
+      const bodyData = typeof result.body === 'string' ? JSON.parse(result.body) : result.body;
+      res.json(bodyData);
+    } else {
+      res.end();
+    }
   } catch (error) {
-    console.error('[api/users]            :', error);
+    console.error('[api/users] Error:', error);
     res.status(500).json({
       success: false,
-      error: '                ',
-      details: error.message,
+      error: 'Internal server error',
       timestamp: new Date().toISOString()
     });
   }
