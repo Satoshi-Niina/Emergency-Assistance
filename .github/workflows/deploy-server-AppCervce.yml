@@ -41,20 +41,18 @@ jobs:
           echo "⚠️ Skipping shared build (tsc not required for server deploy)"
           echo "✅ Shared dependencies installed"
 
-      - name: 📦 Install server dependencies
+      - name: 📦 Install server dependencies (include in ZIP)
         run: |
-          echo "📦 Installing server dependencies..."
+          echo "📦 Installing server dependencies for deployment..."
           cd server
           
-          # package-lock.jsonがあればci、なければinstall
-          if [ -f package-lock.json ]; then
-            npm ci --omit=dev --no-audit --no-fund
-          else
-            npm install --omit=dev --no-audit --no-fund
-          fi
+          # production依存関係のみインストール
+          npm ci --omit=dev --no-audit --no-fund
           
           echo "✅ Dependencies installed"
-          echo "📊 Installed packages:"
+          echo "📊 node_modules size:"
+          du -sh node_modules
+          echo "📊 Sample packages:"
           ls node_modules | head -20
 
       - name: 📝 Create web.config
@@ -115,7 +113,7 @@ jobs:
             
             az webapp config appsettings delete \
               --resource-group rg-Emergencyassistant-app \
-              --name emergency-assistantapp-node20 \
+              --name emergency-assistantapp \
               --setting-names WEBSITE_RUN_FROM_PACKAGE \
               || echo "✅ WEBSITE_RUN_FROM_PACKAGE not found (OK)"
             
@@ -141,7 +139,7 @@ jobs:
             
             az webapp config appsettings set \
               --resource-group rg-Emergencyassistant-app \
-              --name emergency-assistantapp-node20 \
+              --name emergency-assistantapp \
               --settings \
                 NODE_ENV=production \
                 DATABASE_URL="${{ secrets.DATABASE_URL }}" \
@@ -160,29 +158,23 @@ jobs:
                 OPENAI_MAX_TOKENS=2000 \
                 DEBUG_MODE=false \
                 VERBOSE_LOGGING=false \
-                SCM_DO_BUILD_DURING_DEPLOYMENT=true \
-                ENABLE_ORYX_BUILD=true \
-                ORYX_APP_TYPE=node \
                 WEBSITE_LOCAL_CACHE_OPTION=Never \
                 WEBSITE_DYNAMIC_CACHE=0 \
-                WEBSITES_ENABLE_APP_SERVICE_STORAGE=true \
-                WEBSITE_NODE_DEFAULT_VERSION=20.11.1
+                WEBSITES_ENABLE_APP_SERVICE_STORAGE=true
             
             echo "✅ Environment variables configured BEFORE deployment"
             sleep 5
 
-      - name: 📦 Create deployment package (with package.json for Oryx)
+      - name: 📦 Create deployment package (with node_modules)
         run: |
-          echo "📦 Creating deployment package for Oryx build..."
+          echo "📦 Creating deployment package with node_modules..."
           cd server
           
-          # Oryxが正しくNode.js 20を使用するように設定
           echo "Node.js version specification:"
           echo "  - .nvmrc: $(cat .nvmrc)"
           echo "  - package.json engines.node: $(cat package.json | grep -A1 'engines' | grep node)"
           
-          # zipパッケージ作成 (package.json, .nvmrcを含める)
-          # node_modulesは除外し、Oryxにビルドさせる
+          # zipパッケージ作成 (node_modules含む)
           zip -r ../deploy.zip . \
             -x '*.git*' \
             -x '*.log' \
@@ -192,32 +184,29 @@ jobs:
             -x 'src/*' \
             -x '.env*' \
             -x 'test/*' \
-            -x 'tests/*' \
-            -x 'node_modules/*'
+            -x 'tests/*'
           
           cd ..
           echo "✅ Package created:"
           ls -lh deploy.zip
-          echo "📊 Package contents (first 20 files):"
-          unzip -l deploy.zip | head -25
+          echo "📊 Package size with node_modules included"
 
-      - name: 🚀 Deploy to Azure App Service (Force Oryx build via API)
-        run: |
-          echo "🚀 Deploying to Azure App Service with forced Oryx build..."
-          
-          # Kudu APIを直接使用してOryxビルドを強制
-          # --build-remote フラグでリモートビルドを有効化
-          az webapp deploy \
-            --resource-group rg-Emergencyassistant-app \
-            --name emergency-assistantapp-node20 \
-            --src-path deploy.zip \
-            --type zip \
-            --async false \
-            --timeout 600
-          
-          echo "✅ Deploy with Oryx build completed"
-          echo "⏳ Waiting 30 seconds for app startup..."
-          sleep 30
+      - name: 🚀 Deploy to Azure App Service (with node_modules)
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            echo "🚀 Deploying to Azure App Service..."
+            
+            # ZipDeployでデプロイ（node_modules含む）
+            az webapp deployment source config-zip \
+              --resource-group rg-Emergencyassistant-app \
+              --name emergency-assistantapp \
+              --src deploy.zip \
+              --timeout 600
+            
+            echo "✅ ZipDeploy completed"
+            echo "⏳ Waiting 30 seconds for app startup..."
+            sleep 30
 
       - name: ▶️ Start App Service with new deployment
         uses: azure/cli@v1
@@ -227,7 +216,7 @@ jobs:
             
             az webapp start \
               --resource-group rg-Emergencyassistant-app \
-              --name emergency-assistantapp-node20
+              --name emergency-assistantapp
             
             echo "⏳ Waiting 20 seconds for app to fully start..."
             sleep 20
@@ -238,7 +227,7 @@ jobs:
           echo "✅ Deployment completed"
           echo "🔍 Verifying deployment..."
           
-          APP_URL="https://emergency-assistantapp-node20.azurewebsites.net"
+          APP_URL="https://emergency-assistantapp.azurewebsites.net"
           
           # Health check（最大3回リトライ）
           for i in 1 2 3; do
