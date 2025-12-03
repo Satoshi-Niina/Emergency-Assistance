@@ -549,12 +549,21 @@ async function dbQuery(sql, params = [], retries = 3) {
 }
 
 //             
-initializeDatabase();
+// initializeDatabase(); // startupSequence内で呼び出すように変更
 
 //                     
 async function startupSequence() {
   try {
     console.log('  Starting Azure application startup sequence...');
+
+    // データベース初期化をここで実行し、エラーをキャッチできるようにする
+    console.log('  Initializing database...');
+    try {
+      await initializeDatabase();
+    } catch (dbError) {
+      console.error('  CRITICAL: Database initialization failed:', dbError);
+      // DBエラーでもサーバーは起動を継続する
+    }
 
     // BLOB           
     const blobClient = getBlobServiceClient();
