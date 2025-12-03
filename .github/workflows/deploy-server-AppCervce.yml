@@ -106,6 +106,21 @@ jobs:
           echo "📋 Deployment Info:"
           cat DEPLOY_INFO.txt
 
+      - name: 🧹 Remove conflicting settings before deploy
+        uses: azure/cli@v1
+        continue-on-error: true
+        with:
+          inlineScript: |
+            echo "🧹 Removing WEBSITE_RUN_FROM_PACKAGE (blocks ZipDeploy)..."
+            
+            az webapp config appsettings delete \
+              --resource-group rg-Emergencyassistant-app \
+              --name emergency-assistantapp \
+              --setting-names WEBSITE_RUN_FROM_PACKAGE \
+              || echo "✅ WEBSITE_RUN_FROM_PACKAGE not found (OK)"
+            
+            echo "✅ Conflicting settings removed"
+
       - name: ⏸️ Stop App Service for clean deployment
         uses: azure/cli@v1
         with:
@@ -195,15 +210,6 @@ jobs:
         uses: azure/cli@v1
         with:
           inlineScript: |
-            echo "⚙️ Removing conflicting app settings..."
-            
-            # WEBSITE_RUN_FROM_PACKAGE を削除（ZipDeploy と競合するため）
-            az webapp config appsettings delete \
-              --resource-group rg-Emergencyassistant-app \
-              --name emergency-assistantapp \
-              --setting-names WEBSITE_RUN_FROM_PACKAGE \
-              || echo "WEBSITE_RUN_FROM_PACKAGE not found (OK)"
-            
             echo "⚙️ Setting environment variables..."
             
             az webapp config appsettings set \
@@ -231,18 +237,11 @@ jobs:
                 WEBSITE_LOCAL_CACHE_OPTION=Never \
                 WEBSITE_DYNAMIC_CACHE=0 \
                 WEBSITES_ENABLE_APP_SERVICE_STORAGE=true \
-                WEBSITE_NODE_DEFAULT_VERSION=~20
+                WEBSITE_NODE_DEFAULT_VERSION="20.18.0"
             
             echo "✅ Environment variables configured"
-            
-            # Node.js バージョンを明示的に設定（重要）
-            echo "🔧 Setting Node.js version to 20..."
-            az webapp config set \
-              --resource-group rg-Emergencyassistant-app \
-              --name emergency-assistantapp \
-              --linux-fx-version "NODE|20-lts"
-            
-            echo "✅ Node.js version configured to 20-lts"
+            echo "⏳ Waiting 10 seconds for settings to propagate..."
+            sleep 10
 
       - name: ▶️ Start App Service with new deployment
         uses: azure/cli@v1
