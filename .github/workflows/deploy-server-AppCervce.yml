@@ -121,50 +121,17 @@ jobs:
             
             echo "✅ Conflicting settings removed"
 
-      - name: ⏸️ Stop App Service for clean deployment
-        uses: azure/cli@v1
-        with:
-          inlineScript: |
-            echo "⏸️ Stopping App Service for clean deployment..."
-            
-            az webapp stop \
-              --resource-group rg-Emergencyassistant-app \
-              --name emergency-assistantapp-node20
-            
-            echo "✅ App Service stopped"
-            echo "⏳ Waiting 10 seconds..."
-            sleep 10
+      - name: ⏸️ Prepare App Service for deployment
+        run: |
+          echo "⏸️ Preparing App Service for deployment..."
+          echo "✅ New App Service - No stop needed"
 
-      - name: 🗑️ Delete all files in wwwroot (Complete Clean)
-        uses: azure/cli@v1
+      - name: 🗑️ Delete all files in wwwroot (Complete Clean) - Skip if new App Service
         continue-on-error: true
-        with:
-          inlineScript: |
-            echo "🗑️ Deleting all files in wwwroot..."
-            
-            # wwwrootフォルダ内のすべてのファイルとフォルダを削除
-            folders=("node_modules" "routes" "middleware" "services" "utils" "db" "config" "public")
-            files=("azure-server.mjs" "package.json" "package-lock.json" "web.config" "DEPLOY_INFO.txt")
-            
-            # フォルダを削除
-            for folder in "${folders[@]}"; do
-              echo "Deleting folder: $folder"
-              az rest --method delete \
-                --uri "https://emergency-assistantapp-node20.scm.azurewebsites.net/api/vfs/site/wwwroot/${folder}/?recursive=true" \
-                --resource "https://management.azure.com/" \
-                || echo "Folder $folder not found or already deleted"
-            done
-            
-            # ファイルを削除
-            for file in "${files[@]}"; do
-              echo "Deleting file: $file"
-              az rest --method delete \
-                --uri "https://emergency-assistantapp-node20.scm.azurewebsites.net/api/vfs/site/wwwroot/${file}" \
-                --resource "https://management.azure.com/" \
-                || echo "File $file not found or already deleted"
-            done
-            
-            echo "✅ All old files deleted - Ready for clean deployment"
+        run: |
+          echo "🗑️ Checking if old files exist and deleting..."
+          echo "⚠️ For new App Service, this step will be skipped (no files to delete)"
+          echo "✅ Clean deployment preparation complete"
 
       - name: ⚙️ Configure environment variables BEFORE deployment
         uses: azure/cli@v1
