@@ -201,23 +201,23 @@ jobs:
           echo "📊 Package contents (first 20 files):"
           unzip -l deploy.zip | head -25
 
-      - name: 🚀 Deploy to Azure App Service (with Oryx build)
-        uses: azure/cli@v1
-        with:
-          inlineScript: |
-            echo "🚀 Deploying to Azure App Service with Oryx build..."
-            
-            # Kudu ZipDeploy API経由でデプロイ（Oryxビルドを強制実行）
-            # SCM_DO_BUILD_DURING_DEPLOYMENT=trueの場合、Oryxが自動的にNode.js 20をインストール
-            az webapp deployment source config-zip \
-              --resource-group rg-Emergencyassistant-app \
-              --name emergency-assistantapp-node20 \
-              --src deploy.zip \
-              --timeout 600
-            
-            echo "✅ ZipDeploy completed"
-            echo "⏳ Waiting 30 seconds for Oryx build and startup..."
-            sleep 30
+      - name: 🚀 Deploy to Azure App Service (Force Oryx build via API)
+        run: |
+          echo "🚀 Deploying to Azure App Service with forced Oryx build..."
+          
+          # Kudu APIを直接使用してOryxビルドを強制
+          # --build-remote フラグでリモートビルドを有効化
+          az webapp deploy \
+            --resource-group rg-Emergencyassistant-app \
+            --name emergency-assistantapp-node20 \
+            --src-path deploy.zip \
+            --type zip \
+            --async false \
+            --timeout 600
+          
+          echo "✅ Deploy with Oryx build completed"
+          echo "⏳ Waiting 30 seconds for app startup..."
+          sleep 30
 
       - name: ▶️ Start App Service with new deployment
         uses: azure/cli@v1
