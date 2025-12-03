@@ -200,7 +200,8 @@ const corsOptions = {
       STATIC_WEB_APP_URL,
       'http://localhost:5173',
       'http://localhost:5002',
-      'http://localhost:3000'
+      'http://localhost:3000',
+      'https://happy-bush-083160b00.3.azurestaticapps.net'
     ];
 
     console.log('  CORS Check:', {
@@ -227,9 +228,15 @@ const corsOptions = {
   credentials: true, // Cookie           
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control', 'Pragma', 'Expires', 'If-Modified-Since'],
-  exposedHeaders: ['Set-Cookie'],
+  exposedHeaders: ['Set-Cookie', 'Cache-Control'],
   maxAge: 86400 // 24  
 };
+
+// Force CORS headers for OPTIONS requests
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires, If-Modified-Since');
+  next();
+});
 
 app.use(cors(corsOptions));
 
