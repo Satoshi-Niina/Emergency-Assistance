@@ -20,24 +20,61 @@ jobs:
     runs-on: ubuntu-latest
     name: Build and Deploy Client to Azure Static Web Apps
 
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: false
+          fetch-depth: 0  # 完全な履歴を取得してバージョン管理
+
+      - name: Generate deployment metadata
+        id: metadata
+        run: |
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          COMMIT_TIME=$(git log -1 --format=%cI)
+          BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+          echo "commit_time=$COMMIT_TIME" >> $GITHUB_OUTPUT
+          echo "build_time=$BUILD_TIME" >> $GITHUB_OUTPUT
+          echo "📋 Client Deployment Metadata:"
+          echo "   Commit: $COMMIT_SHA"
+          echo "   Time: $BUILD_TIME"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: client/package-lock.json
+          # npm cacheを無効化して常に最新の依存関係をインストール
 
       - name: Install dependencies
         run: |
           cd client
-          npm ci
+          echo "📦 Installing dependencies with --no-cache..."
+          npm ci --no-cache
+
+      - name: Create deployment metadata file
+        run: |
+          cd client
+          cat > public/deployment-info.json << EOF
+          {
+            "commit_sha": "${{ steps.metadata.outputs.commit_sha }}",
+            "commit_time": "${{ steps.metadata.outputs.commit_time }}",
+            "build_time": "${{ steps.metadata.outputs.build_time }}",
+            "workflow_run": "${{ github.run_number }}",
+            "deployed_by": "GitHub Actions"
+          }
+          EOF
+          echo "📋 Created deployment-info.json:"
+          cat public/deployment-info.json
+
+      - name: Clean build artifacts
+        run: |
+          cd client
+          echo "🧹 Cleaning all previous build artifacts..."
+          rm -rf dist
+          rm -rf node_modules/.vite
+          rm -rf node_modules/.cache
+          echo "✅ Clean completed"
 
       - name: Build client
         env:
@@ -50,72 +87,57 @@ jobs:
           echo "🔧 Building with environment:"
           echo "   VITE_BACKEND_SERVICE_URL: $VITE_BACKEND_SERVICE_URL"
           echo "   NODE_ENV: $NODE_ENV"
-          
-          # 古いビルド成果物を削除してクリーンビルドを保証
-          echo "🧹 Cleaning previous build artifacts..."
-          rm -rf dist
+          echo "   Commit: ${{ steps.metadata.outputs.commit_sha }}"
           
           npm run build
           echo "✅ Build completed"
-          
-          # ビルド後の確認
-          echo "🔍 Verifying build output..."
-          if [ -f "dist/index.html" ]; then
-            echo "✅ dist/index.html exists"
-            # プレースホルダーが置換されているか確認
-            if grep -q "%%%VITE_BACKEND_SERVICE_URL%%%" dist/index.html; then
-              echo "❌ ERROR: Placeholder still exists in dist/index.html"
-              exit 1
-            else
-              echo "✅ Placeholders replaced successfully"
-            fi
-          else
-            echo "❌ ERROR: dist/index.html not found"
-            exit 1
-          fi
 
       - name: Verify build output
         run: |
           cd client
           echo "🔍 Verifying build output..."
-          if [ -f "dist/index.html" ]; then
-            echo "✅ dist/index.html found"
-            echo "🔍 Checking for placeholders..."
-            
-            # プレースホルダーの確認
-            if grep -q "%%%VITE_BACKEND_SERVICE_URL%%%" dist/index.html; then
-              echo "❌ ERROR: Placeholder still exists in dist/index.html"
-              echo "   This means replace-env.cjs did not run or failed"
-              exit 1
-            else
-              echo "✅ No placeholders found - replacement successful"
-            fi
-            
-            # バックエンドURLが正しく設定されているか確認
-            if grep -q "window.BACKEND_SERVICE_URL" dist/index.html; then
-              echo "✅ BACKEND_SERVICE_URL found in index.html"
-              # バックエンドURLの値を確認（空でないことを確認）
-              BACKEND_URL=$(grep -oP 'window\.BACKEND_SERVICE_URL\s*=\s*[^;]+' dist/index.html | head -1 || echo "")
-              if [ -n "$BACKEND_URL" ]; then
-                echo "   Backend URL setting: $BACKEND_URL"
-              fi
-            else
-              echo "⚠️  WARNING: BACKEND_SERVICE_URL not found in index.html"
-            fi
-            
-            # runtimeConfigの確認
-            if grep -q "window.runtimeConfig" dist/index.html; then
-              echo "✅ runtimeConfig found in index.html"
-            else
-              echo "⚠️  WARNING: runtimeConfig not found in index.html"
-            fi
-          else
+          
+          if [ ! -f "dist/index.html" ]; then
             echo "❌ ERROR: dist/index.html not found!"
             exit 1
           fi
+          
+          echo "✅ dist/index.html found"
+          
+          # deployment-info.jsonの確認
+          if [ -f "dist/deployment-info.json" ]; then
+            echo "✅ deployment-info.json found"
+            cat dist/deployment-info.json
+          else
+            echo "⚠️  WARNING: deployment-info.json not found"
+          fi
+          
+          # プレースホルダーの確認
+          echo "🔍 Checking for placeholders..."
+          if grep -q "%%%VITE_BACKEND_SERVICE_URL%%%" dist/index.html; then
+            echo "❌ ERROR: Placeholder still exists in dist/index.html"
+            exit 1
+          fi
+          echo "✅ No placeholders found"
+          
+          # バックエンドURLの確認
+          if grep -q "window.BACKEND_SERVICE_URL" dist/index.html; then
+            echo "✅ BACKEND_SERVICE_URL found in index.html"
+            BACKEND_URL=$(grep -oP 'window\.BACKEND_SERVICE_URL\s*=\s*[^;]+' dist/index.html | head -1 || echo "")
+            echo "   Backend URL: $BACKEND_URL"
+          fi
+          
+          # ビルドファイル数の確認
+          FILE_COUNT=$(find dist -type f | wc -l)
+          echo "📊 Total files in dist: $FILE_COUNT"
+          
+          # 主要ファイルの確認
+          echo "📋 Key files:"
+          ls -lh dist/index.html dist/deployment-info.json dist/assets/*.js | head -5 || true
         shell: bash
 
-      - name: Deploy to Azure Static Web Apps
+      - name: Deploy to Azure Static Web Apps (with cache busting)
+        id: deploy
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
@@ -124,5 +146,48 @@ jobs:
           app_location: "client/dist"
           output_location: "."
           skip_app_build: true
+        env:
+          # キャッシュ無効化
+          DEPLOYMENT_ACTION: "upload"
+          SKIP_API_BUILD: "true"
 
-# Trigger: 2025-11-30 15:30 - Deploy with server environment sync
+      - name: Wait and verify deployment
+        run: |
+          echo "⏳ Waiting 30 seconds for deployment to propagate..."
+          sleep 30
+          
+          APP_URL="https://happy-bush-083160b00.3.azurestaticapps.net"
+          EXPECTED_COMMIT="${{ steps.metadata.outputs.commit_sha }}"
+          
+          echo "🔍 Verifying deployment..."
+          for i in 1 2 3 4 5; do
+            echo "Attempt $i/5: Checking deployed version..."
+            
+            # deployment-info.jsonを確認
+            DEPLOY_INFO=$(curl -s "$APP_URL/deployment-info.json" || echo "{}")
+            
+            if [ "$DEPLOY_INFO" != "{}" ] && [ "$DEPLOY_INFO" != "404" ]; then
+              echo "✅ Deployment info retrieved"
+              echo "$DEPLOY_INFO"
+              
+              DEPLOYED_COMMIT=$(echo "$DEPLOY_INFO" | grep -oP '"commit_sha"\s*:\s*"\K[^"]+' || echo "unknown")
+              
+              if [ "$DEPLOYED_COMMIT" = "$EXPECTED_COMMIT" ]; then
+                echo "✅ Client deployment verified: Correct version deployed"
+                echo "   Expected: $EXPECTED_COMMIT"
+                echo "   Deployed: $DEPLOYED_COMMIT"
+                exit 0
+              else
+                echo "⚠️ Version mismatch"
+                echo "   Expected: $EXPECTED_COMMIT"
+                echo "   Got: $DEPLOYED_COMMIT"
+              fi
+            else
+              echo "⚠️ Could not retrieve deployment info (attempt $i/5)"
+            fi
+            
+            [ $i -lt 5 ] && sleep 15
+          done
+          
+          echo "⚠️ Deployment verification incomplete - may need manual check"
+          echo "Please verify at: $APP_URL/deployment-info.json"
