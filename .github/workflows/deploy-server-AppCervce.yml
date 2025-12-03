@@ -98,7 +98,7 @@ jobs:
       - name: Create deployment package
         run: |
           cd server
-          zip -r ../deploy.zip . -x '*.git*' -x '*.log' -x '*.ts' -x 'tsconfig.*' -x 'dist/*' -x 'src/*' -x '.env*' -x 'test/*' -x 'tests/*'
+          zip -r ../deploy.zip . -x '*.git*' -x '*.log' -x '*.ts' -x 'tsconfig.*' -x 'dist/*' -x '.env*' -x 'test/*' -x 'tests/*'
           cd ..
           echo "📦 Package size: $(du -h deploy.zip | cut -f1)"
 
