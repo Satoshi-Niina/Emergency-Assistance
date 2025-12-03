@@ -182,12 +182,12 @@ jobs:
           inlineScript: |
             echo "🚀 Deploying to Azure App Service..."
             
-            # ZipDeployを実行
+            # ZipDeployを実行（タイムアウト10分）
             az webapp deployment source config-zip \
               --resource-group rg-Emergencyassistant-app \
               --name emergency-assistantapp \
               --src deploy.zip \
-              --timeout 1800
+              --timeout 600
             
             echo "✅ ZipDeploy completed"
 
@@ -237,8 +237,8 @@ jobs:
               --resource-group rg-Emergencyassistant-app \
               --name emergency-assistantapp
             
-            echo "⏳ Waiting 45 seconds for app to fully start..."
-            sleep 45
+            echo "⏳ Waiting 20 seconds for app to fully start..."
+            sleep 20
             echo "✅ App Service started successfully with clean deployment"
 
       - name: ✅ Verify deployment
