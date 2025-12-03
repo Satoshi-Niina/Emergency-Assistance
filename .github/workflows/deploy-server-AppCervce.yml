@@ -37,6 +37,7 @@ jobs:
         run: |
           echo "📦 Installing shared dependencies..."
           cd shared
+          # npm ciではなくnpm installを使用（バージョンの不整合を避けるため）
           npm install --omit=dev --no-audit --no-fund
           npm run build
           echo "✅ Shared module built"
@@ -289,5 +290,3 @@ jobs:
           echo "  - URL: $APP_URL"
           echo ""
           echo "🎉 Deployment workflow completed!"
-
-# Trigger: Simplified and reliable deployment workflow
