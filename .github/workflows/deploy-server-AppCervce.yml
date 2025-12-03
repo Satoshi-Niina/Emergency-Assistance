@@ -13,9 +13,9 @@ on:
 
 jobs:
   build-and-deploy:
-    runs-on: windows-latest
+    runs-on: windows-1
     name: Build and Deploy Server
-    timeout-minutes: 30
+    timeout-minutes: 10
 
     steps:
       - name: 📥 Checkout code
@@ -38,8 +38,8 @@ jobs:
           echo "📦 Installing shared dependencies..."
           cd shared
           npm install --omit=dev --no-audit --no-fund
-          npm run build
-          echo "✅ Shared module built"
+          echo "⚠️ Skipping shared build (tsc not required for server deploy)"
+          echo "✅ Shared dependencies installed"
 
       - name: 📦 Install server dependencies
         run: |
