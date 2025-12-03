@@ -37,7 +37,7 @@ jobs:
         run: |
           echo "📦 Installing shared dependencies..."
           cd shared
-          npm ci --omit=dev --no-audit --no-fund
+          npm install --omit=dev --no-audit --no-fund
           npm run build
           echo "✅ Shared module built"
 
