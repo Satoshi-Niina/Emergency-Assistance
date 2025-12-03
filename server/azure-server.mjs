@@ -109,7 +109,7 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const isOpenAIAvailable = !!OPENAI_API_KEY;
 
 // ==== Version Information ====
-const VERSION = '2025-12-02T10:20:00+09:00';
+const VERSION = '2025-12-03T21:20:00+09:00';
 
 // ==== Multer (file upload) configuration ====
 const upload = multer({
