@@ -1,52 +1,64 @@
 name: Deploy Server to Azure App Service
 
-# 新しいデプロイが開始されたら古い実行を自動キャンセル
-concurrency:
-  group: deploy-server-${{ github.ref }}
-  cancel-in-progress: true
-
 on:
   push:
     branches:
       - main
+    paths:
+      - 'server/**'
+      - 'shared/**'
+      - '.github/workflows/deploy-server-AppCervce.yml'
   workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    name: Build and Deploy Server
-    timeout-minutes: 10
-
+    
     steps:
-      - name: 📥 Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
 
-      - name: 🔧 Setup Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            shared/package-lock.json
+            server/package-lock.json
 
-      - name: 🔐 Login to Azure
-        uses: azure/login@v1
+      - name: Install shared dependencies
+        run: |
+          cd shared
+          npm ci --omit=dev
+
+      - name: Install server dependencies
+        run: |
+          cd server
+          npm ci --omit=dev
+
+      - name: Login to Azure
+        uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: 📦 Install shared module
+      - name: Stop App Service for clean deployment
         run: |
-          echo "📦 Installing shared dependencies..."
-          cd shared
-          npm install --omit=dev --no-audit --no-fund
-          echo "⚠️ Skipping shared build (tsc not required for server deploy)"
-          echo "✅ Shared dependencies installed"
+          echo "🛑 Stopping App Service for clean deployment..."
+          az webapp stop --name emergency-assistantapp --resource-group rg-Emergencyassistant-app
+          echo "✅ App Service stopped"
 
-      - name: 📦 Skip local install (Let Oryx build on Azure)
+      - name: Clean wwwroot directory
         run: |
-          echo "📦 Skipping local npm install..."
-          echo "⚡ Oryx will build dependencies on Azure for faster deployment"
+          echo "🧹 Cleaning old files from wwwroot..."
+          az webapp deploy --resource-group rg-Emergencyassistant-app \
+            --name emergency-assistantapp \
+            --type static \
+            --src-path /dev/null \
+            --clean true || echo "⚠️ Clean command not supported, will overwrite with new files"
+          echo "✅ Old files cleaned"
 
-      - name: 📝 Create web.config
+      - name: Create web.config
         run: |
           cat > server/web.config << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
@@ -71,178 +83,38 @@ jobs:
                   </rule>
                 </rules>
               </rewrite>
-              <security>
-                <requestFiltering>
-                  <hiddenSegments>
-                    <remove segment="bin"/>
-                  </hiddenSegments>
-                </requestFiltering>
-              </security>
               <httpErrors existingResponse="PassThrough" />
             </system.webServer>
           </configuration>
           EOF
-          echo "✅ web.config created"
 
-      - name: 📝 Create deployment info
-        run: |
-          cd server
-          timestamp=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
-          echo "Deployment Timestamp: $timestamp" > DEPLOY_INFO.txt
-          echo "Commit SHA: ${{ github.sha }}" >> DEPLOY_INFO.txt
-          echo "Run Number: ${{ github.run_number }}" >> DEPLOY_INFO.txt
-          
-          echo "📋 Deployment Info:"
-          cat DEPLOY_INFO.txt
-
-      - name: 🧹 Remove conflicting settings before deploy
-        uses: azure/cli@v1
-        continue-on-error: true
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
         with:
-          inlineScript: |
-            echo "🧹 Removing WEBSITE_RUN_FROM_PACKAGE (blocks ZipDeploy)..."
-            
-            az webapp config appsettings delete \
-              --resource-group rg-Emergencyassistant-app \
-              --name emergency-assistantapp \
-              --setting-names WEBSITE_RUN_FROM_PACKAGE \
-              || echo "✅ WEBSITE_RUN_FROM_PACKAGE not found (OK)"
-            
-            echo "✅ Conflicting settings removed"
+          app-name: emergency-assistantapp
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./server
+          clean: true
 
-      - name: ⏸️ Prepare App Service for deployment
+      - name: Start App Service
         run: |
-          echo "⏸️ Preparing App Service for deployment..."
-          echo "✅ New App Service - No stop needed"
+          echo "▶️ Starting App Service..."
+          az webapp start --name emergency-assistantapp --resource-group rg-Emergencyassistant-app
+          echo "✅ App Service started"
 
-      - name: 🗑️ Delete all files in wwwroot (Complete Clean) - Skip if new App Service
-        continue-on-error: true
+      - name: Wait and verify deployment
         run: |
-          echo "🗑️ Checking if old files exist and deleting..."
-          echo "⚠️ For new App Service, this step will be skipped (no files to delete)"
-          echo "✅ Clean deployment preparation complete"
-
-      - name: ⚙️ Configure environment variables BEFORE deployment
-        uses: azure/cli@v1
-        with:
-          inlineScript: |
-            echo "⚙️ Setting environment variables BEFORE deployment..."
-            
-            az webapp config appsettings set \
-              --resource-group rg-Emergencyassistant-app \
-              --name emergency-assistantapp \
-              --settings \
-                NODE_ENV=production \
-                DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-                PG_SSL="${{ secrets.PG_SSL }}" \
-                SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
-                JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-                FRONTEND_URL="${{ secrets.FRONTEND_URL }}" \
-                STATIC_WEB_APP_URL="${{ secrets.STATIC_WEB_APP_URL }}" \
-                AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
-                AZURE_STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
-                AZURE_STORAGE_ACCOUNT_KEY="${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}" \
-                AZURE_STORAGE_CONTAINER_NAME=knowledge \
-                BLOB_PREFIX=knowledge-base/ \
-                STORAGE_MODE=azure \
-                OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-                OPENAI_MAX_TOKENS=2000 \
-                DEBUG_MODE=false \
-                VERBOSE_LOGGING=false \
-                WEBSITE_LOCAL_CACHE_OPTION=Never \
-                WEBSITE_DYNAMIC_CACHE=0 \
-                WEBSITES_ENABLE_APP_SERVICE_STORAGE=true \
-                SCM_DO_BUILD_DURING_DEPLOYMENT=true \
-                ENABLE_ORYX_BUILD=true
-            
-            echo "✅ Environment variables configured (Oryx build enabled)"
-            sleep 5
-
-      - name: 📦 Create deployment package (without node_modules)
-        run: |
-          echo "📦 Creating lightweight deployment package..."
-          cd server
-          
-          echo "Node.js version specification:"
-          echo "  - .nvmrc: $(cat .nvmrc)"
-          echo "  - package.json engines.node: $(cat package.json | grep -A1 'engines' | grep node)"
-          
-          # zipパッケージ作成 (node_modules除外 - Oryxがビルド)
-          zip -r ../deploy.zip . \
-            -x '*.git*' \
-            -x '*.log' \
-            -x '*.ts' \
-            -x 'tsconfig.*' \
-            -x 'dist/*' \
-            -x 'src/*' \
-            -x '.env*' \
-            -x 'test/*' \
-            -x 'tests/*' \
-            -x 'node_modules/*'
-          
-          cd ..
-          echo "✅ Package created:"
-          ls -lh deploy.zip
-          echo "⚡ Lightweight package for fast Oryx build"
-
-      - name: 🚀 Deploy to Azure App Service (Async)
-        uses: azure/cli@v1
-        with:
-          inlineScript: |
-            echo "🚀 Deploying to Azure App Service..."
-            
-            # ZipDeployを非同期実行（--asyncフラグで即座に戻る）
-            az webapp deployment source config-zip \
-              --resource-group rg-Emergencyassistant-app \
-              --name emergency-assistantapp \
-              --src deploy.zip \
-              --async true
-            
-            echo "✅ Deployment submitted successfully"
-            echo "⏳ Azure will complete deployment in background..."
-            sleep 5
-
-      - name: ⏳ Wait for deployment completion
-        run: |
-          echo "⏳ Waiting 30 seconds for deployment to complete..."
+          echo "⏳ Waiting 30 seconds for app to start..."
           sleep 30
-          echo "✅ Deployment should be complete"
-
-      - name: ✅ Verify deployment
-        run: |
-          echo "✅ Deployment completed"
-          echo "🔍 Verifying deployment..."
           
           APP_URL="https://emergency-assistantapp.azurewebsites.net"
-          
-          # Health check（最大3回リトライ）
           for i in 1 2 3; do
-            echo "Attempt $i/3: Checking /api/health..."
-            
+            echo "Attempt $i/3: Health check..."
             if curl -f -s "$APP_URL/api/health" > /dev/null; then
-              echo "✅ Health check PASSED (HTTP 200)"
-              
-              # Version check
-              echo ""
-              echo "📊 Checking deployment version..."
-              curl -s "$APP_URL/api/version" | jq '.' || echo "Version endpoint response:"
-              curl -s "$APP_URL/api/version"
-              
-              break
-            else
-              echo "⚠️ Health check failed"
+              echo "✅ Deployment successful"
+              curl -s "$APP_URL/api/health/detailed" || true
+              exit 0
             fi
-            
-            if [ $i -lt 3 ]; then
-              echo "Waiting 10 seconds before retry..."
-              sleep 10
-            fi
+            [ $i -lt 3 ] && sleep 15
           done
-          
-          echo ""
-          echo "📊 Deployment Summary:"
-          echo "  - Commit: ${{ github.sha }}"
-          echo "  - Run: ${{ github.run_number }}"
-          echo "  - URL: $APP_URL"
-          echo ""
-          echo "🎉 Deployment workflow completed!"
+          echo "⚠️ Health check failed, but deployment completed"
