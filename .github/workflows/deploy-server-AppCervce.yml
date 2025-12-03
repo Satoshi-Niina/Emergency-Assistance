@@ -207,7 +207,7 @@ jobs:
             
             echo "✅ ZipDeploy completed"
 
-      - name: ⚙️ Configure environment variables
+      - name: ⚙️ Configure environment variables and Node.js version
         uses: azure/cli@v1
         with:
           inlineScript: |
@@ -235,14 +235,23 @@ jobs:
                 DEBUG_MODE=false \
                 VERBOSE_LOGGING=false \
                 SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+                ENABLE_ORYX_BUILD=true \
                 WEBSITE_LOCAL_CACHE_OPTION=Never \
                 WEBSITE_DYNAMIC_CACHE=0 \
                 WEBSITES_ENABLE_APP_SERVICE_STORAGE=true \
-                WEBSITE_NODE_DEFAULT_VERSION="20.18.0"
+                WEBSITE_NODE_DEFAULT_VERSION=~20
             
             echo "✅ Environment variables configured"
-            echo "⏳ Waiting 10 seconds for settings to propagate..."
-            sleep 10
+            
+            # Windows App ServiceのNode.jsバージョンを明示的に設定
+            echo "⚙️ Setting Node.js version for Windows App Service..."
+            az webapp config set \
+              --resource-group rg-Emergencyassistant-app \
+              --name emergency-assistantapp \
+              --use-32bit-worker-process false
+            
+            echo "⏳ Waiting 15 seconds for settings to propagate..."
+            sleep 15
 
       - name: ▶️ Start App Service with new deployment
         uses: azure/cli@v1
