@@ -115,7 +115,7 @@ jobs:
             
             az webapp config appsettings delete \
               --resource-group rg-Emergencyassistant-app \
-              --name emergency-assistantapp \
+              --name emergency-assistantapp-node20 \
               --setting-names WEBSITE_RUN_FROM_PACKAGE \
               || echo "✅ WEBSITE_RUN_FROM_PACKAGE not found (OK)"
             
@@ -129,7 +129,7 @@ jobs:
             
             az webapp stop \
               --resource-group rg-Emergencyassistant-app \
-              --name emergency-assistantapp
+              --name emergency-assistantapp-node20
             
             echo "✅ App Service stopped"
             echo "⏳ Waiting 10 seconds..."
@@ -150,7 +150,7 @@ jobs:
             for folder in "${folders[@]}"; do
               echo "Deleting folder: $folder"
               az rest --method delete \
-                --uri "https://emergency-assistantapp.scm.azurewebsites.net/api/vfs/site/wwwroot/${folder}/?recursive=true" \
+                --uri "https://emergency-assistantapp-node20.scm.azurewebsites.net/api/vfs/site/wwwroot/${folder}/?recursive=true" \
                 --resource "https://management.azure.com/" \
                 || echo "Folder $folder not found or already deleted"
             done
@@ -159,7 +159,7 @@ jobs:
             for file in "${files[@]}"; do
               echo "Deleting file: $file"
               az rest --method delete \
-                --uri "https://emergency-assistantapp.scm.azurewebsites.net/api/vfs/site/wwwroot/${file}" \
+                --uri "https://emergency-assistantapp-node20.scm.azurewebsites.net/api/vfs/site/wwwroot/${file}" \
                 --resource "https://management.azure.com/" \
                 || echo "File $file not found or already deleted"
             done
@@ -206,7 +206,7 @@ jobs:
             # SCM_DO_BUILD_DURING_DEPLOYMENT=trueの場合、Oryxが自動的にNode.js 20をインストール
             az webapp deployment source config-zip \
               --resource-group rg-Emergencyassistant-app \
-              --name emergency-assistantapp \
+              --name emergency-assistantapp-node20 \
               --src deploy.zip \
               --timeout 600
             
@@ -222,7 +222,7 @@ jobs:
             
             az webapp config appsettings set \
               --resource-group rg-Emergencyassistant-app \
-              --name emergency-assistantapp \
+              --name emergency-assistantapp-node20 \
               --settings \
                 NODE_ENV=production \
                 DATABASE_URL="${{ secrets.DATABASE_URL }}" \
@@ -257,7 +257,7 @@ jobs:
             echo "⚙️ Setting Node.js version for Windows App Service..."
             az webapp config set \
               --resource-group rg-Emergencyassistant-app \
-              --name emergency-assistantapp \
+              --name emergency-assistantapp-node20 \
               --use-32bit-worker-process false
             
             echo "⏳ Waiting 15 seconds for settings to propagate..."
@@ -271,7 +271,7 @@ jobs:
             
             az webapp start \
               --resource-group rg-Emergencyassistant-app \
-              --name emergency-assistantapp
+              --name emergency-assistantapp-node20
             
             echo "⏳ Waiting 20 seconds for app to fully start..."
             sleep 20
@@ -282,7 +282,7 @@ jobs:
           echo "✅ Deployment completed"
           echo "🔍 Verifying deployment..."
           
-          APP_URL="https://emergency-assistantapp-gwgscxcca5chahyb9.japanwest-01.azurewebsites.net"
+          APP_URL="https://emergency-assistantapp-node20.azurewebsites.net"
           
           # Health check（最大3回リトライ）
           for i in 1 2 3; do
