@@ -448,7 +448,7 @@ jobs:
             -u "$USERNAME:$PASSWORD" \
             -H "Content-Type: application/json" \
             -d '{
-              "command": "npm ci --production --no-optional --loglevel=verbose",
+              "command": "npm install --production --no-optional --loglevel=verbose",
               "dir": "site/wwwroot"
             }' \
             --max-time 600 \
