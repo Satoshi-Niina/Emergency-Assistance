@@ -335,9 +335,9 @@ jobs:
           echo ""
           echo "✅ Package deployed successfully"
 
-      - name: Install dependencies on Azure
+      - name: Verify deployment structure on Azure
         run: |
-          echo "📦 Installing dependencies on Azure App Service..."
+          echo "🔍 Verifying deployment structure on Azure..."
           
           # Get deployment credentials
           CREDS=$(az webapp deployment list-publishing-credentials \
@@ -351,16 +351,43 @@ jobs:
           
           echo "::add-mask::$PASSWORD"
           
-          # Use Kudu's command API which automatically loads app settings as environment variables
-          echo "Running npm ci --production on Azure..."
+          # Check wwwroot structure
+          echo "Checking wwwroot structure..."
+          WWWROOT_FILES=$(curl -s \
+            "https://emergency-assistantapp.scm.azurewebsites.net/api/vfs/site/wwwroot/" \
+            -u "$USERNAME:$PASSWORD" \
+            -H "Accept: application/json")
           
-          # Use Kudu's command API which automatically loads app settings as environment variables
+          echo "Files in wwwroot:"
+          echo "$WWWROOT_FILES" | jq -r '.[].name' || echo "$WWWROOT_FILES"
+          
+          # Check if azure-server.mjs exists (should be directly in wwwroot)
+          if echo "$WWWROOT_FILES" | grep -q "azure-server.mjs"; then
+            echo "✅ azure-server.mjs found in wwwroot (correct structure)"
+          else
+            echo "❌ azure-server.mjs NOT in wwwroot - deployment structure is wrong!"
+            exit 1
+          fi
+          
+          # Check if package.json exists
+          if echo "$WWWROOT_FILES" | grep -q "package.json"; then
+            echo "✅ package.json found in wwwroot"
+          else
+            echo "❌ package.json NOT in wwwroot"
+            exit 1
+          fi
+          
+          echo ""
+          echo "📦 Now installing dependencies..."
+          
+          # Use Kudu's command API to install dependencies
+          # Since we're in wwwroot directly (not wwwroot/server), just use current directory
           RESPONSE=$(curl -X POST \
             "https://emergency-assistantapp.scm.azurewebsites.net/api/command" \
             -u "$USERNAME:$PASSWORD" \
             -H "Content-Type: application/json" \
             -d '{
-              "command": "cd site/wwwroot/server && npm ci --production --no-optional --loglevel=verbose",
+              "command": "npm ci --production --no-optional --loglevel=verbose",
               "dir": "site/wwwroot"
             }' \
             --max-time 600 \
@@ -378,7 +405,7 @@ jobs:
           echo ""
           echo "Verifying node_modules installation..."
           NODE_MODULES_CHECK=$(curl -s \
-            "https://emergency-assistantapp.scm.azurewebsites.net/api/vfs/site/wwwroot/server/node_modules/" \
+            "https://emergency-assistantapp.scm.azurewebsites.net/api/vfs/site/wwwroot/node_modules/" \
             -u "$USERNAME:$PASSWORD" \
             -H "Accept: application/json")
           

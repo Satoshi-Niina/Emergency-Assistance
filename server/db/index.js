@@ -8,6 +8,12 @@ function getDatabaseUrl() {
     if (process.env.DATABASE_URL) {
         return process.env.DATABASE_URL;
     }
+    if (process.env.AZURE_POSTGRESQL_CONNECTIONSTRING) {
+        return process.env.AZURE_POSTGRESQL_CONNECTIONSTRING;
+    }
+    if (process.env.POSTGRES_URL) {
+        return process.env.POSTGRES_URL;
+    }
     // webappdbに接続（DBeaverで確認済み）
     return 'postgresql://postgres@localhost:5432/webappdb';
 }

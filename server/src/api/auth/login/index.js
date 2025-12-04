@@ -1,19 +1,16 @@
 const { db } = require('../../db/index.js');
+const { users } = require('../../db/schema.js');
+const { eq } = require('drizzle-orm');
+const bcrypt = require('bcryptjs');
 
 module.exports = async (context, request) => {
   try {
     context.log('Auth login HTTP trigger function processed a request.');
 
-    // OPTIONSリクエストの処理
+    // OPTIONSリクエストの処理 (Global CORS middleware handles this, but keeping for safety if function runs isolated)
     if (request.method === 'OPTIONS') {
       return {
         status: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie',
-          'Access-Control-Max-Age': '86400',
-        },
         body: '',
       };
     }
@@ -27,7 +24,6 @@ module.exports = async (context, request) => {
         status: 400,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
         },
         body: JSON.stringify({
           success: false,
@@ -44,7 +40,6 @@ module.exports = async (context, request) => {
         status: 400,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
         },
         body: JSON.stringify({
           success: false,
@@ -58,22 +53,13 @@ module.exports = async (context, request) => {
     // データベースからユーザーを検索（パスワードも含める）
     let user;
     try {
-      const users = await db.execute(
-        `
-                    SELECT id, username, password, display_name, role, department, description, created_at
-                    FROM users
-                    WHERE username = $1
-                    LIMIT 1
-                `,
-        [username]
-      );
+      const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
 
-      if (users.length === 0) {
+      if (result.length === 0) {
         return {
           status: 401,
           headers: {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
           },
           body: JSON.stringify({
             success: false,
@@ -82,7 +68,7 @@ module.exports = async (context, request) => {
         };
       }
 
-      user = users[0];
+      user = result[0];
       context.log('User found:', {
         id: user.id,
         username: user.username,
@@ -98,12 +84,11 @@ module.exports = async (context, request) => {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
         },
         body: JSON.stringify({
           success: false,
           error: 'データベースエラーが発生しました',
-          details: process.env.NODE_ENV === 'production' 
+          details: process.env.NODE_ENV === 'production'
             ? 'データベース接続に失敗しました。管理者にお問い合わせください。'
             : dbError.message,
           timestamp: new Date().toISOString(),
@@ -112,7 +97,6 @@ module.exports = async (context, request) => {
     }
 
     // パスワード検証（bcryptjs使用）
-    const bcrypt = require('bcryptjs');
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
@@ -121,7 +105,6 @@ module.exports = async (context, request) => {
         status: 401,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
         },
         body: JSON.stringify({
           success: false,
@@ -138,7 +121,7 @@ module.exports = async (context, request) => {
     const userData = {
       id: user.id,
       username: user.username,
-      displayName: user.display_name,
+      displayName: user.displayName,
       role: user.role,
       department: user.department,
     };
@@ -147,10 +130,7 @@ module.exports = async (context, request) => {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie',
-        'Set-Cookie': `sessionId=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
+        // 'Set-Cookie': `sessionId=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`, // Express session handles this
       },
       body: JSON.stringify({
         success: true,
@@ -169,7 +149,6 @@ module.exports = async (context, request) => {
       status: 500,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
       },
       body: JSON.stringify({
         success: false,

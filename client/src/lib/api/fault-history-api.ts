@@ -185,7 +185,7 @@ export const importFromExports = async (force = false): Promise<{
  */
 export const getFaultHistoryImageUrl = (filename: string): string => {
   const baseUrl = import.meta.env.DEV
-    ? 'http://localhost:8080'
+    ? ''
     : import.meta.env.VITE_API_BASE_URL || window.location.origin;
 
   return `${baseUrl}/api/fault-history/images/${filename}`;

@@ -200,7 +200,8 @@ const allowedOrigins = [
   'http://localhost:5002',
   'http://localhost:3000',
   'http://localhost:8080',
-  'https://happy-bush-083160b00.3.azurestaticapps.net'
+  'https://happy-bush-083160b00.3.azurestaticapps.net',
+  'https://witty-river-012f39e00.1.azurestaticapps.net'
 ];
 
 const corsOptions = {
@@ -212,10 +213,16 @@ const corsOptions = {
     });
 
     // originなし（同一オリジン）または許可リストに含まれる場合は許可
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin) {
+      // 同一オリジンまたはサーバー間リクエスト
+      console.log('✅ Allowing request without origin (same-origin or server-to-server)');
+      callback(null, true);
+    } else if (allowedOrigins.includes(origin)) {
+      // 明示的に許可されたオリジン
+      console.log('✅ Allowing explicitly allowed origin:', origin);
       callback(null, true);
     } else if (process.env.NODE_ENV === 'production' && origin && origin.includes('azurestaticapps.net')) {
-      // 本番環境: azurestaticapps.netドメインを許可
+      // 本番環境: すべての azurestaticapps.net ドメインを許可
       console.log('✅ Allowing azurestaticapps.net origin:', origin);
       callback(null, true);
     } else {
@@ -224,10 +231,21 @@ const corsOptions = {
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control', 'Pragma', 'Expires', 'If-Modified-Since'],
-  exposedHeaders: ['Set-Cookie', 'Cache-Control'],
-  maxAge: 86400,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'HEAD'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Cache-Control',
+    'Pragma',
+    'Expires',
+    'If-Modified-Since',
+    'X-Health-Token'
+  ],
+  exposedHeaders: ['Set-Cookie', 'Cache-Control', 'Content-Type'],
+  maxAge: 86400, // 24時間
   preflightContinue: false,
   optionsSuccessStatus: 204
 };

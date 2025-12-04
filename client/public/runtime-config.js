@@ -1,4 +1,4 @@
-// 動的環墁E��宁E
+// 動的環境設定
 // Trigger deploy: noop comment updated at runtime
 // Version: 2025-12-02T12:00:00+09:00
 (function () {
@@ -8,41 +8,41 @@
 
   const isAzureStaticWebApp = window.location.hostname.includes('azurestaticapps.net');
 
-  // 環墁E��設宁E
+  // 環境別設定
   let config;
 
   if (isLocalhost) {
-    // ローカル開発環墁E ホットリロード統合サーバ�E使用
+    // ローカル開発環境: ホットリロード統合サーバー使用
     config = {
-      "API_BASE_URL": "http://localhost:8080/api",
+      "API_BASE_URL": "",
       "CORS_ALLOW_ORIGINS": "http://localhost:5173,http://localhost:8080",
       "ENVIRONMENT": "development"
     };
   } else if (isAzureStaticWebApp) {
     // Azure Static Web Apps: App ServiceバックエンドAPI使用
-    // CORS_ALLOW_ORIGINSは現在のオリジンを使用�E�動皁E��E
-    // PLACEHOLDER_API_BASE_URL はチE�Eロイ時に VITE_API_BASE_URL で置換される
+    // CORS_ALLOW_ORIGINSは現在のオリジンを使用（動的）
+    // PLACEHOLDER_API_BASE_URL はデプロイ時に VITE_API_BASE_URL で置換される
     let apiBaseUrl = "PLACEHOLDER_API_BASE_URL";
-    
-    // PLACEHOLDER が置換されてぁE��ぁE��合�Eフォールバック
+
+    // PLACEHOLDER が置換されていない場合のフォールバック
     if (apiBaseUrl === "PLACEHOLDER_API_BASE_URL" || apiBaseUrl.includes("PLACEHOLDER")) {
-      console.warn('⚠�E�EPLACEHOLDER_API_BASE_URL was not replaced during build');
-      console.warn('⚠�E�EAttempting to use default Azure App Service URL...');
-      
-      // チE��ォルト�EAzure App Service URL�E�環墁E��数から取得また�E固定値�E�E
+      console.warn('⚠️ PLACEHOLDER_API_BASE_URL was not replaced during build');
+      console.warn('⚠️ Attempting to use default Azure App Service URL...');
+
+      // デフォルトのAzure App Service URL（環境変数から取得した固定値）
       // 実際のApp Service名に置き換えてください
       apiBaseUrl = "https://emergency-assistantapp-gwgscxcca5cahyb9.japanwest-01.azurewebsites.net/api";
-      
-      console.log('🔄 Fallback API_BASE_URL:', apiBaseUrl);
+
+      console.log('ℹ️ Fallback API_BASE_URL:', apiBaseUrl);
     }
-    
+
     config = {
       "API_BASE_URL": apiBaseUrl,
       "CORS_ALLOW_ORIGINS": window.location.origin,
       "ENVIRONMENT": "production"
     };
   } else {
-    // そ�E他�E環墁E Static Web App統吁Eunctions使用
+    // その他の環境: Static Web App統合Functions使用
     config = {
       "API_BASE_URL": "/api",
       "CORS_ALLOW_ORIGINS": "*",

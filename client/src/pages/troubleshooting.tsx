@@ -184,7 +184,7 @@ export default function TroubleshootingPage() {
     mutationFn: async (flowId: string) => {
       console.log('🗑️ フロー削除開始', flowId);
 
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+      const apiBase = import.meta.env.VITE_API_BASE_URL || '';
       const response = await fetch(`${apiBase}/api/emergency-flow/${flowId}`, {
         method: 'DELETE',
         headers: {
@@ -280,7 +280,7 @@ export default function TroubleshootingPage() {
   };
 
   const handleOpenEditor = (flowId: string) => {
-    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+    const apiBase = import.meta.env.VITE_API_BASE_URL || '';
     fetch(`${apiBase}/api/emergency-flow/detail/${flowId}`)
       .then(res => res.json())
       .then(fullFlowData => {

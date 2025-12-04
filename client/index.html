@@ -27,7 +27,7 @@
     const backendUrl = '%%%VITE_BACKEND_SERVICE_URL%%%';
     // プレースホルダーが置換されていない場合は空文字列
     window.BACKEND_SERVICE_URL = (backendUrl && backendUrl.startsWith('http')) ? backendUrl : '';
-    
+
     // 動的環境設定（インライン）
     (function () {
       const isLocalhost = window.location.hostname === 'localhost' ||
@@ -42,7 +42,7 @@
       if (isLocalhost) {
         // ローカル開発環境: ホットリロード統合サーバー使用
         config = {
-          "API_BASE_URL": "http://localhost:8080/api",
+          "API_BASE_URL": "",
           "CORS_ALLOW_ORIGINS": "http://localhost:5173,http://localhost:8080",
           "ENVIRONMENT": "development"
         };

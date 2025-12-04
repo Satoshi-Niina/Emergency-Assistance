@@ -47,7 +47,7 @@ import ChatExportReport from '../components/report/chat-export-report';
 
 // 画像ユーティリティ関数
 const API_BASE = import.meta.env.DEV
-  ? (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080')
+  ? (import.meta.env.VITE_API_BASE_URL || '')
   : import.meta.env.VITE_API_BASE_URL || window.location.origin;
 
 async function fetchDetailFile(name: string) {
@@ -1942,9 +1942,9 @@ const HistoryPage: React.FC = () => {
             baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
             imageUrl = `${baseUrl}${imagePath}`;
           } else if (img && typeof img === 'object' && img.url) {
-            imageUrl = img.url.startsWith('http') ? img.url : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${img.url}`;
+            imageUrl = img.url.startsWith('http') ? img.url : `${import.meta.env.VITE_API_BASE_URL || ''}${img.url}`;
           } else if (typeof img === 'string' && !img.startsWith('data:image/')) {
-            imageUrl = img.startsWith('http') ? img : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${img}`;
+            imageUrl = img.startsWith('http') ? img : `${import.meta.env.VITE_API_BASE_URL || ''}${img}`;
           }
 
           if (imageUrl && !imageUrls.has(imageUrl)) {
@@ -3223,12 +3223,12 @@ const HistoryPage: React.FC = () => {
 
     // 1) imageUrl を最優先（直接設定された画像URL�E�E    if (typeof data?.imageUrl === 'string' && data.imageUrl.trim()) {
       console.log('🖼�E�EpickFirstImage - imageUrl:', data.imageUrl);
-      return data.imageUrl.startsWith('http') ? data.imageUrl : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${data.imageUrl}`;
+      return data.imageUrl.startsWith('http') ? data.imageUrl : `${import.meta.env.VITE_API_BASE_URL || ''}${data.imageUrl}`;
     }
 
     // 2) imagePath(URL) を優允E    if (typeof data?.imagePath === 'string' && data.imagePath.trim()) {
       console.log('🖼�E�EpickFirstImage - imagePath:', data.imagePath);
-      return data.imagePath.startsWith('http') ? data.imagePath : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${data.imagePath}`;
+      return data.imagePath.startsWith('http') ? data.imagePath : `${import.meta.env.VITE_API_BASE_URL || ''}${data.imagePath}`;
     }
 
     // 3) savedImages から URL を取得！EB画像レコード優先！E    // まず、ルートレベルのsavedImagesを確誁E    let savedImagesArray = data?.savedImages;
@@ -3243,7 +3243,7 @@ const HistoryPage: React.FC = () => {
       if (typeof firstImage === 'string') {
         // base64シューティングではなぁEー合�Eみ返す
         if (!firstImage.startsWith('data:image/')) {
-          return firstImage.startsWith('http') ? firstImage : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${firstImage}`;
+          return firstImage.startsWith('http') ? firstImage : `${import.meta.env.VITE_API_BASE_URL || ''}${firstImage}`;
         }
       }
 
@@ -3258,7 +3258,7 @@ const HistoryPage: React.FC = () => {
         }
         // urlやpathがある場吁E        const imageUrl = firstImage.url || firstImage.path;
         if (imageUrl && !imageUrl.startsWith('data:image/')) {
-          const finalUrl = imageUrl.startsWith('http') ? imageUrl : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${imageUrl}`;
+          const finalUrl = imageUrl.startsWith('http') ? imageUrl : `${import.meta.env.VITE_API_BASE_URL || ''}${imageUrl}`;
           console.log('🖼�E�EpickFirstImage - savedImagesからurl/path取征E', finalUrl);
           return finalUrl;
         }
@@ -5579,10 +5579,10 @@ const HistoryPage: React.FC = () => {
                               baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
                               images.push({ url: `${baseUrl}${imagePath}`, fileName: img.fileName, index: idx });
                             } else if (img.url) {
-                              const finalUrl = img.url.startsWith('http') ? img.url : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${img.url}`;
+                              const finalUrl = img.url.startsWith('http') ? img.url : `${import.meta.env.VITE_API_BASE_URL || ''}${img.url}`;
                               images.push({ url: finalUrl, fileName: img.fileName, index: idx });
                             } else if (img.path) {
-                              const finalUrl = img.path.startsWith('http') ? img.path : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${img.path}`;
+                              const finalUrl = img.path.startsWith('http') ? img.path : `${import.meta.env.VITE_API_BASE_URL || ''}${img.path}`;
                               images.push({ url: finalUrl, fileName: img.fileName, index: idx });
                             }
                           }
@@ -5596,7 +5596,7 @@ const HistoryPage: React.FC = () => {
                           } else if (img && typeof img === 'object') {
                             const url = img.url || img.path || img.fileName;
                             if (url && !url.startsWith('data:image/')) {
-                              const finalUrl = url.startsWith('http') ? url : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${url}`;
+                              const finalUrl = url.startsWith('http') ? url : `${import.meta.env.VITE_API_BASE_URL || ''}${url}`;
                               images.push({ url: finalUrl, fileName: img.fileName, index: idx + 1000 });
                             }
                           }
@@ -5614,7 +5614,7 @@ const HistoryPage: React.FC = () => {
                               baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
                               images.push({ url: `${baseUrl}${imagePath}`, fileName: img.fileName, index: idx + 2000 });
                             } else if (img.url) {
-                              const finalUrl = img.url.startsWith('http') ? img.url : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${img.url}`;
+                              const finalUrl = img.url.startsWith('http') ? img.url : `${import.meta.env.VITE_API_BASE_URL || ''}${img.url}`;
                               images.push({ url: finalUrl, fileName: img.fileName, index: idx + 2000 });
                             }
                           }

@@ -38,7 +38,7 @@ import ChatExportReport from '../components/report/chat-export-report';
 
 // 画像ユーティリティ関数
 const API_BASE = import.meta.env.DEV
-  ? (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080')
+  ? (import.meta.env.VITE_API_BASE_URL || '')
   : import.meta.env.VITE_API_BASE_URL || window.location.origin;
 
 async function fetchDetailFile(name: string) {
@@ -1570,13 +1570,13 @@ export default function HistoryPage() {
                                         onError={(e) => {
                                           const img = e.target as HTMLImageElement;
                                           const currentSrc = img.src;
-                                          
+
                                           // 無限ループを防ぐ: すでにfallback URLを試している場合は画像を非表示にする
                                           if (currentSrc.includes('/api/fault-history/images/')) {
                                             img.style.display = 'none';
                                             return;
                                           }
-                                          
+
                                           // 最初のエラーの場合のみfallback URLを試す
                                           const fallbackUrl = `/api/fault-history/images/${fileName}`;
                                           img.src = fallbackUrl;

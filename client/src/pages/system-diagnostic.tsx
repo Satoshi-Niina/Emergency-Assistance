@@ -43,7 +43,7 @@ export default function SystemDiagnosticPage() {
 
   // APIのベースURLを取得
   const apiBaseUrl =
-    import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+    import.meta.env.VITE_API_BASE_URL || '';
 
   // API URLを構築（/apiの重複を防ぐ）
   const buildApiPath = (path: string) => {
@@ -93,6 +93,7 @@ export default function SystemDiagnosticPage() {
       const errorMessage =
         error instanceof Error ? error.message : 'ネットワークエラー';
       setDbCheckResult({
+        success: false,
         status: 'ERROR',
         error: errorMessage,
       });
@@ -392,15 +393,15 @@ export default function SystemDiagnosticPage() {
 
             {(dbCheckResult.status === 'ERROR' ||
               gptCheckResult.status === 'ERROR') && (
-              <div className='mt-4 p-3 bg-yellow-50 text-yellow-700 rounded-md'>
-                <div className='flex items-center gap-2'>
-                  <AlertCircle className='h-4 w-4' />
-                  <span className='font-medium'>
-                    一部の接続に問題があります
-                  </span>
+                <div className='mt-4 p-3 bg-yellow-50 text-yellow-700 rounded-md'>
+                  <div className='flex items-center gap-2'>
+                    <AlertCircle className='h-4 w-4' />
+                    <span className='font-medium'>
+                      一部の接続に問題があります
+                    </span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </CardContent>
         </Card>
       )}

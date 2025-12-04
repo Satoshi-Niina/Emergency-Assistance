@@ -43,7 +43,7 @@ async function callOpenAIAPI(
   useKnowledgeBase: boolean = true
 ): Promise<string> {
   try {
-    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+    const apiBase = import.meta.env.VITE_API_BASE_URL || '';
     const response = await fetch(`${apiBase}/api/chatgpt`, {
       method: 'POST',
       headers: {
@@ -330,14 +330,14 @@ export class EnhancedQAManager {
 **これまでの回答**: ${allAnswers.map(a => `${a.stepId}: ${a.answer}`).join(', ')}
 **利用可能なステップ**: ${this.currentFlow?.steps.map(s => s.question).join(', ') || ''}
 **関連ナレッジ**: ${this.findRelevantKnowledge(currentAnswer.answer, allAnswers)
-        .map(k => k.title)
-        .join(', ')}
+          .map(k => k.title)
+          .join(', ')}
 **関連応急処置**: ${this.findRelevantProcedures(
-        currentAnswer.answer,
-        allAnswers
-      )
-        .map(p => p.title)
-        .join(', ')}
+            currentAnswer.answer,
+            allAnswers
+          )
+          .map(p => p.title)
+          .join(', ')}
 
 分析結果を以下のJSON形式で返してください：
 {

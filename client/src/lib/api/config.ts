@@ -1,5 +1,5 @@
 /// API設定 - 統一APIクライアント使用
-import { api, getJson, postJson } from '../api';
+import { api } from '../api';
 
 // 統一APIクライアントを使用するため、このファイルは互換性のため残す
 const isProduction =
@@ -28,8 +28,8 @@ export const API_BASE_URL = (() => {
     return import.meta.env.VITE_BACKEND_SERVICE_URL || '';
   }
 
-  // 開発環境でも絶対URLを使用
-  return import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+  // 開発環境でも絶対URLを使用せず、相対パス（プロキシ経由）を使用
+  return import.meta.env.VITE_API_BASE_URL || '';
 })();
 
 console.log('🔧 API設定詳細:', {
