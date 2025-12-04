@@ -275,42 +275,20 @@ docker/data/
 # ========================================
 # Development Files - Exclude from Deployment
 # ========================================
-# Development scripts (not needed in production)
-# But allow specific scripts FIRST before exclusion
-!scripts/check-blob-production.sh
+
+# ⚠️ IMPORTANT: Whitelist MUST come BEFORE exclusion patterns
+# Allow specific scripts needed for CI/CD
 !scripts/check-rsc-vulnerabilities.js
 !scripts/check-build-before-push.js
-!scripts/diagnose-blob-config.ps1
-!scripts/kill-port-8080.ps1
-!scripts/pre-commit.ps1
 !scripts/README-check-rsc-vulnerabilities.md
 !client/scripts/replace-env.cjs
-!client/scripts/.gitkeep
-# ⚠️ IMPORTANT: server/src/api/ contains Azure Functions handlers - DO NOT EXCLUDE
+
+# ⚠️ CRITICAL: server/src/api/ contains Azure Functions handlers - DO NOT EXCLUDE
 !server/src/
 !server/src/**
-# Now exclude other scripts
-scripts/*
-!scripts/check-blob-production.sh
-!scripts/check-rsc-vulnerabilities.js
-!scripts/check-build-before-push.js
-!scripts/diagnose-blob-config.ps1
-!scripts/kill-port-8080.ps1
-!scripts/pre-commit.ps1
-!scripts/README-check-rsc-vulnerabilities.md
 
-# Documentation (not needed in production deployment)
-# But allow deployment-related documentation
-!docs/BLOB_SETUP.md
-!docs/BLOB_SETUP_SUMMARY.md
-!docs/DEPLOYMENT_CHECKLIST.md
-!docs/QUICKSTART_BLOB.md
-!docs/TROUBLESHOOTING_BLOB.md
-# Allow important documentation files
-!README.md
-!CHANGELOG.md
-!LICENSE.md
-!*.md.example
+# Now exclude other development scripts
+scripts/*
 
 # Development database files
 *.db
@@ -333,10 +311,6 @@ server/deploy.zip
 *.backup
 *.broken
 *.old
-vite.config.ts.backup
-server/index.js.broken
-temp_*.tsx
-temp2_*.tsx
 
 # Knowledge base - exclude backups and temp files
 knowledge-base/backups/
@@ -347,16 +321,15 @@ knowledge-base/doc_*/
 # Development data files
 data/ai-assist-settings.json
 
-# SQL files (migrations should be handled separately)
+# SQL files (migrations are tracked in server/db/migrations/)
 *.sql
-!create-users-table-postgres.sql  # Keep if needed for reference
+!server/db/migrations/*.sql
 
 # PowerShell and shell scripts (development only)
 *.ps1
 *.sh
 *.bat
 *.cmd
-!scripts/.gitkeep
 
 # Development environment files
 env.development
@@ -364,16 +337,19 @@ server/env.development
 server/.env.development  # ⚠️ CRITICAL: Exclude to prevent API key leaks
 server/startup.txt
 server/server_run.log
-server/startup-migration.js
 
-# Development server files
+# Development server files (NOT needed in production)
 server/unified-hot-reload-server.js
 server/index.dev.js
 server/index.dev.ts
 server/fallback-server.js
 server/azure-server-debug.js
+server/azure-diagnosis.js
+server/minimal-package.json
+server/PATCHES_*.txt
+server/deploy.cmd
 
-# Check and utility scripts (development only)
+# Development utility scripts (NOT needed in production)
 server/check-*.js
 server/check-*.cjs
 server/fix-*.js
@@ -383,15 +359,11 @@ server/create-*.sql
 server/hash-passwords.js
 server/migrate-*.js
 server/trigger.js
+server/startup-migration.js
 
 # Development storage files
 server/uploads/*
 !server/uploads/.gitkeep
-
-# Development logs and runtime files
-server/server_run.log
-server/startup.txt
-server/DEPLOYMENT_TRIGGER.md
 
 # OneDrive sync files (Windows)
 ~$*
