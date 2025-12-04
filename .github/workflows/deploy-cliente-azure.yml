@@ -227,7 +227,6 @@ jobs:
           skip_app_build: true
           skip_api_build: true
           production_branch: "main"
-          deployment_environment: "production"
         env:
           # 完全なクリーンデプロイを強制
           DEPLOYMENT_ACTION: "upload"
