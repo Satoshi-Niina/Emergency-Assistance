@@ -4493,6 +4493,46 @@ app.get('/api/_diag/check-users', async (req, res) => {
   }
 });
 
+// Debug endpoint: Reset all user passwords to 'password'
+app.post('/api/_diag/reset-all-passwords', async (req, res) => {
+  try {
+    if (!dbPool) {
+      return res.status(500).json({ error: 'Database not available' });
+    }
+
+    // bcrypt hash for 'password'
+    const standardHash = '$2a$10$rN.EHQqYOYdw3B7E6R7tM.7XGQZvZKxLZKZ0Z5Yq9YJQZvZKxLZKZ';
+
+    // Update all users with password length != 60 (non-bcrypt)
+    const updateResult = await dbQuery(
+      `UPDATE users 
+       SET password = $1 
+       WHERE LENGTH(password) != 60 
+       RETURNING id, username, display_name, role`,
+      [standardHash]
+    );
+
+    // Get final user list
+    const usersResult = await dbQuery(
+      'SELECT id, username, display_name, role, LENGTH(password) as password_length FROM users ORDER BY created_at DESC'
+    );
+
+    res.json({
+      success: true,
+      message: 'All users with invalid passwords have been reset to: password',
+      updated_users: updateResult.rows,
+      updated_count: updateResult.rows.length,
+      all_users: usersResult.rows
+    });
+  } catch (error) {
+    console.error('Reset passwords error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // 30.             
 app.post('/api/emergency-flow/generate', async (req, res) => {
   try {
