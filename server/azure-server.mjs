@@ -588,6 +588,32 @@ async function startupSequence() {
   try {
     console.log('  Starting Azure application startup sequence...');
 
+    // Load API handlers first
+    console.log('  Loading API handlers...');
+    try {
+      const [historyModule, usersModule] = await Promise.all([
+        import('./src/api/history/index.js').catch(err => {
+          console.error('❌ Failed to load historyHandler:', err.message);
+          return null;
+        }),
+        import('./src/api/users/index.js').catch(err => {
+          console.error('❌ Failed to load usersHandler:', err.message);
+          return null;
+        })
+      ]);
+
+      if (historyModule) {
+        global.historyHandler = historyModule.default || historyModule;
+        console.log('✅ historyHandler loaded successfully');
+      }
+      if (usersModule) {
+        global.usersHandler = usersModule.default || usersModule;
+        console.log('✅ usersHandler loaded successfully');
+      }
+    } catch (handlerError) {
+      console.error('  API handler loading failed:', handlerError);
+    }
+
     // データベース初期化をここで実行し、エラーをキャッチできるようにする
     console.log('  Initializing database...');
     try {
@@ -1776,19 +1802,10 @@ app.get('/api/history/machine-data', async (req, res) => {
 });
 
 //             API - Azure Functions        
-let historyHandler = null;
-try {
-  // Use dynamic import for ESM compatibility
-  const historyModule = await import('./src/api/history/index.js');
-  historyHandler = historyModule.default || historyModule;
-  console.log('✅ historyHandler loaded successfully');
-} catch (error) {
-  console.error('❌ Failed to load historyHandler:', error.message);
-  console.error('  Stack:', error.stack);
-}
+// Handler loaded in startupSequence()
 
 app.get('/api/history/export-files', async (req, res) => {
-  if (!historyHandler) {
+  if (!global.historyHandler) {
     return res.status(503).json({
       success: false,
       error: 'History handler not available',
@@ -1810,7 +1827,7 @@ app.get('/api/history/export-files', async (req, res) => {
       query: req.query
     };
 
-    const result = await historyHandler(context, request);
+    const result = await global.historyHandler(context, request);
     
     res.status(result.status);
     if (result.headers) {
@@ -1949,19 +1966,10 @@ app.get('/api/history/:id', async (req, res) => {
 // NOTE: /api/history/machine-data  1178             
 
 //       API - Azure Functions        
-let usersHandler = null;
-try {
-  // Use dynamic import for ESM compatibility
-  const usersModule = await import('./src/api/users/index.js');
-  usersHandler = usersModule.default || usersModule;
-  console.log('✅ usersHandler loaded successfully');
-} catch (error) {
-  console.error('❌ Failed to load usersHandler:', error.message);
-  console.error('  Stack:', error.stack);
-}
+// Handler loaded in startupSequence()
 
 app.get('/api/users', async (req, res) => {
-  if (!usersHandler) {
+  if (!global.usersHandler) {
     return res.status(503).json({
       success: false,
       error: 'Users handler not available',
@@ -1982,7 +1990,7 @@ app.get('/api/users', async (req, res) => {
       headers: req.headers
     };
 
-    await usersHandler(context, request);
+    await global.usersHandler(context, request);
     
     const result = context.res;
     res.status(result.status || 200);
