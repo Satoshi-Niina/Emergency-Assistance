@@ -1778,10 +1778,12 @@ app.get('/api/history/machine-data', async (req, res) => {
 //             API - Azure Functions        
 let historyHandler = null;
 try {
-  historyHandler = require('./src/api/history/index.js');
-  console.log('  historyHandler loaded successfully');
+  // Use dynamic import for ESM compatibility
+  const historyModule = await import('./src/api/history/index.js');
+  historyHandler = historyModule.default || historyModule;
+  console.log('✅ historyHandler loaded successfully');
 } catch (error) {
-  console.error('  Failed to load historyHandler:', error.message);
+  console.error('❌ Failed to load historyHandler:', error.message);
   console.error('  Stack:', error.stack);
 }
 
@@ -1949,10 +1951,12 @@ app.get('/api/history/:id', async (req, res) => {
 //       API - Azure Functions        
 let usersHandler = null;
 try {
-  usersHandler = require('./src/api/users/index.js');
-  console.log('  usersHandler loaded successfully');
+  // Use dynamic import for ESM compatibility
+  const usersModule = await import('./src/api/users/index.js');
+  usersHandler = usersModule.default || usersModule;
+  console.log('✅ usersHandler loaded successfully');
 } catch (error) {
-  console.error('  Failed to load usersHandler:', error.message);
+  console.error('❌ Failed to load usersHandler:', error.message);
   console.error('  Stack:', error.stack);
 }
 
