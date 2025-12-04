@@ -276,17 +276,28 @@ docker/data/
 # Development Files - Exclude from Deployment
 # ========================================
 # Development scripts (not needed in production)
-# But allow specific scripts
+# But allow specific scripts FIRST before exclusion
 !scripts/check-blob-production.sh
+!scripts/check-rsc-vulnerabilities.js
+!scripts/check-build-before-push.js
 !scripts/diagnose-blob-config.ps1
 !scripts/kill-port-8080.ps1
 !scripts/pre-commit.ps1
+!scripts/README-check-rsc-vulnerabilities.md
 !client/scripts/replace-env.cjs
 !client/scripts/.gitkeep
 # ⚠️ IMPORTANT: server/src/api/ contains Azure Functions handlers - DO NOT EXCLUDE
 !server/src/
 !server/src/**
-scripts/
+# Now exclude other scripts
+scripts/*
+!scripts/check-blob-production.sh
+!scripts/check-rsc-vulnerabilities.js
+!scripts/check-build-before-push.js
+!scripts/diagnose-blob-config.ps1
+!scripts/kill-port-8080.ps1
+!scripts/pre-commit.ps1
+!scripts/README-check-rsc-vulnerabilities.md
 
 # Documentation (not needed in production deployment)
 # But allow deployment-related documentation
