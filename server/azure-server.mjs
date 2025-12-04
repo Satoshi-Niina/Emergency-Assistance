@@ -1,7 +1,8 @@
 // Azure App Service      
 // Windows/Linux                  
-// Version: 2025-11-30T10:05:00+09:00 (Deployment version tracking)
+// Version: 2025-12-04T19:30:00+09:00 (Deployment version tracking)
 // Build: ${new Date().toISOString()}
+// Force redeploy: OpenAI module fix
 
 //              
 import { fileURLToPath } from 'url';
