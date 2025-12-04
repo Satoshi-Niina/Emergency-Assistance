@@ -116,6 +116,21 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Configure App Service settings
+        run: |
+          echo "⚙️ Configuring App Service settings..."
+          
+          # Oryx自動ビルドを無効化（手動でnpm installするため）
+          az webapp config appsettings set \
+            --name emergency-assistantapp \
+            --resource-group rg-Emergencyassistant-app \
+            --settings \
+              SCM_DO_BUILD_DURING_DEPLOYMENT=false \
+              ENABLE_ORYX_BUILD=false \
+              DISABLE_COLLECTSTATIC=true
+          
+          echo "✅ App Service settings configured"
+
       - name: Stop App Service (force clean deployment)
         run: |
           echo "🛑 Stopping app service for clean deployment..."
