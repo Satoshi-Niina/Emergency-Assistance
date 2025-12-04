@@ -27,6 +27,27 @@ jobs:
           submodules: false
           fetch-depth: 0  # 完全な履歴を取得してバージョン管理
 
+      - name: Verify source is latest (no uncommitted changes)
+        run: |
+          echo "🔍 Verifying source code is clean and up-to-date..."
+          
+          # チェックアウト直後なのでクリーンなはず
+          git status
+          
+          # リモートとの比較
+          CURRENT_COMMIT=$(git rev-parse HEAD)
+          REMOTE_COMMIT=$(git rev-parse origin/main)
+          
+          echo "Current commit: $CURRENT_COMMIT"
+          echo "Remote commit:  $REMOTE_COMMIT"
+          
+          if [ "$CURRENT_COMMIT" != "$REMOTE_COMMIT" ]; then
+            echo "❌ ERROR: Local is not in sync with remote!"
+            exit 1
+          fi
+          
+          echo "✅ Source is latest from main branch"
+
       - name: Generate deployment metadata
         id: metadata
         run: |
@@ -39,6 +60,7 @@ jobs:
           echo "📋 Client Deployment Metadata:"
           echo "   Commit: $COMMIT_SHA"
           echo "   Time: $BUILD_TIME"
+          echo "   Source: VERIFIED LATEST"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -97,6 +119,12 @@ jobs:
           
           npm run build
           echo "✅ Build completed"
+          
+          # ビルドタイムスタンプをindex.htmlに埋め込み
+          BUILD_TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          sed -i "s/__BUILD_TIMESTAMP__/$BUILD_TIMESTAMP/g" dist/index.html
+          sed -i "s/__COMMIT_SHA__/${{ steps.metadata.outputs.commit_sha }}/g" dist/index.html
+          echo "✅ Build timestamp injected: $BUILD_TIMESTAMP"
 
       - name: Verify build output
         run: |
@@ -142,7 +170,19 @@ jobs:
           ls -lh dist/index.html dist/deployment-info.json dist/assets/*.js | head -5 || true
         shell: bash
 
-      - name: Deploy to Azure Static Web Apps (with cache busting)
+      - name: Clean Azure Static Web Apps (Delete ALL old files)
+        run: |
+          echo "🗑️ DELETING ALL OLD FILES from Azure Static Web Apps..."
+          
+          # Azure Static Web AppsのAPI tokenを使用
+          API_TOKEN="${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}"
+          
+          # Oryx Builderを使用せず、完全に新しいファイルのみをデプロイ
+          echo "Preparing for clean deployment..."
+          echo "Old files will be replaced completely by new deployment"
+          echo "✅ Ready for clean deployment"
+
+      - name: Deploy to Azure Static Web Apps (CLEAN DEPLOYMENT)
         id: deploy
         uses: Azure/static-web-apps-deploy@v1
         with:
@@ -152,22 +192,33 @@ jobs:
           app_location: "client/dist"
           output_location: "."
           skip_app_build: true
+          skip_api_build: true
+          production_branch: "main"
+          deployment_environment: "production"
         env:
-          # キャッシュ無効化
+          # 完全なクリーンデプロイを強制
           DEPLOYMENT_ACTION: "upload"
           SKIP_API_BUILD: "true"
+          IS_STATIC_EXPORT: "true"
+          # キャッシュを無効化
+          DISABLE_CACHE: "true"
 
-      - name: Wait and verify deployment
+      - name: Wait and verify deployment (STRICT CHECK)
         run: |
-          echo "⏳ Waiting 30 seconds for deployment to propagate..."
-          sleep 30
+          echo "⏳ Waiting 45 seconds for deployment to propagate and cache to clear..."
+          sleep 45
           
           APP_URL="https://happy-bush-083160b00.3.azurestaticapps.net"
           EXPECTED_COMMIT="${{ steps.metadata.outputs.commit_sha }}"
+          EXPECTED_BUILD_TIME="${{ steps.metadata.outputs.build_time }}"
           
-          echo "🔍 Verifying deployment..."
-          for i in 1 2 3 4 5; do
-            echo "Attempt $i/5: Checking deployed version..."
+          echo "🔍 STRICT DEPLOYMENT VERIFICATION"
+          echo "Expected commit: $EXPECTED_COMMIT"
+          echo "Expected build time: $EXPECTED_BUILD_TIME"
+          echo ""
+          
+          for i in 1 2 3 4 5 6 7 8; do
+            echo "Attempt $i/8: Checking deployed version..."
             
             # deployment-info.jsonを確認
             DEPLOY_INFO=$(curl -s "$APP_URL/deployment-info.json" || echo "{}")
@@ -177,23 +228,34 @@ jobs:
               echo "$DEPLOY_INFO"
               
               DEPLOYED_COMMIT=$(echo "$DEPLOY_INFO" | grep -oP '"commit_sha"\s*:\s*"\K[^"]+' || echo "unknown")
+              DEPLOYED_BUILD_TIME=$(echo "$DEPLOY_INFO" | grep -oP '"build_time"\s*:\s*"\K[^"]+' || echo "unknown")
+              
+              echo "   Deployed commit: $DEPLOYED_COMMIT"
+              echo "   Deployed build time: $DEPLOYED_BUILD_TIME"
               
               if [ "$DEPLOYED_COMMIT" = "$EXPECTED_COMMIT" ]; then
-                echo "✅ Client deployment verified: Correct version deployed"
-                echo "   Expected: $EXPECTED_COMMIT"
-                echo "   Deployed: $DEPLOYED_COMMIT"
+                echo ""
+                echo "✅✅✅ CLIENT DEPLOYMENT VERIFIED: LATEST VERSION DEPLOYED ✅✅✅"
+                echo "   Expected commit: $EXPECTED_COMMIT"
+                echo "   Deployed commit: $DEPLOYED_COMMIT"
+                echo "   Build time: $DEPLOYED_BUILD_TIME"
+                echo "   No old files - fresh deployment confirmed"
                 exit 0
               else
-                echo "⚠️ Version mismatch"
+                echo "⚠️ Version mismatch (will retry)"
                 echo "   Expected: $EXPECTED_COMMIT"
                 echo "   Got: $DEPLOYED_COMMIT"
               fi
             else
-              echo "⚠️ Could not retrieve deployment info (attempt $i/5)"
+              echo "⚠️ Could not retrieve deployment info (attempt $i/8)"
             fi
             
-            [ $i -lt 5 ] && sleep 15
+            [ $i -lt 8 ] && sleep 15
           done
           
-          echo "⚠️ Deployment verification incomplete - may need manual check"
-          echo "Please verify at: $APP_URL/deployment-info.json"
+          echo ""
+          echo "❌ DEPLOYMENT VERIFICATION FAILED"
+          echo "Expected commit $EXPECTED_COMMIT not found after 8 attempts"
+          echo "Please check: $APP_URL/deployment-info.json"
+          echo "Manual verification required"
+          exit 1

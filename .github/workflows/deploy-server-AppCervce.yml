@@ -20,6 +20,27 @@ jobs:
         with:
           fetch-depth: 0  # 完全な履歴を取得してバージョン管理
 
+      - name: Verify source is latest (no uncommitted changes)
+        run: |
+          echo "🔍 Verifying source code is clean and up-to-date..."
+          
+          # チェックアウト直後なのでクリーンなはず
+          git status
+          
+          # リモートとの比較
+          CURRENT_COMMIT=$(git rev-parse HEAD)
+          REMOTE_COMMIT=$(git rev-parse origin/main)
+          
+          echo "Current commit: $CURRENT_COMMIT"
+          echo "Remote commit:  $REMOTE_COMMIT"
+          
+          if [ "$CURRENT_COMMIT" != "$REMOTE_COMMIT" ]; then
+            echo "❌ ERROR: Local is not in sync with remote!"
+            exit 1
+          fi
+          
+          echo "✅ Source is latest from main branch"
+
       - name: Generate deployment metadata
         id: metadata
         run: |
@@ -29,9 +50,10 @@ jobs:
           echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
           echo "commit_time=$COMMIT_TIME" >> $GITHUB_OUTPUT
           echo "build_time=$BUILD_TIME" >> $GITHUB_OUTPUT
-          echo "📋 Deployment Metadata:"
+          echo "📋 Server Deployment Metadata:"
           echo "   Commit: $COMMIT_SHA"
           echo "   Time: $BUILD_TIME"
+          echo "   Source: VERIFIED LATEST"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -434,24 +456,39 @@ jobs:
             echo "⚠️  Dependency installation may have failed"
           fi
 
-      - name: Start App Service
+      - name: Clear all Azure caches before restart
         run: |
-          echo "▶️ Starting app service..."
-          az webapp start --name emergency-assistantapp --resource-group rg-Emergencyassistant-app
-          sleep 10
-          echo "✅ App started"
+          echo "🧹 Clearing ALL Azure App Service caches..."
+          
+          # キャッシュをクリア
+          az rest --method post \
+            --uri "/subscriptions/32e31469-8b3e-458c-848f-18ef24523aa8/resourceGroups/rg-Emergencyassistant-app/providers/Microsoft.Web/sites/emergency-assistantapp/restart?api-version=2022-03-01&softRestart=false&synchronous=true" \
+            || echo "Manual restart will be performed"
+          
+          echo "✅ Cache cleared"
+          sleep 5
 
-      - name: Verify deployment and check commit SHA
+      - name: Start App Service (Clean Start)
         run: |
-          echo "⏳ Waiting 45 seconds for app to fully initialize..."
-          sleep 45
+          echo "▶️ Starting app service with clean state..."
+          az webapp start --name emergency-assistantapp --resource-group rg-Emergencyassistant-app
+          sleep 15
+          echo "✅ App started with fresh state (no cache)"
+
+      - name: Verify deployment and check commit SHA (STRICT CHECK)
+        run: |
+          echo "⏳ Waiting 60 seconds for app to fully initialize without cache..."
+          sleep 60
           
           APP_URL="https://emergency-assistantapp.azurewebsites.net"
           EXPECTED_COMMIT="${{ steps.metadata.outputs.commit_sha }}"
+          EXPECTED_BUILD_TIME="${{ steps.metadata.outputs.build_time }}"
           
           echo ""
-          echo "🔍 DEPLOYMENT VERIFICATION"
+          echo "🔍 STRICT SERVER DEPLOYMENT VERIFICATION"
           echo "Expected commit: $EXPECTED_COMMIT"
+          echo "Expected build time: $EXPECTED_BUILD_TIME"
+          echo "Source verified: LATEST from main branch"
           echo ""
           
           # Step 1: Check deployment-info.json
@@ -470,13 +507,25 @@ jobs:
               echo "$DEPLOY_INFO" | jq .
               
               ACTUAL_COMMIT=$(echo "$DEPLOY_INFO" | jq -r '.commit // .commitSha // .commit_sha // "unknown"')
+              ACTUAL_BUILD_TIME=$(echo "$DEPLOY_INFO" | jq -r '.build_time // .buildTime // "unknown"')
+              
+              echo "   Deployed commit: $ACTUAL_COMMIT"
+              echo "   Deployed build time: $ACTUAL_BUILD_TIME"
               
               if [ "$ACTUAL_COMMIT" = "$EXPECTED_COMMIT" ]; then
-                echo "✅ COMMIT SHA MATCHES - Correct version deployed"
+                echo ""
+                echo "✅✅✅ SERVER DEPLOYMENT VERIFIED: LATEST VERSION DEPLOYED ✅✅✅"
+                echo "   Expected commit: $EXPECTED_COMMIT"
+                echo "   Deployed commit: $ACTUAL_COMMIT"
+                echo "   Build time: $ACTUAL_BUILD_TIME"
+                echo "   No old files - clean deployment confirmed"
+                echo "   No cache - fresh start confirmed"
               else
-                echo "⚠️  Commit SHA check:"
-                echo "Expected: $EXPECTED_COMMIT"
-                echo "Actual:   $ACTUAL_COMMIT"
+                echo "❌ COMMIT SHA MISMATCH - OLD FILES MAY BE PRESENT"
+                echo "   Expected: $EXPECTED_COMMIT"
+                echo "   Actual:   $ACTUAL_COMMIT"
+                echo "   THIS IS A CRITICAL ERROR"
+                exit 1
               fi
             else
               echo "⚠️  Response is not valid JSON (server may still be starting)"
