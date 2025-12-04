@@ -4493,7 +4493,7 @@ app.get('/api/_diag/check-users', async (req, res) => {
   }
 });
 
-// Debug endpoint: Reset all user passwords to 'password'
+// Debug endpoint: Reset plaintext passwords (except niina)
 app.post('/api/_diag/reset-all-passwords', async (req, res) => {
   try {
     if (!dbPool) {
@@ -4503,11 +4503,12 @@ app.post('/api/_diag/reset-all-passwords', async (req, res) => {
     // bcrypt hash for 'password'
     const standardHash = '$2a$10$rN.EHQqYOYdw3B7E6R7tM.7XGQZvZKxLZKZ0Z5Yq9YJQZvZKxLZKZ';
 
-    // Update all users with password length != 60 (non-bcrypt)
+    // Update users with password length != 60 (non-bcrypt), but exclude 'niina'
     const updateResult = await dbQuery(
       `UPDATE users 
        SET password = $1 
        WHERE LENGTH(password) != 60 
+       AND username != 'niina'
        RETURNING id, username, display_name, role`,
       [standardHash]
     );
@@ -4519,7 +4520,7 @@ app.post('/api/_diag/reset-all-passwords', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'All users with invalid passwords have been reset to: password',
+      message: 'All users with invalid passwords have been reset to: password (niina excluded)',
       updated_users: updateResult.rows,
       updated_count: updateResult.rows.length,
       all_users: usersResult.rows
