@@ -351,7 +351,7 @@ jobs:
           
           echo "::add-mask::$PASSWORD"
           
-          # Run npm install via SSH/Kudu with environment variables loaded
+          # Use Kudu's command API which automatically loads app settings as environment variables
           echo "Running npm ci --production on Azure..."
           
           # Use Kudu's command API which automatically loads app settings as environment variables
@@ -360,8 +360,8 @@ jobs:
             -u "$USERNAME:$PASSWORD" \
             -H "Content-Type: application/json" \
             -d '{
-              "command": "cd site/wwwroot && npm ci --production --no-optional --loglevel=verbose",
-              "dir": "site"
+              "command": "cd site/wwwroot/server && npm ci --production --no-optional --loglevel=verbose",
+              "dir": "site/wwwroot"
             }' \
             --max-time 600 \
             -s)
@@ -378,7 +378,7 @@ jobs:
           echo ""
           echo "Verifying node_modules installation..."
           NODE_MODULES_CHECK=$(curl -s \
-            "https://emergency-assistantapp.scm.azurewebsites.net/api/vfs/site/wwwroot/node_modules/" \
+            "https://emergency-assistantapp.scm.azurewebsites.net/api/vfs/site/wwwroot/server/node_modules/" \
             -u "$USERNAME:$PASSWORD" \
             -H "Accept: application/json")
           
