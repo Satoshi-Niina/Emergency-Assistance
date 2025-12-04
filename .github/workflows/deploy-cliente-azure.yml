@@ -227,6 +227,7 @@ jobs:
           skip_app_build: true
           skip_api_build: true
           production_branch: "main"
+          # deployment_environment: 設定しない（デフォルトURLを使用）
         env:
           # 完全なクリーンデプロイを強制
           DEPLOYMENT_ACTION: "upload"
@@ -234,15 +235,32 @@ jobs:
           IS_STATIC_EXPORT: "true"
           # キャッシュを無効化
           DISABLE_CACHE: "true"
+      
+      - name: Get deployed URL from action output
+        id: get_url
+        run: |
+          # Azure Static Web Apps Deploy actionの出力からURLを取得
+          DEPLOYED_URL="${{ steps.deploy.outputs.static_web_app_url }}"
+          
+          # 出力がない場合はデフォルトURLを使用
+          if [ -z "$DEPLOYED_URL" ] || [ "$DEPLOYED_URL" = "" ]; then
+            DEPLOYED_URL="https://happy-bush-083160b00.3.azurestaticapps.net"
+            echo "⚠️ Using default URL (action output was empty)"
+          fi
+          
+          echo "deployed_url=$DEPLOYED_URL" >> $GITHUB_OUTPUT
+          echo "✅ Deployed URL: $DEPLOYED_URL"
 
       - name: Wait and verify deployment (EXTENDED CHECK)
         run: |
           echo "⏳ Waiting 90 seconds for Azure Static Web Apps deployment to complete..."
           sleep 90
           
-          APP_URL="https://happy-bush-083160b00.3.azurestaticapps.net"
+          APP_URL="${{ steps.get_url.outputs.deployed_url }}"
           EXPECTED_COMMIT="${{ steps.metadata.outputs.commit_sha }}"
           EXPECTED_BUILD_TIME="${{ steps.metadata.outputs.build_time }}"
+          
+          echo "🌐 Verifying deployment at: $APP_URL"
           
           echo "🔍 DEPLOYMENT VERIFICATION (Extended)"
           echo "Expected commit: $EXPECTED_COMMIT"
