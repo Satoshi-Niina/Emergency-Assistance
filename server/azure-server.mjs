@@ -6,12 +6,16 @@
 //              
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module'; // CommonJS require for .js files
 import path from 'path';
 import fs from 'fs'; //            
 
 // __dirname     ESM     
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// CommonJS require (for src/api/*.js files)
+const require = createRequire(import.meta.url);
 
 // Azure App Service environment setup
 if (!process.env.WEBSITE_SITE_NAME) {
@@ -1104,69 +1108,91 @@ const normalizeUserRole = (rawRole) => {
   return 'employee';
 };
 
-//                   - Azure Functions         
-const authLoginHandler = require('./src/api/auth/login/index.js');
-
+//                   - Direct implementation (no external handler)
 app.post('/api/auth/login', async (req, res) => {
   try {
-    // Azure Functions        Express          
-    const context = {
-      log: (...args) => console.log('[auth/login]', ...args),
-      error: (...args) => console.error('[auth/login ERROR]', ...args)
-    };
+    console.log('[auth/login] Login attempt:', { username: req.body?.username });
 
-    const request = {
-      method: req.method,
-      url: req.url,
-      headers: req.headers,
-      json: async () => req.body,
-      text: async () => JSON.stringify(req.body)
-    };
+    const { username, password } = req.body;
 
-    const result = await authLoginHandler(context, request);
-
-    // Azure Functions           Express      
-    res.status(result.status);
-    
-    // Set-Cookie ヘッダーを除外してセッションに保存
-    if (result.headers) {
-      Object.entries(result.headers).forEach(([key, value]) => {
-        if (key.toLowerCase() !== 'set-cookie') {
-          res.setHeader(key, value);
-        }
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'ユーザー名とパスワードが必要です'
       });
     }
 
-    if (result.body) {
-      const bodyData = typeof result.body === 'string' ? JSON.parse(result.body) : result.body;
-      
-      // ログイン成功時にExpressセッションにユーザー情報を保存
-      if (result.status === 200 && bodyData.success && bodyData.user) {
-        req.session.user = {
-          id: bodyData.user.id,
-          username: bodyData.user.username,
-          displayName: bodyData.user.displayName,
-          role: normalizeUserRole(bodyData.user.role),
-          department: bodyData.user.department
-        };
-        console.log('[auth/login] Session updated:', {
-          sessionId: req.sessionID,
-          userId: req.session.user.id,
-          username: req.session.user.username,
-          role: req.session.user.role
-        });
-      }
-      
-      res.json(bodyData);
-    } else {
-      res.end();
+    // データベースからユーザーを検索
+    if (!dbPool) {
+      return res.status(500).json({
+        success: false,
+        error: 'データベースが初期化されていません'
+      });
     }
+
+    const result = await dbPool.query(
+      'SELECT id, username, display_name, password, role, department FROM users WHERE username = $1',
+      [username]
+    );
+
+    if (result.rows.length === 0) {
+      console.log('[auth/login] User not found:', username);
+      return res.status(401).json({
+        success: false,
+        error: 'ユーザー名またはパスワードが間違っています'
+      });
+    }
+
+    const user = result.rows[0];
+
+    // パスワード検証
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      console.log('[auth/login] Password validation failed:', username);
+      return res.status(401).json({
+        success: false,
+        error: 'ユーザー名またはパスワードが間違っています'
+      });
+    }
+
+    console.log('[auth/login] Password validation passed:', username);
+
+    // セッションにユーザー情報を保存
+    req.session.user = {
+      id: user.id,
+      username: user.username,
+      displayName: user.display_name,
+      role: normalizeUserRole(user.role),
+      department: user.department
+    };
+
+    console.log('[auth/login] Session updated:', {
+      sessionId: req.sessionID,
+      userId: req.session.user.id,
+      username: req.session.user.username,
+      role: req.session.user.role
+    });
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        displayName: user.display_name,
+        role: normalizeUserRole(user.role),
+        department: user.department
+      },
+      message: 'ログインに成功しました',
+      timestamp: new Date().toISOString()
+    });
+
   } catch (error) {
-    console.error('[auth/login] Handler error:', error);
+    console.error('[auth/login] Error:', error);
     res.status(500).json({
       success: false,
-      error: 'internal_error',
-      message: 'Login failed due to server error'
+      error: 'ログイン処理に失敗しました',
+      details: process.env.NODE_ENV === 'production' ? undefined : error.message
     });
   }
 });
