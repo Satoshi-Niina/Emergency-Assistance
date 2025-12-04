@@ -279,11 +279,12 @@ jobs:
           echo "🚀 DEPLOYING COMPLETE PACKAGE TO AZURE"
           echo "This deployment includes:"
           echo "  ✓ azure-server.mjs"
-          echo "  ✓ ALL node_modules"
           echo "  ✓ src/api/*"
           echo "  ✓ deployment-info.json"
-          echo "  ✓ package.json"
+          echo "  ✓ package.json (for npm install)"
           echo "  ✓ web.config"
+          echo ""
+          echo "Note: node_modules will be installed via Kudu after deployment"
           echo ""
           
           DEPLOY_START=$(date +%s)
@@ -350,18 +351,28 @@ jobs:
           
           echo "::add-mask::$PASSWORD"
           
-          # Run npm install via Kudu API
+          # Run npm install via SSH/Kudu with environment variables loaded
           echo "Running npm ci --production on Azure..."
+          
+          # Use Kudu's command API which automatically loads app settings as environment variables
           RESPONSE=$(curl -X POST \
             "https://emergency-assistantapp.scm.azurewebsites.net/api/command" \
             -u "$USERNAME:$PASSWORD" \
             -H "Content-Type: application/json" \
-            -d '{"command":"cd site/wwwroot && npm ci --production --no-optional","dir":"site"}' \
+            -d '{
+              "command": "cd site/wwwroot && npm ci --production --no-optional --loglevel=verbose",
+              "dir": "site"
+            }' \
             --max-time 600 \
             -s)
           
           echo "npm install response:"
           echo "$RESPONSE" | jq . || echo "$RESPONSE"
+          
+          # Check for errors
+          if echo "$RESPONSE" | grep -q "error"; then
+            echo "⚠️  npm install may have errors, but continuing..."
+          fi
           
           # Check if node_modules exists
           echo ""
