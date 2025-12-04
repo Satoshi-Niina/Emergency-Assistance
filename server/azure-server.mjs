@@ -191,56 +191,51 @@ app.use(
 app.use(compression());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'tiny' : 'dev'));
 
-// CORS             -         
+// CORS設定 - preflightリクエスト対応強化
+const allowedOrigins = [
+  FRONTEND_URL,
+  STATIC_WEB_APP_URL,
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5002',
+  'http://localhost:3000',
+  'http://localhost:8080',
+  'https://happy-bush-083160b00.3.azurestaticapps.net'
+];
+
 const corsOptions = {
   origin: function (origin, callback) {
-    //             
-    const allowedOrigins = [
-      FRONTEND_URL,
-      STATIC_WEB_APP_URL,
-      'http://localhost:5173',
-      'http://localhost:5002',
-      'http://localhost:3000',
-      'https://happy-bush-083160b00.3.azurestaticapps.net'
-    ];
-
-    console.log('  CORS Check:', {
+    console.log('🔍 CORS Check:', {
       requestOrigin: origin,
       allowedOrigins: allowedOrigins,
-      willAllow: !origin || allowedOrigins.indexOf(origin) !== -1
+      willAllow: !origin || allowedOrigins.includes(origin)
     });
 
-    //                                 
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    // originなし（同一オリジン）または許可リストに含まれる場合は許可
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else if (process.env.NODE_ENV === 'production' && origin && origin.includes('azurestaticapps.net')) {
+      // 本番環境: azurestaticapps.netドメインを許可
+      console.log('✅ Allowing azurestaticapps.net origin:', origin);
       callback(null, true);
     } else {
-      console.warn('   CORS blocked origin:', origin);
-      console.warn('   Expected origins:', allowedOrigins);
-      //      azurestaticapps.net                  
-      if (process.env.NODE_ENV === 'production' && origin && origin.includes('azurestaticapps.net')) {
-        console.warn('   Allowing azurestaticapps.net origin for debugging');
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
+      console.warn('❌ CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true, // Cookie           
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control', 'Pragma', 'Expires', 'If-Modified-Since'],
   exposedHeaders: ['Set-Cookie', 'Cache-Control'],
-  maxAge: 86400 // 24  
+  maxAge: 86400,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 
-// Force CORS headers for OPTIONS requests
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires, If-Modified-Since');
-  next();
-});
-
+// CORSミドルウェアを最初に適用（OPTIONSリクエスト処理より前）
 app.use(cors(corsOptions));
 
-//                
+// 全てのOPTIONSリクエストを処理
 app.options('*', cors(corsOptions));
 
 // Body parser middleware
