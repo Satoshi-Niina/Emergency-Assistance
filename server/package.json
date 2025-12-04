@@ -16,7 +16,6 @@
     "dev": "cross-env NODE_ENV=development PORT=8080 tsx watch unified-hot-reload-server.js",
     "build": "echo 'No build needed - using .mjs files directly'",
     "build:server": "echo 'TypeScript build skipped - production uses .mjs files'",
-    "build:oryx-info": "echo 'Oryx runs npm run build, which is a no-op for production deployment.'",
     "prebuild": "echo Preparing deployment...",
     "postbuild": "echo Deployment package ready",
     "type-check": "tsc --noEmit --project ../tsconfig.server.json",

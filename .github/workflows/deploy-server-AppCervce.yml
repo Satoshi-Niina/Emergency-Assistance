@@ -128,7 +128,6 @@ jobs:
             --resource-group rg-Emergencyassistant-app \
             --settings \
               SCM_DO_BUILD_DURING_DEPLOYMENT=false \
-              ENABLE_ORYX_BUILD=false \
               DISABLE_COLLECTSTATIC=true
           
           echo "✅ ZIP deployment mode configured"
@@ -237,8 +236,6 @@ jobs:
           echo "  ✓ deployment-info.json"
           echo "  ✓ package.json"
           echo "  ✓ web.config"
-          echo ""
-          echo "Note: Azure build systems (Oryx) are NOT used"
           echo ""
           
           # 完全なZIPパッケージを作成（開発ファイルのみ除外）
