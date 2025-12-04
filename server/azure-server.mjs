@@ -4,7 +4,6 @@
 // Build: ${new Date().toISOString()}
 
 //              
-import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module'; // CommonJS require for .js files
 import path from 'path';
@@ -17,8 +16,16 @@ const __dirname = path.dirname(__filename);
 // CommonJS require (for src/api/*.js files)
 const require = createRequire(import.meta.url);
 
+// Dynamic import for dotenv (ESM compatibility)
+let dotenv;
+try {
+  dotenv = await import('dotenv');
+} catch (err) {
+  console.error('Failed to load dotenv:', err);
+}
+
 // Azure App Service environment setup
-if (!process.env.WEBSITE_SITE_NAME) {
+if (!process.env.WEBSITE_SITE_NAME && dotenv) {
   // Azure App Service             .env     
   // NODE_ENV       .env         
   const nodeEnv = process.env.NODE_ENV || 'development';

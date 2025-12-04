@@ -2351,7 +2351,7 @@ export default function ChatPage() {
   return (
     <div className='flex flex-col h-screen bg-gray-50'>
       {/* ヘッダー - 固定表示 */}
-      <div className='sticky top-0 z-50 bg-white border-b px-4 py-3 flex items-center justify-between shadow-sm'>
+      <div className='sticky top-0 z-50 bg-white border-b px-6 py-2 flex items-center justify-between shadow-sm'>
         {/* 左側：機種・機械番号選択 */}
         <div className='flex items-center gap-4'>
           <div className='flex items-center gap-2'>
@@ -2370,7 +2370,7 @@ export default function ChatPage() {
                   !machineTypeInput.trim()
                 }>
                   <TooltipTrigger asChild>
-                    <div className='w-48'>
+                    <div className='w-56'>
                       <Input
                         id='machine-type'
                         type='text'
@@ -2492,7 +2492,7 @@ export default function ChatPage() {
                   !machineNumberInput.trim()
                 }>
                   <TooltipTrigger asChild>
-                    <div className='w-48'>
+                    <div className='w-56'>
                       <Input
                         id='machine-number'
                         type='text'
@@ -2607,21 +2607,18 @@ export default function ChatPage() {
         </div>
 
         {/* 中央�E�AI支援・カメラ・応急処置ガイド�Eタン */}
-        <div className='flex items-center gap-6'>
+        <div className='flex items-center gap-4'>
           {/* 応急復旧マニュアルボタン */}
           <Button
             variant='outline'
             size='lg'
             onClick={handleEmergencyGuide}
             disabled={isLoadingGuides}
-            className='bg-yellow-400 border-yellow-600 text-yellow-900 hover:bg-yellow-500 border-4 px-8 py-3 text-xl font-bold'
+            className='bg-yellow-400 border-yellow-600 text-yellow-900 hover:bg-yellow-500 border-3 px-6 py-2 text-lg font-bold'
           >
-            <Activity className='w-7 h-7 mr-3' />
+            <Activity className='w-6 h-6 mr-2' />
             応急復旧マニュアル
           </Button>
-
-          {/* 4斁Eー�Eのスペ�Eス */}
-          <div className='w-16'></div>
 
           {/* カメラボタン */}
           <Button
@@ -2640,19 +2637,19 @@ export default function ChatPage() {
             size='lg'
             onClick={aiSupportMode ? handleAiSupportExit : handleStartAiSupport}
             disabled={isLoading}
-            className={`px-8 py-3 text-xl font-bold border-4 ${aiSupportMode
+            className={`px-6 py-2 text-lg font-bold border-3 ${aiSupportMode
               ? 'bg-orange-50 border-orange-600 text-orange-700 hover:bg-orange-100'
               : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-600'
               }`}
           >
             {aiSupportMode ? (
               <>
-                <X className='w-7 h-7 mr-3' />
+                <X className='w-6 h-6 mr-2' />
                 支援終了
               </>
             ) : (
               <>
-                <Brain className='w-7 h-7 mr-3' />
+                <Brain className='w-6 h-6 mr-2' />
                 AI支援開始
               </>
             )}
@@ -2681,7 +2678,7 @@ export default function ChatPage() {
         </div>
 
         {/* 右側のアクションボタン */}
-        <div className='flex items-center gap-4'>
+        <div className='flex items-center gap-3'>
           <Button
             variant='outline'
             size='sm'
@@ -2790,7 +2787,7 @@ export default function ChatPage() {
       {/* 応急処置ガイドモーダル */}
       {showEmergencyGuide && (
         <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-          <div className='bg-white rounded-lg p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto'>
+          <div className='bg-white rounded-lg p-6 w-full max-w-6xl max-h-[85vh] overflow-y-auto'>
             <div className='flex justify-between items-center mb-4'>
               <h2 className='text-xl font-semibold'>応急処置ガイド</h2>
               <Button
@@ -2877,7 +2874,7 @@ export default function ChatPage() {
               <div className='mt-6'>
                 <EmergencyGuideDisplay
                   guideId={selectedGuideId}
-                  onExit={() => setSelectedGuideId(null)}
+                  onxit={() => setSelectedGuideId(null)}
                   backButtonText='一覧に戻る'
                   onSendToChat={() => {
                     console.log('応急処置ガイドをチャットに送信 - 継続可能');
