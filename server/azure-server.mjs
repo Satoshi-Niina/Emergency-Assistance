@@ -4466,6 +4466,32 @@ app.get('/api/_diag/seed-admin', async (req, res) => {
   }
 });
 
+// Debug endpoint: Check all users (password hash length only)
+app.get('/api/_diag/check-users', async (req, res) => {
+  try {
+    if (!dbPool) {
+      return res.status(500).json({ error: 'Database not available' });
+    }
+
+    const usersResult = await dbQuery(
+      'SELECT id, username, display_name, role, department, LENGTH(password) as password_length, created_at FROM users ORDER BY created_at DESC'
+    );
+
+    res.json({
+      success: true,
+      total: usersResult.rows.length,
+      users: usersResult.rows,
+      message: 'Check password_length - should be 60 chars for bcrypt hash'
+    });
+  } catch (error) {
+    console.error('Check users error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // 30.             
 app.post('/api/emergency-flow/generate', async (req, res) => {
   try {
