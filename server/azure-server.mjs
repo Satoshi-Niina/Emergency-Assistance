@@ -5128,7 +5128,8 @@ app.post('/api/emergency-flow/upload-image', upload.single('image'), async (req,
     const fileName = `${baseName}_${timestamp}${ext}`;
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    const blobName = norm(`images/emergency-flows/${fileName}`);
+    const blobName = norm(`${BASE}/images/emergency-flows/${fileName}`);
+    console.log('[api/emergency-flow/upload-image] Uploading to blob:', blobName);
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
     //    BLOB       
@@ -5196,11 +5197,12 @@ app.get('/api/emergency-flow/image/:fileName', async (req, res) => {
     if (blobServiceClient) {
       try {
         const containerClient = blobServiceClient.getContainerClient(containerName);
-        const blobName = norm(`images/emergency-flows/${fileName}`);
+        const blobName = norm(`${BASE}/images/emergency-flows/${fileName}`);
+        console.log('[api/emergency-flow/image] Looking for blob:', blobName);
         const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
         if (await blockBlobClient.exists()) {
-          console.log('[api/emergency-flow/image] BLOB   :', { blobName });
+          console.log('[api/emergency-flow/image] BLOB found:', { blobName });
           const downloadResponse = await blockBlobClient.download();
           const chunks = [];
           if (downloadResponse.readableStreamBody) {
@@ -5269,11 +5271,13 @@ app.get('/api/images/chat-exports/:fileName', async (req, res) => {
     if (blobServiceClient) {
       try {
         const containerClient = blobServiceClient.getContainerClient(containerName);
-        const blobName = norm(`images/chat-exports/${fileName}`);
+        // Add BASE prefix for knowledge-base path
+        const blobName = norm(`${BASE}/images/chat-exports/${fileName}`);
+        console.log('[api/images/chat-exports] Looking for blob:', { blobName });
         const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
         if (await blockBlobClient.exists()) {
-          console.log('[api/images/chat-exports] BLOB   :', { blobName });
+          console.log('[api/images/chat-exports] BLOB found:', { blobName });
           const downloadResponse = await blockBlobClient.download();
           const chunks = [];
           if (downloadResponse.readableStreamBody) {
@@ -5284,15 +5288,15 @@ app.get('/api/images/chat-exports/:fileName', async (req, res) => {
             setImageHeaders(contentType);
             return res.status(200).send(buffer);
           }
-          console.warn('[api/images/chat-exports] readableStreamBody      ');
+          console.warn('[api/images/chat-exports] readableStreamBody is null');
         } else {
-          console.log('[api/images/chat-exports] BLOB   :', { blobName });
+          console.log('[api/images/chat-exports] BLOB not found:', { blobName });
         }
       } catch (blobError) {
-        console.error('[api/images/chat-exports] BLOB     :', blobError);
+        console.error('[api/images/chat-exports] BLOB error:', blobError);
       }
     } else {
-      console.warn('[api/images/chat-exports] BLOB          ');
+      console.warn('[api/images/chat-exports] BLOB service client not available');
     }
 
     // BLOB          404   
@@ -5868,31 +5872,35 @@ app.get('/api/emergency-flow/:fileName', async (req, res) => {
 app.get('/api/images/:category/:fileName', async (req, res) => {
   try {
     const { category, fileName } = req.params;
-    console.log(`[api/images]     : ${category}/${fileName}`);
+    console.log(`[api/images] Request: ${category}/${fileName}`);
 
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
+      console.error('[api/images] BLOB service client not available');
       return res.status(503).json({
         success: false,
-        error: 'BLOB             ',
+        error: 'BLOB storage not available',
       });
     }
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    const blobName = norm(`images/${category}/${fileName}`);
+    // Add BASE prefix for knowledge-base path
+    const blobName = norm(`${BASE}/images/${category}/${fileName}`);
+    console.log(`[api/images] Looking for blob: ${blobName}`);
     const blobClient = containerClient.getBlobClient(blobName);
 
     const downloadResponse = await blobClient.download();
     const contentType = downloadResponse.contentType || 'image/jpeg';
 
     res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'public, max-age=86400'); // 1      
+    res.setHeader('Cache-Control', 'public, max-age=86400');
     downloadResponse.readableStreamBody.pipe(res);
+    console.log(`[api/images] Successfully served: ${blobName}`);
   } catch (error) {
-    console.error('         :', error);
+    console.error(`[api/images] Error loading ${category}/${fileName}:`, error.message);
     res.status(404).json({
       success: false,
-      error: '          ',
+      error: 'Image not found',
       details: error.message,
     });
   }
