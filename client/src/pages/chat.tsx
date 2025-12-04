@@ -2321,11 +2321,10 @@ export default function ChatPage() {
     }
   };
 
-  // エクスポ�Eト機�E
+  // エクスポート機能
   const handleExportChat = async () => {
     try {
-      // チャティングー履歴をエクスポ�Eティング
-      const chatData = messages.map(msg => ({
+            const chatData = messages.map(msg => ({
         role: msg.role,
         content: msg.content,
         timestamp: new Date().toISOString(),
@@ -2468,7 +2467,7 @@ export default function ChatPage() {
                         ? '該当する機種が見つかりません'
                         : machineTypes.length === 0
                           ? '機種シューティングを読み込み中...'
-                          : '機種を�E力してください'}
+                          : '機種を入力してください'}
                     </div>
                   )}
                 </div>

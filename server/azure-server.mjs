@@ -583,19 +583,32 @@ async function startupSequence() {
     // データベース初期化をここで実行し、エラーをキャッチできるようにする
     console.log('  Initializing database...');
     try {
-      await initializeDatabase();
+      const dbInitResult = initializeDatabase();
+      if (dbInitResult === false) {
+        console.warn('  Database initialization returned false - may not be configured');
+      } else {
+        console.log('  Database initialization started (background)');
+      }
     } catch (dbError) {
       console.error('  CRITICAL: Database initialization failed:', dbError);
+      console.error('  Error stack:', dbError.stack);
       // DBエラーでもサーバーは起動を継続する
     }
 
-    // BLOB           
+    // BLOB           (タイムアウト付き)
     const blobClient = getBlobServiceClient();
     if (blobClient) {
       console.log('  Verifying BLOB container accessibility...');
       try {
         const containerClient = blobClient.getContainerClient(containerName);
-        const exists = await containerClient.exists();
+        
+        // タイムアウト付きでBLOBチェック
+        const blobCheckPromise = containerClient.exists();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('BLOB check timeout')), 5000)
+        );
+        
+        const exists = await Promise.race([blobCheckPromise, timeoutPromise]);
 
         if (!exists) {
           console.log(`   Container '${containerName}' does not exist. Creating...`);
@@ -607,18 +620,25 @@ async function startupSequence() {
           console.log(`  Container '${containerName}' exists`);
         }
 
-        //        
-        const properties = await containerClient.getProperties();
-        console.log(`  Container properties:`, {
-          lastModified: properties.lastModified,
-          publicAccess: properties.blobPublicAccess || 'none'
-        });
+        //        (タイムアウトなし - オプショナル)
+        try {
+          const properties = await containerClient.getProperties();
+          console.log(`  Container properties:`, {
+            lastModified: properties.lastModified,
+            publicAccess: properties.blobPublicAccess || 'none'
+          });
+        } catch (propError) {
+          console.warn('  Could not get container properties:', propError.message);
+        }
 
       } catch (blobError) {
         console.error('  BLOB container verification failed:', blobError.message);
+        console.warn('  Continuing without BLOB storage verification');
         // BLOB                               
         //            
       }
+    } else {
+      console.warn('  BLOB client not initialized - skipping verification');
     }
 
     // FIXME: Temporarily disable migrations to isolate EISDIR
@@ -629,22 +649,32 @@ async function startupSequence() {
       // await runMigrations();
       console.log('  Database migrations skipped (EISDIR debug)');
 
-      //                 
+      //                 (タイムアウト付き)
       if (dbPool) {
-        const client = await dbPool.connect();
-        const tablesResult = await client.query(`
-          SELECT table_name FROM information_schema.tables
-          WHERE table_schema = 'public'
-          AND table_name IN ('users', 'machine_types', 'machines')
-          ORDER BY table_name
-        `);
-        await client.release();
+        try {
+          const connectPromise = dbPool.connect();
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Database connect timeout')), 5000)
+          );
+          
+          const client = await Promise.race([connectPromise, timeoutPromise]);
+          const tablesResult = await client.query(`
+            SELECT table_name FROM information_schema.tables
+            WHERE table_schema = 'public'
+            AND table_name IN ('users', 'machine_types', 'machines')
+            ORDER BY table_name
+          `);
+          await client.release();
 
-        console.log('  Database tables after migration:', tablesResult.rows.map(r => r.table_name));
+          console.log('  Database tables after migration:', tablesResult.rows.map(r => r.table_name));
 
-        if (tablesResult.rows.length === 0) {
-          console.warn('   No required tables found after migration');
-          console.warn('   Manual database setup may be required');
+          if (tablesResult.rows.length === 0) {
+            console.warn('   No required tables found after migration');
+            console.warn('   Manual database setup may be required');
+          }
+        } catch (dbCheckError) {
+          console.warn('  Database table check failed:', dbCheckError.message);
+          console.warn('  Continuing without database verification');
         }
       }
     } catch (migrationError) {
@@ -663,7 +693,8 @@ async function startupSequence() {
 }
 
 //                    
-startupSequence();
+// startupSequence()はapp.listen()の後に実行する(サーバー起動をブロックしないため)
+// → app.listen()のコールバック内で呼び出す
 
 //            CORS      
 const isAzureHosted = !!process.env.WEBSITE_SITE_NAME;
@@ -1737,9 +1768,24 @@ app.get('/api/history/machine-data', async (req, res) => {
 });
 
 //             API - Azure Functions        
-const historyHandler = require('./src/api/history/index.js');
+let historyHandler = null;
+try {
+  historyHandler = require('./src/api/history/index.js');
+  console.log('  historyHandler loaded successfully');
+} catch (error) {
+  console.error('  Failed to load historyHandler:', error.message);
+  console.error('  Stack:', error.stack);
+}
 
 app.get('/api/history/export-files', async (req, res) => {
+  if (!historyHandler) {
+    return res.status(503).json({
+      success: false,
+      error: 'History handler not available',
+      message: 'The history module could not be loaded'
+    });
+  }
+  
   try {
     const context = {
       log: (...args) => console.log('[api/history]', ...args),
@@ -1893,9 +1939,24 @@ app.get('/api/history/:id', async (req, res) => {
 // NOTE: /api/history/machine-data  1178             
 
 //       API - Azure Functions        
-const usersHandler = require('./src/api/users/index.js');
+let usersHandler = null;
+try {
+  usersHandler = require('./src/api/users/index.js');
+  console.log('  usersHandler loaded successfully');
+} catch (error) {
+  console.error('  Failed to load usersHandler:', error.message);
+  console.error('  Stack:', error.stack);
+}
 
 app.get('/api/users', async (req, res) => {
+  if (!usersHandler) {
+    return res.status(503).json({
+      success: false,
+      error: 'Users handler not available',
+      message: 'The users module could not be loaded'
+    });
+  }
+  
   try {
     const context = {
       log: (...args) => console.log('[api/users]', ...args),
@@ -5998,6 +6059,12 @@ server = app.listen(PORT, '0.0.0.0', async () => {
   console.log(`  Node Version: ${process.version}`);
   console.log(`  Started at: ${new Date().toISOString()}`);
   console.log('');
+
+  //                           
+  console.log('  Running startup sequence (background)...');
+  startupSequence().catch(err => {
+    console.error('  Startup sequence error (non-fatal):', err.message);
+  });
 
   // BLOB           
   console.log('  Testing BLOB connection...');
