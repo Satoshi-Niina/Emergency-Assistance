@@ -51,10 +51,11 @@ jobs:
           cd shared
           npm ci --omit=dev --no-cache
 
-      - name: Install server dependencies (production only)
+      - name: Build server with dependencies (GitHub Actions)
         run: |
           cd server
-          echo "📦 Installing production dependencies..."
+          echo "📦 Building server package with production dependencies..."
+          echo "Note: Dependencies are managed by GitHub Actions, not Azure"
           npm ci --omit=dev --no-cache
           
           echo "✅ Dependencies installed:"
@@ -116,11 +117,12 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Configure App Service settings
+      - name: Configure App Service for ZIP deployment
         run: |
-          echo "⚙️ Configuring App Service settings..."
+          echo "⚙️ Configuring App Service for manual ZIP deployment..."
           
-          # Oryx自動ビルドを無効化（手動でnpm installするため）
+          # ZIPパッケージ方式でデプロイ（GitHub Actionsで完全制御）
+          # Azure自動ビルドシステムは使用しない
           az webapp config appsettings set \
             --name emergency-assistantapp \
             --resource-group rg-Emergencyassistant-app \
@@ -129,7 +131,7 @@ jobs:
               ENABLE_ORYX_BUILD=false \
               DISABLE_COLLECTSTATIC=true
           
-          echo "✅ App Service settings configured"
+          echo "✅ ZIP deployment mode configured"
 
       - name: Stop App Service (force clean deployment)
         run: |
@@ -224,21 +226,22 @@ jobs:
           echo "📊 Total files to deploy:"
           find . -type f | wc -l
 
-      - name: Create deployment package (COMPLETE - with node_modules)
+      - name: Create ZIP deployment package (all-inclusive)
         run: |
           cd server
-          echo "📦 Creating COMPLETE deployment ZIP..."
-          echo "This ZIP will contain:"
-          echo "  - All source files (*.js, *.mjs)"
-          echo "  - ALL node_modules (production dependencies)"
-          echo "  - src/api folder"
-          echo "  - deployment-info.json"
-          echo "  - package.json"
-          echo "  - web.config"
+          echo "📦 Creating ZIP deployment package..."
+          echo "ZIP deployment strategy (GitHub Actions controlled):"
+          echo "  ✓ All source files (*.js, *.mjs)"
+          echo "  ✓ ALL node_modules (production dependencies)"
+          echo "  ✓ src/api folder"
+          echo "  ✓ deployment-info.json"
+          echo "  ✓ package.json"
+          echo "  ✓ web.config"
+          echo ""
+          echo "Note: Azure build systems (Oryx) are NOT used"
           echo ""
           
-          # 完全なデプロイメントパッケージを作成（node_modules含む）
-          # 除外するのは開発関連ファイルのみ
+          # 完全なZIPパッケージを作成（開発ファイルのみ除外）
           zip -r ../deploy.zip . \
             -x '*.git*' \
             -x '*.log' \
@@ -289,17 +292,18 @@ jobs:
           echo "📊 Total files in ZIP:"
           unzip -l deploy.zip | tail -1
 
-      - name: Deploy via Azure ZipDeploy API (COMPLETE PACKAGE)
+      - name: Deploy via Azure ZipDeploy API (GitHub Actions managed)
         run: |
-          echo "🚀 DEPLOYING COMPLETE PACKAGE TO AZURE"
-          echo "This deployment includes:"
+          echo "🚀 DEPLOYING ZIP PACKAGE TO AZURE"
+          echo "ZIP deployment method (no Azure build systems):"
           echo "  ✓ azure-server.mjs"
           echo "  ✓ src/api/*"
+          echo "  ✓ node_modules (GitHub Actions built)"
           echo "  ✓ deployment-info.json"
-          echo "  ✓ package.json (for npm install)"
+          echo "  ✓ package.json"
           echo "  ✓ web.config"
           echo ""
-          echo "Note: node_modules will be installed via Kudu after deployment"
+          echo "Deployment is fully controlled by GitHub Actions"
           echo ""
           
           DEPLOY_START=$(date +%s)
