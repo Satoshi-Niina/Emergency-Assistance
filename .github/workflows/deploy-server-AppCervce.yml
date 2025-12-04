@@ -40,6 +40,12 @@ jobs:
           # npm cacheを無効化して常に最新の依存関係をインストール
           # cache: 'npm'
 
+      - name: Security check - RSC & Next.js vulnerabilities
+        run: |
+          echo "🔍 Running security vulnerability check..."
+          node scripts/check-rsc-vulnerabilities.js
+        continue-on-error: false
+
       - name: Install shared dependencies
         run: |
           cd shared
@@ -327,6 +333,52 @@ jobs:
           cat deploy_response.txt || echo "(No response body)"
           echo ""
           echo "✅ Package deployed successfully"
+
+      - name: Install dependencies on Azure
+        run: |
+          echo "📦 Installing dependencies on Azure App Service..."
+          
+          # Get deployment credentials
+          CREDS=$(az webapp deployment list-publishing-credentials \
+            --name emergency-assistantapp \
+            --resource-group rg-Emergencyassistant-app \
+            --query "{username:publishingUserName, password:publishingPassword}" \
+            -o json)
+          
+          USERNAME=$(echo $CREDS | jq -r .username)
+          PASSWORD=$(echo $CREDS | jq -r .password)
+          
+          echo "::add-mask::$PASSWORD"
+          
+          # Run npm install via Kudu API
+          echo "Running npm ci --production on Azure..."
+          RESPONSE=$(curl -X POST \
+            "https://emergency-assistantapp.scm.azurewebsites.net/api/command" \
+            -u "$USERNAME:$PASSWORD" \
+            -H "Content-Type: application/json" \
+            -d '{"command":"cd site/wwwroot && npm ci --production --no-optional","dir":"site"}' \
+            --max-time 600 \
+            -s)
+          
+          echo "npm install response:"
+          echo "$RESPONSE" | jq . || echo "$RESPONSE"
+          
+          # Check if node_modules exists
+          echo ""
+          echo "Verifying node_modules installation..."
+          NODE_MODULES_CHECK=$(curl -s \
+            "https://emergency-assistantapp.scm.azurewebsites.net/api/vfs/site/wwwroot/node_modules/" \
+            -u "$USERNAME:$PASSWORD" \
+            -H "Accept: application/json")
+          
+          MODULE_COUNT=$(echo "$NODE_MODULES_CHECK" | jq '. | length' || echo "0")
+          echo "node_modules contains $MODULE_COUNT packages"
+          
+          if [ "$MODULE_COUNT" -gt 10 ]; then
+            echo "✅ Dependencies installed successfully"
+          else
+            echo "⚠️  Dependency installation may have failed"
+          fi
 
       - name: Start App Service
         run: |
