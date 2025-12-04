@@ -15,10 +15,27 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
+      - name: Checkout code (NO CACHE)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # 完全な履歴を取得してバージョン管理
+          clean: true  # チェックアウト前にgit clean -ffdxを実行
+          ref: main  # 明示的にmainブランチを指定
+
+      - name: Force clean checkout verification
+        run: |
+          echo "🧹 Forcing complete clean state..."
+          git clean -ffdx
+          git reset --hard HEAD
+          echo "✅ Repository is completely clean"
+          
+          # 実際にチェックアウトされたファイルを確認
+          echo ""
+          echo "📄 Verifying checked out files:"
+          echo "server/package.json version:"
+          grep '"version"' server/package.json | head -1
+          echo "server/azure-server.mjs CORS check:"
+          grep -A2 "azurestaticapps.net" server/azure-server.mjs | head -5
 
       - name: Verify source is latest (no uncommitted changes)
         run: |
@@ -68,17 +85,23 @@ jobs:
           node scripts/check-rsc-vulnerabilities.js
         continue-on-error: false
 
-      - name: Install shared dependencies
+      - name: Install shared dependencies (CLEAN - no cache)
         run: |
           cd shared
-          npm ci --omit=dev --no-cache
+          echo "🧹 Removing any existing node_modules..."
+          rm -rf node_modules package-lock.json
+          echo "📦 Installing dependencies with --no-cache..."
+          npm install --omit=dev --no-cache
+          echo "✅ Fresh shared dependencies installed"
 
-      - name: Build server with dependencies (GitHub Actions)
+      - name: Build server with dependencies (CLEAN - no cache)
         run: |
           cd server
+          echo "🧹 Removing any existing node_modules..."
+          rm -rf node_modules package-lock.json
           echo "📦 Building server package with production dependencies..."
           echo "Note: Dependencies are managed by GitHub Actions, not Azure"
-          npm ci --omit=dev --no-cache
+          npm install --omit=dev --no-cache
           
           echo "✅ Dependencies installed:"
           ls -la node_modules | head -20
