@@ -1,6 +1,6 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
-import { dbPool } from '../infra/db.mjs';
+import { dbQuery } from '../infra/db.mjs';
 import { NODE_ENV } from '../config/env.mjs';
 
 const router = express.Router();
@@ -27,14 +27,7 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    if (!dbPool) {
-      return res.status(500).json({
-        success: false,
-        error: 'データベースが初期化されていません'
-      });
-    }
-
-    const result = await dbPool.query(
+    const result = await dbQuery(
       'SELECT id, username, display_name, password, role, department FROM users WHERE username = $1',
       [username]
     );

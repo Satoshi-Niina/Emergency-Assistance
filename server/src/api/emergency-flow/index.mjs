@@ -28,7 +28,10 @@ export default async function emergencyFlowHandler(req, res) {
 
       try {
         const containerClient = blobServiceClient.getContainerClient(containerName);
-        const prefix = norm('knowledge-base/troubleshooting/');
+        // norm関数は環境変数を考慮してプレフィックスを付与するため、ここでは相対パスのみ指定する
+        // 元: norm('knowledge-base/troubleshooting/') -> 二重付与の可能性
+        // 修正: norm('troubleshooting/')
+        const prefix = norm('troubleshooting/');
 
         console.log(`[api/emergency-flow/list] BLOB prefix: ${prefix}`);
 

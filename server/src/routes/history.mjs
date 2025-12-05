@@ -40,7 +40,10 @@ router.get('/', async (req, res) => {
     }
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    const prefix = norm('knowledge-base/exports/');
+    // norm関数は環境変数を考慮してプレフィックスを付与するため、ここでは相対パスのみ指定する
+    // 元: norm('knowledge-base/exports/') -> 二重付与の可能性
+    // 修正: norm('exports/')
+    const prefix = norm('exports/');
     const items = [];
 
     for await (const blob of containerClient.listBlobsFlat({ prefix })) {
