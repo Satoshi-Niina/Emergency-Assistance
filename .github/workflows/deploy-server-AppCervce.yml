@@ -91,7 +91,8 @@ jobs:
           echo "🧹 Removing any existing node_modules..."
           rm -rf node_modules package-lock.json
           echo "📦 Installing dependencies with --no-cache..."
-          npm install --omit=dev --no-cache
+          # Retry logic for npm install to handle transient registry errors (500)
+          (npm install --omit=dev --no-cache) || (echo "⚠️ npm install failed. Retrying in 10s..." && sleep 10 && npm install --omit=dev --no-cache) || (echo "⚠️ npm install failed again. Retrying in 10s..." && sleep 10 && npm install --omit=dev --no-cache)
           echo "✅ Fresh shared dependencies installed"
 
       - name: Build server with dependencies (CLEAN - no cache)
@@ -101,7 +102,8 @@ jobs:
           rm -rf node_modules package-lock.json
           echo "📦 Building server package with production dependencies..."
           echo "Note: Dependencies are managed by GitHub Actions, not Azure"
-          npm install --omit=dev --no-cache
+          # Retry logic for npm install to handle transient registry errors (500)
+          (npm install --omit=dev --no-cache) || (echo "⚠️ npm install failed. Retrying in 10s..." && sleep 10 && npm install --omit=dev --no-cache) || (echo "⚠️ npm install failed again. Retrying in 10s..." && sleep 10 && npm install --omit=dev --no-cache)
           
           echo "✅ Dependencies installed:"
           ls -la node_modules | head -20
