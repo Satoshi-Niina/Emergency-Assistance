@@ -6009,6 +6009,292 @@ app.get('/api/uploads/:filename', async (req, res) => {
   app.handle(req, res);
 });
 
+// ===== 追加API: 画像取得・設定・フローデータ（インライン実装）=====
+
+// /api/images/chat-exports/:filename - チャット画像取得
+app.get('/api/images/chat-exports/:filename', async (req, res) => {
+  try {
+    const { filename } = req.params;
+    console.log(`[api/images/chat-exports] Fetching image: ${filename}`);
+
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      console.error('[api/images/chat-exports] BLOB client not available');
+      return res.status(503).json({ success: false, error: 'BLOB storage not available' });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blobPath = norm(`images/chat-exports/${filename}`);
+    console.log(`[api/images/chat-exports] BLOB path: ${blobPath}`);
+
+    const blobClient = containerClient.getBlockBlobClient(blobPath);
+
+    try {
+      const exists = await blobClient.exists();
+      if (!exists) {
+        console.warn(`[api/images/chat-exports] Image not found: ${blobPath}`);
+        return res.status(404).json({ success: false, error: 'Image not found' });
+      }
+
+      const downloadResponse = await blobClient.download();
+      const contentType = downloadResponse.contentType || 'image/jpeg';
+
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      downloadResponse.readableStreamBody.pipe(res);
+    } catch (blobError) {
+      console.error('[api/images/chat-exports] BLOB error:', blobError);
+      res.status(404).json({ success: false, error: 'Image not found' });
+    }
+  } catch (error) {
+    console.error('[api/images/chat-exports] Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// /api/emergency-flow/image/:filename - 応急復旧フロー画像取得
+app.get('/api/emergency-flow/image/:filename', async (req, res) => {
+  try {
+    const { filename } = req.params;
+    console.log(`[api/emergency-flow/image] Fetching image: ${filename}`);
+
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({ success: false, error: 'BLOB storage not available' });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+
+    // 複数のパスを試す
+    const possiblePaths = [
+      norm(`flow-data/${filename}`),
+      norm(`images/flow-data/${filename}`),
+      norm(`emergency-flow/${filename}`),
+      norm(filename)
+    ];
+
+    for (const blobPath of possiblePaths) {
+      try {
+        const blobClient = containerClient.getBlockBlobClient(blobPath);
+        const exists = await blobClient.exists();
+
+        if (exists) {
+          console.log(`[api/emergency-flow/image] Found at: ${blobPath}`);
+          const downloadResponse = await blobClient.download();
+          const contentType = downloadResponse.contentType || 'image/jpeg';
+
+          res.setHeader('Content-Type', contentType);
+          res.setHeader('Cache-Control', 'public, max-age=86400');
+          downloadResponse.readableStreamBody.pipe(res);
+          return;
+        }
+      } catch (e) {
+        // Continue to next path
+      }
+    }
+
+    console.warn(`[api/emergency-flow/image] Image not found: ${filename}`);
+    res.status(404).json({ success: false, error: 'Image not found', tried: possiblePaths });
+  } catch (error) {
+    console.error('[api/emergency-flow/image] Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// /api/ai-assist/settings - AI設定取得
+app.get('/api/ai-assist/settings', async (req, res) => {
+  try {
+    console.log('[api/ai-assist/settings] Fetching AI settings');
+
+    // デフォルト設定を返す
+    res.json({
+      success: true,
+      data: {
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        temperature: 0.7,
+        maxTokens: 2000,
+        systemPrompt: '応急復旧アシスタントです。',
+        enabled: !!process.env.OPENAI_API_KEY
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/ai-assist/settings] Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// /api/knowledge-base/stats - ナレッジベース統計
+app.get('/api/knowledge-base/stats', async (req, res) => {
+  try {
+    console.log('[api/knowledge-base/stats] Fetching stats');
+
+    const blobServiceClient = getBlobServiceClient();
+    let fileCount = 0;
+    let totalSize = 0;
+
+    if (blobServiceClient) {
+      try {
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        for await (const blob of containerClient.listBlobsFlat()) {
+          fileCount++;
+          totalSize += blob.properties.contentLength || 0;
+        }
+      } catch (blobError) {
+        console.warn('[api/knowledge-base/stats] BLOB error:', blobError.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        totalFiles: fileCount,
+        totalSize: totalSize,
+        totalSizeMB: (totalSize / (1024 * 1024)).toFixed(2),
+        containerName: containerName,
+        lastUpdated: new Date().toISOString()
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/knowledge-base/stats] Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// /api/settings/rag - RAG設定取得
+app.get('/api/settings/rag', async (req, res) => {
+  try {
+    console.log('[api/settings/rag] Fetching RAG settings');
+
+    res.json({
+      success: true,
+      data: {
+        enabled: true,
+        chunkSize: 1000,
+        chunkOverlap: 200,
+        embeddingModel: 'text-embedding-ada-002',
+        retrievalTopK: 5
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/settings/rag] Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// /api/admin/dashboard - 管理ダッシュボード
+app.get('/api/admin/dashboard', async (req, res) => {
+  try {
+    console.log('[api/admin/dashboard] Fetching dashboard data');
+
+    let userCount = 0;
+    if (dbPool) {
+      try {
+        const result = await dbQuery('SELECT COUNT(*) as count FROM users');
+        userCount = parseInt(result.rows[0]?.count || 0);
+      } catch (e) {
+        console.warn('[api/admin/dashboard] DB error:', e.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        userCount: userCount,
+        serverUptime: process.uptime(),
+        memoryUsage: process.memoryUsage(),
+        nodeVersion: process.version,
+        platform: process.platform,
+        blobConfigured: !!getBlobServiceClient(),
+        dbConfigured: !!dbPool
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/admin/dashboard] Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// /api/emergency-flow/save - フローデータ保存
+app.post('/api/emergency-flow/save', async (req, res) => {
+  try {
+    console.log('[api/emergency-flow/save] Saving flow data');
+
+    const { flowData, flowId } = req.body;
+    if (!flowData) {
+      return res.status(400).json({ success: false, error: 'flowData is required' });
+    }
+
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({ success: false, error: 'BLOB storage not available' });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blobName = norm(`flow-data/${flowId || 'flow-' + Date.now()}.json`);
+    const blobClient = containerClient.getBlockBlobClient(blobName);
+
+    const content = typeof flowData === 'string' ? flowData : JSON.stringify(flowData, null, 2);
+
+    await blobClient.upload(content, content.length, {
+      blobHTTPHeaders: { blobContentType: 'application/json' }
+    });
+
+    console.log(`[api/emergency-flow/save] Saved to: ${blobName}`);
+
+    res.json({
+      success: true,
+      message: 'Flow data saved successfully',
+      blobName: blobName,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/emergency-flow/save] Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// /api/chat/export - チャットエクスポート
+app.post('/api/chat/export', async (req, res) => {
+  try {
+    console.log('[api/chat/export] Exporting chat');
+
+    const { chatData, chatId, images } = req.body;
+
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({ success: false, error: 'BLOB storage not available' });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const exportId = chatId || 'chat-' + Date.now();
+    const blobName = norm(`exports/${exportId}.json`);
+    const blobClient = containerClient.getBlockBlobClient(blobName);
+
+    const content = JSON.stringify(chatData, null, 2);
+
+    await blobClient.upload(content, content.length, {
+      blobHTTPHeaders: { blobContentType: 'application/json' }
+    });
+
+    console.log(`[api/chat/export] Exported to: ${blobName}`);
+
+    res.json({
+      success: true,
+      message: 'Chat exported successfully',
+      blobName: blobName,
+      exportId: exportId,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/chat/export] Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ===== 404                          =====
 app.use((req, res, next) => {
   console.warn('   404 Not Found:', {
