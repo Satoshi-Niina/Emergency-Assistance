@@ -873,6 +873,15 @@ app.get('/', (_req, res) => res.status(200).json({
   timestamp: new Date().toISOString()
 }));
 
+// デバッグ用: ロードされたルートを確認
+app.get('/debug/routes', (_req, res) => {
+  res.json({
+    routes: global.loadedRoutes || 'Not loaded yet',
+    error: global.loadedRoutesError || null,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // readiness                       
 app.get('/ready', (req, res) => {
   if (HEALTH_TOKEN && req.headers['x-health-token'] !== HEALTH_TOKEN) {
@@ -6487,8 +6496,11 @@ server = app.listen(PORT, '0.0.0.0', async () => {
 
   // 自動APIルーティングを読み込み
   console.log('  Loading API routes (auto-routing)...');
-  loadApiRoutes(app).catch(err => {
+  loadApiRoutes(app).then(routes => {
+    global.loadedRoutes = routes;
+  }).catch(err => {
     console.error('  Auto-routing error (non-fatal):', err.message);
+    global.loadedRoutesError = err.message;
   });
 
   // BLOB           
