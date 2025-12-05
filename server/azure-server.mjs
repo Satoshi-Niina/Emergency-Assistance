@@ -6358,14 +6358,52 @@ app.post('/api/chat/export', async (req, res) => {
 });
 
 // 自動APIルーティングを読み込み (404ハンドラの前に実行する必要がある)
-console.log('  Loading API routes (auto-routing)...');
-try {
-  const routes = await loadApiRoutes(app);
+// トップレベルawaitはAzure App Serviceで問題を起こす可能性があるため、即時実行関数でラップするが、
+// 完了を待たずにサーバーを起動すると404になるため、同期的に見えるように構成するか、
+// あるいはルート登録が完了するまでリクエストを待機させるミドルウェアが必要。
+// ここでは、単純に非同期実行し、完了するまでリクエストをブロックするミドルウェアを追加する。
+
+let routesLoaded = false;
+let routesLoadError = null;
+
+console.log('  Starting API routes loading (background)...');
+loadApiRoutes(app).then(routes => {
+  console.log(`  ✅ API routes loaded: ${routes ? routes.length : 0} modules`);
   global.loadedRoutes = routes;
-} catch (err) {
-  console.error('  Auto-routing error (fatal):', err.message);
+  routesLoaded = true;
+}).catch(err => {
+  console.error('  ❌ Auto-routing error (fatal):', err.message);
   global.loadedRoutesError = err.message;
-}
+  routesLoadError = err;
+  routesLoaded = true; // エラーでも完了とする
+});
+
+// ルート読み込み待機ミドルウェア
+app.use(async (req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    if (routesLoaded) {
+      return next();
+    }
+    
+    // まだロード中の場合、最大10秒待機
+    console.log('  ⏳ Waiting for API routes to load...', req.path);
+    let checks = 0;
+    while (!routesLoaded && checks < 20) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      checks++;
+    }
+    
+    if (!routesLoaded) {
+      console.error('  ❌ API routes loading timed out');
+      return res.status(503).json({
+        error: 'service_unavailable',
+        message: 'Server is starting up, please try again later',
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+  next();
+});
 
 // ===== 404                          =====
 app.use((req, res, next) => {
@@ -6504,11 +6542,13 @@ server = app.listen(PORT, '0.0.0.0', async () => {
     console.error('  Startup sequence error (non-fatal):', err.message);
   });
 
-  // 自動APIルーティング読み込みはトップレベルawaitで実行済み
+  // 自動APIルーティング読み込みはバックグラウンドで実行中
   if (global.loadedRoutes) {
     console.log(`  API routes loaded: ${global.loadedRoutes.length} modules`);
   } else if (global.loadedRoutesError) {
     console.error('  API routes failed to load:', global.loadedRoutesError);
+  } else {
+    console.log('  API routes are still loading...');
   }
 
   // BLOB           
