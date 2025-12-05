@@ -5,7 +5,7 @@
 // Force redeploy: OpenAI module fix
 
 //              
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { createRequire } from 'module'; // CommonJS require for .js files
 import path from 'path';
 import fs from 'fs'; //            
@@ -114,7 +114,7 @@ const PORT = process.env.PORT || 3000;
 
 // ==== BLOB Storage Configuration ====
 const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
-const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
+export const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
 
 // ==== OpenAI Configuration ====
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -124,7 +124,7 @@ const isOpenAIAvailable = !!OPENAI_API_KEY;
 const VERSION = '2025-12-03T21:20:00+09:00';
 
 // ==== Multer (file upload) configuration ====
-const upload = multer({
+export const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB
@@ -273,7 +273,8 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // BLOB                               
-const getBlobServiceClient = () => {
+// ESMモジュールからアクセス可能にするためexport
+export const getBlobServiceClient = () => {
   console.log('  getBlobServiceClient called');
 
   if (!connectionString || !connectionString.trim()) {
@@ -342,7 +343,7 @@ const buildKnowledgeBlobPath = (file) =>
 
 // norm  : BASE          
 //  : norm('images/test.jpg') => 'knowledge-base/images/test.jpg'
-const norm = (p) =>
+export const norm = (p) =>
   [BASE, String(p || '')]
     .filter(Boolean)
     .join('/')
@@ -535,7 +536,7 @@ function initializeDatabase() {
 }
 
 // PostgreSQL             
-async function dbQuery(sql, params = [], retries = 3) {
+export async function dbQuery(sql, params = [], retries = 3) {
   if (dbPool) {
     // PostgreSQL:                   
     let lastError;
@@ -751,12 +752,18 @@ async function loadApiRoutes(app) {
         const routePath = `/api/${moduleName}`;
         
         // HTTPメソッドに応じてルートを登録
-        // モジュールがメソッドを指定している場合はそれを使用
         const methods = module.methods || ['get', 'post', 'put', 'delete'];
         
         for (const method of methods) {
           if (typeof app[method] === 'function') {
             app[method](routePath, module.default);
+            
+            // 特定のモジュールには追加のワイルドカードルートを登録
+            if (moduleName === 'images' || moduleName === 'history' || 
+                moduleName === 'troubleshooting' || moduleName === 'emergency-flow') {
+              // サブパス対応: /api/images/*, /api/history/*, etc.
+              app[method](`${routePath}/*`, module.default);
+            }
           }
         }
         
@@ -1471,6 +1478,9 @@ app.get('/api/ping/detailed', (req, res) => {
 // 7. Storage endpoints
 //     API      API             
 
+// ===== ESM変換済み: /api/troubleshooting/list =====
+// 以下のインライン実装は src/api/troubleshooting/index.mjs に移行済み
+/*
 // 14.            API BLOB          
 app.get('/api/troubleshooting/list', async (req, res) => {
   try {
@@ -1546,7 +1556,11 @@ app.get('/api/troubleshooting/list', async (req, res) => {
     });
   }
 });
+*/
 
+// ===== ESM変換済み: /api/troubleshooting/:id =====
+// 以下のインライン実装は src/api/troubleshooting/index.mjs に移行済み
+/*
 // 15.                    API BLOB          
 app.get('/api/troubleshooting/:id', async (req, res) => {
   try {
@@ -1609,7 +1623,11 @@ app.get('/api/troubleshooting/:id', async (req, res) => {
     });
   }
 });
+*/
 
+// ===== ESM変換済み: /api/troubleshooting POST =====
+// 以下のインライン実装は src/api/troubleshooting/index.mjs に移行済み
+/*
 // 16.              API BLOB         
 app.post('/api/troubleshooting', async (req, res) => {
   try {
@@ -1672,7 +1690,11 @@ app.post('/api/troubleshooting', async (req, res) => {
     });
   }
 });
+*/
 
+// ===== ESM変換済み: /api/troubleshooting/:id PUT =====
+// 以下のインライン実装は src/api/troubleshooting/index.mjs に移行済み
+/*
 // 17.              API BLOB         
 app.put('/api/troubleshooting/:id', async (req, res) => {
   try {
@@ -1739,7 +1761,11 @@ app.put('/api/troubleshooting/:id', async (req, res) => {
     });
   }
 });
+*/
 
+// ===== ESM変換済み: /api/troubleshooting/:id DELETE =====
+// 以下のインライン実装は src/api/troubleshooting/index.mjs に移行済み
+/*
 // 18.              API BLOB          
 app.delete('/api/troubleshooting/:id', async (req, res) => {
   try {
@@ -1791,6 +1817,7 @@ app.delete('/api/troubleshooting/:id', async (req, res) => {
     });
   }
 });
+*/
 
 // ==== /api/history/*            /:id      ====
 
@@ -1868,6 +1895,9 @@ app.get('/api/history/machine-data', async (req, res) => {
 //             API - Azure Functions        
 // Handler loaded in startupSequence()
 
+// ===== ESM変換済み: /api/history/export-files =====
+// 以下のインライン実装は src/api/history/index.mjs に移行済み
+/*
 // /api/history/export-files - エクスポートファイル一覧取得（インライン実装 - ESM互換性問題回避）
 app.get('/api/history/export-files', async (req, res) => {
   try {
@@ -1921,6 +1951,7 @@ app.get('/api/history/export-files', async (req, res) => {
     });
   }
 });
+*/
 
 // /api/history/import-export - インポート・エクスポートステータス
 app.get('/api/history/import-export', async (req, res) => {
@@ -2085,6 +2116,9 @@ app.get('/api/history/:id', async (req, res) => {
 //       API - Azure Functions        
 // Handler loaded in startupSequence()
 
+// ===== ESM変換済み: /api/users GET =====
+// 以下のインライン実装は src/api/users/index.mjs に移行済み
+/*
 // /api/users - ユーザー一覧取得（インライン実装 - ESM互換性問題回避）
 app.get('/api/users', async (req, res) => {
   try {
@@ -2124,7 +2158,11 @@ app.get('/api/users', async (req, res) => {
     });
   }
 });
+*/
 
+// ===== ESM変換済み: /api/users POST =====
+// 以下のインライン実装は src/api/users/index.mjs に移行済み
+/*
 //       API
 app.post('/api/users', async (req, res) => {
   try {
@@ -2183,7 +2221,11 @@ app.post('/api/users', async (req, res) => {
     });
   }
 });
+*/
 
+// ===== ESM変換済み: /api/users/:id PUT =====
+// 以下のインライン実装は src/api/users/index.mjs に移行済み
+/*
 //       API
 app.put('/api/users/:id', async (req, res) => {
   try {
@@ -2248,7 +2290,11 @@ app.put('/api/users/:id', async (req, res) => {
     });
   }
 });
+*/
 
+// ===== ESM変換済み: /api/users/:id DELETE =====
+// 以下のインライン実装は src/api/users/index.mjs に移行済み
+/*
 //       API
 app.delete('/api/users/:id', async (req, res) => {
   try {
@@ -2297,6 +2343,7 @@ app.delete('/api/users/:id', async (req, res) => {
     });
   }
 });
+*/
 
 //     API
 app.get('/api/machines/machine-types', async (req, res) => {
@@ -5008,6 +5055,9 @@ app.put('/api/emergency-flow/:flowId', async (req, res) => {
 });
 
 // 31.               
+// ===== ESM変換済み: /api/emergency-flow/list =====
+// 以下のインライン実装は src/api/emergency-flow/index.mjs に移行済み
+/*
 app.get('/api/emergency-flow/list', async (req, res) => {
   try {
     console.log('='.repeat(80));
@@ -5153,6 +5203,7 @@ app.get('/api/emergency-flow/list', async (req, res) => {
     });
   }
 });
+*/
 
 //           API
 app.post('/api/chats/:chatId/export', async (req, res) => {
@@ -5253,6 +5304,9 @@ app.post('/api/chats/:chatId/export', async (req, res) => {
   }
 });
 
+// ===== ESM変換済み: /api/emergency-flow/upload-image =====
+// 以下のインライン実装は src/api/emergency-flow/index.mjs に移行済み
+/*
 //         API          
 app.post('/api/emergency-flow/upload-image', upload.single('image'), async (req, res) => {
   try {
@@ -5323,7 +5377,11 @@ app.post('/api/emergency-flow/upload-image', upload.single('image'), async (req,
     });
   }
 });
+*/
 
+// ===== ESM変換済み: /api/emergency-flow/image/:fileName =====
+// 以下のインライン実装は src/api/emergency-flow/index.mjs に移行済み
+/*
 //            API BLOB               
 app.get('/api/emergency-flow/image/:fileName', async (req, res) => {
   const { fileName } = req.params;
@@ -5397,7 +5455,11 @@ app.get('/api/emergency-flow/image/:fileName', async (req, res) => {
     });
   }
 });
+*/
 
+// ===== ESM変換済み: /api/images/chat-exports/:fileName =====
+// 以下のインライン実装は src/api/images/index.mjs に移行済み
+/*
 //         API
 app.get('/api/images/chat-exports/:fileName', async (req, res) => {
   const { fileName } = req.params;
@@ -5472,7 +5534,11 @@ app.get('/api/images/chat-exports/:fileName', async (req, res) => {
     });
   }
 });
+*/
 
+// ===== ESM変換済み: /api/history/upload-image =====
+// 以下のインライン実装は src/api/history/index.mjs に移行済み
+/*
 //             API            
 app.post('/api/history/upload-image', upload.single('image'), async (req, res) => {
   const maxRetries = 3;
@@ -5589,6 +5655,7 @@ app.post('/api/history/upload-image', upload.single('image'), async (req, res) =
     errorType: isDnsError ? 'DNS_ERROR' : 'BLOB_ERROR'
   });
 });
+*/
 
 //       API     -      
 app.post('/api/chats/:chatId/send', async (req, res) => {
@@ -5813,6 +5880,9 @@ async function streamToBuffer(readableStream) {
   });
 }
 
+// ===== ESM変換済み: /api/history/exports/:fileName =====
+// 以下のインライン実装は src/api/history/index.mjs に移行済み
+/*
 //         JSON      API
 app.get('/api/history/exports/:fileName', async (req, res) => {
   try {
@@ -5845,6 +5915,7 @@ app.get('/api/history/exports/:fileName', async (req, res) => {
     });
   }
 });
+*/
 
 //     API         BLOB        
 app.delete('/api/history/:id', async (req, res) => {
@@ -5989,6 +6060,9 @@ app.delete('/api/history/:id', async (req, res) => {
   }
 });
 
+// ===== ESM変換済み: /api/emergency-flow/:fileName =====
+// 以下のインライン実装は src/api/emergency-flow/index.mjs に移行済み
+/*
 //      JSON      API
 app.get('/api/emergency-flow/:fileName', async (req, res) => {
   try {
@@ -6024,7 +6098,11 @@ app.get('/api/emergency-flow/:fileName', async (req, res) => {
     });
   }
 });
+*/
 
+// ===== ESM変換済み: /api/images/:category/:fileName =====
+// 以下のインライン実装は src/api/images/index.mjs に移行済み
+/*
 //         API    
 app.get('/api/images/:category/:fileName', async (req, res) => {
   try {
@@ -6062,6 +6140,7 @@ app.get('/api/images/:category/:fileName', async (req, res) => {
     });
   }
 });
+*/
 
 // =====      Vite    & SPA =====
 // Azure App Service             
@@ -6175,6 +6254,9 @@ app.get('/api/uploads/:filename', async (req, res) => {
 // NOTE: /api/ai-assist/settings, /api/knowledge-base/stats, /api/settings/rag, /api/admin/dashboard
 // are defined earlier in this file (around line 3400)
 
+// ===== ESM変換済み: /api/emergency-flow/save =====
+// 以下のインライン実装は src/api/emergency-flow/index.mjs に移行済み
+/*
 // /api/emergency-flow/save - フローデータ保存
 app.post('/api/emergency-flow/save', async (req, res) => {
   try {
@@ -6213,6 +6295,7 @@ app.post('/api/emergency-flow/save', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+*/
 
 // /api/chat/export - チャットエクスポート
 app.post('/api/chat/export', async (req, res) => {

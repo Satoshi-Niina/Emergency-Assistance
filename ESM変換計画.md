@@ -5,17 +5,11 @@
 ### 完了した作業
 - ✅ **自動ルーティングシステム実装** - `azure-server.mjs`に`loadApiRoutes()`関数を追加
 - ✅ **BLOBパス統一** - すべてのエンドポイントが`knowledge-base/`プレフィックスを使用
-- ✅ サンプルESM変換 - `/api/users` をESM形式に変換（`index.mjs`）
-- ✅ インライン実装（azure-server.mjs内）:
-  - `/api/history/export-files`
-  - `/api/images/chat-exports/:filename`
-  - `/api/emergency-flow/image/:filename`
-  - `/api/ai-assist/settings`
-  - `/api/knowledge-base/stats`
-  - `/api/settings/rag`
-  - `/api/admin/dashboard`
-  - `/api/emergency-flow/save`
-  - `/api/chat/export`
+- ✅ **共有関数のエクスポート** - `getBlobServiceClient`, `containerName`, `norm`, `dbQuery` をexport
+- ✅ **ワイルドカードルート対応** - 画像エンドポイント用に`/api/images/*`をサポート
+- ✅ ESM変換完了:
+  - ✅ `/api/users` - ユーザー管理
+  - ✅ `/api/images` - 画像取得（chat-exports, emergency-flows対応）
 
 ### 自動ルーティングシステム
 ```javascript
@@ -42,28 +36,36 @@ async function loadApiRoutes(app) {
 
 ## 今後の計画
 
-### Phase 1: インライン実装で本番検証 🚀 (進行中)
-**目的:** 現在のインライン実装で本番環境の動作を確認
+### Phase 1: 一気にESM化 🚀 (進行中)
+**方針変更理由:** 
+- インライン実装とモジュールの混在は保守が困難
+- BLOBパス不整合が複数箇所に散在
+- 最終的にESM化するなら今やる方が効率的
 
-- [ ] Azure にデプロイ
-- [ ] 全エンドポイントの動作確認
-  - [ ] チャットエクスポート機能
-  - [ ] 画像アップロード・表示
-  - [ ] トラブルシューティングフロー
-  - [ ] 応急復旧フロー
-- [ ] BLOBストレージのパス確認（`knowledge-base/`プレフィックス）
-- [ ] エラーログの確認
+**進捗:**
+- [x] 共有関数のexport化
+- [x] `/api/images` ESM化（完了）
+- [x] `/api/users` ESM化（完了）
+- [x] `/api/history` ESM化（完了）
+- [x] `/api/troubleshooting` ESM化（完了）
+- [x] `/api/emergency-flow` ESM化（完了）
+- [x] `/api/settings` ESM化（完了）
+- [x] `/api/machines` ESM化（完了）
+- [x] インライン実装の段階的削除（完了）
+- [x] **ローカルテスト完了**: 16個のESMモジュールが正常にロード
 
-**判断基準:**
-- ✅ 正常動作 → Phase 2へ進む
-- ❌ 問題発生 → インライン実装を修正 → 再デプロイ
+**次のステップ:**
+1. 主要エンドポイントを優先的にESM化
+2. 各モジュール変換後にローカルテスト
+3. インライン実装を段階的にコメントアウト
+4. デプロイして本番確認
 
 ---
 
-### Phase 2: 段階的ESM変換（推定3-4時間）
-**前提:** Phase 1 で本番環境が安定稼働していること
+### Phase 2: 本番デプロイと検証
+**前提:** 主要エンドポイントのESM化完了
 
-対象ファイル: `server/src/api/`以下の31ファイル
+対象: すべてのエンドポイント
 
 **変換手順:**
 ```javascript
