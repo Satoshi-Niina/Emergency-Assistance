@@ -17,7 +17,7 @@
     "prebuild": "echo 🔨 Building client for production deployment...",
     "postbuild": "echo ✅ Client build completed. Ready for deployment!",
     "deploy-check": "node scripts/check-build-before-push.js",
-    "security:check-rsc": "node scripts/check-rsc-vulnerabilities.js",
+    "security:check-rsc": "node scripts/check-rsc-vulnerabilities.mjs",
     "pre-commit": "pwsh -File scripts/pre-commit.ps1",
     "commit": "npm run pre-commit && git add . && git commit",
     "pre-push": "npm run deploy-check",
