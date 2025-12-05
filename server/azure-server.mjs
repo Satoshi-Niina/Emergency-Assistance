@@ -151,7 +151,7 @@ app.set('trust proxy', true);
 app.use((req, res, next) => {
   //              Easy Auth    
   if (req.headers['x-ms-client-principal']) {
-    console.error('=' .repeat(100));
+    console.error('='.repeat(100));
     console.error('    CRITICAL: AZURE APP SERVICE EASY AUTH DETECTED    ');
     console.error('  Path:', req.path);
     console.error('  Method:', req.method);
@@ -164,14 +164,14 @@ app.use((req, res, next) => {
     console.error(' ');
     console.error('    : AZURE_403_ERROR_FIX.md          ');
     console.error('    EASY AUTH MUST BE DISABLED OR CONFIGURED    ');
-    console.error('=' .repeat(100));
+    console.error('='.repeat(100));
   }
-  
+
   // API                
   if (req.path.startsWith('/api/') && req.headers['x-ms-client-principal']) {
     console.error('  API       ', req.path, ' Easy Auth              ');
   }
-  
+
   next();
 });
 
@@ -588,31 +588,11 @@ async function startupSequence() {
   try {
     console.log('  Starting Azure application startup sequence...');
 
-    // Load API handlers first
-    console.log('  Loading API handlers...');
-    try {
-      const [historyModule, usersModule] = await Promise.all([
-        import('./src/api/history/index.js').catch(err => {
-          console.error('❌ Failed to load historyHandler:', err.message);
-          return null;
-        }),
-        import('./src/api/users/index.js').catch(err => {
-          console.error('❌ Failed to load usersHandler:', err.message);
-          return null;
-        })
-      ]);
-
-      if (historyModule) {
-        global.historyHandler = historyModule.default || historyModule;
-        console.log('✅ historyHandler loaded successfully');
-      }
-      if (usersModule) {
-        global.usersHandler = usersModule.default || usersModule;
-        console.log('✅ usersHandler loaded successfully');
-      }
-    } catch (handlerError) {
-      console.error('  API handler loading failed:', handlerError);
-    }
+    // NOTE: 外部APIハンドラのロードを無効化
+    // ESM/CommonJS混在問題でロードに失敗するため、インライン実装を使用
+    // 影響するエンドポイント: /api/users, /api/history/export-files
+    console.log('  Skipping external API handlers (using inline implementations)');
+    console.log('  ℹ️ /api/users, /api/history/export-files are implemented inline in azure-server.mjs');
 
     // データベース初期化をここで実行し、エラーをキャッチできるようにする
     console.log('  Initializing database...');
@@ -635,13 +615,13 @@ async function startupSequence() {
       console.log('  Verifying BLOB container accessibility...');
       try {
         const containerClient = blobClient.getContainerClient(containerName);
-        
+
         // タイムアウト付きでBLOBチェック
         const blobCheckPromise = containerClient.exists();
-        const timeoutPromise = new Promise((_, reject) => 
+        const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('BLOB check timeout')), 5000)
         );
-        
+
         const exists = await Promise.race([blobCheckPromise, timeoutPromise]);
 
         if (!exists) {
@@ -687,10 +667,10 @@ async function startupSequence() {
       if (dbPool) {
         try {
           const connectPromise = dbPool.connect();
-          const timeoutPromise = new Promise((_, reject) => 
+          const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Database connect timeout')), 5000)
           );
-          
+
           const client = await Promise.race([connectPromise, timeoutPromise]);
           const tablesResult = await client.query(`
             SELECT table_name FROM information_schema.tables
@@ -794,6 +774,13 @@ const ok = (_req, res) => res.status(200).send('ok');
 
 // liveness      200
 app.get('/live', ok);
+
+// Azure App Service AlwaysOn用ルートパス
+app.get('/', (_req, res) => res.status(200).json({
+  status: 'ok',
+  service: 'Emergency Assistance API',
+  timestamp: new Date().toISOString()
+}));
 
 // readiness                       
 app.get('/ready', (req, res) => {
@@ -924,7 +911,7 @@ app.get('/deployment-info.json', (req, res) => {
   const fs = require('fs');
   const path = require('path');
   const deployInfoPath = path.join(__dirname, 'deployment-info.json');
-  
+
   if (fs.existsSync(deployInfoPath)) {
     res.sendFile(deployInfoPath);
   } else {
@@ -1804,49 +1791,55 @@ app.get('/api/history/machine-data', async (req, res) => {
 //             API - Azure Functions        
 // Handler loaded in startupSequence()
 
+// /api/history/export-files - エクスポートファイル一覧取得（インライン実装 - ESM互換性問題回避）
 app.get('/api/history/export-files', async (req, res) => {
-  if (!global.historyHandler) {
-    return res.status(503).json({
-      success: false,
-      error: 'History handler not available',
-      message: 'The history module could not be loaded'
-    });
-  }
-  
   try {
-    const context = {
-      log: (...args) => console.log('[api/history]', ...args),
-      error: (...args) => console.error('[api/history ERROR]', ...args)
-    };
+    console.log('[api/history/export-files] Fetching export files (inline implementation)');
 
-    const request = {
-      method: req.method,
-      url: req.url,
-      headers: req.headers,
-      params: { action: 'export-files' },
-      query: req.query
-    };
+    const blobServiceClient = getBlobServiceClient();
+    const items = [];
 
-    const result = await global.historyHandler(context, request);
-    
-    res.status(result.status);
-    if (result.headers) {
-      Object.entries(result.headers).forEach(([key, value]) => {
-        res.setHeader(key, value);
-      });
-    }
-    
-    if (result.body) {
-      const bodyData = typeof result.body === 'string' ? JSON.parse(result.body) : result.body;
-      res.json(bodyData);
+    if (blobServiceClient) {
+      try {
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        const prefix = norm('exports/');
+
+        console.log(`[api/history/export-files] BLOB prefix: ${prefix}, container: ${containerName}`);
+
+        for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+          if (blob.name.endsWith('.json')) {
+            const fileName = blob.name.split('/').pop();
+            items.push({
+              id: fileName.replace('.json', ''),
+              fileName: fileName,
+              blobName: blob.name,
+              lastModified: blob.properties.lastModified?.toISOString() || new Date().toISOString(),
+              size: blob.properties.contentLength || 0
+            });
+          }
+        }
+
+        console.log(`[api/history/export-files] Found ${items.length} export files`);
+      } catch (blobError) {
+        console.error('[api/history/export-files] BLOB error:', blobError);
+        // BLOBエラーでも空配列を返す（UIがクラッシュしないように）
+      }
     } else {
-      res.end();
+      console.warn('[api/history/export-files] BLOB client not available');
     }
+
+    res.json({
+      success: true,
+      data: items,
+      total: items.length,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
     console.error('[api/history/export-files] Error:', error);
     res.status(500).json({
       success: false,
-      error: 'Internal server error',
+      error: 'エクスポートファイル一覧の取得に失敗しました',
+      details: error.message,
       timestamp: new Date().toISOString()
     });
   }
@@ -1968,49 +1961,41 @@ app.get('/api/history/:id', async (req, res) => {
 //       API - Azure Functions        
 // Handler loaded in startupSequence()
 
+// /api/users - ユーザー一覧取得（インライン実装 - ESM互換性問題回避）
 app.get('/api/users', async (req, res) => {
-  if (!global.usersHandler) {
-    return res.status(503).json({
-      success: false,
-      error: 'Users handler not available',
-      message: 'The users module could not be loaded'
-    });
-  }
-  
   try {
-    const context = {
-      log: (...args) => console.log('[api/users]', ...args),
-      error: (...args) => console.error('[api/users ERROR]', ...args),
-      res: {}
-    };
+    console.log('[api/users] Fetching users list (inline implementation)');
 
-    const request = {
-      method: req.method,
-      url: req.url,
-      headers: req.headers
-    };
-
-    await global.usersHandler(context, request);
-    
-    const result = context.res;
-    res.status(result.status || 200);
-    if (result.headers) {
-      Object.entries(result.headers).forEach(([key, value]) => {
-        res.setHeader(key, value);
+    if (!dbPool) {
+      console.error('[api/users] Database pool not available');
+      return res.status(503).json({
+        success: false,
+        error: 'Database not available',
+        message: 'Database connection pool is not initialized',
+        timestamp: new Date().toISOString()
       });
     }
-    
-    if (result.body) {
-      const bodyData = typeof result.body === 'string' ? JSON.parse(result.body) : result.body;
-      res.json(bodyData);
-    } else {
-      res.end();
-    }
+
+    const result = await dbQuery(`
+      SELECT id, username, display_name, role, department, description, created_at
+      FROM users
+      ORDER BY created_at DESC
+    `);
+
+    console.log('[api/users] Found', result.rows?.length || 0, 'users');
+
+    res.json({
+      success: true,
+      data: result.rows || [],
+      total: result.rows?.length || 0,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
     console.error('[api/users] Error:', error);
     res.status(500).json({
       success: false,
-      error: 'Internal server error',
+      error: 'ユーザー一覧の取得に失敗しました',
+      details: error.message,
       timestamp: new Date().toISOString()
     });
   }
@@ -4878,7 +4863,7 @@ app.get('/api/emergency-flow/list', async (req, res) => {
       'user-agent': req.headers['user-agent'],
       'x-ms-client-principal': req.headers['x-ms-client-principal'] ? '**DETECTED**' : 'not present'
     });
-    
+
     // Easy Auth    
     if (req.headers['x-ms-client-principal']) {
       console.error('    AZURE APP SERVICE EASY AUTH IS ACTIVE    ');
@@ -5975,7 +5960,7 @@ app.get('/api/files/:filename', async (req, res) => {
     }
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    
+
     // Try different possible paths
     // 1. Direct match (if filename contains path)
     // 2. documents/ folder
@@ -5994,12 +5979,12 @@ app.get('/api/files/:filename', async (req, res) => {
         if (await blockBlobClient.exists()) {
           console.log(`[api/files] Found at: ${blobPath}`);
           const downloadResponse = await blockBlobClient.download();
-          
+
           if (downloadResponse.contentType) {
             res.setHeader('Content-Type', downloadResponse.contentType);
           }
           res.setHeader('Cache-Control', 'public, max-age=86400');
-          
+
           downloadResponse.readableStreamBody.pipe(res);
           return;
         }
