@@ -723,10 +723,20 @@ async function loadApiRoutes(app) {
     // src/api配下のディレクトリを走査
     const entries = fs.readdirSync(apiDir, { withFileTypes: true });
     
+    // ルートとしてロードしないディレクトリのリスト
+    const excludedDirs = ['db', 'shared', 'middleware', 'utils', 'types', 'config', 'lib'];
+
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
       
       const moduleName = entry.name;
+      
+      // 除外リストに含まれるディレクトリはスキップ
+      if (excludedDirs.includes(moduleName)) {
+        console.log(`  ℹ️ Skipping non-route directory: ${moduleName}`);
+        continue;
+      }
+
       const moduleDir = path.join(apiDir, moduleName);
       
       // index.mjs を優先、次に index.js を探す
@@ -772,7 +782,9 @@ async function loadApiRoutes(app) {
         console.log(`  ✅ Loaded: ${routePath} (${methods.join(', ')})`);
         
       } catch (loadError) {
-        console.error(`  ❌ Failed to load ${moduleName}:`, loadError.message);
+        console.error(`  ❌ Failed to load ${moduleName}:`);
+        console.error(`     Error: ${loadError.message}`);
+        console.error(`     Stack: ${loadError.stack}`);
       }
     }
     
