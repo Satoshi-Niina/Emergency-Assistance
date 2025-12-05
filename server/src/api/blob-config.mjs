@@ -1,5 +1,5 @@
 // Blob Storage 設定の共通取得・バリデーション
-// 使用例: const { BLOB_CONTAINER, BLOB_PREFIX } = require('./blob-config');
+// 使用例: import { BLOB_CONTAINER, BLOB_PREFIX } from './blob-config.mjs';
 
 function getEnvOrDefault(key, defaultValue) {
   const val = process.env[key];
@@ -12,13 +12,9 @@ function getEnvOrDefault(key, defaultValue) {
   return val;
 }
 
-const BLOB_CONTAINER = getEnvOrDefault('BLOB_CONTAINER_NAME', 'knowledge');
-let BLOB_PREFIX = getEnvOrDefault('BLOB_PREFIX', '');
-if (!BLOB_PREFIX.endsWith('/')) {
-  BLOB_PREFIX += '/';
+export const BLOB_CONTAINER = getEnvOrDefault('BLOB_CONTAINER_NAME', 'knowledge');
+let prefix = getEnvOrDefault('BLOB_PREFIX', '');
+if (prefix && !prefix.endsWith('/')) {
+  prefix += '/';
 }
-
-module.exports = {
-  BLOB_CONTAINER,
-  BLOB_PREFIX,
-};
+export const BLOB_PREFIX = prefix;

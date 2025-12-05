@@ -1,6 +1,6 @@
 {
   "name": "emergency-assistance-server",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "type": "module",
   "main": "app.js",
   "description": "Emergency Assistance System - Azure App Service Backend",

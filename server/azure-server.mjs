@@ -1,8 +1,8 @@
 // Azure App Service      
 // Windows/Linux                  
-// Version: 2025-12-04T19:30:00+09:00 (Deployment version tracking)
+// Version: 2025-12-04T20:00:00+09:00 (Deployment version tracking - ESM Fixes)
 // Build: ${new Date().toISOString()}
-// Force redeploy: OpenAI module fix
+// Force redeploy: ESM conversion for all modules
 
 //              
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -760,7 +760,8 @@ async function loadApiRoutes(app) {
             
             // 特定のモジュールには追加のワイルドカードルートを登録
             if (moduleName === 'images' || moduleName === 'history' || 
-                moduleName === 'troubleshooting' || moduleName === 'emergency-flow') {
+                moduleName === 'troubleshooting' || moduleName === 'emergency-flow' ||
+                moduleName === 'tech-support' || moduleName === 'knowledge-base') {
               // サブパス対応: /api/images/*, /api/history/*, etc.
               app[method](`${routePath}/*`, module.default);
             }
