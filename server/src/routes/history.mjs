@@ -10,10 +10,39 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     console.log('[history] Fetching history list');
+    const items = [];
     
-    // DBから取得
-    if (dbQuery) {
+    // 1. Blobから取得 (優先)
+    const blobServiceClient = getBlobServiceClient();
+    if (blobServiceClient) {
       try {
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        // norm関数は環境変数を考慮してプレフィックスを付与するため、ここでは相対パスのみ指定する
+        // 元: norm('knowledge-base/exports/') -> 二重付与の可能性
+        // 修正: norm('exports/')
+        const prefix = norm('exports/');
+
+        for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+          if (blob.name.endsWith('.json')) {
+            items.push({
+              id: blob.name.split('/').pop().replace('.json', ''),
+              title: blob.name.split('/').pop(),
+              created_at: blob.properties.lastModified,
+              source: 'blob'
+            });
+          }
+        }
+        console.log(`[history] Found ${items.length} items in Blob`);
+      } catch (blobError) {
+        console.error('[history] Blob list failed:', blobError.message);
+      }
+    }
+
+    // 2. DBから取得 (バックアップ/フォールバック) - Blobが空の場合やエラー時のみ、またはマージする
+    // ユーザー要望によりファイル優先。DB読み込みは一旦スキップするか、Blobがない場合のみにする
+    if (items.length === 0 && dbQuery) {
+      try {
+        console.log('[history] Blob empty, trying Database...');
         const result = await dbQuery(`
           SELECT id, title, machine_type, machine_number, created_at, user_id
           FROM chat_history
@@ -21,39 +50,17 @@ router.get('/', async (req, res) => {
           LIMIT 100
         `);
         
-        return res.json({
-          success: true,
-          data: result.rows,
-          total: result.rows.length,
-          source: 'database',
-          timestamp: new Date().toISOString()
-        });
+        if (result.rows.length > 0) {
+           return res.json({
+            success: true,
+            data: result.rows,
+            total: result.rows.length,
+            source: 'database',
+            timestamp: new Date().toISOString()
+          });
+        }
       } catch (dbError) {
-        console.warn('[history] Database query failed, falling back to blob:', dbError.message);
-      }
-    }
-
-    // Blobから取得 (フォールバック)
-    const blobServiceClient = getBlobServiceClient();
-    if (!blobServiceClient) {
-      return res.status(503).json({ success: false, error: 'Storage not available' });
-    }
-
-    const containerClient = blobServiceClient.getContainerClient(containerName);
-    // norm関数は環境変数を考慮してプレフィックスを付与するため、ここでは相対パスのみ指定する
-    // 元: norm('knowledge-base/exports/') -> 二重付与の可能性
-    // 修正: norm('exports/')
-    const prefix = norm('exports/');
-    const items = [];
-
-    for await (const blob of containerClient.listBlobsFlat({ prefix })) {
-      if (blob.name.endsWith('.json')) {
-        items.push({
-          id: blob.name.split('/').pop().replace('.json', ''),
-          title: blob.name.split('/').pop(),
-          created_at: blob.properties.lastModified,
-          source: 'blob'
-        });
+        console.warn('[history] Database query failed:', dbError.message);
       }
     }
 
