@@ -3405,21 +3405,42 @@ app.get('/api/config/rag', (req, res) => {
   });
 });
 
-//          API
+//          API（実際のBLOBからデータを取得）
 app.get('/api/knowledge-base/stats', async (req, res) => {
   try {
-    console.log('[api/knowledge-base/stats]        ');
+    console.log('[api/knowledge-base/stats] Fetching stats from BLOB');
+
+    const blobServiceClient = getBlobServiceClient();
+    let fileCount = 0;
+    let totalSize = 0;
+
+    if (blobServiceClient) {
+      try {
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        for await (const blob of containerClient.listBlobsFlat()) {
+          fileCount++;
+          totalSize += blob.properties.contentLength || 0;
+        }
+        console.log(`[api/knowledge-base/stats] Found ${fileCount} files, ${totalSize} bytes`);
+      } catch (blobError) {
+        console.warn('[api/knowledge-base/stats] BLOB error:', blobError.message);
+      }
+    }
+
     res.json({
       success: true,
       data: {
-        totalDocuments: 0,
-        totalSize: 0,
+        totalFiles: fileCount,
+        totalDocuments: fileCount,
+        totalSize: totalSize,
+        totalSizeMB: (totalSize / (1024 * 1024)).toFixed(2),
+        containerName: containerName,
         lastUpdated: new Date().toISOString()
       },
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/knowledge-base/stats]    :', error);
+    console.error('[api/knowledge-base/stats] Error:', error);
     res.status(500).json({
       success: false,
       error: '                   ',
@@ -3429,22 +3450,37 @@ app.get('/api/knowledge-base/stats', async (req, res) => {
   }
 });
 
-//            API
+//            API（実際のDBからデータを取得）
 app.get('/api/admin/dashboard', async (req, res) => {
   try {
-    console.log('[api/admin/dashboard]        ');
+    console.log('[api/admin/dashboard] Fetching dashboard data');
+
+    let userCount = 0;
+    if (dbPool) {
+      try {
+        const result = await dbQuery('SELECT COUNT(*) as count FROM users');
+        userCount = parseInt(result.rows[0]?.count || 0);
+      } catch (e) {
+        console.warn('[api/admin/dashboard] DB error:', e.message);
+      }
+    }
+
     res.json({
       success: true,
       data: {
-        totalUsers: 0,
-        totalChats: 0,
-        totalMachines: 0,
-        recentActivity: []
+        totalUsers: userCount,
+        userCount: userCount,
+        serverUptime: process.uptime(),
+        memoryUsage: process.memoryUsage(),
+        nodeVersion: process.version,
+        platform: process.platform,
+        blobConfigured: !!getBlobServiceClient(),
+        dbConfigured: !!dbPool
       },
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[api/admin/dashboard]    :', error);
+    console.error('[api/admin/dashboard] Error:', error);
     res.status(500).json({
       success: false,
       error: '                    ',
@@ -6101,122 +6137,8 @@ app.get('/api/emergency-flow/image/:filename', async (req, res) => {
   }
 });
 
-// /api/ai-assist/settings - AI設定取得
-app.get('/api/ai-assist/settings', async (req, res) => {
-  try {
-    console.log('[api/ai-assist/settings] Fetching AI settings');
-
-    // デフォルト設定を返す
-    res.json({
-      success: true,
-      data: {
-        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-        temperature: 0.7,
-        maxTokens: 2000,
-        systemPrompt: '応急復旧アシスタントです。',
-        enabled: !!process.env.OPENAI_API_KEY
-      },
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('[api/ai-assist/settings] Error:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// /api/knowledge-base/stats - ナレッジベース統計
-app.get('/api/knowledge-base/stats', async (req, res) => {
-  try {
-    console.log('[api/knowledge-base/stats] Fetching stats');
-
-    const blobServiceClient = getBlobServiceClient();
-    let fileCount = 0;
-    let totalSize = 0;
-
-    if (blobServiceClient) {
-      try {
-        const containerClient = blobServiceClient.getContainerClient(containerName);
-        for await (const blob of containerClient.listBlobsFlat()) {
-          fileCount++;
-          totalSize += blob.properties.contentLength || 0;
-        }
-      } catch (blobError) {
-        console.warn('[api/knowledge-base/stats] BLOB error:', blobError.message);
-      }
-    }
-
-    res.json({
-      success: true,
-      data: {
-        totalFiles: fileCount,
-        totalSize: totalSize,
-        totalSizeMB: (totalSize / (1024 * 1024)).toFixed(2),
-        containerName: containerName,
-        lastUpdated: new Date().toISOString()
-      },
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('[api/knowledge-base/stats] Error:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// /api/settings/rag - RAG設定取得
-app.get('/api/settings/rag', async (req, res) => {
-  try {
-    console.log('[api/settings/rag] Fetching RAG settings');
-
-    res.json({
-      success: true,
-      data: {
-        enabled: true,
-        chunkSize: 1000,
-        chunkOverlap: 200,
-        embeddingModel: 'text-embedding-ada-002',
-        retrievalTopK: 5
-      },
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('[api/settings/rag] Error:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// /api/admin/dashboard - 管理ダッシュボード
-app.get('/api/admin/dashboard', async (req, res) => {
-  try {
-    console.log('[api/admin/dashboard] Fetching dashboard data');
-
-    let userCount = 0;
-    if (dbPool) {
-      try {
-        const result = await dbQuery('SELECT COUNT(*) as count FROM users');
-        userCount = parseInt(result.rows[0]?.count || 0);
-      } catch (e) {
-        console.warn('[api/admin/dashboard] DB error:', e.message);
-      }
-    }
-
-    res.json({
-      success: true,
-      data: {
-        userCount: userCount,
-        serverUptime: process.uptime(),
-        memoryUsage: process.memoryUsage(),
-        nodeVersion: process.version,
-        platform: process.platform,
-        blobConfigured: !!getBlobServiceClient(),
-        dbConfigured: !!dbPool
-      },
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('[api/admin/dashboard] Error:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+// NOTE: /api/ai-assist/settings, /api/knowledge-base/stats, /api/settings/rag, /api/admin/dashboard
+// are defined earlier in this file (around line 3400)
 
 // /api/emergency-flow/save - フローデータ保存
 app.post('/api/emergency-flow/save', async (req, res) => {
