@@ -3,7 +3,7 @@
 
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getBlobServiceClient, containerName, norm } from '../../../azure-server.mjs';
+import { getBlobServiceClient, containerName, norm } from '../../infra/blob.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

@@ -226,7 +226,9 @@ export default function UsersPage() {
   };
 
   // 新規ユーザー作成
-  const handleCreateUser = async () => {
+  const handleCreateUser = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    
     try {
       if (!newUser.username || !newUser.password || !newUser.display_name) {
         toast({
@@ -277,7 +279,9 @@ export default function UsersPage() {
   };
 
   // ユーザー更新
-  const handleUpdateUser = async () => {
+  const handleUpdateUser = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
     try {
       if (!editUser.id || !editUser.username || !editUser.display_name) {
         toast({
@@ -589,10 +593,7 @@ export default function UsersPage() {
       const formData = new FormData();
       formData.append('file', importFile);
 
-      const result = await api.get('/users/import-excel', {
-        method: 'POST',
-        body: formData,
-      });
+      const result = await api.post('/users/import-excel', formData);
 
       if (result.success) {
         setImportResults(result.results);
