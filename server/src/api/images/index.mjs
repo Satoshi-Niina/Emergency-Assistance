@@ -60,7 +60,9 @@ export default async function imagesHandler(req, res) {
       }
       
       const containerClient = blobServiceClient.getContainerClient(containerName);
-      const blobName = norm(`knowledge-base/images/${category}/${fileName}`);
+      // 環境変数 AZURE_KNOWLEDGE_BASE_PATH を考慮したパス生成
+      // norm関数は infra/blob.mjs で定義されており、環境変数を読み込んでプレフィックスを付与する
+      const blobName = norm(`images/${category}/${fileName}`);
       console.log('[api/images] Looking for blob:', blobName);
       
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
