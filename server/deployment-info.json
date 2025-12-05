@@ -1,8 +1,8 @@
 {
   "commit_sha": "2accc028df0a08bdc540e8cb254a6291691eda72",
   "commit_time": "2025-12-05T05:52:56Z",
-  "build_time": "2025-12-05T05:53:00Z",
-  "workflow_run": "manual",
+  "build_time": "2025-12-05T06:15:00Z",
+  "workflow_run": "manual-trigger",
   "deployed_by": "Satoshi Niina",
   "deployment_type": "ESM_CONVERSION_COMPLETE",
   "version": "2.0.0-esm",
