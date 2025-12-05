@@ -1,5 +1,3 @@
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
 import { db } from '../db/index.mjs';
 
 export default async function (req, res) {
