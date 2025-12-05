@@ -78,6 +78,62 @@ export default async function usersHandler(req, res) {
       }
     }
 
+    // PUTリクエスト: ユーザー更新
+    if (method === 'PUT' && id) {
+      const { password, display_name, role, department, description } = req.body;
+      
+      try {
+        let query = 'UPDATE users SET ';
+        const params = [];
+        const updates = [];
+        let paramIndex = 1;
+
+        if (password) {
+          const hashedPassword = await bcrypt.hash(password, 10);
+          updates.push(`password = $${paramIndex++}`);
+          params.push(hashedPassword);
+        }
+        if (display_name !== undefined) {
+          updates.push(`display_name = $${paramIndex++}`);
+          params.push(display_name);
+        }
+        if (role !== undefined) {
+          updates.push(`role = $${paramIndex++}`);
+          params.push(role);
+        }
+        if (department !== undefined) {
+          updates.push(`department = $${paramIndex++}`);
+          params.push(department);
+        }
+        if (description !== undefined) {
+          updates.push(`description = $${paramIndex++}`);
+          params.push(description);
+        }
+
+        if (updates.length === 0) {
+          return res.status(400).json({ success: false, error: 'No fields to update' });
+        }
+
+        query += updates.join(', ') + ` WHERE id = $${paramIndex} RETURNING id, username, display_name, role, department`;
+        params.push(id);
+
+        const result = await dbQuery(query, params);
+        
+        if (result.rows.length === 0) {
+          return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        return res.json({
+          success: true,
+          data: result.rows[0],
+          message: 'User updated successfully'
+        });
+      } catch (err) {
+        console.error('[api/users] Update error:', err);
+        return res.status(500).json({ success: false, error: err.message });
+      }
+    }
+
 
     // その他のメソッドは未実装
     return res.status(405).json({
