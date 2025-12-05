@@ -1,38 +1,31 @@
 // ESM形式 - Expressルートハンドラー
 // 自動ルーティングシステムにより /api/users にマッピングされます
 
-import { db } from '../db/index.mjs';
+import { dbQuery } from '../../infra/db.mjs';
+import bcrypt from 'bcryptjs';
 
 // デフォルトエクスポート: Expressルートハンドラー関数
 export default async function usersHandler(req, res) {
   try {
     const method = req.method;
+    const id = req.params.id || req.path.split('/').pop();
     
     // GETリクエスト: ユーザー一覧取得
-    if (method === 'GET') {
+    if (method === 'GET' && (!id || id === 'users')) {
       console.log('[api/users] Fetching all users');
       
       try {
         // 生のSQLクエリで直接データを取得
-        const allUsers = await db.execute(`
+        const result = await dbQuery(`
           SELECT id, username, display_name, role, department, description, created_at
           FROM users
           ORDER BY created_at DESC
         `);
 
-        console.log('[api/users] Users found:', {
-          count: allUsers.length,
-          users: allUsers.map(u => ({
-            id: u.id,
-            username: u.username,
-            role: u.role,
-          })),
-        });
-
         return res.status(200).json({
           success: true,
-          data: allUsers,
-          total: allUsers.length,
+          data: result.rows,
+          total: result.rows.length,
           timestamp: new Date().toISOString(),
         });
       } catch (dbError) {
@@ -45,6 +38,46 @@ export default async function usersHandler(req, res) {
         });
       }
     }
+
+    // POSTリクエスト: ユーザー作成
+    if (method === 'POST') {
+      const { username, password, display_name, role, department, description } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ success: false, error: 'Username and password are required' });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      try {
+        const result = await dbQuery(
+          `INSERT INTO users (username, password, display_name, role, department, description)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING id, username, display_name, role, department, created_at`,
+          [username, hashedPassword, display_name, role || 'user', department, description]
+        );
+        
+        return res.status(201).json({
+          success: true,
+          data: result.rows[0],
+          message: 'User created successfully'
+        });
+      } catch (err) {
+        console.error('[api/users] Create error:', err);
+        return res.status(500).json({ success: false, error: err.message });
+      }
+    }
+
+    // DELETEリクエスト: ユーザー削除
+    if (method === 'DELETE' && id) {
+      try {
+        await dbQuery('DELETE FROM users WHERE id = $1', [id]);
+        return res.json({ success: true, message: 'User deleted' });
+      } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+      }
+    }
+
 
     // その他のメソッドは未実装
     return res.status(405).json({

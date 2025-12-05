@@ -203,3 +203,31 @@ export const methods = ['get', 'post']; // オプション
 - ローカル開発: `server/unified-hot-reload-server.js`
 - 変換サンプル: `server/src/api/users/index.mjs`
 - 変換対象: `server/src/api/**/*.js` (31ファイル)
+
+
+
+azure-server.mjsnoの分散
+Node.js (ESM) + Express サーバー構成の再構築が完了し
+肥大化していた azure-server.mjs を役割ごとに分割し、保守性の高い構造にリファクタリングしました。
+
+server/
+├── azure-server.mjs       # エントリポイント（起動・初期化のみ）
+├── package.json           # "type": "module", "start": "node azure-server.mjs"
+├── src/
+│   ├── app.mjs            # Expressアプリ本体（ミドルウェア・ルート登録）
+│   ├── api/               # 自動ルーティング用ディレクトリ（既存の機能維持）
+│   │   ├── ...            # (auth, history は routes に移動したため削除)
+│   ├── config/            # 設定ファイル群
+│   │   ├── cors.mjs       # CORS設定
+│   │   ├── env.mjs        # 環境変数・定数
+│   │   ├── security.mjs   # Helmet・CSP設定
+│   │   └── session.mjs    # セッション設定
+│   ├── infra/             # インフラ層
+│   │   ├── blob.mjs       # Azure Blob Storage クライアント
+│   │   ├── db.mjs         # PostgreSQL (pg) 接続プール
+│   │   └── openai.mjs     # OpenAI クライアント
+│   └── routes/            # 明示的なルート定義（主要機能）
+│       ├── auth.mjs       # 認証系 (/api/auth/*)
+│       ├── diag.mjs       # 診断・環境確認 (/api/_diag/*, /api/version)
+│       ├── health.mjs     # ヘルスチェック (/live, /ready, /api/health)
+│       └── history.mjs    # 履歴・エクスポート (/api/history/*)
