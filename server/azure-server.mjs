@@ -1845,6 +1845,53 @@ app.get('/api/history/export-files', async (req, res) => {
   }
 });
 
+// /api/history/import-export - インポート・エクスポートステータス
+app.get('/api/history/import-export', async (req, res) => {
+  try {
+    console.log('[api/history/import-export] Fetching status');
+
+    const blobServiceClient = getBlobServiceClient();
+    let exportCount = 0;
+    let importCount = 0;
+
+    if (blobServiceClient) {
+      try {
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+
+        // エクスポートファイル数をカウント
+        for await (const blob of containerClient.listBlobsFlat({ prefix: norm('exports/') })) {
+          if (blob.name.endsWith('.json')) exportCount++;
+        }
+
+        // インポートファイル数をカウント（必要に応じて）
+        for await (const blob of containerClient.listBlobsFlat({ prefix: norm('imports/') })) {
+          if (blob.name.endsWith('.json')) importCount++;
+        }
+      } catch (blobError) {
+        console.warn('[api/history/import-export] BLOB error:', blobError.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        exportCount: exportCount,
+        importCount: importCount,
+        lastUpdated: new Date().toISOString()
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/history/import-export] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'インポート・エクスポートステータスの取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // ====       API /:id -        ====
 //       API BLOB        -        
 app.get('/api/history/:id', async (req, res) => {
