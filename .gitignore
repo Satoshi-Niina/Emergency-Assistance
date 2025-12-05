@@ -278,7 +278,7 @@ docker/data/
 
 # ⚠️ IMPORTANT: Whitelist MUST come BEFORE exclusion patterns
 # Allow specific scripts needed for CI/CD
-!scripts/check-rsc-vulnerabilities.js
+!scripts/check-rsc-vulnerabilities.mjs
 !scripts/check-build-before-push.js
 !scripts/README-check-rsc-vulnerabilities.md
 !client/scripts/replace-env.cjs
