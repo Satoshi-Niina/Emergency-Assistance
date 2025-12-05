@@ -706,6 +706,77 @@ async function startupSequence() {
   }
 }
 
+// ===== 自動APIルーティング機能 =====
+async function loadApiRoutes(app) {
+  console.log('\n  Loading API routes dynamically...');
+  const apiDir = path.join(__dirname, 'src', 'api');
+  
+  if (!fs.existsSync(apiDir)) {
+    console.warn('  API directory not found:', apiDir);
+    return;
+  }
+
+  const routeMap = [];
+  
+  try {
+    // src/api配下のディレクトリを走査
+    const entries = fs.readdirSync(apiDir, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      
+      const moduleName = entry.name;
+      const moduleDir = path.join(apiDir, moduleName);
+      
+      // index.mjs を優先、次に index.js を探す
+      let indexPath = path.join(moduleDir, 'index.mjs');
+      if (!fs.existsSync(indexPath)) {
+        indexPath = path.join(moduleDir, 'index.js');
+      }
+      
+      // index.mjs も index.js も存在しない場合はスキップ
+      if (!fs.existsSync(indexPath)) continue;
+      
+      try {
+        // 動的にモジュールをインポート
+        const moduleUrl = pathToFileURL(indexPath).href;
+        const module = await import(moduleUrl);
+        
+        if (!module.default) {
+          console.warn(`  Module ${moduleName} has no default export, skipping`);
+          continue;
+        }
+        
+        // ルートパスを決定 (例: users -> /api/users)
+        const routePath = `/api/${moduleName}`;
+        
+        // HTTPメソッドに応じてルートを登録
+        // モジュールがメソッドを指定している場合はそれを使用
+        const methods = module.methods || ['get', 'post', 'put', 'delete'];
+        
+        for (const method of methods) {
+          if (typeof app[method] === 'function') {
+            app[method](routePath, module.default);
+          }
+        }
+        
+        routeMap.push({ path: routePath, module: moduleName, methods });
+        console.log(`  ✅ Loaded: ${routePath} (${methods.join(', ')})`);
+        
+      } catch (loadError) {
+        console.error(`  ❌ Failed to load ${moduleName}:`, loadError.message);
+      }
+    }
+    
+    console.log(`\n  Auto-routing completed: ${routeMap.length} modules loaded`);
+    return routeMap;
+    
+  } catch (error) {
+    console.error('  Auto-routing failed:', error);
+    return [];
+  }
+}
+
 //                    
 // startupSequence()はapp.listen()の後に実行する(サーバー起動をブロックしないため)
 // → app.listen()のコールバック内で呼び出す
@@ -1160,6 +1231,12 @@ const normalizeUserRole = (rawRole) => {
   return 'employee';
 };
 
+// ===== インラインAPI実装エンドポイント =====
+// 注意: これらのエンドポイントは自動ルーティングより優先されます
+// 自動ルーティング(loadApiRoutes)で読み込まれるモジュールと重複する場合、
+// こちらのインライン実装が優先的に使用されます
+// 新規エンドポイントは src/api/ 配下にモジュールとして作成してください
+
 //                   - Direct implementation (no external handler)
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -1420,7 +1497,7 @@ app.get('/api/troubleshooting/list', async (req, res) => {
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
     const listOptions = {
-      prefix: norm('troubleshooting/')
+      prefix: norm('knowledge-base/troubleshooting/')
     };
 
     const troubleshootingList = [];
@@ -1492,7 +1569,7 @@ app.get('/api/troubleshooting/:id', async (req, res) => {
     }
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    const blobName = norm(`troubleshooting/${id}.json`);
+    const blobName = norm(`knowledge-base/troubleshooting/${id}.json`);
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
     const exists = await blockBlobClient.exists();
@@ -1566,7 +1643,7 @@ app.post('/api/troubleshooting', async (req, res) => {
     flowData.updatedAt = new Date().toISOString();
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    const blobName = norm(`troubleshooting/${flowData.id}.json`);
+    const blobName = norm(`knowledge-base/troubleshooting/${flowData.id}.json`);
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
     // JSON      
@@ -1633,7 +1710,7 @@ app.put('/api/troubleshooting/:id', async (req, res) => {
     });
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    const blobName = norm(`troubleshooting/${id}.json`);
+    const blobName = norm(`knowledge-base/troubleshooting/${id}.json`);
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
     // JSON      
@@ -1685,7 +1762,7 @@ app.delete('/api/troubleshooting/:id', async (req, res) => {
     }
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    const blobName = norm(`troubleshooting/${id}.json`);
+    const blobName = norm(`knowledge-base/troubleshooting/${id}.json`);
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
     //     
@@ -1802,7 +1879,7 @@ app.get('/api/history/export-files', async (req, res) => {
     if (blobServiceClient) {
       try {
         const containerClient = blobServiceClient.getContainerClient(containerName);
-        const prefix = norm('exports/');
+        const prefix = norm('knowledge-base/exports/');
 
         console.log(`[api/history/export-files] BLOB prefix: ${prefix}, container: ${containerName}`);
 
@@ -3663,7 +3740,7 @@ app.post('/api/chat/export', async (req, res) => {
           ...image,
           fileName: fileName,
           url: `/api/images/chat-exports/${fileName}`,
-          blobPath: `images/chat-exports/${fileName}`,
+          blobPath: `knowledge-base/images/chat-exports/${fileName}`,
           originalFileName: image.originalFileName || fileName
         };
       });
@@ -3691,7 +3768,7 @@ app.post('/api/chat/export', async (req, res) => {
 
     try {
       const containerClient = blobServiceClient.getContainerClient(containerName);
-      const blobName = norm(`exports/${filename}`);
+      const blobName = norm(`knowledge-base/exports/${filename}`);
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
       const jsonContent = JSON.stringify(dataToSave, null, 2);
@@ -4333,7 +4410,7 @@ app.post('/api/chats/:id/send-test', async (req, res) => {
             if (blobServiceClient) {
               const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
               const containerClient = blobServiceClient.getContainerClient(containerName);
-              imageBlobName = `images/chat-exports/${imageFileName}`;
+              imageBlobName = `knowledge-base/images/chat-exports/${imageFileName}`;
               const blockBlobClient = containerClient.getBlockBlobClient(imageBlobName);
 
               await blockBlobClient.upload(resizedBuffer, resizedBuffer.length, {
@@ -4360,7 +4437,7 @@ app.post('/api/chats/:id/send-test', async (req, res) => {
           }
 
           const imageUrl = storageMode === 'hybrid' || storageMode === 'blob' || storageMode === 'azure'
-            ? `/api/storage/image-url?name=images/chat-exports/${imageFileName}`
+            ? `/api/storage/image-url?name=knowledge-base/images/chat-exports/${imageFileName}`
             : `/api/images/chat-exports/${imageFileName}`;
 
           message.content = imageUrl;
@@ -4370,7 +4447,7 @@ app.post('/api/chats/:id/send-test', async (req, res) => {
             fileName: imageFileName,
             path: imageSavedPath,
             url: imageUrl,
-            blobPath: `images/chat-exports/${imageFileName}`
+            blobPath: `knowledge-base/images/chat-exports/${imageFileName}`
           });
         } catch (imageError) {
           console.warn('       :', imageError);
@@ -4737,7 +4814,7 @@ app.post('/api/emergency-flow', async (req, res) => {
             ...image,
             fileName: fileName,
             url: `/api/emergency-flow/image/${fileName}`,
-            blobPath: `images/emergency-flows/${fileName}`
+            blobPath: `knowledge-base/images/emergency-flows/${fileName}`
           };
         });
 
@@ -4773,7 +4850,7 @@ app.post('/api/emergency-flow', async (req, res) => {
       console.log(`[api/emergency-flow]      '${containerName}'              ...`);
       await containerClient.createIfNotExists();
     }
-    const blobName = norm(`troubleshooting/${fileName}`);
+    const blobName = norm(`knowledge-base/troubleshooting/${fileName}`);
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
     const jsonContent = JSON.stringify(dataToSave, null, 2);
@@ -4850,7 +4927,7 @@ app.put('/api/emergency-flow/:flowId', async (req, res) => {
             ...image,
             fileName: fileName,
             url: `/api/emergency-flow/image/${fileName}`,
-            blobPath: `images/emergency-flows/${fileName}`
+            blobPath: `knowledge-base/images/emergency-flows/${fileName}`
           };
         });
 
@@ -4885,7 +4962,7 @@ app.put('/api/emergency-flow/:flowId', async (req, res) => {
       await containerClient.createIfNotExists();
     }
     const fileName = `${flowId}.json`;
-    const blobName = norm(`troubleshooting/${fileName}`);
+    const blobName = norm(`knowledge-base/troubleshooting/${fileName}`);
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
     const jsonContent = JSON.stringify(dataToSave, null, 2);
@@ -4990,7 +5067,7 @@ app.get('/api/emergency-flow/list', async (req, res) => {
 
     try {
       const containerClient = blobServiceClient.getContainerClient(containerName);
-      const prefix = norm('troubleshooting/');
+      const prefix = norm('knowledge-base/troubleshooting/');
 
       console.log(`  BLOB            : prefix=${prefix}, container=${containerName}`);
 
@@ -5118,7 +5195,7 @@ app.post('/api/chats/:chatId/export', async (req, res) => {
           ...image,
           fileName: fileName,
           url: `/api/images/chat-exports/${fileName}`,
-          blobPath: `images/chat-exports/${fileName}`
+          blobPath: `knowledge-base/images/chat-exports/${fileName}`
         };
       });
     }
@@ -5138,7 +5215,7 @@ app.post('/api/chats/:chatId/export', async (req, res) => {
     }
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    const blobName = norm(`exports/${filename}`);
+    const blobName = norm(`knowledge-base/exports/${filename}`);
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
     const jsonContent = JSON.stringify(formattedData, null, 2);
@@ -5277,7 +5354,7 @@ app.get('/api/emergency-flow/image/:fileName', async (req, res) => {
     if (blobServiceClient) {
       try {
         const containerClient = blobServiceClient.getContainerClient(containerName);
-        const blobName = norm(`${BASE}/images/emergency-flows/${fileName}`);
+        const blobName = norm(`knowledge-base/images/emergency-flows/${fileName}`);
         console.log('[api/emergency-flow/image] Looking for blob:', blobName);
         const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
@@ -5351,8 +5428,8 @@ app.get('/api/images/chat-exports/:fileName', async (req, res) => {
     if (blobServiceClient) {
       try {
         const containerClient = blobServiceClient.getContainerClient(containerName);
-        // Add BASE prefix for knowledge-base path
-        const blobName = norm(`${BASE}/images/chat-exports/${fileName}`);
+        // knowledge-base/images/chat-exports/ path
+        const blobName = norm(`knowledge-base/images/chat-exports/${fileName}`);
         console.log('[api/images/chat-exports] Looking for blob:', { blobName });
         const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
@@ -5433,7 +5510,7 @@ app.post('/api/history/upload-image', upload.single('image'), async (req, res) =
       const fileName = `chat_image_${timestamp}${ext}`;
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
-      const blobName = norm(`images/chat-exports/${fileName}`);
+      const blobName = norm(`knowledge-base/images/chat-exports/${fileName}`);
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
       //                    
@@ -5585,7 +5662,7 @@ app.post('/api/chats/:chatId/send', async (req, res) => {
           const imageFileName = `chat_image_${chatId}_${imageTimestamp}.jpg`;
 
           const containerClient = blobServiceClient.getContainerClient(containerName);
-          const blobName = norm(`images/chat-exports/${imageFileName}`);
+          const blobName = norm(`knowledge-base/images/chat-exports/${imageFileName}`);
           const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
           await blockBlobClient.uploadData(buffer, {
@@ -5631,7 +5708,7 @@ app.post('/api/chats/:chatId/send', async (req, res) => {
 
     // BLOB        
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    const blobName = norm(`exports/${fileName}`);
+    const blobName = norm(`knowledge-base/exports/${fileName}`);
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
     await blockBlobClient.upload(
@@ -5687,7 +5764,7 @@ app.get('/api/emergency-flow/detail/:id', async (req, res) => {
     }
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    const blobName = norm(`troubleshooting/${id}.json`);
+    const blobName = norm(`knowledge-base/troubleshooting/${id}.json`);
     console.log(`  BLOB    : ${blobName}, container=${containerName}`);
     const blobClient = containerClient.getBlobClient(blobName);
 
@@ -5751,7 +5828,7 @@ app.get('/api/history/exports/:fileName', async (req, res) => {
     }
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    const blobName = norm(`exports/${fileName}`);
+    const blobName = norm(`knowledge-base/exports/${fileName}`);
     const blobClient = containerClient.getBlobClient(blobName);
 
     const downloadResponse = await blobClient.download();
@@ -5928,7 +6005,7 @@ app.get('/api/emergency-flow/:fileName', async (req, res) => {
     }
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    const blobName = norm(`troubleshooting/${fileName}`);
+    const blobName = norm(`knowledge-base/troubleshooting/${fileName}`);
     console.log(`  BLOB    : ${blobName}, container=${containerName}`);
     const blobClient = containerClient.getBlobClient(blobName);
 
@@ -6092,98 +6169,9 @@ app.get('/api/uploads/:filename', async (req, res) => {
   app.handle(req, res);
 });
 
-// ===== 追加API: 画像取得・設定・フローデータ（インライン実装）=====
-
-// /api/images/chat-exports/:filename - チャット画像取得
-app.get('/api/images/chat-exports/:filename', async (req, res) => {
-  try {
-    const { filename } = req.params;
-    console.log(`[api/images/chat-exports] Fetching image: ${filename}`);
-
-    const blobServiceClient = getBlobServiceClient();
-    if (!blobServiceClient) {
-      console.error('[api/images/chat-exports] BLOB client not available');
-      return res.status(503).json({ success: false, error: 'BLOB storage not available' });
-    }
-
-    const containerClient = blobServiceClient.getContainerClient(containerName);
-    const blobPath = norm(`images/chat-exports/${filename}`);
-    console.log(`[api/images/chat-exports] BLOB path: ${blobPath}`);
-
-    const blobClient = containerClient.getBlockBlobClient(blobPath);
-
-    try {
-      const exists = await blobClient.exists();
-      if (!exists) {
-        console.warn(`[api/images/chat-exports] Image not found: ${blobPath}`);
-        return res.status(404).json({ success: false, error: 'Image not found' });
-      }
-
-      const downloadResponse = await blobClient.download();
-      const contentType = downloadResponse.contentType || 'image/jpeg';
-
-      res.setHeader('Content-Type', contentType);
-      res.setHeader('Cache-Control', 'public, max-age=86400');
-      downloadResponse.readableStreamBody.pipe(res);
-    } catch (blobError) {
-      console.error('[api/images/chat-exports] BLOB error:', blobError);
-      res.status(404).json({ success: false, error: 'Image not found' });
-    }
-  } catch (error) {
-    console.error('[api/images/chat-exports] Error:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// /api/emergency-flow/image/:filename - 応急復旧フロー画像取得
-app.get('/api/emergency-flow/image/:filename', async (req, res) => {
-  try {
-    const { filename } = req.params;
-    console.log(`[api/emergency-flow/image] Fetching image: ${filename}`);
-
-    const blobServiceClient = getBlobServiceClient();
-    if (!blobServiceClient) {
-      return res.status(503).json({ success: false, error: 'BLOB storage not available' });
-    }
-
-    const containerClient = blobServiceClient.getContainerClient(containerName);
-
-    // 複数のパスを試す
-    const possiblePaths = [
-      norm(`flow-data/${filename}`),
-      norm(`images/flow-data/${filename}`),
-      norm(`emergency-flow/${filename}`),
-      norm(filename)
-    ];
-
-    for (const blobPath of possiblePaths) {
-      try {
-        const blobClient = containerClient.getBlockBlobClient(blobPath);
-        const exists = await blobClient.exists();
-
-        if (exists) {
-          console.log(`[api/emergency-flow/image] Found at: ${blobPath}`);
-          const downloadResponse = await blobClient.download();
-          const contentType = downloadResponse.contentType || 'image/jpeg';
-
-          res.setHeader('Content-Type', contentType);
-          res.setHeader('Cache-Control', 'public, max-age=86400');
-          downloadResponse.readableStreamBody.pipe(res);
-          return;
-        }
-      } catch (e) {
-        // Continue to next path
-      }
-    }
-
-    console.warn(`[api/emergency-flow/image] Image not found: ${filename}`);
-    res.status(404).json({ success: false, error: 'Image not found', tried: possiblePaths });
-  } catch (error) {
-    console.error('[api/emergency-flow/image] Error:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
+// ===== 追加API: フローデータ保存・チャットエクスポート（インライン実装）=====
+// NOTE: /api/images/chat-exports/:fileName and /api/emergency-flow/image/:fileName
+// are defined earlier in this file (around line 5325 and 5251)
 // NOTE: /api/ai-assist/settings, /api/knowledge-base/stats, /api/settings/rag, /api/admin/dashboard
 // are defined earlier in this file (around line 3400)
 
@@ -6203,7 +6191,7 @@ app.post('/api/emergency-flow/save', async (req, res) => {
     }
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    const blobName = norm(`flow-data/${flowId || 'flow-' + Date.now()}.json`);
+    const blobName = norm(`knowledge-base/troubleshooting/${flowId || 'flow-' + Date.now()}.json`);
     const blobClient = containerClient.getBlockBlobClient(blobName);
 
     const content = typeof flowData === 'string' ? flowData : JSON.stringify(flowData, null, 2);
@@ -6240,7 +6228,7 @@ app.post('/api/chat/export', async (req, res) => {
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
     const exportId = chatId || 'chat-' + Date.now();
-    const blobName = norm(`exports/${exportId}.json`);
+    const blobName = norm(`knowledge-base/exports/${exportId}.json`);
     const blobClient = containerClient.getBlockBlobClient(blobName);
 
     const content = JSON.stringify(chatData, null, 2);
@@ -6399,6 +6387,12 @@ server = app.listen(PORT, '0.0.0.0', async () => {
   console.log('  Running startup sequence (background)...');
   startupSequence().catch(err => {
     console.error('  Startup sequence error (non-fatal):', err.message);
+  });
+
+  // 自動APIルーティングを読み込み
+  console.log('  Loading API routes (auto-routing)...');
+  loadApiRoutes(app).catch(err => {
+    console.error('  Auto-routing error (non-fatal):', err.message);
   });
 
   // BLOB           
