@@ -41,17 +41,22 @@ router.post('/login', async (req, res) => {
     }
 
     const user = result.rows[0];
+    // パスワードハッシュの形式チェック（デバッグ用）
+    if (!user.password || !user.password.startsWith('$2')) {
+      console.warn('[auth/login] Warning: Stored password might not be a valid bcrypt hash for user:', username);
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      console.log('[auth/login] Password validation failed:', username);
+      console.log('[auth/login] Password validation failed for user:', username);
       return res.status(401).json({
         success: false,
         error: 'ユーザー名またはパスワードが間違っています'
       });
     }
 
-    console.log('[auth/login] Password validation passed:', username);
+    console.log('[auth/login] Login successful for:', username, 'Role:', user.role);
 
     req.session.user = {
       id: user.id,

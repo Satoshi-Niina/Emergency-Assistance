@@ -39,12 +39,17 @@ export const getBlobServiceClient = () => {
 const BASE = (process.env.AZURE_KNOWLEDGE_BASE_PATH ?? 'knowledge-base')
   .replace(/^[\\/]+|[\\/]+$/g, '');
 
-export const norm = (p) =>
-  [BASE, String(p || '')]
+console.log(`[Blob] Configuration: Container=${containerName}, BasePath=${BASE}`);
+
+export const norm = (p) => {
+  const path = [BASE, String(p || '')]
     .filter(Boolean)
     .join('/')
     .replace(/\\+/g, '/')
     .replace(/\/+/g, '/');
+  // console.log(`[Blob] Normalized path: ${p} -> ${path}`);
+  return path;
+};
 
 export const upload = multer({
   storage: multer.memoryStorage(),
