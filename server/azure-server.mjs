@@ -6357,6 +6357,16 @@ app.post('/api/chat/export', async (req, res) => {
   }
 });
 
+// 自動APIルーティングを読み込み (404ハンドラの前に実行する必要がある)
+console.log('  Loading API routes (auto-routing)...');
+try {
+  const routes = await loadApiRoutes(app);
+  global.loadedRoutes = routes;
+} catch (err) {
+  console.error('  Auto-routing error (fatal):', err.message);
+  global.loadedRoutesError = err.message;
+}
+
 // ===== 404                          =====
 app.use((req, res, next) => {
   console.warn('   404 Not Found:', {
@@ -6494,14 +6504,12 @@ server = app.listen(PORT, '0.0.0.0', async () => {
     console.error('  Startup sequence error (non-fatal):', err.message);
   });
 
-  // 自動APIルーティングを読み込み
-  console.log('  Loading API routes (auto-routing)...');
-  loadApiRoutes(app).then(routes => {
-    global.loadedRoutes = routes;
-  }).catch(err => {
-    console.error('  Auto-routing error (non-fatal):', err.message);
-    global.loadedRoutesError = err.message;
-  });
+  // 自動APIルーティング読み込みはトップレベルawaitで実行済み
+  if (global.loadedRoutes) {
+    console.log(`  API routes loaded: ${global.loadedRoutes.length} modules`);
+  } else if (global.loadedRoutesError) {
+    console.error('  API routes failed to load:', global.loadedRoutesError);
+  }
 
   // BLOB           
   console.log('  Testing BLOB connection...');
