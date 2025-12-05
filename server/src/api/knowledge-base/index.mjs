@@ -1,19 +1,18 @@
-import { db } from '../db/index.mjs';
+import { dbQuery } from '../../infra/db.mjs';
 
 export default async function (req, res) {
   try {
     console.log('Knowledge base HTTP trigger function processed a request.');
 
     // 生のSQLクエリで直接データを取得
-    const knowledgeData = await db.execute(`
+    const result = await dbQuery(`
             SELECT id, title, content, category, created_at
             FROM base_documents
             ORDER BY created_at DESC
         `);
 
     console.log('Knowledge base query result:', {
-      count: knowledgeData.length,
-      data: knowledgeData,
+      count: result.rows.length,
     });
 
     res.set({
@@ -25,8 +24,8 @@ export default async function (req, res) {
 
     res.json({
       success: true,
-      data: knowledgeData,
-      total: knowledgeData.length,
+      data: result.rows,
+      total: result.rows.length,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

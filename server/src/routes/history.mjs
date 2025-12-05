@@ -2,8 +2,93 @@ import express from 'express';
 import path from 'path';
 import { getBlobServiceClient, containerName, norm, upload, streamToBuffer } from '../infra/blob.mjs';
 import { AZURE_STORAGE_CONNECTION_STRING } from '../config/env.mjs';
+import { dbQuery } from '../infra/db.mjs';
 
 const router = express.Router();
+
+// Get history list
+router.get('/', async (req, res) => {
+  try {
+    console.log('[history] Fetching history list');
+    
+    // DBから取得
+    if (dbQuery) {
+      try {
+        const result = await dbQuery(`
+          SELECT id, title, machine_type, machine_number, created_at, user_id
+          FROM chat_history
+          ORDER BY created_at DESC
+          LIMIT 100
+        `);
+        
+        return res.json({
+          success: true,
+          data: result.rows,
+          total: result.rows.length,
+          source: 'database',
+          timestamp: new Date().toISOString()
+        });
+      } catch (dbError) {
+        console.warn('[history] Database query failed, falling back to blob:', dbError.message);
+      }
+    }
+
+    // Blobから取得 (フォールバック)
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({ success: false, error: 'Storage not available' });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const prefix = norm('knowledge-base/exports/');
+    const items = [];
+
+    for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+      if (blob.name.endsWith('.json')) {
+        items.push({
+          id: blob.name.split('/').pop().replace('.json', ''),
+          title: blob.name.split('/').pop(),
+          created_at: blob.properties.lastModified,
+          source: 'blob'
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      data: items,
+      total: items.length,
+      source: 'blob',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('[history] Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get machine data
+router.get('/machine-data', async (req, res) => {
+  try {
+    console.log('[history/machine-data] Fetching machine data');
+    const result = await dbQuery(`
+      SELECT m.id, m.machine_number, mt.machine_type_name
+      FROM machines m
+      LEFT JOIN machine_types mt ON m.machine_type_id = mt.id
+      ORDER BY m.machine_number
+    `);
+    
+    res.json({
+      success: true,
+      data: result.rows,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[history/machine-data] Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // Upload image
 router.post('/upload-image', upload.single('image'), async (req, res) => {

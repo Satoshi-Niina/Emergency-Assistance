@@ -1,7 +1,7 @@
 // ESM形式 - 応急復旧フローエンドポイント
 // /api/emergency-flow/* にマッピング
 
-import { getBlobServiceClient, containerName, norm } from '../../../azure-server.mjs';
+import { getBlobServiceClient, containerName, norm } from '../../infra/blob.mjs';
 
 export default async function emergencyFlowHandler(req, res) {
   const method = req.method;

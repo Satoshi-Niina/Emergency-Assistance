@@ -153,10 +153,9 @@ async function loadApiRoutes(app) {
           if (typeof app[method] === 'function') {
             app[method](routePath, module.default);
             
-            // Wildcard support for specific modules
-            if (['images', 'troubleshooting', 'emergency-flow', 'tech-support', 'knowledge-base'].includes(moduleName)) {
-              app[method](`${routePath}/*`, module.default);
-            }
+            // Wildcard support for all modules to handle sub-paths
+            // e.g. /api/machines/machine-types
+            app[method](`${routePath}/*`, module.default);
           }
         }
         console.log(`[App] Loaded route: ${routePath}`);
