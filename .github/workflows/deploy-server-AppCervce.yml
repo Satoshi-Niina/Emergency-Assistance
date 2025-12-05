@@ -441,32 +441,9 @@ jobs:
           fi
           
           echo ""
-          echo "📦 Now installing dependencies..."
-          
-          # Use Kudu's command API to install dependencies
-          # Since we're in wwwroot directly (not wwwroot/server), just use current directory
-          RESPONSE=$(curl -X POST \
-            "https://emergency-assistantapp.scm.azurewebsites.net/api/command" \
-            -u "$USERNAME:$PASSWORD" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "command": "npm install --production --no-optional --loglevel=verbose",
-              "dir": "site/wwwroot"
-            }' \
-            --max-time 600 \
-            -s)
-          
-          echo "npm install response:"
-          echo "$RESPONSE" | jq . || echo "$RESPONSE"
-          
-          # Check for errors
-          if echo "$RESPONSE" | grep -q "error"; then
-            echo "⚠️  npm install may have errors, but continuing..."
-          fi
+          echo "📦 Verifying node_modules (uploaded via ZIP)..."
           
           # Check if node_modules exists
-          echo ""
-          echo "Verifying node_modules installation..."
           NODE_MODULES_CHECK=$(curl -s \
             "https://emergency-assistantapp.scm.azurewebsites.net/api/vfs/site/wwwroot/node_modules/" \
             -u "$USERNAME:$PASSWORD" \
@@ -476,9 +453,9 @@ jobs:
           echo "node_modules contains $MODULE_COUNT packages"
           
           if [ "$MODULE_COUNT" -gt 10 ]; then
-            echo "✅ Dependencies installed successfully"
+            echo "✅ Dependencies present (from ZIP upload)"
           else
-            echo "⚠️  Dependency installation may have failed"
+            echo "⚠️  node_modules count is low. ZIP upload might have been incomplete."
           fi
 
       - name: Clear all Azure caches before restart
