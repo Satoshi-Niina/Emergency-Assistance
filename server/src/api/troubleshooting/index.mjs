@@ -1,7 +1,7 @@
 // ESM形式 - トラブルシューティングエンドポイント
 // /api/troubleshooting/* にマッピング
 
-import { getBlobServiceClient, containerName, norm } from '../../../azure-server.mjs';
+import { getBlobServiceClient, containerName, norm } from '../shared/blob.mjs';
 
 export default async function troubleshootingHandler(req, res) {
   const method = req.method;

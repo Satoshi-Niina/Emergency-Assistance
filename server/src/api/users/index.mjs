@@ -1,7 +1,7 @@
 // ESM形式 - Expressルートハンドラー
 // 自動ルーティングシステムにより /api/users にマッピングされます
 
-import { dbQuery } from '../../../azure-server.mjs';
+import { db } from '../db/index.mjs';
 
 // デフォルトエクスポート: Expressルートハンドラー関数
 export default async function usersHandler(req, res) {
@@ -14,13 +14,11 @@ export default async function usersHandler(req, res) {
       
       try {
         // 生のSQLクエリで直接データを取得
-        const result = await dbQuery(`
+        const allUsers = await db.execute(`
           SELECT id, username, display_name, role, department, description, created_at
           FROM users
           ORDER BY created_at DESC
         `);
-
-        const allUsers = result?.rows || [];
 
         console.log('[api/users] Users found:', {
           count: allUsers.length,

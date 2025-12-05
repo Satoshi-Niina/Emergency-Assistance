@@ -10,7 +10,7 @@
  * DELETE /api/machines/machine-types/:id - 機械タイプ削除
  */
 
-import { dbQuery } from '../../../azure-server.mjs';
+import { db } from '../db/index.mjs';
 
 export default async function machinesHandler(req, res) {
   const method = req.method;
@@ -22,7 +22,7 @@ export default async function machinesHandler(req, res) {
   try {
     // GET /api/machines/machine-types - 機械タイプ一覧
     if (method === 'GET' && pathParts[2] === 'machine-types' && !id) {
-      const result = await dbQuery(`
+      const rows = await db.execute(`
         SELECT id, machine_type_name, created_at
         FROM machine_types
         ORDER BY machine_type_name ASC
@@ -30,8 +30,8 @@ export default async function machinesHandler(req, res) {
 
       return res.json({
         success: true,
-        data: result.rows,
-        total: result.rows.length,
+        data: rows,
+        total: rows.length,
         timestamp: new Date().toISOString(),
       });
     }
@@ -47,14 +47,14 @@ export default async function machinesHandler(req, res) {
         });
       }
 
-      const result = await dbQuery(
+      const rows = await db.execute(
         `INSERT INTO machine_types (machine_type_name) VALUES ($1) RETURNING *`,
         [machine_type_name]
       );
 
       return res.json({
         success: true,
-        data: result.rows[0],
+        data: rows[0],
         message: '機械タイプを登録しました',
       });
     }
@@ -70,12 +70,12 @@ export default async function machinesHandler(req, res) {
         });
       }
 
-      const result = await dbQuery(
+      const rows = await db.execute(
         `UPDATE machine_types SET machine_type_name = $1 WHERE id = $2 RETURNING *`,
         [machine_type_name, id]
       );
 
-      if (result.rows.length === 0) {
+      if (rows.length === 0) {
         return res.status(404).json({
           success: false,
           error: '機械タイプが見つかりません',
@@ -84,19 +84,19 @@ export default async function machinesHandler(req, res) {
 
       return res.json({
         success: true,
-        data: result.rows[0],
+        data: rows[0],
         message: '機械タイプを更新しました',
       });
     }
 
     // DELETE /api/machines/machine-types/:id - 機械タイプ削除
     if (method === 'DELETE' && pathParts[2] === 'machine-types' && id) {
-      const result = await dbQuery(
+      const rows = await db.execute(
         `DELETE FROM machine_types WHERE id = $1 RETURNING *`,
         [id]
       );
 
-      if (result.rows.length === 0) {
+      if (rows.length === 0) {
         return res.status(404).json({
           success: false,
           error: '機械タイプが見つかりません',
@@ -111,7 +111,7 @@ export default async function machinesHandler(req, res) {
 
     // GET /api/machines - 機械一覧取得
     if (method === 'GET' && pathParts.length === 2) {
-      const result = await dbQuery(`
+      const rows = await db.execute(`
         SELECT m.id, m.machine_number, m.machine_type_id,
                mt.machine_type_name, m.created_at
         FROM machines m
@@ -121,8 +121,8 @@ export default async function machinesHandler(req, res) {
 
       return res.json({
         success: true,
-        data: result.rows,
-        total: result.rows.length,
+        data: rows,
+        total: rows.length,
         timestamp: new Date().toISOString(),
       });
     }
@@ -138,14 +138,14 @@ export default async function machinesHandler(req, res) {
         });
       }
 
-      const result = await dbQuery(
+      const rows = await db.execute(
         `INSERT INTO machines (machine_number, machine_type_id) VALUES ($1, $2) RETURNING *`,
         [machine_number, machine_type_id]
       );
 
       return res.json({
         success: true,
-        data: result.rows[0],
+        data: rows[0],
         message: '機械を登録しました',
       });
     }
@@ -161,12 +161,12 @@ export default async function machinesHandler(req, res) {
         });
       }
 
-      const result = await dbQuery(
+      const rows = await db.execute(
         `UPDATE machines SET machine_number = $1, machine_type_id = $2 WHERE id = $3 RETURNING *`,
         [machine_number, machine_type_id, id]
       );
 
-      if (result.rows.length === 0) {
+      if (rows.length === 0) {
         return res.status(404).json({
           success: false,
           error: '機械が見つかりません',
@@ -175,19 +175,19 @@ export default async function machinesHandler(req, res) {
 
       return res.json({
         success: true,
-        data: result.rows[0],
+        data: rows[0],
         message: '機械情報を更新しました',
       });
     }
 
     // DELETE /api/machines/:id - 機械削除
     if (method === 'DELETE' && id) {
-      const result = await dbQuery(
+      const rows = await db.execute(
         `DELETE FROM machines WHERE id = $1 RETURNING *`,
         [id]
       );
 
-      if (result.rows.length === 0) {
+      if (rows.length === 0) {
         return res.status(404).json({
           success: false,
           error: '機械が見つかりません',

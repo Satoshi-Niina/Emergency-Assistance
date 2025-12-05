@@ -2,7 +2,7 @@
 // /api/history/* にマッピング
 
 import path from 'path';
-import { getBlobServiceClient, containerName, norm, upload } from '../../../azure-server.mjs';
+import { getBlobServiceClient, containerName, norm, upload } from '../shared/blob.mjs';
 
 // アップロード用のミドルウェアラッパー
 function handleUpload(req, res, next) {
