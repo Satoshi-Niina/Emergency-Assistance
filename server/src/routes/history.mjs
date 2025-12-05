@@ -6,6 +6,64 @@ import { dbQuery } from '../infra/db.mjs';
 
 const router = express.Router();
 
+// ID正規化（export_ プレフィックスや拡張子を除去）
+const normalizeId = (id = '') => {
+  let normalized = id;
+  if (normalized.startsWith('export_')) {
+    normalized = normalized.replace('export_', '');
+  }
+  if (normalized.endsWith('.json')) {
+    normalized = normalized.replace(/\.json$/, '');
+  }
+  const parts = normalized.split('_');
+  if (parts.length >= 2 && parts[1].match(/^[a-f0-9-]+$/)) {
+    normalized = parts[1];
+  }
+  return normalized;
+};
+
+// Blobから対象の履歴ファイルを探す
+async function findHistoryBlob(containerClient, normalizedId) {
+  const prefix = norm('exports/');
+  for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+    if (!blob.name.endsWith('.json')) continue;
+    const fileName = blob.name.split('/').pop();
+    if (fileName && fileName.includes(normalizedId)) {
+      return { blobName: blob.name, fileName };
+    }
+  }
+  return null;
+}
+
+// BlobからJSONを取得
+async function downloadJson(containerClient, blobName) {
+  const blobClient = containerClient.getBlobClient(blobName);
+  if (!(await blobClient.exists())) return null;
+  const downloadResponse = await blobClient.download();
+  const chunks = [];
+  if (downloadResponse.readableStreamBody) {
+    for await (const chunk of downloadResponse.readableStreamBody) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+  }
+  const buffer = Buffer.concat(chunks);
+  return JSON.parse(buffer.toString('utf8'));
+}
+
+// オブジェクトをマージ（undefinedは無視）
+function mergeData(original, updates) {
+  const result = { ...original };
+  for (const [key, value] of Object.entries(updates)) {
+    if (value === undefined) continue;
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+      result[key] = mergeData(original[key] || {}, value);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
 // Get history list
 router.get('/', async (req, res) => {
   try {
@@ -133,7 +191,10 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
       const fileName = `chat_image_${timestamp}${ext}`;
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
-      const blobName = norm(`knowledge-base/images/chat-exports/${fileName}`);
+      // norm関数は環境変数を考慮してプレフィックスを付与するため、ここでは相対パスのみ指定する
+      // 元: norm('knowledge-base/images/chat-exports/${fileName}') -> 二重付与の可能性
+      // 修正: norm('images/chat-exports/${fileName}')
+      const blobName = norm(`images/chat-exports/${fileName}`);
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
       const containerExists = await containerClient.exists();
@@ -201,7 +262,10 @@ router.get('/exports/:fileName', async (req, res) => {
     }
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    const blobName = norm(`knowledge-base/exports/${fileName}`);
+    // norm関数は環境変数を考慮してプレフィックスを付与するため、ここでは相対パスのみ指定する
+    // 元: norm('knowledge-base/exports/${fileName}') -> 二重付与の可能性
+    // 修正: norm('exports/${fileName}')
+    const blobName = norm(`exports/${fileName}`);
     const blobClient = containerClient.getBlobClient(blobName);
 
     const downloadResponse = await blobClient.download();
@@ -229,7 +293,7 @@ router.get('/export-files', async (req, res) => {
     if (blobServiceClient) {
       try {
         const containerClient = blobServiceClient.getContainerClient(containerName);
-        const prefix = norm('knowledge-base/exports/');
+        const prefix = norm('exports/');
         
         for await (const blob of containerClient.listBlobsFlat({ prefix })) {
           if (blob.name.endsWith('.json')) {
@@ -262,11 +326,87 @@ router.get('/export-files', async (req, res) => {
   }
 });
 
+// 共通の更新処理
+async function handleUpdateHistory(req, res, rawId) {
+  try {
+    const normalizedId = normalizeId(rawId);
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({ success: false, error: 'BLOB storage not available' });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const found = await findHistoryBlob(containerClient, normalizedId);
+    const targetBlobName = found?.blobName || norm(`exports/${normalizedId}.json`);
+    const targetFileName = found?.fileName || `${normalizedId}.json`;
+
+    const originalData = (await downloadJson(containerClient, targetBlobName)) || {};
+
+    const updatePayload = req.body?.updatedData || req.body || {};
+    const merged = mergeData(originalData, {
+      ...updatePayload,
+      lastModified: new Date().toISOString(),
+    });
+
+    // savedImages を jsonData にも保持
+    if (updatePayload.savedImages) {
+      merged.savedImages = updatePayload.savedImages;
+      merged.jsonData = mergeData(merged.jsonData || {}, { savedImages: updatePayload.savedImages });
+    }
+
+    // 更新履歴を追加
+    merged.updateHistory = Array.isArray(merged.updateHistory) ? merged.updateHistory : [];
+    merged.updateHistory.push({
+      timestamp: new Date().toISOString(),
+      updatedBy: req.body?.updatedBy || 'user',
+      updatedFields: Object.keys(updatePayload || {}).filter(k => updatePayload[k] !== undefined),
+    });
+
+    const content = JSON.stringify(merged, null, 2);
+    const blockBlobClient = containerClient.getBlockBlobClient(targetBlobName);
+    await blockBlobClient.upload(content, content.length, {
+      blobHTTPHeaders: { blobContentType: 'application/json' }
+    });
+
+    // DBもベストエフォートで更新
+    try {
+      if (dbQuery) {
+        await dbQuery(
+          `UPDATE fault_history SET json_data = $1, updated_at = NOW() WHERE chat_id = $2`,
+          [JSON.stringify(merged), normalizedId]
+        );
+      }
+    } catch (dbError) {
+      console.warn('[history/update] DB update skipped:', dbError.message);
+    }
+
+    return res.json({
+      success: true,
+      message: '保存しました',
+      updatedData: merged,
+      updatedFile: targetFileName
+    });
+  } catch (error) {
+    console.error('[history/update] Error:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+}
+
+// Update history item (Save edited JSON)
+router.put('/update-item/:id', async (req, res) => {
+  await handleUpdateHistory(req, res, req.params.id);
+});
+
+// Backward compatible update endpoint
+router.put('/:id', async (req, res) => {
+  await handleUpdateHistory(req, res, req.params.id);
+});
+
 // Delete history
 router.delete('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    console.log(`[history/delete] Request: ${id}`);
+    const normalizedId = normalizeId(req.params.id);
+    console.log(`[history/delete] Request: ${normalizedId}`);
 
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
@@ -274,27 +414,25 @@ router.delete('/:id', async (req, res) => {
     }
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    const prefix = norm('knowledge-base/exports/');
-    let deleted = false;
+    const found = await findHistoryBlob(containerClient, normalizedId);
 
-    for await (const blob of containerClient.listBlobsFlat({ prefix })) {
-      if (!blob.name.endsWith('.json')) continue;
+    if (!found) {
+      return res.status(404).json({ success: false, error: 'ファイルが見つかりません' });
+    }
 
-      const fileName = blob.name.split('/').pop();
-      if (fileName.includes(id)) {
-        const blobClient = containerClient.getBlobClient(blob.name);
-        await blobClient.delete();
-        deleted = true;
-        console.log(`[history/delete] Deleted: ${blob.name}`);
-        break;
+    await containerClient.getBlobClient(found.blobName).delete();
+    console.log(`[history/delete] Deleted: ${found.blobName}`);
+
+    // DB削除はベストエフォート
+    try {
+      if (dbQuery) {
+        await dbQuery('DELETE FROM fault_history WHERE chat_id = $1', [normalizedId]);
       }
+    } catch (dbError) {
+      console.warn('[history/delete] DB delete skipped:', dbError.message);
     }
 
-    if (deleted) {
-      res.json({ success: true, message: '削除しました' });
-    } else {
-      res.status(404).json({ success: false, error: 'ファイルが見つかりません' });
-    }
+    return res.json({ success: true, message: '削除しました', deletedFile: found.fileName });
   } catch (error) {
     console.error('[history/delete] Error:', error);
     res.status(500).json({ success: false, error: error.message });

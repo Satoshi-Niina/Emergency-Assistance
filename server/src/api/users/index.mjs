@@ -154,4 +154,5 @@ export default async function usersHandler(req, res) {
 }
 
 // サポートするHTTPメソッドを指定（オプション）
-export const methods = ['get', 'post'];
+// 本番サーバーでも PUT / DELETE を受け付けるように拡張
+export const methods = ['get', 'post', 'put', 'delete'];

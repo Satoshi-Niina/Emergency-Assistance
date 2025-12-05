@@ -9,18 +9,14 @@ export default async function machinesHandler(req, res) {
   // req.path は /api/machines/machine-types の場合、/api/machines/machine-types となる（app.getで登録しているため）
   // splitして判定する
   const pathParts = req.path.split('/').filter(p => p);
-  // pathParts: ['api', 'machines', 'machine-types']
-  
-  // IDの取得ロジック: パスの最後が数値ならIDとみなす、あるいはmachine-typesの後ろ
-  let id = req.params.id;
-  if (!id) {
-    const lastPart = pathParts[pathParts.length - 1];
-    if (!isNaN(lastPart)) {
-      id = lastPart;
-    }
-  }
+  // pathParts: ['api', 'machines', 'machine-types', ':id?']
 
-  const subResource = pathParts.length > 2 ? pathParts[2] : null;
+  // machine-types 配下かどうかで明示的に判定する（UUIDでも動くようにする）
+  const isMachineTypes = pathParts[2] === 'machine-types';
+  const subResource = isMachineTypes ? 'machine-types' : null;
+  const id = isMachineTypes
+    ? (pathParts[3] || null)
+    : (pathParts[2] || null);
 
   console.log('[api/machines] Request:', { method, path: req.path, subResource, id });
 
