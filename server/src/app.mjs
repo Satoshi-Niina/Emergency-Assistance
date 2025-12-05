@@ -103,9 +103,12 @@ export async function createApp() {
   // Error Handler
   app.use((err, req, res, next) => {
     console.error('[Error] Unhandled error:', err);
+    // Temporary: Always show error details for debugging
     res.status(500).json({
       error: 'internal_error',
-      message: NODE_ENV === 'development' ? err.message : 'Internal server error'
+      message: err.message,
+      stack: NODE_ENV === 'development' ? err.stack : undefined,
+      details: 'Check server logs for more info'
     });
   });
 

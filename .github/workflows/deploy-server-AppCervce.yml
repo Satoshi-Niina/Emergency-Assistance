@@ -75,7 +75,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '18' # Match Azure App Service runtime (v18) to ensure binary compatibility
           # npm cacheを無効化して常に最新の依存関係をインストール
           # cache: 'npm'
 
