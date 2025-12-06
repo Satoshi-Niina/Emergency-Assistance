@@ -2100,19 +2100,22 @@ export default function HistoryPage() {
                         media.forEach((img: any, idx: number) => {
                           console.log(`    画像${idx}:`, img);
                           
-                          if (img.fileName) {
+                          // URLが存在する場合はそれを優先
+                          if (img.url) {
+                            const imageUrl = normalizeImageUrl(img.url);
+                            // URLからファイル名を抽出
+                            const actualFileName = img.url.split('/').pop() || img.fileName;
+                            images.push({ url: imageUrl, fileName: actualFileName, index: images.length });
+                            console.log(`    ✅ 追加 (url):`, imageUrl, 'fileName:', actualFileName);
+                          } else if (img.fileName) {
                             const actualFileName = img.fileName.includes('/')
                               ? img.fileName.split('/').pop()
                               : img.fileName.includes('\\')
                                 ? img.fileName.split('\\').pop()
                                 : img.fileName;
                             const imagePath = `/api/images/chat-exports/${actualFileName}`;
-                            images.push({ url: imagePath, fileName: img.fileName, index: images.length });
+                            images.push({ url: imagePath, fileName: actualFileName, index: images.length });
                             console.log(`    ✅ 追加 (fileName):`, imagePath);
-                          } else if (img.url) {
-                            const imageUrl = normalizeImageUrl(img.url);
-                            images.push({ url: imageUrl, fileName: img.fileName || img.url, index: images.length });
-                            console.log(`    ✅ 追加 (url):`, imageUrl);
                           }
                         });
                       });
@@ -2122,20 +2125,27 @@ export default function HistoryPage() {
                         console.log('🔍 編集画面: jsonData.savedImages:', item.jsonData.savedImages.length, '件');
                         item.jsonData.savedImages.forEach((img: any, idx: number) => {
                           if (typeof img === 'string' && !img.startsWith('data:image/')) {
-                            images.push({ url: normalizeImageUrl(img), index: images.length });
+                            const imageUrl = normalizeImageUrl(img);
+                            const actualFileName = img.split('/').pop();
+                            images.push({ url: imageUrl, fileName: actualFileName, index: images.length });
                           } else if (img && typeof img === 'object') {
-                            if (img.fileName) {
+                            // URLを優先
+                            if (img.url) {
+                              const imageUrl = normalizeImageUrl(img.url);
+                              const actualFileName = img.url.split('/').pop() || img.fileName;
+                              images.push({ url: imageUrl, fileName: actualFileName, index: images.length });
+                            } else if (img.fileName) {
                               const actualFileName = img.fileName.includes('/')
                                 ? img.fileName.split('/').pop()
                                 : img.fileName.includes('\\')
                                   ? img.fileName.split('\\').pop()
                                   : img.fileName;
                               const imagePath = `/api/images/chat-exports/${actualFileName}`;
-                              images.push({ url: imagePath, fileName: img.fileName, index: images.length });
-                            } else if (img.url) {
-                              images.push({ url: normalizeImageUrl(img.url), fileName: img.fileName, index: images.length });
+                              images.push({ url: imagePath, fileName: actualFileName, index: images.length });
                             } else if (img.path) {
-                              images.push({ url: normalizeImageUrl(img.path), fileName: img.fileName, index: images.length });
+                              const imageUrl = normalizeImageUrl(img.path);
+                              const actualFileName = img.path.split('/').pop();
+                              images.push({ url: imageUrl, fileName: actualFileName, index: images.length });
                             }
                           }
                         });
