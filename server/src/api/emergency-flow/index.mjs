@@ -3,6 +3,32 @@
 
 import { getBlobServiceClient, containerName, norm } from '../../infra/blob.mjs';
 
+// 複数パスを試して既存データのプレフィックス違いに対応
+function buildCandidatePaths(fileName, skipNorm = false) {
+  const baseName = fileName || '';
+  const paths = [
+    // 現行: base付き（normで knowledge-base/ が付与される）
+    skipNorm ? null : norm(`troubleshooting/${baseName}`),
+    // 旧: baseなし
+    `troubleshooting/${baseName}`,
+    // 念のため: baseを直書き
+    `knowledge-base/troubleshooting/${baseName}`,
+  ].filter(Boolean);
+  // 重複排除
+  return [...new Set(paths)];
+}
+
+async function resolveBlobClient(containerClient, fileName) {
+  const candidates = buildCandidatePaths(fileName);
+  for (const blobName of candidates) {
+    const blobClient = containerClient.getBlobClient(blobName);
+    if (await blobClient.exists()) {
+      return { blobClient, blobName };
+    }
+  }
+  return null;
+}
+
 export default async function emergencyFlowHandler(req, res) {
   const method = req.method;
   const pathParts = req.path.split('/').filter(Boolean);
@@ -28,12 +54,6 @@ export default async function emergencyFlowHandler(req, res) {
 
       try {
         const containerClient = blobServiceClient.getContainerClient(containerName);
-        // norm関数は環境変数を考慮してプレフィックスを付与するため、ここでは相対パスのみ指定する
-        // 元: norm('knowledge-base/troubleshooting/') -> 二重付与の可能性
-        // 修正: norm('troubleshooting/')
-        const prefix = norm('troubleshooting/');
-
-        console.log(`[api/emergency-flow/list] BLOB prefix: ${prefix}`);
 
         const containerExists = await containerClient.exists();
         if (!containerExists) {
@@ -47,17 +67,28 @@ export default async function emergencyFlowHandler(req, res) {
           });
         }
 
-        for await (const blob of containerClient.listBlobsFlat({ prefix })) {
-          if (blob.name.endsWith('.json')) {
+        // まず現行パス（norm）で列挙し、0件なら旧パスも試す
+        const prefixes = [norm('troubleshooting/'), 'troubleshooting/', 'knowledge-base/troubleshooting/'];
+        const seen = new Set();
+
+        for (const prefix of prefixes) {
+          console.log(`[api/emergency-flow/list] Listing with prefix: ${prefix}`);
+          for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+            if (!blob.name.endsWith('.json')) continue;
             const fileName = blob.name.split('/').pop();
+            if (!fileName) continue;
+            if (seen.has(fileName)) continue;
+            seen.add(fileName);
             flows.push({
               id: fileName.replace('.json', ''),
               name: fileName,
+              fileName,
               blobName: blob.name,
               lastModified: blob.properties.lastModified,
               size: blob.properties.contentLength,
             });
           }
+          if (flows.length > 0) break; // 何か取れたら終了
         }
         
         console.log(`[api/emergency-flow/list] Found ${flows.length} flows`);
@@ -105,15 +136,14 @@ export default async function emergencyFlowHandler(req, res) {
       }
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
-      // norm関数は環境変数を考慮してプレフィックスを付与するため、ここでは相対パスのみ指定する
-      // 元: norm('knowledge-base/troubleshooting/${fileName}') -> 二重付与の可能性
-      // 修正: norm('troubleshooting/${fileName}')
-      const blobName = norm(`troubleshooting/${fileName}`);
-      console.log(`[api/emergency-flow] BLOB path: ${blobName}`);
-      
-      const blobClient = containerClient.getBlobClient(blobName);
+      const resolved = await resolveBlobClient(containerClient, fileName);
+      if (!resolved) {
+        console.warn('[api/emergency-flow] Blob not found for', fileName);
+        return res.status(404).json({ success: false, error: 'フローが見つかりません' });
+      }
 
-      const downloadResponse = await blobClient.download();
+      console.log(`[api/emergency-flow] BLOB path: ${resolved.blobName}`);
+      const downloadResponse = await resolved.blobClient.download();
       const contentType = downloadResponse.contentType || 'application/json';
 
       res.setHeader('Content-Type', contentType);
@@ -151,24 +181,34 @@ export default async function emergencyFlowHandler(req, res) {
       }
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
-      // norm関数は環境変数を考慮してプレフィックスを付与するため、ここでは相対パスのみ指定する
-      // 元: norm('knowledge-base/troubleshooting/${flowId || ...}') -> 二重付与の可能性
-      // 修正: norm('troubleshooting/${flowId || ...}')
-      const blobName = norm(`troubleshooting/${flowId || 'flow-' + Date.now()}.json`);
-      const blobClient = containerClient.getBlockBlobClient(blobName);
+      // 既存データとの互換性のため base付きとなし両方で保存を試みる
+      const blobNamePrimary = norm(`troubleshooting/${flowId || 'flow-' + Date.now()}.json`);
+      const blobClientPrimary = containerClient.getBlockBlobClient(blobNamePrimary);
 
       const content = typeof flowData === 'string' ? flowData : JSON.stringify(flowData, null, 2);
 
-      await blobClient.upload(content, content.length, {
+      await blobClientPrimary.upload(content, content.length, {
         blobHTTPHeaders: { blobContentType: 'application/json' }
       });
 
-      console.log(`[api/emergency-flow/save] Saved to: ${blobName}`);
+      console.log(`[api/emergency-flow/save] Saved to: ${blobNamePrimary}`);
+
+      // baseなしプレフィックスにもベストエフォートで保存（既存ファイル構造との互換性）
+      try {
+        const altName = `troubleshooting/${flowId || 'flow-' + Date.now()}.json`;
+        const altClient = containerClient.getBlockBlobClient(altName);
+        await altClient.upload(content, content.length, {
+          blobHTTPHeaders: { blobContentType: 'application/json' }
+        });
+        console.log(`[api/emergency-flow/save] Also saved to: ${altName}`);
+      } catch (altErr) {
+        console.warn('[api/emergency-flow/save] Alt prefix save skipped:', altErr.message);
+      }
 
       return res.json({
         success: true,
         message: 'Flow data saved successfully',
-        blobName: blobName,
+        blobName: blobNamePrimary,
         timestamp: new Date().toISOString()
       });
     } catch (error) {

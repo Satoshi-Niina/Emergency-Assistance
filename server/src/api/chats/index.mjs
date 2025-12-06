@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { getBlobServiceClient, containerName, norm } from '../../infra/blob.mjs';
+import { AUTO_INGEST_CHAT_EXPORTS } from '../../config/env.mjs';
 
 const EXPORT_SUBDIR = 'exports';
 
@@ -113,6 +114,48 @@ async function downloadExport(fileName) {
   return null;
 }
 
+// エクスポートファイル名に事象名（タイトル）を含めるためのヘルパー
+function deriveExportTitle(payload = {}) {
+  const fallback = 'chat';
+  const chatData = payload.chatData || {};
+  const messages = Array.isArray(chatData.messages) ? chatData.messages : [];
+  const machineInfo = chatData.machineInfo || {};
+
+  // 機種名と機械番号があれば優先
+  const machineType =
+    machineInfo.machineTypeName ||
+    machineInfo.selectedMachineType ||
+    machineInfo.machineType ||
+    '';
+  const machineNumber =
+    machineInfo.machineNumber ||
+    machineInfo.selectedMachineNumber ||
+    '';
+
+  let title = '';
+  if (machineType || machineNumber) {
+    title = `${machineType || ''}${machineNumber ? `_${machineNumber}` : ''}`;
+  }
+
+  // 最初のユーザーメッセージをタイトル候補にする
+  if (!title) {
+    const firstUserMessage = messages.find(
+      (m) => m && m.isAiResponse === false && typeof m.content === 'string' && m.content.trim()
+    );
+    if (firstUserMessage) {
+      title = firstUserMessage.content.split(/\r?\n/)[0].slice(0, 80);
+    }
+  }
+
+  if (!title) title = fallback;
+
+  // ファイル名に使えない文字を除去し、空白はトリム
+  title = title.replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
+  if (!title) title = fallback;
+  if (title.length > 80) title = title.slice(0, 80);
+  return title;
+}
+
 export default async function chatsHandler(req, res) {
   const parts = req.path.split('/').filter(Boolean); // ["api","chats",":chatId", ...]
   const chatId = parts[2];
@@ -146,8 +189,10 @@ export default async function chatsHandler(req, res) {
   // POST /api/chats/:chatId/export
   if (req.method === 'POST' && action === 'export') {
     const payload = req.body || {};
-    const fileName = `${chatId}_${Date.now()}.json`;
-    const content = JSON.stringify({ chatId, exportType: 'manual_export', ...payload, savedAt: new Date().toISOString() }, null, 2);
+    const title = deriveExportTitle(payload);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileName = `${title}_${chatId}_${timestamp}.json`;
+    const content = JSON.stringify({ chatId, exportType: 'manual_export', ...payload, savedAt: new Date().toISOString(), title }, null, 2);
     const saveResult = await saveJsonFile(fileName, content);
     return res.json({ success: true, fileName, storage: saveResult.storage });
   }
@@ -155,14 +200,16 @@ export default async function chatsHandler(req, res) {
   // POST /api/chats/:chatId/send or send-test
   if (req.method === 'POST' && (action === 'send' || action === 'send-test')) {
     const payload = req.body || {};
-    const fileName = `${chatId}_${Date.now()}.json`;
-    const content = JSON.stringify({ chatId, exportType: payload.exportType || action, ...payload, savedAt: new Date().toISOString() }, null, 2);
+    const title = deriveExportTitle(payload);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileName = `${title}_${chatId}_${timestamp}.json`;
+    const content = JSON.stringify({ chatId, exportType: payload.exportType || action, ...payload, savedAt: new Date().toISOString(), title }, null, 2);
     const saveResult = await saveJsonFile(fileName, content);
     return res.json({
       success: true,
       fileName,
       storage: saveResult.storage,
-      knowledgeUpdateScheduled: true
+      knowledgeUpdateScheduled: AUTO_INGEST_CHAT_EXPORTS === true
     });
   }
 

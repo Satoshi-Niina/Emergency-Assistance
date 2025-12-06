@@ -55,13 +55,12 @@ export default async function imagesHandler(req, res) {
       if (blobServiceClient) {
         try {
           const containerClient = blobServiceClient.getContainerClient(containerName);
-          // Blobパスを直接指定 (norm不使用)
           const blobName = `knowledge-base/images/${category}/${fileName}`;
           console.log('[api/images] Looking for blob:', blobName);
           
           const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-          
-          if (await blockBlobClient.exists()) {
+          const exists = await blockBlobClient.exists();
+          if (exists) {
             console.log('[api/images] BLOB found:', blobName);
             const downloadResponse = await blockBlobClient.download();
             const chunks = [];
@@ -80,7 +79,7 @@ export default async function imagesHandler(req, res) {
             console.log('[api/images] BLOB not found:', blobName);
           }
         } catch (blobError) {
-          console.warn('[api/images] Blob fetch failed, trying local file:', blobError.message);
+          console.warn('[api/images] Blob fetch failed, falling back to local file:', blobError.message);
         }
       } else {
         console.warn('[api/images] BLOB service client not available, trying local file');
@@ -101,10 +100,11 @@ export default async function imagesHandler(req, res) {
       });
       
     } catch (error) {
-      console.error('[api/images] Error:', error);
-      return res.status(500).json({
+      console.error('[api/images] Error (falling back to 404):', error);
+      return res.status(404).json({
         success: false,
-        error: '画像の取得に失敗しました',
+        error: '画像が見つかりません',
+        fileName: fileName,
         details: error instanceof Error ? error.message : String(error)
       });
     }

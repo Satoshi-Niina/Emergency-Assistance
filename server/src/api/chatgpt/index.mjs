@@ -51,7 +51,8 @@ export default async function chatGptHandler(req, res) {
     });
 
     const answer = completion.choices?.[0]?.message?.content || '';
-    return res.json({ success: true, answer });
+    // 互換性のため `response` キーも返す
+    return res.json({ success: true, answer, response: answer });
   } catch (error) {
     console.error('[api/chatgpt] Error:', error);
     return res.status(500).json({

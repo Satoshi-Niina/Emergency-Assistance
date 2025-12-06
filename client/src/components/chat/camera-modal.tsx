@@ -385,8 +385,16 @@ export default function CameraModal() {
           throw new Error('画像のアップロードは成功しましたが、画像URLが取得できませんでした');
         }
 
-        // アップロードされた画像のURLをメッセージとして送信
-        await sendMessage(uploadData.imageUrl);
+        // アップロードされた画像をメディアとしてチャットに添付
+        await sendMessage('画像を送信しました', [
+          {
+            type: 'image',
+            url: uploadData.imageUrl,
+            thumbnail: uploadData.thumbnailUrl || uploadData.imageUrl,
+            fileName: fileName,
+            title: 'カメラ画像',
+          },
+        ]);
 
         // BlobURLをクリーンアップ
         URL.revokeObjectURL(capturedImage);

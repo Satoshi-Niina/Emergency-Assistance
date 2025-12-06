@@ -4,6 +4,18 @@ import { dbQuery } from '../../infra/db.mjs';
 
 export default async function (req, res) {
   try {
+    // 統計エンドポイント: /api/knowledge-base/stats
+    if (req.path.endsWith('/stats')) {
+      return res.json({
+        success: true,
+        stats: {
+          documents: 0,
+          lastUpdated: null,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     console.log('Knowledge base HTTP trigger function processed a request.');
 
     let rows = [];

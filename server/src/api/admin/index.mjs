@@ -13,10 +13,10 @@ export default async function adminHandler(req, res) {
 
   if (method === 'GET' && action === 'dashboard') {
     try {
-      // 簡易的な統計情報を返す
-      const userCount = await dbQuery('SELECT COUNT(*) as count FROM users');
-      const machineCount = await dbQuery('SELECT COUNT(*) as count FROM machines');
-      const historyCount = await dbQuery('SELECT COUNT(*) as count FROM chat_history');
+      // 簡易的な統計情報を返す（DBが落ちていてもゼロで返す）
+      const userCount = await dbQuery('SELECT COUNT(*) as count FROM users').catch(() => ({ rows: [{ count: 0 }] }));
+      const machineCount = await dbQuery('SELECT COUNT(*) as count FROM machines').catch(() => ({ rows: [{ count: 0 }] }));
+      const historyCount = await dbQuery('SELECT COUNT(*) as count FROM chat_history').catch(() => ({ rows: [{ count: 0 }] }));
 
       return res.json({
         success: true,
@@ -30,10 +30,16 @@ export default async function adminHandler(req, res) {
       });
     } catch (error) {
       console.error('[api/admin] Dashboard error:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Dashboard data fetch failed',
-        details: error.message
+      return res.json({
+        success: true,
+        stats: {
+          users: 0,
+          machines: 0,
+          history: 0,
+          uptime: process.uptime()
+        },
+        warning: 'DB unreachable, returning zero stats',
+        timestamp: new Date().toISOString()
       });
     }
   }

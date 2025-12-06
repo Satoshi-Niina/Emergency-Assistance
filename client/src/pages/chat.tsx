@@ -1203,26 +1203,10 @@ export default function ChatPage() {
 
         console.log('✅ サーバー送信成功:', result);
 
-        // ナレッジベース自動更新の情報を含む成功メッセージ
-        const knowledgeUpdateInfo = result.knowledgeUpdateScheduled
-          ? ' ナレッジベースに自動追加されます'
-          : '';
-
         toast({
           title: '送信成功',
-          description: `チャット内容をサーバーに送信しました (${messages.filter(msg => msg.content && msg.content.trim()).length}件のメッセージ)${machineInfoText}${knowledgeUpdateInfo}`,
+          description: `チャット内容をサーバーに送信しました (${messages.filter(msg => msg.content && msg.content.trim()).length}件のメッセージ)${machineInfoText}。ナレッジ反映は履歴管理UIの「機械故障情報インポート」から実行してください。`,
         });
-
-        // ナレッジベース更新が有効な場合の追加の通知
-        if (result.knowledgeUpdateScheduled) {
-          setTimeout(() => {
-            toast({
-              title: '🧠 AIナレッジベース',
-              description: 'この会話履歴が自動的にAIの学習データに追加されました。次回から同様の問題に対してより正確なサポートが可能になります',
-              duration: 6000,
-            });
-          }, 2000);
-        }
 
         // 送信後の選択ダイアログを表示
         const shouldContinue = await new Promise<boolean>((resolve) => {
@@ -2035,7 +2019,8 @@ export default function ChatPage() {
       }
 
       const data = await response.json();
-      let aiResponse = data.response || '申し訳ございません。現在AI支援の応答を生成できません';
+      // APIレスポンスのキーは `response` / `answer` の両方に対応させる
+      let aiResponse = data.response || data.answer || '申し訳ございません。現在AI支援の応答を生成できません';
 
       // 会話スタイルを適用
       aiResponse = applyConversationStyle(aiResponse);

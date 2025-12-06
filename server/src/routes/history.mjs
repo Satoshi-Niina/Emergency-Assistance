@@ -36,6 +36,70 @@ async function findHistoryBlob(containerClient, normalizedId) {
   return null;
 }
 
+// ファイル名やJSONからタイトル・機種情報を抽出
+function deriveTitleFromFileName(fileName = '') {
+  const nameWithoutExt = fileName.replace(/\.json$/, '');
+  const match = nameWithoutExt.match(/^(.+?)_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}_/);
+  if (match) return match[1];
+  const simple = nameWithoutExt.split('_')[0];
+  return simple || nameWithoutExt || '故障履歴';
+}
+
+function extractMetadataFromJson(json = {}, fileName = '') {
+  const chatData = json.chatData || {};
+  const machineInfo = chatData.machineInfo || json.machineInfo || {};
+
+  const machineType =
+    machineInfo.machineTypeName || json.machineType || 'Unknown';
+  const machineNumber =
+    machineInfo.machineNumber || json.machineNumber || 'Unknown';
+
+  // 画像抽出: chatData.messages[].media[].url, savedImages 配列
+  const images = [];
+  const messages = Array.isArray(chatData.messages) ? chatData.messages : [];
+  messages.forEach((msg) => {
+    const media = Array.isArray(msg.media) ? msg.media : [];
+    media.forEach((m) => {
+      if (m && (m.url || m.fileName || m.path)) {
+        images.push({
+          url: m.url || m.fileName || m.path,
+          fileName: m.fileName || m.url || m.path,
+        });
+      }
+    });
+  });
+
+  const savedImages = Array.isArray(json.savedImages)
+    ? json.savedImages
+    : Array.isArray(chatData.savedImages)
+      ? chatData.savedImages
+      : [];
+
+  const mergedImages = [
+    ...images,
+    ...savedImages.map((img) => {
+      if (typeof img === 'string') return { url: img, fileName: img };
+      if (img && typeof img === 'object') {
+        return {
+          url: img.url || img.fileName || img.path,
+          fileName: img.fileName || img.url || img.path,
+          ...img,
+        };
+      }
+      return { url: '', fileName: '' };
+    }),
+  ].filter((img) => img.url);
+
+  const title = json.title || chatData.title || deriveTitleFromFileName(fileName);
+
+  return {
+    title,
+    machineType,
+    machineNumber,
+    images: mergedImages,
+  };
+}
+
 // BlobからJSONを取得
 async function downloadJson(containerClient, blobName) {
   const blobClient = containerClient.getBlobClient(blobName);
@@ -80,14 +144,43 @@ router.get('/', async (req, res) => {
         const prefix = 'knowledge-base/exports/';
 
         for await (const blob of containerClient.listBlobsFlat({ prefix })) {
-          if (blob.name.endsWith('.json')) {
-            items.push({
-              id: blob.name.split('/').pop().replace('.json', ''),
-              title: blob.name.split('/').pop(),
-              created_at: blob.properties.lastModified,
-              source: 'blob'
-            });
+          if (!blob.name.endsWith('.json')) continue;
+
+          const fileName = blob.name.split('/').pop();
+          const id = fileName.replace('.json', '');
+
+          let meta = {
+            title: deriveTitleFromFileName(fileName),
+            machineType: 'Unknown',
+            machineNumber: 'Unknown',
+            images: [],
+          };
+
+          // 可能な限りメタデータを読み出す（軽量化のため読み出し成功時のみ）
+          try {
+            const blobClient = containerClient.getBlobClient(blob.name);
+            const downloadResponse = await blobClient.download();
+            if (downloadResponse.readableStreamBody) {
+              const buffer = await streamToBuffer(downloadResponse.readableStreamBody);
+              const json = JSON.parse(buffer.toString('utf8'));
+              meta = extractMetadataFromJson(json, fileName);
+            }
+          } catch (blobMetaError) {
+            console.warn('[history] Metadata read skipped:', fileName, blobMetaError.message);
           }
+
+          items.push({
+            id,
+            fileName,
+            title: meta.title,
+            machineType: meta.machineType,
+            machineNumber: meta.machineNumber,
+            imageCount: meta.images.length,
+            images: meta.images,
+            createdAt: blob.properties.lastModified,
+            lastModified: blob.properties.lastModified,
+            source: 'blob'
+          });
         }
         console.log(`[history] Found ${items.length} items in Blob`);
       } catch (blobError) {
@@ -341,6 +434,57 @@ router.get('/export-files', async (req, res) => {
       success: false,
       error: 'ファイル一覧の取得に失敗しました'
     });
+  }
+});
+
+// Get history detail by id
+async function getHistoryDetail(normalizedId) {
+  const blobServiceClient = getBlobServiceClient();
+  if (!blobServiceClient) return { status: 503, error: 'BLOB storage not available' };
+
+  const containerClient = blobServiceClient.getContainerClient(containerName);
+  const found = await findHistoryBlob(containerClient, normalizedId);
+  if (!found) return { status: 404, error: 'ファイルが見つかりません' };
+
+  const blobClient = containerClient.getBlobClient(found.blobName);
+  const downloadResponse = await blobClient.download();
+  if (!downloadResponse.readableStreamBody) return { status: 500, error: 'ファイル読込に失敗しました' };
+
+  const buffer = await streamToBuffer(downloadResponse.readableStreamBody);
+  const json = JSON.parse(buffer.toString('utf8'));
+
+  const meta = extractMetadataFromJson(json, found.fileName);
+
+  return {
+    status: 200,
+    data: {
+      id: normalizedId,
+      fileName: found.fileName,
+      blobName: found.blobName,
+      ...meta,
+      json,
+    },
+  };
+}
+
+router.get(['/detail/:id', '/item/:id', '/:id'], async (req, res, next) => {
+  // 既存のルート（/exports, /export-files など）より後に解決しないように、パスが数値や既存プレフィックスと衝突する場合はスキップ
+  const id = req.params.id;
+  if (!id || id === 'export-files' || id === 'exports' || id === 'upload-image' || id === 'machine-data') {
+    return next();
+  }
+
+  try {
+    const normalizedId = normalizeId(id);
+    const result = await getHistoryDetail(normalizedId);
+    if (result.status !== 200) {
+      return res.status(result.status).json({ success: false, error: result.error });
+    }
+
+    return res.json({ success: true, ...result.data });
+  } catch (error) {
+    console.error('[history/detail] Error:', error);
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 

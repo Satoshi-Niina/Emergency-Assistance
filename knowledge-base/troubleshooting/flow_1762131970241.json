@@ -16,8 +16,12 @@
       "options": [],
       "images": [
         {
-          "url": "http://localhost:8080/api/emergency-flow/image/emergency-flow-step1762144594249.jpg",
+          "url": "/api/images/emergency-flows/emergency-flow-step1762144594249.jpg",
           "fileName": "emergency-flow-step1762144594249.jpg"
+        },
+        {
+          "url": "/api/emergency-flow/image/emergency-flow-step1764987424477.jpg",
+          "fileName": "emergency-flow-step1764987424477.jpg"
         }
       ],
       "conditions": []
@@ -177,7 +181,7 @@
     }
   ],
   "createdAt": "2025-11-03T01:06:10.241Z",
-  "updatedAt": "2025-11-03T04:42:20.825Z",
+  "updatedAt": "2025-12-06T02:17:07.487Z",
   "updateHistory": [
     {
       "timestamp": "2025-11-03T04:39:39.254Z",
@@ -235,6 +239,48 @@
     },
     {
       "timestamp": "2025-11-03T04:42:20.825Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt",
+        "updateHistory"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-12-06T02:17:04.680Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt",
+        "updateHistory"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-12-06T02:17:07.476Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt",
+        "updateHistory"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-12-06T02:17:07.487Z",
       "updatedFields": [
         "id",
         "title",

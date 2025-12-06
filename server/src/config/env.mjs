@@ -67,3 +67,7 @@ export const DATABASE_URL = process.env.DATABASE_URL ||
 export const PG_SSL = process.env.PG_SSL;
 
 export const SESSION_SECRET = process.env.SESSION_SECRET || 'azure-production-session-secret-32-chars-fixed';
+
+// チャットエクスポートを自動でナレッジに取り込むか（デフォルト: false）
+export const AUTO_INGEST_CHAT_EXPORTS =
+  (process.env.AUTO_INGEST_CHAT_EXPORTS || '').toLowerCase() === 'true';

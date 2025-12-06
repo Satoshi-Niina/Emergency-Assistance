@@ -2087,8 +2087,8 @@ function KnowledgeLifecycleManagement() {
         <div className='text-sm text-blue-700 space-y-1'>
           <p>• <strong>自動削除:</strong> 毎日午前2時に1年以上経過したデータを自動削除</p>
           <p>• <strong>手動削除:</strong> 上記のボタンでいつでも任意に削除可能</p>
-          <p>• <strong>自動収集:</strong> チャット画面からのデータ送信時に自動でナレッジベースに追加</p>
-          <p>• <strong>手動更新:</strong> 機械故障履歴の編集保存時に自動でGPTナレッジに反映</p>
+          <p>• <strong>収集方法:</strong> チャット画面から送信したデータは自動ではナレッジに載りません。必要なものだけ履歴管理UIの「機械故障情報インポート」から手動で追加してください。</p>
+          <p>• <strong>手動更新:</strong> 機械故障履歴の編集保存時にのみGPTナレッジへ反映します</p>
           <p>• <strong>重複チェック:</strong> 30分間隔で重複データを自動検出</p>
         </div>
       </div>
