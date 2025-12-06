@@ -319,13 +319,18 @@ export default function HistoryPage() {
           firstImage: normalizedImages[0]
         });
 
+        // jsonData.chatData.machineInfoから機種と機械番号を抽出
+        const chatDataMachineInfo = file.jsonData?.chatData?.machineInfo || {};
+        const machineType = chatDataMachineInfo.machineTypeName || file.machineType || file.machineInfo?.machineTypeName || file.jsonData?.machineType || 'Unknown';
+        const machineNumber = chatDataMachineInfo.machineNumber || file.machineNumber || file.machineInfo?.machineNumber || file.jsonData?.machineNumber || 'Unknown';
+
         return {
           id: file.id || file.chatId,
           chatId: file.chatId || file.id,
           fileName: file.fileName || file.name || `${file.title}_${file.id}.json`,
           title: file.title || '故障履歴',
-          machineType: file.machineType || file.machineInfo?.machineTypeName || 'Unknown',
-          machineNumber: file.machineNumber || file.machineInfo?.machineNumber || 'Unknown',
+          machineType: machineType,
+          machineNumber: machineNumber,
           createdAt: file.createdAt || file.exportTimestamp || new Date().toISOString(),
           lastModified: file.updatedAt || file.createdAt || file.exportTimestamp || new Date().toISOString(),
           extractedComponents: file.extractedComponents || file.keywords || [],
@@ -510,13 +515,25 @@ export default function HistoryPage() {
     }
   };
 
-  // ファイル名からタイトル部分のみを抽出
+  // ファイル名から事象名のみを抽出（UUIDとタイムスタンプを削除）
   const getDisplayFileName = (fileName: string | undefined, title: string | undefined): string => {
     if (title) return title;
     if (!fileName) return '無題';
-    // ファイル名から最初のアンダースコアまでの部分（タイトル部分）を取得
-    const titleMatch = fileName.match(/^([^_]+)/);
-    return titleMatch ? titleMatch[1] : fileName;
+    
+    // .json拡張子を削除
+    const nameWithoutExt = fileName.replace(/\.json$/, '');
+    
+    // UUIDとタイムスタンプ部分を削除するパターン
+    // 例: "エンジンがゆっくり止まった_29754ea5-bba0-459a-9847-3346e46497fd_2025-11-29T07-33-37-419Z"
+    // -> "エンジンがゆっくり止まった"
+    const eventNameMatch = nameWithoutExt.match(/^(.+?)_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}_/);
+    if (eventNameMatch) {
+      return eventNameMatch[1];
+    }
+    
+    // UUIDがない場合は最初のアンダースコアまでを事象名とする
+    const titleMatch = nameWithoutExt.match(/^([^_]+)/);
+    return titleMatch ? titleMatch[1] : nameWithoutExt;
   };
 
   // 履歴アイテムの編集データをサーバーに保存
@@ -1519,22 +1536,31 @@ export default function HistoryPage() {
                         <td className="border border-gray-300 p-3">
                           <div className="flex justify-center gap-1 flex-wrap">
                             {(() => {
-                              // savedImages と images の両方をチェック（savedImagesを優先）
-                              const displayImages = (item.jsonData?.savedImages && item.jsonData.savedImages.length > 0)
-                                ? item.jsonData.savedImages
-                                : (item.images && item.images.length > 0)
-                                  ? item.images
-                                  : [];
+                              // jsonData.chatData.messagesから画像を抽出、次にsavedImages、imagesの順でフォールバック
+                              let displayImages: any[] = [];
+                              
+                              // chatData.messagesから画像を抽出
+                              const messages = item.jsonData?.chatData?.messages || [];
+                              const messageImages = messages.flatMap((msg: any) => msg.media || []);
+                              
+                              if (messageImages.length > 0) {
+                                displayImages = messageImages;
+                              } else if (item.jsonData?.savedImages && item.jsonData.savedImages.length > 0) {
+                                displayImages = item.jsonData.savedImages;
+                              } else if (item.images && item.images.length > 0) {
+                                displayImages = item.images;
+                              }
 
                               return displayImages.length > 0 ? (
                                 <>
                                   {displayImages.slice(0, 3).map((image: any, idx: number) => {
-                                    // 画像URLを生成（優先順位: fileName > url > path）
+                                    // 画像URLを生成
                                     let imageUrl = '';
                                     let fileName = '';
 
                                     if (image.fileName) {
                                       fileName = image.fileName;
+                                      // ファイル名からパスを抽出
                                       const actualFileName = fileName.includes('/')
                                         ? fileName.split('/').pop()
                                         : fileName.includes('\\')
@@ -1542,12 +1568,17 @@ export default function HistoryPage() {
                                           : fileName;
                                       imageUrl = `/api/images/chat-exports/${actualFileName}`;
                                     } else if (image.url) {
-                                      // URLパスの正規化（/api/api/のような重複を防ぐ）
-                                      imageUrl = image.url;
-                                      while (imageUrl.includes('/api/api/')) {
-                                        imageUrl = imageUrl.replace('/api/api/', '/api/');
+                                      // URLが既に完全な場合はそのまま使用
+                                      if (image.url.startsWith('/api/images/')) {
+                                        imageUrl = image.url;
+                                      } else if (image.url.startsWith('http')) {
+                                        imageUrl = image.url;
+                                      } else {
+                                        // ファイル名として処理
+                                        const urlFileName = image.url.split('/').pop()?.split('\\').pop() || '';
+                                        imageUrl = `/api/images/chat-exports/${urlFileName}`;
                                       }
-                                      fileName = image.originalFileName || `画像${idx + 1}`;
+                                      fileName = image.originalFileName || image.fileName || `画像${idx + 1}`;
                                     } else if (image.path) {
                                       const pathParts = image.path.split(/[/\\]/);
                                       fileName = pathParts[pathParts.length - 1] || `画像${idx + 1}`;
@@ -1559,32 +1590,24 @@ export default function HistoryPage() {
                                     if (!imageUrl) return null;
 
                                     // 一意なキーを生成
-                                    const imageKey = `${item.id}-${fileName}-${idx}`;
+                                    const imageKey = `${item.id}-${fileName || idx}-${idx}`;
 
                                     return (
                                       <img
                                         key={imageKey}
                                         src={imageUrl}
-                                        alt={fileName}
-                                        className="w-12 h-12 object-cover rounded border border-gray-300 cursor-pointer hover:opacity-80"
+                                        alt={fileName || `画像${idx + 1}`}
+                                        className="w-12 h-12 object-cover rounded border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
                                         onError={(e) => {
                                           const img = e.target as HTMLImageElement;
-                                          const currentSrc = img.src;
-
-                                          // 無限ループを防ぐ: すでにfallback URLを試している場合は画像を非表示にする
-                                          if (currentSrc.includes('/api/fault-history/images/')) {
-                                            img.style.display = 'none';
-                                            return;
-                                          }
-
-                                          // 最初のエラーの場合のみfallback URLを試す
-                                          const fallbackUrl = `/api/fault-history/images/${fileName}`;
-                                          img.src = fallbackUrl;
+                                          console.warn('画像読み込みエラー:', imageUrl);
+                                          // エラー時は画像を非表示
+                                          img.style.display = 'none';
                                         }}
                                         onClick={() => {
                                           window.open(imageUrl, '_blank');
                                         }}
-                                        title={fileName}
+                                        title={fileName || `画像${idx + 1}`}
                                       />
                                     );
                                   })}
@@ -2069,11 +2092,40 @@ export default function HistoryPage() {
                         return cleanUrl;
                       };
 
-                      // jsonData.savedImagesを優先的に使用
+                      // 1. chatData.messagesから画像を抽出（最優先）
+                      const messages = item?.jsonData?.chatData?.messages || [];
+                      console.log('🔍 編集画面: chatData.messages:', messages.length, '件');
+                      
+                      messages.forEach((msg: any, msgIdx: number) => {
+                        const media = msg.media || [];
+                        console.log(`  メッセージ${msgIdx}: media配列`, media.length, '件');
+                        
+                        media.forEach((img: any, idx: number) => {
+                          console.log(`    画像${idx}:`, img);
+                          
+                          if (img.fileName) {
+                            const actualFileName = img.fileName.includes('/')
+                              ? img.fileName.split('/').pop()
+                              : img.fileName.includes('\\')
+                                ? img.fileName.split('\\').pop()
+                                : img.fileName;
+                            const imagePath = `/api/images/chat-exports/${actualFileName}`;
+                            images.push({ url: imagePath, fileName: img.fileName, index: images.length });
+                            console.log(`    ✅ 追加 (fileName):`, imagePath);
+                          } else if (img.url) {
+                            const imageUrl = normalizeImageUrl(img.url);
+                            images.push({ url: imageUrl, fileName: img.fileName || img.url, index: images.length });
+                            console.log(`    ✅ 追加 (url):`, imageUrl);
+                          }
+                        });
+                      });
+                      
+                      // 2. jsonData.savedImages（追加で取得）
                       if (Array.isArray(item?.jsonData?.savedImages) && item.jsonData.savedImages.length > 0) {
+                        console.log('🔍 編集画面: jsonData.savedImages:', item.jsonData.savedImages.length, '件');
                         item.jsonData.savedImages.forEach((img: any, idx: number) => {
                           if (typeof img === 'string' && !img.startsWith('data:image/')) {
-                            images.push({ url: normalizeImageUrl(img), index: idx });
+                            images.push({ url: normalizeImageUrl(img), index: images.length });
                           } else if (img && typeof img === 'object') {
                             if (img.fileName) {
                               const actualFileName = img.fileName.includes('/')
@@ -2082,20 +2134,22 @@ export default function HistoryPage() {
                                   ? img.fileName.split('\\').pop()
                                   : img.fileName;
                               const imagePath = `/api/images/chat-exports/${actualFileName}`;
-                              images.push({ url: imagePath, fileName: img.fileName, index: idx });
+                              images.push({ url: imagePath, fileName: img.fileName, index: images.length });
                             } else if (img.url) {
-                              images.push({ url: normalizeImageUrl(img.url), fileName: img.fileName, index: idx });
+                              images.push({ url: normalizeImageUrl(img.url), fileName: img.fileName, index: images.length });
                             } else if (img.path) {
-                              images.push({ url: normalizeImageUrl(img.path), fileName: img.fileName, index: idx });
+                              images.push({ url: normalizeImageUrl(img.path), fileName: img.fileName, index: images.length });
                             }
                           }
                         });
                       }
-                      // フォールバック: savedImages
-                      else if (Array.isArray(item?.savedImages) && item.savedImages.length > 0) {
+                      
+                      // 3. savedImages（追加で取得）
+                      if (Array.isArray(item?.savedImages) && item.savedImages.length > 0) {
+                        console.log('🔍 編集画面: savedImages:', item.savedImages.length, '件');
                         item.savedImages.forEach((img: any, idx: number) => {
                           if (typeof img === 'string' && !img.startsWith('data:image/')) {
-                            images.push({ url: normalizeImageUrl(img), index: idx });
+                            images.push({ url: normalizeImageUrl(img), index: images.length });
                           } else if (img && typeof img === 'object') {
                             if (img.fileName) {
                               const actualFileName = img.fileName.includes('/')
@@ -2104,28 +2158,32 @@ export default function HistoryPage() {
                                   ? img.fileName.split('\\').pop()
                                   : img.fileName;
                               const imagePath = `/api/images/chat-exports/${actualFileName}`;
-                              images.push({ url: imagePath, fileName: img.fileName, index: idx });
+                              images.push({ url: imagePath, fileName: img.fileName, index: images.length });
                             } else if (img.url) {
-                              images.push({ url: normalizeImageUrl(img.url), fileName: img.fileName, index: idx });
+                              images.push({ url: normalizeImageUrl(img.url), fileName: img.fileName, index: images.length });
                             } else if (img.path) {
-                              images.push({ url: normalizeImageUrl(img.path), fileName: img.fileName, index: idx });
+                              images.push({ url: normalizeImageUrl(img.path), fileName: img.fileName, index: images.length });
                             }
                           }
                         });
                       }
-                      // フォールバック: images
-                      else if (Array.isArray(item?.images) && item.images.length > 0) {
+                      
+                      // 4. images（追加で取得）
+                      if (Array.isArray(item?.images) && item.images.length > 0) {
+                        console.log('🔍 編集画面: images:', item.images.length, '件');
                         item.images.forEach((img: any, idx: number) => {
                           if (typeof img === 'string') {
-                            images.push({ url: normalizeImageUrl(img), index: idx });
+                            images.push({ url: normalizeImageUrl(img), index: images.length });
                           } else if (img && typeof img === 'object') {
                             const url = img.url || img.path || img.fileName;
                             if (url && !url.startsWith('data:image/')) {
-                              images.push({ url: normalizeImageUrl(url), fileName: img.fileName, index: idx });
+                              images.push({ url: normalizeImageUrl(url), fileName: img.fileName, index: images.length });
                             }
                           }
                         });
                       }
+
+                      console.log('📊 編集画面: 収集した画像総数:', images.length, '件');
 
                       // 重複削除（URLとfileNameの両方で判定）
                       const uniqueImages: Array<{ url: string; fileName?: string; index: number }> = [];
@@ -2137,6 +2195,9 @@ export default function HistoryPage() {
                           uniqueImages.push(img);
                         }
                       });
+
+                      console.log('✅ 編集画面: 重複削除後の画像数:', uniqueImages.length, '件');
+                      console.log('📋 画像URL一覧:', uniqueImages.map(img => img.url));
 
                       return uniqueImages;
                     };

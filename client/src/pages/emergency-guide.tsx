@@ -23,14 +23,18 @@ const EmergencyGuidePage: React.FC = () => {
       try {
         const API_BASE =
           import.meta.env.VITE_API_BASE_URL || '';
+        // 修正: 存在しない /api/blob/list の代わりに /api/emergency-flow/list を使用
         const res = await fetch(
-          `${API_BASE}/api/blob/list?container=knowledge`
+          `${API_BASE}/api/emergency-flow/list`
         );
         const data = await res.json();
-        if (data.success) {
-          setBlobFiles(data.data);
+        if (data.success && Array.isArray(data.data)) {
+          // オブジェクト配列からファイル名/パスを抽出して表示用に整形
+          const files = data.data.map((item: any) => item.blobName || item.name || item.id);
+          setBlobFiles(files);
         }
       } catch (e) {
+        console.error('Failed to fetch blob list:', e);
         setBlobFiles([]);
       } finally {
         setBlobLoading(false);

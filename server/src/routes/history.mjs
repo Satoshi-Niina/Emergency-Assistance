@@ -1,4 +1,5 @@
 import express from 'express';
+import fs from 'fs';
 import path from 'path';
 import { getBlobServiceClient, containerName, norm, upload, streamToBuffer } from '../infra/blob.mjs';
 import { AZURE_STORAGE_CONNECTION_STRING } from '../config/env.mjs';
@@ -24,7 +25,7 @@ const normalizeId = (id = '') => {
 
 // Blobから対象の履歴ファイルを探す
 async function findHistoryBlob(containerClient, normalizedId) {
-  const prefix = norm('exports/');
+  const prefix = 'knowledge-base/exports/';
   for await (const blob of containerClient.listBlobsFlat({ prefix })) {
     if (!blob.name.endsWith('.json')) continue;
     const fileName = blob.name.split('/').pop();
@@ -75,10 +76,8 @@ router.get('/', async (req, res) => {
     if (blobServiceClient) {
       try {
         const containerClient = blobServiceClient.getContainerClient(containerName);
-        // norm関数は環境変数を考慮してプレフィックスを付与するため、ここでは相対パスのみ指定する
-        // 元: norm('knowledge-base/exports/') -> 二重付与の可能性
-        // 修正: norm('exports/')
-        const prefix = norm('exports/');
+        // Blob一覧取得: knowledge-base/exports/
+        const prefix = 'knowledge-base/exports/';
 
         for await (const blob of containerClient.listBlobsFlat({ prefix })) {
           if (blob.name.endsWith('.json')) {
@@ -178,23 +177,32 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
         mimetype: req.file.mimetype
       });
 
-      const blobServiceClient = getBlobServiceClient();
-      if (!blobServiceClient) {
-        return res.status(503).json({
-          success: false,
-          error: 'BLOBストレージが利用できません'
-        });
-      }
-
       const timestamp = Date.now();
       const ext = path.extname(req.file.originalname);
       const fileName = `chat_image_${timestamp}${ext}`;
+      const blobServiceClient = getBlobServiceClient();
+
+      // Blobが使えない場合はローカルに保存してレスポンスする
+      if (!blobServiceClient) {
+        const localDir = path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
+        fs.mkdirSync(localDir, { recursive: true });
+        const localPath = path.join(localDir, fileName);
+        fs.writeFileSync(localPath, req.file.buffer);
+
+        console.warn('[history/upload-image] Blob unavailable. Saved locally:', localPath);
+
+        return res.json({
+          success: true,
+          imageUrl: `/api/images/chat-exports/${fileName}`,
+          fileName,
+          storage: 'local'
+        });
+      }
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
-      // norm関数は環境変数を考慮してプレフィックスを付与するため、ここでは相対パスのみ指定する
-      // 元: norm('knowledge-base/images/chat-exports/${fileName}') -> 二重付与の可能性
-      // 修正: norm('images/chat-exports/${fileName}')
-      const blobName = norm(`images/chat-exports/${fileName}`);
+      // Blob保存先: knowledge-base/images/chat-exports/ (直接指定)
+      const blobName = `knowledge-base/images/chat-exports/${fileName}`;
+      console.log('[history/upload-image] Uploading to Blob:', blobName);
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
       const containerExists = await containerClient.exists();
@@ -227,7 +235,8 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
         imageUrl: imageUrl,
         fileName: fileName,
         blobName: blobName,
-        size: req.file.size
+        size: req.file.size,
+        storage: 'blob'
       });
     } catch (error) {
       lastError = error;
@@ -262,10 +271,8 @@ router.get('/exports/:fileName', async (req, res) => {
     }
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    // norm関数は環境変数を考慮してプレフィックスを付与するため、ここでは相対パスのみ指定する
-    // 元: norm('knowledge-base/exports/${fileName}') -> 二重付与の可能性
-    // 修正: norm('exports/${fileName}')
-    const blobName = norm(`exports/${fileName}`);
+    // Blobファイル取得: knowledge-base/exports/
+    const blobName = `knowledge-base/exports/${fileName}`;
     const blobClient = containerClient.getBlobClient(blobName);
 
     const downloadResponse = await blobClient.download();
@@ -293,16 +300,27 @@ router.get('/export-files', async (req, res) => {
     if (blobServiceClient) {
       try {
         const containerClient = blobServiceClient.getContainerClient(containerName);
-        const prefix = norm('exports/');
+        const prefix = 'knowledge-base/exports/';
         
         for await (const blob of containerClient.listBlobsFlat({ prefix })) {
           if (blob.name.endsWith('.json')) {
             const fileName = blob.name.split('/').pop();
+            
+            // ファイル名からタイトルを抽出（UUID部分を除去）
+            let title = fileName.replace('.json', '');
+            const titleMatch = title.match(/^(.+?)_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}_/);
+            if (titleMatch) {
+              title = titleMatch[1];
+            }
+            
             items.push({
               id: fileName.replace('.json', ''),
               fileName: fileName,
+              title: title,
               blobName: blob.name,
+              createdAt: blob.properties.lastModified?.toISOString() || new Date().toISOString(),
               lastModified: blob.properties.lastModified?.toISOString() || new Date().toISOString(),
+              exportTimestamp: blob.properties.lastModified?.toISOString() || new Date().toISOString(),
               size: blob.properties.contentLength || 0
             });
           }
@@ -337,7 +355,7 @@ async function handleUpdateHistory(req, res, rawId) {
 
     const containerClient = blobServiceClient.getContainerClient(containerName);
     const found = await findHistoryBlob(containerClient, normalizedId);
-    const targetBlobName = found?.blobName || norm(`exports/${normalizedId}.json`);
+    const targetBlobName = found?.blobName || `knowledge-base/exports/${normalizedId}.json`;
     const targetFileName = found?.fileName || `${normalizedId}.json`;
 
     const originalData = (await downloadJson(containerClient, targetBlobName)) || {};

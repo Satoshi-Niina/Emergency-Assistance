@@ -105,7 +105,10 @@ export default async function emergencyFlowHandler(req, res) {
       }
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
-      const blobName = norm(`knowledge-base/troubleshooting/${fileName}`);
+      // norm関数は環境変数を考慮してプレフィックスを付与するため、ここでは相対パスのみ指定する
+      // 元: norm('knowledge-base/troubleshooting/${fileName}') -> 二重付与の可能性
+      // 修正: norm('troubleshooting/${fileName}')
+      const blobName = norm(`troubleshooting/${fileName}`);
       console.log(`[api/emergency-flow] BLOB path: ${blobName}`);
       
       const blobClient = containerClient.getBlobClient(blobName);
@@ -148,7 +151,10 @@ export default async function emergencyFlowHandler(req, res) {
       }
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
-      const blobName = norm(`knowledge-base/troubleshooting/${flowId || 'flow-' + Date.now()}.json`);
+      // norm関数は環境変数を考慮してプレフィックスを付与するため、ここでは相対パスのみ指定する
+      // 元: norm('knowledge-base/troubleshooting/${flowId || ...}') -> 二重付与の可能性
+      // 修正: norm('troubleshooting/${flowId || ...}')
+      const blobName = norm(`troubleshooting/${flowId || 'flow-' + Date.now()}.json`);
       const blobClient = containerClient.getBlockBlobClient(blobName);
 
       const content = typeof flowData === 'string' ? flowData : JSON.stringify(flowData, null, 2);

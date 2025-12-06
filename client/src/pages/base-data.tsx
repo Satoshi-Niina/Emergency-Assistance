@@ -353,7 +353,9 @@ export default function BaseDataPage() {
   const fetchExportFiles = async () => {
     try {
       console.log('📂 エクスポートファイル一覧取得開始');
+      // Blobのknowledge-base/exportsからファイル一覧を取得
       const exportsUrl = buildApiUrl('/history/export-files');
+      console.log('🔗 API URL:', exportsUrl);
       const response = await fetch(exportsUrl, {
         credentials: 'include',
       });

@@ -144,22 +144,6 @@ export async function ensureTables() {
         );
 
         CREATE INDEX IF NOT EXISTS idx_chat_history_machine_type ON chat_history(machine_type);
-          id SERIAL PRIMARY KEY,
-          title TEXT NOT NULL,
-          content TEXT,
-          category TEXT,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_chat_history_machine_type ON chat_history(machine_type);
-          id SERIAL PRIMARY KEY,
-          title TEXT NOT NULL,
-          content TEXT,
-          category TEXT,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_chat_history_machine_type ON chat_history(machine_type);
         CREATE INDEX IF NOT EXISTS idx_chat_history_machine_number ON chat_history(machine_number);
         CREATE INDEX IF NOT EXISTS idx_chat_history_created_at ON chat_history(created_at);
       `);

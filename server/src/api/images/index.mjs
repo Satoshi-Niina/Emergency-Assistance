@@ -1,6 +1,7 @@
 // ESM形式 - 画像取得エンドポイント
 // /api/images/* にマッピング
 
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getBlobServiceClient, containerName, norm } from '../../infra/blob.mjs';
@@ -51,39 +52,46 @@ export default async function imagesHandler(req, res) {
     
     try {
       const blobServiceClient = getBlobServiceClient();
-      if (!blobServiceClient) {
-        console.warn('[api/images] BLOB service client not available');
-        return res.status(503).json({
-          success: false,
-          error: 'BLOB storage not available'
-        });
-      }
-      
-      const containerClient = blobServiceClient.getContainerClient(containerName);
-      // 環境変数 AZURE_KNOWLEDGE_BASE_PATH を考慮したパス生成
-      // norm関数は infra/blob.mjs で定義されており、環境変数を読み込んでプレフィックスを付与する
-      const blobName = norm(`images/${category}/${fileName}`);
-      console.log('[api/images] Looking for blob:', blobName);
-      
-      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-      
-      if (await blockBlobClient.exists()) {
-        console.log('[api/images] BLOB found:', blobName);
-        const downloadResponse = await blockBlobClient.download();
-        const chunks = [];
-        
-        if (downloadResponse.readableStreamBody) {
-          for await (const chunk of downloadResponse.readableStreamBody) {
-            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      if (blobServiceClient) {
+        try {
+          const containerClient = blobServiceClient.getContainerClient(containerName);
+          // Blobパスを直接指定 (norm不使用)
+          const blobName = `knowledge-base/images/${category}/${fileName}`;
+          console.log('[api/images] Looking for blob:', blobName);
+          
+          const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+          
+          if (await blockBlobClient.exists()) {
+            console.log('[api/images] BLOB found:', blobName);
+            const downloadResponse = await blockBlobClient.download();
+            const chunks = [];
+            
+            if (downloadResponse.readableStreamBody) {
+              for await (const chunk of downloadResponse.readableStreamBody) {
+                chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+              }
+              const buffer = Buffer.concat(chunks);
+              setImageHeaders(contentType);
+              return res.status(200).send(buffer);
+            }
+            
+            console.warn('[api/images] readableStreamBody is null');
+          } else {
+            console.log('[api/images] BLOB not found:', blobName);
           }
-          const buffer = Buffer.concat(chunks);
-          setImageHeaders(contentType);
-          return res.status(200).send(buffer);
+        } catch (blobError) {
+          console.warn('[api/images] Blob fetch failed, trying local file:', blobError.message);
         }
-        
-        console.warn('[api/images] readableStreamBody is null');
       } else {
-        console.log('[api/images] BLOB not found:', blobName);
+        console.warn('[api/images] BLOB service client not available, trying local file');
+      }
+
+      // Local fallback for environments without Blob
+      const localPath = path.join(process.cwd(), 'knowledge-base', 'images', category, fileName);
+      if (fs.existsSync(localPath)) {
+        console.log('[api/images] Serving local file:', localPath);
+        setImageHeaders(contentType);
+        return res.sendFile(localPath);
       }
       
       return res.status(404).json({

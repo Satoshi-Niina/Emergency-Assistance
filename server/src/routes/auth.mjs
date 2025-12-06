@@ -46,6 +46,7 @@ router.post('/login', async (req, res) => {
       console.warn('[auth/login] Warning: Stored password might not be a valid bcrypt hash for user:', username);
     }
 
+    // パスワードはbcryptハッシュのみで認証（平文不可）
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
