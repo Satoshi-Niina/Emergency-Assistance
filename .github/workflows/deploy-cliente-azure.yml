@@ -88,7 +88,7 @@ jobs:
       - name: Security check - RSC & Next.js vulnerabilities
         run: |
           echo "🔍 Running security vulnerability check..."
-          node scripts/check-rsc-vulnerabilities.js
+          node scripts/check-rsc-vulnerabilities.mjs
         continue-on-error: false
 
       - name: Install dependencies (CLEAN - no cache)

@@ -10,7 +10,7 @@ on:
     paths:
       - '**/package.json'
       - '**/package-lock.json'
-      - 'scripts/check-rsc-vulnerabilities.js'
+      - 'scripts/check-rsc-vulnerabilities.mjs'
       - '.github/workflows/security-check.yml'
   pull_request:
     branches:
@@ -19,7 +19,7 @@ on:
     paths:
       - '**/package.json'
       - '**/package-lock.json'
-      - 'scripts/check-rsc-vulnerabilities.js'
+      - 'scripts/check-rsc-vulnerabilities.mjs'
   workflow_dispatch:
   # 定期実行（毎週月曜日 9:00 JST = 0:00 UTC）
   schedule:
@@ -91,7 +91,7 @@ jobs:
           echo ""
           
           # スクリプトを実行（脆弱性があれば exit 1 で終了する）
-          node scripts/check-rsc-vulnerabilities.js
+          node scripts/check-rsc-vulnerabilities.mjs
         continue-on-error: false
 
       - name: Upload vulnerability report
