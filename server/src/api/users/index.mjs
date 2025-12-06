@@ -41,13 +41,17 @@ export default async function usersHandler(req, res) {
 
     // POSTリクエスト: ユーザー作成
     if (method === 'POST') {
+      console.log('[api/users] POST request received:', req.body);
       const { username, password, display_name, role, department, description } = req.body;
       
       if (!username || !password) {
+        console.error('[api/users] Missing required fields:', { username: !!username, password: !!password });
         return res.status(400).json({ success: false, error: 'Username and password are required' });
       }
 
+      console.log('[api/users] Hashing password for user:', username);
       const hashedPassword = await bcrypt.hash(password, 10);
+      console.log('[api/users] Password hashed successfully, length:', hashedPassword.length);
       
       try {
         const result = await dbQuery(
@@ -57,6 +61,7 @@ export default async function usersHandler(req, res) {
           [username, hashedPassword, display_name, role || 'user', department, description]
         );
         
+        console.log('[api/users] User created successfully:', result.rows[0].id);
         return res.status(201).json({
           success: true,
           data: result.rows[0],
@@ -80,6 +85,7 @@ export default async function usersHandler(req, res) {
 
     // PUTリクエスト: ユーザー更新
     if (method === 'PUT' && id) {
+      console.log('[api/users] PUT request received for user:', id, 'Data:', req.body);
       const { password, display_name, role, department, description } = req.body;
       
       try {
@@ -89,7 +95,9 @@ export default async function usersHandler(req, res) {
         let paramIndex = 1;
 
         if (password) {
+          console.log('[api/users] Hashing new password for user:', id);
           const hashedPassword = await bcrypt.hash(password, 10);
+          console.log('[api/users] New password hashed successfully');
           updates.push(`password = $${paramIndex++}`);
           params.push(hashedPassword);
         }
@@ -111,18 +119,22 @@ export default async function usersHandler(req, res) {
         }
 
         if (updates.length === 0) {
+          console.error('[api/users] No fields to update for user:', id);
           return res.status(400).json({ success: false, error: 'No fields to update' });
         }
 
         query += updates.join(', ') + ` WHERE id = $${paramIndex} RETURNING id, username, display_name, role, department`;
         params.push(id);
 
+        console.log('[api/users] Executing update query');
         const result = await dbQuery(query, params);
         
         if (result.rows.length === 0) {
+          console.error('[api/users] User not found:', id);
           return res.status(404).json({ success: false, error: 'User not found' });
         }
 
+        console.log('[api/users] User updated successfully:', result.rows[0].id);
         return res.json({
           success: true,
           data: result.rows[0],

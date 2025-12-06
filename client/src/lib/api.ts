@@ -90,19 +90,35 @@ export const apiRequest = async <T = any>(
         const response = await fetch(url, config);
 
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`❌ API Error: ${response.status} ${response.statusText}`);
+            let errorMessage = `API Error ${response.status}: ${response.statusText}`;
+            try {
+                const errorData = await response.json();
+                console.error(`❌ API Error Response:`, errorData);
+                errorMessage = errorData.error || errorData.message || errorMessage;
+            } catch {
+                const errorText = await response.text();
+                console.error(`❌ API Error: ${response.status} ${response.statusText} - ${errorText}`);
+                errorMessage = errorText || errorMessage;
+            }
 
             if (response.status === 401) {
                 localStorage.removeItem('authToken');
                 throw new Error('AUTHENTICATION_ERROR');
             }
 
-            throw new Error(`API Error ${response.status}: ${errorText}`);
+            throw new Error(errorMessage);
         }
 
         const data = await response.json();
-        console.log(`✅ API Response: ${options.method || 'GET'} ${url}`);
+        console.log(`✅ API Response: ${options.method || 'GET'} ${url}`, data);
+        
+        // サーバーがsuccess: falseを返している場合でもHTTP 200の場合がある
+        if (data && typeof data === 'object' && 'success' in data && data.success === false) {
+            const errorMessage = data.error || data.message || 'Unknown error';
+            console.error(`❌ API returned success: false:`, errorMessage);
+            throw new Error(errorMessage);
+        }
+        
         return data;
     } catch (error) {
         console.error(`❌ API Request Failed: ${options.method || 'GET'} ${url}`, error);
