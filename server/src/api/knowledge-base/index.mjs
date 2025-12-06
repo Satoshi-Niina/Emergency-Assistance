@@ -98,6 +98,8 @@ export default async function (req, res) {
     res.status(500).set({
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     }).json({
       success: false,
       error: 'ナレッジデータの取得に失敗しました',
@@ -106,3 +108,5 @@ export default async function (req, res) {
     });
   }
 }
+
+export const methods = ['get', 'post'];

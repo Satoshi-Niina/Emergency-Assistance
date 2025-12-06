@@ -50,3 +50,5 @@ export default async function adminHandler(req, res) {
     path: req.path
   });
 }
+
+export const methods = ['get'];
