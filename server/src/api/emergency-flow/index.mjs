@@ -220,6 +220,142 @@ export default async function emergencyFlowHandler(req, res) {
     }
   }
 
+  // /api/emergency-flow/generate - POSTフロー生成（AI未対応のため簡易テンプレート返却）
+  if (pathParts[2] === 'generate' && method === 'POST') {
+    try {
+      const { keyword } = req.body;
+      console.log('[api/emergency-flow/generate] Generate request:', keyword);
+
+      if (!keyword) {
+        return res.status(400).json({
+          success: false,
+          error: 'キーワードが必要です'
+        });
+      }
+
+      // 簡易テンプレート（OpenAI統合は別途実装）
+      const flowTemplate = {
+        title: keyword,
+        steps: [
+          {
+            id: 'step1',
+            type: 'step',
+            title: '安全確認',
+            description: '作業エリアの安全を確認し、必要な保護具を着用してください。',
+            nextStep: 'step2'
+          },
+          {
+            id: 'step2',
+            type: 'step',
+            title: '症状の確認',
+            description: `${keyword}の症状を詳しく確認してください。`,
+            nextStep: 'step3'
+          },
+          {
+            id: 'step3',
+            type: 'decision',
+            title: '状況判断',
+            description: '現在の状況を選択してください。',
+            options: [
+              { label: '軽微な問題', nextStep: 'step4' },
+              { label: '深刻な問題', nextStep: 'step5' },
+              { label: '緊急対応必要', nextStep: 'step6' },
+              { label: '不明', nextStep: 'step7' }
+            ]
+          },
+          {
+            id: 'step4',
+            type: 'step',
+            title: '応急処置',
+            description: '基本的な点検と調整を行ってください。',
+            nextStep: 'complete'
+          },
+          {
+            id: 'step5',
+            type: 'step',
+            title: '詳細点検',
+            description: '詳細な点検を実施し、問題箇所を特定してください。',
+            nextStep: 'step8'
+          },
+          {
+            id: 'step6',
+            type: 'step',
+            title: '緊急対応',
+            description: '直ちに専門技術者に連絡し、指示を仰いでください。',
+            nextStep: 'complete'
+          },
+          {
+            id: 'step7',
+            type: 'step',
+            title: '専門家への相談',
+            description: '判断が困難な場合は、専門技術者に連絡してください。',
+            nextStep: 'complete'
+          },
+          {
+            id: 'step8',
+            type: 'step',
+            title: '報告',
+            description: '確認した内容を記録し、関係者に報告してください。',
+            nextStep: 'complete'
+          }
+        ],
+        createdAt: new Date().toISOString()
+      };
+
+      return res.json({
+        success: true,
+        data: flowTemplate
+      });
+    } catch (error) {
+      console.error('[api/emergency-flow/generate] Error:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  // /api/emergency-flow/:id - DELETE削除
+  if (pathParts[2] && method === 'DELETE') {
+    try {
+      const fileName = pathParts[2];
+      console.log('[api/emergency-flow/delete] Deleting:', fileName);
+
+      const blobServiceClient = getBlobServiceClient();
+      if (!blobServiceClient) {
+        return res.status(503).json({
+          success: false,
+          error: 'BLOB storage not available'
+        });
+      }
+
+      const containerClient = blobServiceClient.getContainerClient(containerName);
+      const resolved = await resolveBlobClient(containerClient, fileName);
+
+      if (!resolved) {
+        return res.status(404).json({
+          success: false,
+          error: 'フローが見つかりません'
+        });
+      }
+
+      await resolved.blobClient.delete();
+      console.log(`[api/emergency-flow/delete] Deleted: ${resolved.blobName}`);
+
+      return res.json({
+        success: true,
+        message: '削除しました',
+        deletedFile: fileName
+      });
+    } catch (error) {
+      console.error('[api/emergency-flow/delete] Error:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
   return res.status(404).json({
     success: false,
     error: 'Endpoint not found',
@@ -227,4 +363,4 @@ export default async function emergencyFlowHandler(req, res) {
   });
 }
 
-export const methods = ['get', 'post'];
+export const methods = ['get', 'post', 'delete', 'put'];
