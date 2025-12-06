@@ -162,14 +162,17 @@ router.get('/', async (req, res) => {
           const fileName = blob.name.split('/').pop();
           const id = fileName.replace('.json', '');
 
+          // ファイル名からデフォルトのタイトルを抽出
+          const defaultTitle = deriveTitleFromFileName(fileName);
+          
           let meta = {
-            title: deriveTitleFromFileName(fileName),
+            title: defaultTitle,
             machineType: 'Unknown',
             machineNumber: 'Unknown',
             images: [],
           };
 
-          // 可能な限りメタデータを読み出す（軽量化のため読み出し成功時のみ）
+          // 可能な限りメタデータを読み出す（JSONデータから詳細情報を取得）
           try {
             const blobClient = containerClient.getBlobClient(blob.name);
             const downloadResponse = await blobClient.download();
@@ -177,9 +180,24 @@ router.get('/', async (req, res) => {
               const buffer = await streamToBuffer(downloadResponse.readableStreamBody);
               const json = JSON.parse(buffer.toString('utf8'));
               meta = extractMetadataFromJson(json, fileName);
+              
+              // titleが取得できなかった場合はファイル名から生成したタイトルを使用
+              if (!meta.title || meta.title === '故障履歴') {
+                meta.title = defaultTitle;
+              }
+              
+              console.log('[history] Metadata extracted:', {
+                fileName,
+                title: meta.title,
+                machineType: meta.machineType,
+                machineNumber: meta.machineNumber,
+                imageCount: meta.images.length
+              });
             }
           } catch (blobMetaError) {
-            console.warn('[history] Metadata read skipped:', fileName, blobMetaError.message);
+            console.warn('[history] Metadata read failed for:', fileName, blobMetaError.message);
+            // エラー時もファイル名から生成したタイトルを使用
+            meta.title = defaultTitle;
           }
 
           items.push({
