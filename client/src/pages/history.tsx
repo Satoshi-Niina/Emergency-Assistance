@@ -516,8 +516,14 @@ export default function HistoryPage() {
   };
 
   // ファイル名から事象名のみを抽出（UUIDとタイムスタンプを削除）
-  const getDisplayFileName = (fileName: string | undefined, title: string | undefined): string => {
+  const getDisplayFileName = (fileName: string | undefined, title: string | undefined, jsonData?: any): string => {
+    // 1. JSONデータのtitleを最優先
+    if (jsonData?.title) return jsonData.title;
+    
+    // 2. 引数のtitleを使用
     if (title) return title;
+    
+    // 3. ファイル名から抽出
     if (!fileName) return '無題';
     
     // .json拡張子を削除
@@ -1505,7 +1511,7 @@ export default function HistoryPage() {
                         </td>
                         <td className="border border-gray-300 p-3">
                           <div className="font-medium text-gray-900">
-                            {getDisplayFileName(item.fileName, item.title)}
+                            {getDisplayFileName(item.fileName, item.title, item.jsonData)}
                           </div>
                         </td>
                         <td className="border border-gray-300 p-3">
@@ -1578,7 +1584,7 @@ export default function HistoryPage() {
                                         const urlFileName = image.url.split('/').pop()?.split('\\').pop() || '';
                                         imageUrl = `/api/images/chat-exports/${urlFileName}`;
                                       }
-                                      fileName = image.originalFileName || image.fileName || `画像${idx + 1}`;
+                                      fileName = image.originalFileName || image.fileName || image.title || `画像${idx + 1}`;
                                     } else if (image.path) {
                                       const pathParts = image.path.split(/[/\\]/);
                                       fileName = pathParts[pathParts.length - 1] || `画像${idx + 1}`;
@@ -1588,6 +1594,8 @@ export default function HistoryPage() {
                                     }
 
                                     if (!imageUrl) return null;
+
+                                    console.log('📸 画像表示:', { fileName, imageUrl, image });
 
                                     // 一意なキーを生成
                                     const imageKey = `${item.id}-${fileName || idx}-${idx}`;
