@@ -2088,6 +2088,15 @@ export default function HistoryPage() {
                           cleanUrl = cleanUrl.replace('/api/api/', '/api/');
                         }
                         
+                        // /api/images/chat-exports/exports/ のような2重パスを修正
+                        cleanUrl = cleanUrl.replace('/chat-exports/exports/', '/chat-exports/');
+                        cleanUrl = cleanUrl.replace('/emergency-flows/exports/', '/emergency-flows/');
+                        
+                        // 既に /api/images/ で始まっている場合はそのまま返す
+                        if (cleanUrl.startsWith('/api/images/')) {
+                          return cleanUrl;
+                        }
+                        
                         // ファイル名のみの場合は /api/images/chat-exports/ を追加
                         if (!cleanUrl.startsWith('/') && !cleanUrl.includes('/')) {
                           cleanUrl = `/api/images/chat-exports/${cleanUrl}`;

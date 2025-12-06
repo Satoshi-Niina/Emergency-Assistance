@@ -67,6 +67,17 @@ function extractMetadataFromJson(json = {}, fileName = '') {
   const machineNumber =
     machineInfo.machineNumber || json.machineNumber || 'Unknown';
 
+  console.log('[extractMetadata] Debug:', {
+    fileName,
+    hasChatData: !!json.chatData,
+    hasMachineInfo: !!machineInfo,
+    machineTypeName: machineInfo.machineTypeName,
+    jsonMachineType: json.machineType,
+    machineNumber: machineInfo.machineNumber || json.machineNumber,
+    extractedMachineType: machineType,
+    extractedMachineNumber: machineNumber
+  });
+
   // 画像抽出: chatData.messages[].media[].url, savedImages 配列
   const images = [];
   const messages = Array.isArray(chatData.messages) ? chatData.messages : [];
