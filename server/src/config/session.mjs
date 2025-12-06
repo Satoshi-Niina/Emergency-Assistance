@@ -4,21 +4,27 @@ import { SESSION_SECRET, NODE_ENV } from './env.mjs';
 const isAzureHosted = !!process.env.WEBSITE_SITE_NAME;
 const isProductionEnv = NODE_ENV === 'production';
 
-const sessionCookieSecure = process.env.SESSION_COOKIE_SECURE
-  ? process.env.SESSION_COOKIE_SECURE.toLowerCase() === 'true'
-  : (isAzureHosted || isProductionEnv);
-
-const sessionCookieSameSite = process.env.SESSION_COOKIE_SAMESITE
-  ? process.env.SESSION_COOKIE_SAMESITE.toLowerCase()
-  : (sessionCookieSecure ? 'none' : 'lax');
+// デバッグ用: セッション設定を緩和
+const sessionCookieSecure = false; // HTTPでもセッションが動作するように一時的に変更
+const sessionCookieSameSite = 'lax'; // laxに変更
 
 const sessionCookieHttpOnly = process.env.SESSION_COOKIE_HTTPONLY
   ? process.env.SESSION_COOKIE_HTTPONLY.toLowerCase() === 'true'
-  : false;
+  : true;
 
 const sessionCookieDomain = process.env.SESSION_COOKIE_DOMAIN 
   ? process.env.SESSION_COOKIE_DOMAIN.trim().replace(/^["']|["']$/g, '').trim() 
   : undefined;
+
+console.log('[Session Config]', {
+  isAzureHosted,
+  isProductionEnv,
+  cookieSecure: sessionCookieSecure,
+  cookieSameSite: sessionCookieSameSite,
+  cookieHttpOnly: sessionCookieHttpOnly,
+  cookieDomain: sessionCookieDomain,
+  sessionSecret: SESSION_SECRET ? '✓ SET' : '✗ MISSING'
+});
 
 export const sessionConfig = {
   secret: SESSION_SECRET,

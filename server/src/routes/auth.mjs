@@ -58,6 +58,11 @@ router.post('/login', async (req, res) => {
     }
 
     console.log('[auth/login] Login successful for:', username, 'Role:', user.role);
+    console.log('[auth/login] Session debug:', {
+      sessionID: req.sessionID,
+      cookie: req.session.cookie,
+      hasSession: !!req.session
+    });
 
     req.session.user = {
       id: user.id,
@@ -67,17 +72,33 @@ router.post('/login', async (req, res) => {
       department: user.department
     };
 
-    res.json({
-      success: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        displayName: user.display_name,
-        role: normalizeUserRole(user.role),
-        department: user.department
-      },
-      message: 'ログインに成功しました',
-      timestamp: new Date().toISOString()
+    // セッション保存を確実にする
+    req.session.save((err) => {
+      if (err) {
+        console.error('[auth/login] Session save error:', err);
+        return res.status(500).json({
+          success: false,
+          error: 'セッション保存エラー'
+        });
+      }
+
+      console.log('[auth/login] Session saved successfully');
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          username: user.username,
+          displayName: user.display_name,
+          role: normalizeUserRole(user.role),
+          department: user.department
+        },
+        message: 'ログインに成功しました',
+        timestamp: new Date().toISOString(),
+        debug: {
+          sessionID: req.sessionID,
+          cookieSet: true
+        }
+      });
     });
 
   } catch (error) {
