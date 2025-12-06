@@ -1,6 +1,7 @@
 // ESM形式 - 応急復旧フローエンドポイント
 // /api/emergency-flow/* にマッピング
 
+import fs from 'fs';
 import { getBlobServiceClient, containerName, norm, upload } from '../../infra/blob.mjs';
 import path from 'path';
 
@@ -253,15 +254,33 @@ export default async function emergencyFlowHandler(req, res) {
         const fileName = `emergency_flow_${timestamp}${ext}`;
         const blobServiceClient = getBlobServiceClient();
 
+        // 開発環境: BLOBが利用できない場合はローカル保存
         if (!blobServiceClient) {
-          return res.status(503).json({
-            success: false,
-            error: 'BLOB storage is not configured. Please check AZURE_STORAGE_CONNECTION_STRING environment variable.'
+          console.warn('[api/emergency-flow/upload-image] BLOB unavailable, saving locally');
+          const fs = await import('fs');
+          const localDir = path.join(process.cwd(), 'knowledge-base', 'images', 'emergency-flows');
+          
+          if (!fs.existsSync(localDir)) {
+            fs.mkdirSync(localDir, { recursive: true });
+          }
+          
+          const localPath = path.join(localDir, fileName);
+          fs.writeFileSync(localPath, req.file.buffer);
+          
+          console.log('[api/emergency-flow/upload-image] Saved locally:', localPath);
+          const imageUrl = `/api/images/emergency-flows/${fileName}`;
+          
+          return res.json({
+            success: true,
+            imageUrl: imageUrl,
+            fileName: fileName,
+            size: req.file.size,
+            storage: 'local'
           });
         }
 
+        // 本番環境: BLOBに保存
         const containerClient = blobServiceClient.getContainerClient(containerName);
-        // Blob保存先: knowledge-base/images/emergency-flows/
         const blobName = `knowledge-base/images/emergency-flows/${fileName}`;
         console.log('[api/emergency-flow/upload-image] Uploading to Blob:', blobName);
         const blockBlobClient = containerClient.getBlockBlobClient(blobName);

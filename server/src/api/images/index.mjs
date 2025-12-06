@@ -1,6 +1,7 @@
 // ESM形式 - 画像取得エンドポイント
 // /api/images/* にマッピング
 
+import fs from 'fs';
 import path from 'path';
 import { getBlobServiceClient, containerName } from '../../infra/blob.mjs';
 
@@ -48,48 +49,78 @@ export default async function imagesHandler(req, res) {
     try {
       const blobServiceClient = getBlobServiceClient();
       
+      // 開発環境: BLOBが利用できない場合はローカルファイルを使用
       if (!blobServiceClient) {
-        console.error('[api/images] BLOB service client not available');
-        return res.status(503).json({
-          success: false,
-          error: 'BLOB storage is not configured. Please check AZURE_STORAGE_CONNECTION_STRING environment variable.'
-        });
-      }
-
-      const containerClient = blobServiceClient.getContainerClient(containerName);
-      const blobName = `knowledge-base/images/${category}/${fileName}`;
-      console.log('[api/images] Looking for blob:', blobName);
-      
-      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-      const exists = await blockBlobClient.exists();
-      
-      if (!exists) {
-        console.log('[api/images] BLOB not found:', blobName);
+        console.warn('[api/images] BLOB service client not available, trying local file');
+        const localPath = path.join(process.cwd(), 'knowledge-base', 'images', category, fileName);
+        
+        if (fs.existsSync(localPath)) {
+          console.log('[api/images] Serving local file:', localPath);
+          setImageHeaders(contentType);
+          return res.sendFile(localPath);
+        }
+        
+        console.error('[api/images] Local file not found:', localPath);
         return res.status(404).json({
           success: false,
           error: '画像が見つかりません',
           fileName: fileName
         });
       }
-      
-      console.log('[api/images] BLOB found:', blobName);
-      const downloadResponse = await blockBlobClient.download();
-      const chunks = [];
-      
-      if (downloadResponse.readableStreamBody) {
-        for await (const chunk of downloadResponse.readableStreamBody) {
-          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+
+      // 本番環境: BLOBから取得
+      try {
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        const blobName = `knowledge-base/images/${category}/${fileName}`;
+        console.log('[api/images] Looking for blob:', blobName);
+        
+        const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+        const exists = await blockBlobClient.exists();
+        
+        if (!exists) {
+          console.log('[api/images] BLOB not found:', blobName);
+          return res.status(404).json({
+            success: false,
+            error: '画像が見つかりません',
+            fileName: fileName
+          });
         }
-        const buffer = Buffer.concat(chunks);
-        setImageHeaders(contentType);
-        return res.status(200).send(buffer);
+        
+        console.log('[api/images] BLOB found:', blobName);
+        const downloadResponse = await blockBlobClient.download();
+        const chunks = [];
+        
+        if (downloadResponse.readableStreamBody) {
+          for await (const chunk of downloadResponse.readableStreamBody) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          }
+          const buffer = Buffer.concat(chunks);
+          setImageHeaders(contentType);
+          return res.status(200).send(buffer);
+        }
+        
+        console.error('[api/images] readableStreamBody is null');
+        return res.status(500).json({
+          success: false,
+          error: '画像データの読み込みに失敗しました'
+        });
+      } catch (blobError) {
+        console.error('[api/images] BLOB error, trying local fallback:', blobError.message);
+        
+        // BLOBエラー時のローカルフォールバック
+        const localPath = path.join(process.cwd(), 'knowledge-base', 'images', category, fileName);
+        if (fs.existsSync(localPath)) {
+          console.log('[api/images] Serving local file (fallback):', localPath);
+          setImageHeaders(contentType);
+          return res.sendFile(localPath);
+        }
+        
+        return res.status(500).json({
+          success: false,
+          error: 'BLOB取得エラー',
+          details: blobError.message
+        });
       }
-      
-      console.error('[api/images] readableStreamBody is null');
-      return res.status(500).json({
-        success: false,
-        error: '画像データの読み込みに失敗しました'
-      });
       
     } catch (error) {
       console.error('[api/images] Error (falling back to 404):', error);

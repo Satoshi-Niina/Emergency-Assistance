@@ -262,15 +262,32 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
       const fileName = `chat_image_${timestamp}${ext}`;
       const blobServiceClient = getBlobServiceClient();
 
+      // 開発環境: BLOBが利用できない場合はローカル保存
       if (!blobServiceClient) {
-        return res.status(503).json({
-          success: false,
-          error: 'BLOB storage is not configured. Please check AZURE_STORAGE_CONNECTION_STRING environment variable.'
+        console.warn('[history/upload-image] BLOB unavailable, saving locally');
+        const localDir = path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
+        
+        if (!fs.existsSync(localDir)) {
+          fs.mkdirSync(localDir, { recursive: true });
+        }
+        
+        const localPath = path.join(localDir, fileName);
+        fs.writeFileSync(localPath, req.file.buffer);
+        
+        console.log('[history/upload-image] Saved locally:', localPath);
+        const imageUrl = `/api/images/chat-exports/${fileName}`;
+        
+        return res.json({
+          success: true,
+          imageUrl: imageUrl,
+          fileName: fileName,
+          size: req.file.size,
+          storage: 'local'
         });
       }
 
+      // 本番環境: BLOBに保存
       const containerClient = blobServiceClient.getContainerClient(containerName);
-      // Blob保存先: knowledge-base/images/chat-exports/ (直接指定)
       const blobName = `knowledge-base/images/chat-exports/${fileName}`;
       console.log('[history/upload-image] Uploading to Blob:', blobName);
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
