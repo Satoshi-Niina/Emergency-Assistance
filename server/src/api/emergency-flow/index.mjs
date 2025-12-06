@@ -486,13 +486,62 @@ export default async function emergencyFlowHandler(req, res) {
         });
       }
 
+      // JSONをダウンロードして画像ファイル名を取得
+      let imagesToDelete = [];
+      try {
+        const downloadResponse = await resolved.blobClient.download();
+        if (downloadResponse.readableStreamBody) {
+          const chunks = [];
+          for await (const chunk of downloadResponse.readableStreamBody) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          }
+          const buffer = Buffer.concat(chunks);
+          const jsonData = JSON.parse(buffer.toString('utf-8'));
+          
+          // steps配列から画像を抽出
+          if (Array.isArray(jsonData.steps)) {
+            jsonData.steps.forEach(step => {
+              if (step.imageUrl) {
+                const imgFileName = step.imageUrl.split('/').pop();
+                if (imgFileName && !imgFileName.startsWith('http')) {
+                  imagesToDelete.push(imgFileName);
+                }
+              }
+            });
+          }
+        }
+      } catch (parseError) {
+        console.warn('[api/emergency-flow/delete] Failed to parse images:', parseError.message);
+      }
+
+      console.log(`[api/emergency-flow/delete] Found ${imagesToDelete.length} images to delete`);
+
+      // 関連する画像をBLOBから削除
+      for (const imgFileName of imagesToDelete) {
+        try {
+          const imageBlobName = `knowledge-base/images/emergency-flows/${imgFileName}`;
+          const imageBlob = containerClient.getBlobClient(imageBlobName);
+          const exists = await imageBlob.exists();
+          
+          if (exists) {
+            await imageBlob.delete();
+            console.log(`[api/emergency-flow/delete] Deleted image: ${imageBlobName}`);
+          }
+        } catch (imgError) {
+          console.warn(`[api/emergency-flow/delete] Failed to delete image:`, imgError.message);
+          // 画像削除失敗は警告のみ、処理は継続
+        }
+      }
+
+      // JSONファイルを削除
       await resolved.blobClient.delete();
-      console.log(`[api/emergency-flow/delete] Deleted: ${resolved.blobName}`);
+      console.log(`[api/emergency-flow/delete] Deleted JSON: ${resolved.blobName}`);
 
       return res.json({
         success: true,
         message: '削除しました',
-        deletedFile: fileName
+        deletedFile: fileName,
+        deletedImages: imagesToDelete.length
       });
     } catch (error) {
       console.error('[api/emergency-flow/delete] Error:', error);

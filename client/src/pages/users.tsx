@@ -242,6 +242,16 @@ export default function UsersPage() {
       const result = await userApi.post('/users', newUser);
       console.log('✅ ユーザー作成成功:', result);
 
+      // APIレスポンスからusers配列を取得して更新
+      if (result.users && Array.isArray(result.users)) {
+        setUsers(result.users);
+        console.log('✅ ユーザー一覧を更新:', result.users.length, '件');
+      } else {
+        console.warn('⚠️ APIレスポンスにusers配列がありません:', result);
+        // フォールバック: 手動で再取得
+        await fetchUsers();
+      }
+
       toast({
         title: '成功',
         description: 'ユーザーが作成されました',
@@ -249,9 +259,6 @@ export default function UsersPage() {
 
       setShowNewUserDialog(false);
       resetNewUserForm();
-
-      // ユーザー一覧を再取得
-      window.location.reload();
     } catch (error) {
       console.error('❌ ユーザー作成エラー:', error);
       toast({
@@ -295,6 +302,15 @@ export default function UsersPage() {
       const result = await userApi.put(`/users/${editUser.id}`, editUser);
       console.log('✅ ユーザー更新成功:', result);
 
+      // APIレスポンスからusers配列を取得して更新
+      if (result.users && Array.isArray(result.users)) {
+        setUsers(result.users);
+        console.log('✅ ユーザー一覧を更新:', result.users.length, '件');
+      } else {
+        // フォールバック: 手動で再取得
+        await fetchUsers();
+      }
+
       toast({
         title: '成功',
         description: 'ユーザーが更新されました',
@@ -302,9 +318,6 @@ export default function UsersPage() {
 
       setShowEditUserDialog(false);
       resetEditUserForm();
-
-      // ユーザー一覧を再取得（ページリロードではなく状態更新）
-      await fetchUsers();
     } catch (error) {
       console.error('❌ ユーザー更新エラー:', error);
 
@@ -344,6 +357,15 @@ export default function UsersPage() {
 
       const result = await userApi.delete(`/users/${selectedUserId}`);
       console.log('✅ ユーザー削除成功:', result);
+
+      // APIレスポンスからusers配列を取得して更新
+      if (result.users && Array.isArray(result.users)) {
+        setUsers(result.users);
+        console.log('✅ ユーザー一覧を更新:', result.users.length, '件');
+      } else {
+        // フォールバック: 手動で再取得
+        await fetchUsers();
+      }
 
       toast({
         title: '成功',

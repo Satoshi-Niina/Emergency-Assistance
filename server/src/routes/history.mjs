@@ -564,10 +564,43 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: 'ファイルが見つかりません' });
     }
 
-    await containerClient.getBlobClient(found.blobName).delete();
-    console.log(`[history/delete] Deleted: ${found.blobName}`);
+    // JSONをダウンロードして画像ファイル名を取得
+    const jsonData = await downloadJson(containerClient, found.blobName);
+    const metadata = extractMetadataFromJson(jsonData, found.fileName);
+    const imagesToDelete = metadata.images || [];
 
-    return res.json({ success: true, message: '削除しました', deletedFile: found.fileName });
+    console.log(`[history/delete] Found ${imagesToDelete.length} images to delete`);
+
+    // 関連する画像をBLOBから削除
+    for (const img of imagesToDelete) {
+      try {
+        const fileName = img.fileName || img.url?.split('/').pop();
+        if (fileName && !fileName.startsWith('http')) {
+          const imageBlobName = `knowledge-base/images/chat-exports/${fileName}`;
+          const imageBlob = containerClient.getBlobClient(imageBlobName);
+          const exists = await imageBlob.exists();
+          
+          if (exists) {
+            await imageBlob.delete();
+            console.log(`[history/delete] Deleted image: ${imageBlobName}`);
+          }
+        }
+      } catch (imgError) {
+        console.warn(`[history/delete] Failed to delete image:`, imgError.message);
+        // 画像削除失敗は警告のみ、処理は継続
+      }
+    }
+
+    // JSONファイルを削除
+    await containerClient.getBlobClient(found.blobName).delete();
+    console.log(`[history/delete] Deleted JSON: ${found.blobName}`);
+
+    return res.json({ 
+      success: true, 
+      message: '削除しました', 
+      deletedFile: found.fileName,
+      deletedImages: imagesToDelete.length
+    });
   } catch (error) {
     console.error('[history/delete] Error:', error);
     res.status(500).json({ success: false, error: error.message });
