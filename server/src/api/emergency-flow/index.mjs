@@ -381,14 +381,20 @@ export default async function emergencyFlowHandler(req, res) {
       }
 
       // 簡易テンプレート（OpenAI統合は別途実装）
+      const timestamp = Date.now();
+      const flowId = `flow_${keyword}_${timestamp}`;
       const flowTemplate = {
+        id: flowId,
         title: keyword,
+        description: `キーワード「${keyword}」から自動生成された応急処置フロー`,
+        triggerKeywords: [keyword],
         steps: [
           {
             id: 'step1',
             type: 'step',
             title: '安全確認',
             description: '作業エリアの安全を確認し、必要な保護具を着用してください。',
+            message: '作業エリアの安全を確認し、必要な保護具を着用してください。',
             nextStep: 'step2'
           },
           {
@@ -396,6 +402,7 @@ export default async function emergencyFlowHandler(req, res) {
             type: 'step',
             title: '症状の確認',
             description: `${keyword}の症状を詳しく確認してください。`,
+            message: `${keyword}の症状を詳しく確認してください。`,
             nextStep: 'step3'
           },
           {
@@ -403,6 +410,7 @@ export default async function emergencyFlowHandler(req, res) {
             type: 'decision',
             title: '状況判断',
             description: '現在の状況を選択してください。',
+            message: '現在の状況を選択してください。',
             options: [
               { label: '軽微な問題', nextStep: 'step4' },
               { label: '深刻な問題', nextStep: 'step5' },
@@ -415,6 +423,7 @@ export default async function emergencyFlowHandler(req, res) {
             type: 'step',
             title: '応急処置',
             description: '基本的な点検と調整を行ってください。',
+            message: '基本的な点検と調整を行ってください。',
             nextStep: 'complete'
           },
           {
@@ -422,6 +431,7 @@ export default async function emergencyFlowHandler(req, res) {
             type: 'step',
             title: '詳細点検',
             description: '詳細な点検を実施し、問題箇所を特定してください。',
+            message: '詳細な点検を実施し、問題箇所を特定してください。',
             nextStep: 'step8'
           },
           {
@@ -429,6 +439,7 @@ export default async function emergencyFlowHandler(req, res) {
             type: 'step',
             title: '緊急対応',
             description: '直ちに専門技術者に連絡し、指示を仰いでください。',
+            message: '直ちに専門技術者に連絡し、指示を仰いでください。',
             nextStep: 'complete'
           },
           {
@@ -436,6 +447,7 @@ export default async function emergencyFlowHandler(req, res) {
             type: 'step',
             title: '専門家への相談',
             description: '判断が困難な場合は、専門技術者に連絡してください。',
+            message: '判断が困難な場合は、専門技術者に連絡してください。',
             nextStep: 'complete'
           },
           {
@@ -443,16 +455,67 @@ export default async function emergencyFlowHandler(req, res) {
             type: 'step',
             title: '報告',
             description: '確認した内容を記録し、関係者に報告してください。',
+            message: '確認した内容を記録し、関係者に報告してください。',
             nextStep: 'complete'
           }
         ],
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
-      return res.json({
-        success: true,
-        data: flowTemplate
-      });
+      // 🔧 生成したフローを自動的にBLOBに保存
+      const blobServiceClient = getBlobServiceClient();
+      
+      if (blobServiceClient) {
+        try {
+          const containerClient = blobServiceClient.getContainerClient(containerName);
+          const fileName = `${flowId}.json`;
+          const blobName = norm(`troubleshooting/${fileName}`);
+          
+          console.log('[api/emergency-flow/generate] Saving generated flow to BLOB:', blobName);
+          
+          const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+          const content = JSON.stringify(flowTemplate, null, 2);
+          
+          await blockBlobClient.upload(content, content.length, {
+            blobHTTPHeaders: { blobContentType: 'application/json' },
+            metadata: {
+              generatedFrom: 'keyword',
+              keyword: keyword,
+              createdAt: new Date().toISOString()
+            }
+          });
+          
+          console.log('[api/emergency-flow/generate] Flow saved successfully to BLOB');
+          
+          return res.json({
+            success: true,
+            data: flowTemplate,
+            saved: true,
+            blobName: blobName,
+            fileName: fileName,
+            message: 'フローを生成してBLOBに保存しました'
+          });
+        } catch (blobError) {
+          console.error('[api/emergency-flow/generate] BLOB save failed:', blobError);
+          // BLOB保存に失敗してもフローデータは返す
+          return res.json({
+            success: true,
+            data: flowTemplate,
+            saved: false,
+            warning: 'フローを生成しましたが、保存に失敗しました',
+            error: blobError.message
+          });
+        }
+      } else {
+        console.warn('[api/emergency-flow/generate] BLOB client not available');
+        return res.json({
+          success: true,
+          data: flowTemplate,
+          saved: false,
+          warning: 'BLOB storage not available'
+        });
+      }
     } catch (error) {
       console.error('[api/emergency-flow/generate] Error:', error);
       return res.status(500).json({
