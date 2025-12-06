@@ -548,23 +548,18 @@ export default function HistoryPage() {
       console.log('編集された履歴アイテムを保存', editedItem);
 
       // IDの確認と準備
-      let itemId = editedItem.id || editedItem.chatId;
+      let itemId = editedItem.id || editedItem.chatId || editedItem.fileName;
       if (!itemId) {
         alert('アイテムIDが見つかりません。保存できません。');
         return;
       }
 
-      // export_プレフィックスがある場合は除去
-      if (itemId.startsWith('export_')) {
-        itemId = itemId.replace('export_', '');
-        if (itemId.endsWith('.json')) {
-          itemId = itemId.replace('.json', '');
-        }
-        const parts = itemId.split('_');
-        if (parts.length >= 2 && parts[1].match(/^[a-f0-9-]+$/)) {
-          itemId = parts[1];
-        }
+      // .json拡張子を除去
+      if (itemId.endsWith('.json')) {
+        itemId = itemId.replace('.json', '');
       }
+
+      console.log('💾 保存対象のID:', itemId);
 
       // 更新データの準備（画像データを含む）
       const savedImages = editedItem.jsonData?.savedImages || editedItem.images || [];
@@ -1926,20 +1921,7 @@ export default function HistoryPage() {
                         事象タイトル
                       </label>
                       <Input
-                        value={
-                          (() => {
-                            if (editingItem.fileName) {
-                              const firstUnderscoreIndex = editingItem.fileName.indexOf('_');
-                              if (firstUnderscoreIndex > 0) {
-                                return editingItem.fileName.substring(0, firstUnderscoreIndex);
-                              }
-                              return editingItem.fileName.replace(/\.json$/, '');
-                            }
-                            return editingItem.jsonData?.title ||
-                              editingItem.jsonData?.question ||
-                              '';
-                          })()
-                        }
+                        value={editingItem.jsonData?.title || editingItem.jsonData?.question || ''}
                         onChange={e => {
                           setEditingItem({
                             ...editingItem,
@@ -2028,7 +2010,14 @@ export default function HistoryPage() {
                             });
 
                             if (!response.ok) {
-                              const errorData = await response.json();
+                              const errorText = await response.text();
+                              console.error('画像アップロードエラー:', errorText);
+                              let errorData;
+                              try {
+                                errorData = JSON.parse(errorText);
+                              } catch (e) {
+                                throw new Error(`画像のアップロードに失敗しました (${response.status}): ${errorText.substring(0, 100)}`);
+                              }
                               throw new Error(errorData.error || '画像のアップロードに失敗しました');
                             }
 

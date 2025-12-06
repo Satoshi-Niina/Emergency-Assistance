@@ -7,18 +7,12 @@ import { dbQuery } from '../infra/db.mjs';
 
 const router = express.Router();
 
-// ID正規化（export_ プレフィックスや拡張子を除去）
+// ID正規化（.json拡張子を除去、ファイル名全体を保持）
 const normalizeId = (id = '') => {
   let normalized = id;
-  if (normalized.startsWith('export_')) {
-    normalized = normalized.replace('export_', '');
-  }
+  // .json拡張子を除去
   if (normalized.endsWith('.json')) {
     normalized = normalized.replace(/\.json$/, '');
-  }
-  const parts = normalized.split('_');
-  if (parts.length >= 2 && parts[1].match(/^[a-f0-9-]+$/)) {
-    normalized = parts[1];
   }
   return normalized;
 };
@@ -26,13 +20,32 @@ const normalizeId = (id = '') => {
 // Blobから対象の履歴ファイルを探す
 async function findHistoryBlob(containerClient, normalizedId) {
   const prefix = 'knowledge-base/exports/';
+  console.log('[findHistoryBlob] Searching for:', normalizedId);
+  
+  // まずファイル名完全一致で検索
+  for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+    if (!blob.name.endsWith('.json')) continue;
+    const fileName = blob.name.split('/').pop();
+    const fileNameWithoutExt = fileName?.replace(/\.json$/, '');
+    
+    // ファイル名が完全一致する場合
+    if (fileNameWithoutExt === normalizedId) {
+      console.log('[findHistoryBlob] Found exact match:', blob.name);
+      return { blobName: blob.name, fileName };
+    }
+  }
+  
+  // 完全一致しない場合は部分一致で検索（後方互換性）
   for await (const blob of containerClient.listBlobsFlat({ prefix })) {
     if (!blob.name.endsWith('.json')) continue;
     const fileName = blob.name.split('/').pop();
     if (fileName && fileName.includes(normalizedId)) {
+      console.log('[findHistoryBlob] Found partial match:', blob.name);
       return { blobName: blob.name, fileName };
     }
   }
+  
+  console.log('[findHistoryBlob] No match found for:', normalizedId);
   return null;
 }
 
