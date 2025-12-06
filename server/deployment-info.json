@@ -1,10 +1,10 @@
 {
-  "commit_sha": "2accc028df0a08bdc540e8cb254a6291691eda72",
-  "commit_time": "2025-12-05T05:52:56Z",
-  "build_time": "2025-12-05T06:15:00Z",
-  "workflow_run": "manual-trigger",
+  "commit_sha": "06afaf0df3aa18a0bf7d5021d2e60bed1c623534",
+  "commit_time": "2025-12-06T11:31:04Z",
+  "build_time": "2025-12-06T11:35:00Z",
+  "workflow_run": "manual-redeploy",
   "deployed_by": "Satoshi Niina",
-  "deployment_type": "ESM_CONVERSION_COMPLETE",
+  "deployment_type": "HOTFIX_EXPORT_TITLE",
   "version": "2.0.0-esm",
   "features": {
     "esm_modules": 16,
