@@ -2073,19 +2073,27 @@ export default function HistoryPage() {
                     const getAllImages = (item: SupportHistoryItem): Array<{ url: string; fileName?: string; index: number }> => {
                       const images: Array<{ url: string; fileName?: string; index: number }> = [];
 
-                      // 画像URLを正規化する関数（/api/api/の重複を防ぐ）
+                      // 画像URLを正規化する関数
                       const normalizeImageUrl = (url: string): string => {
                         if (!url) return '';
+                        
                         // 既に完全なURLの場合はそのまま返す
                         if (url.startsWith('http://') || url.startsWith('https://')) {
                           return url;
                         }
+                        
                         // /api/api/ のような重複を削除
                         let cleanUrl = url;
                         while (cleanUrl.includes('/api/api/')) {
                           cleanUrl = cleanUrl.replace('/api/api/', '/api/');
                         }
-                        // /api/で始まっていない場合は/api/を追加しない（そのまま返す）
+                        
+                        // ファイル名のみの場合は /api/images/chat-exports/ を追加
+                        if (!cleanUrl.startsWith('/') && !cleanUrl.includes('/')) {
+                          cleanUrl = `/api/images/chat-exports/${cleanUrl}`;
+                        }
+                        
+                        // /api/ で始まっていない場合はそのまま返す（相対パス）
                         return cleanUrl;
                       };
 

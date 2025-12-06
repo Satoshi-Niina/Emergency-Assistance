@@ -386,12 +386,22 @@ export default function CameraModal() {
         }
 
         // アップロードされた画像をメディアとしてチャットに添付
+        // URL形式: /api/images/chat-exports/camera_timestamp.jpg
+        // fileName形式: camera_timestamp.jpg
+        const actualFileName = uploadData.imageUrl.split('/').pop() || uploadData.fileName || fileName;
+        
+        console.log('✅ メディア情報を作成:', {
+          url: uploadData.imageUrl,
+          fileName: actualFileName,
+          storage: uploadData.storage
+        });
+        
         await sendMessage('画像を送信しました', [
           {
             type: 'image',
-            url: uploadData.imageUrl,
+            url: uploadData.imageUrl,  // /api/images/chat-exports/camera_xxx.jpg
             thumbnail: uploadData.thumbnailUrl || uploadData.imageUrl,
-            fileName: fileName,
+            fileName: actualFileName,  // camera_xxx.jpg (ファイル名のみ)
             title: 'カメラ画像',
           },
         ]);

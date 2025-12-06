@@ -868,11 +868,17 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
         savedImages: messages
           .filter(msg => msg.media && msg.media.length > 0)
           .flatMap(msg =>
-            msg.media.map((media: any) => ({
-              messageId: msg.id,
-              fileName: media.fileName || media.url?.split('/').pop() || '',
-              url: media.url || '',
-            }))
+            msg.media.map((media: any) => {
+              // URLから実際のファイル名を抽出
+              const actualFileName = media.url?.split('/').pop() || media.fileName || '';
+              return {
+                messageId: msg.id,
+                fileName: actualFileName,  // 正規化されたファイル名
+                url: media.url || '',      // 完全なURL (/api/images/chat-exports/xxx.jpg)
+                type: media.type || 'image',
+                timestamp: msg.timestamp || new Date().toISOString()
+              };
+            })
           ),
       };
 

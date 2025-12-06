@@ -62,9 +62,17 @@ export default async function usersHandler(req, res) {
         );
         
         console.log('[api/users] User created successfully:', result.rows[0].id);
+        
+        // 全ユーザー一覧を再取得して返す（フロントエンドのusers配列互換性のため）
+        const allUsers = await dbQuery(`
+          SELECT id, username, display_name, role, department, description, created_at
+          FROM users
+          ORDER BY created_at DESC
+        `);
+        
         return res.status(201).json({
           success: true,
-          data: result.rows[0],
+          users: allUsers.rows,
           message: 'User created successfully'
         });
       } catch (err) {
@@ -77,7 +85,19 @@ export default async function usersHandler(req, res) {
     if (method === 'DELETE' && id) {
       try {
         await dbQuery('DELETE FROM users WHERE id = $1', [id]);
-        return res.json({ success: true, message: 'User deleted' });
+        
+        // 全ユーザー一覧を再取得して返す
+        const allUsers = await dbQuery(`
+          SELECT id, username, display_name, role, department, description, created_at
+          FROM users
+          ORDER BY created_at DESC
+        `);
+        
+        return res.json({ 
+          success: true, 
+          users: allUsers.rows,
+          message: 'User deleted' 
+        });
       } catch (err) {
         return res.status(500).json({ success: false, error: err.message });
       }
@@ -135,9 +155,17 @@ export default async function usersHandler(req, res) {
         }
 
         console.log('[api/users] User updated successfully:', result.rows[0].id);
+        
+        // 全ユーザー一覧を再取得して返す
+        const allUsers = await dbQuery(`
+          SELECT id, username, display_name, role, department, description, created_at
+          FROM users
+          ORDER BY created_at DESC
+        `);
+        
         return res.json({
           success: true,
-          data: result.rows[0],
+          users: allUsers.rows,
           message: 'User updated successfully'
         });
       } catch (err) {
