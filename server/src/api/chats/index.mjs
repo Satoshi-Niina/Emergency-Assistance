@@ -81,29 +81,30 @@ function deriveExportTitle(payload = {}) {
   const messages = Array.isArray(chatData.messages) ? chatData.messages : [];
   const machineInfo = chatData.machineInfo || {};
 
-  // 機種名と機械番号があれば優先
-  const machineType =
-    machineInfo.machineTypeName ||
-    machineInfo.selectedMachineType ||
-    machineInfo.machineType ||
-    '';
-  const machineNumber =
-    machineInfo.machineNumber ||
-    machineInfo.selectedMachineNumber ||
-    '';
-
   let title = '';
-  if (machineType || machineNumber) {
-    title = `${machineType || ''}${machineNumber ? `_${machineNumber}` : ''}`;
+
+  // まず最初のユーザーメッセージをタイトルにする（優先）
+  const firstUserMessage = messages.find(
+    (m) => m && m.isAiResponse === false && typeof m.content === 'string' && m.content.trim()
+  );
+  if (firstUserMessage) {
+    title = firstUserMessage.content.split(/\r?\n/)[0].slice(0, 80);
   }
 
-  // 最初のユーザーメッセージをタイトル候補にする
+  // フォールバック: 機種名と機械番号
   if (!title) {
-    const firstUserMessage = messages.find(
-      (m) => m && m.isAiResponse === false && typeof m.content === 'string' && m.content.trim()
-    );
-    if (firstUserMessage) {
-      title = firstUserMessage.content.split(/\r?\n/)[0].slice(0, 80);
+    const machineType =
+      machineInfo.machineTypeName ||
+      machineInfo.selectedMachineType ||
+      machineInfo.machineType ||
+      '';
+    const machineNumber =
+      machineInfo.machineNumber ||
+      machineInfo.selectedMachineNumber ||
+      '';
+
+    if (machineType || machineNumber) {
+      title = `${machineType || ''}${machineNumber ? `_${machineNumber}` : ''}`;
     }
   }
 
