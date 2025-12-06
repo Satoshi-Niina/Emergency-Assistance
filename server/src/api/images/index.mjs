@@ -49,22 +49,12 @@ export default async function imagesHandler(req, res) {
     try {
       const blobServiceClient = getBlobServiceClient();
       
-      // 開発環境: BLOBが利用できない場合はローカルファイルを使用
+      // BLOB専用アーキテクチャ: BLOBが利用できない場合はエラー
       if (!blobServiceClient) {
-        console.warn('[api/images] BLOB service client not available, trying local file');
-        const localPath = path.join(process.cwd(), 'knowledge-base', 'images', category, fileName);
-        
-        if (fs.existsSync(localPath)) {
-          console.log('[api/images] Serving local file:', localPath);
-          setImageHeaders(contentType);
-          return res.sendFile(localPath);
-        }
-        
-        console.error('[api/images] Local file not found:', localPath);
-        return res.status(404).json({
+        console.error('[api/images] BLOB service client not available');
+        return res.status(503).json({
           success: false,
-          error: '画像が見つかりません',
-          fileName: fileName
+          error: 'ストレージサービスが利用できません'
         });
       }
 
@@ -105,16 +95,9 @@ export default async function imagesHandler(req, res) {
           error: '画像データの読み込みに失敗しました'
         });
       } catch (blobError) {
-        console.error('[api/images] BLOB error, trying local fallback:', blobError.message);
+        console.error('[api/images] BLOB error:', blobError.message);
         
-        // BLOBエラー時のローカルフォールバック
-        const localPath = path.join(process.cwd(), 'knowledge-base', 'images', category, fileName);
-        if (fs.existsSync(localPath)) {
-          console.log('[api/images] Serving local file (fallback):', localPath);
-          setImageHeaders(contentType);
-          return res.sendFile(localPath);
-        }
-        
+        // BLOB専用: フォールバックなし
         return res.status(500).json({
           success: false,
           error: 'BLOB取得エラー',

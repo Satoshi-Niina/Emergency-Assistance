@@ -2,8 +2,8 @@ const { BlobServiceClient } = require('@azure/storage-blob');
 const fs = require('fs');
 const path = require('path');
 
-// 環境変数から接続文字列を取得
-const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING || 'DefaultEndpointsProtocol=https;AccountName=rgemergencyassistanb25b;AccountKey=QYvpMTeeNO+D8XiHpeB2kFkGx5b9x0lOBHYvqL0y2VX0SYeSX3eNjeEbWQMC9q78qQ2bGrz/NCJa+AStxGyDfw==;EndpointSuffix=core.windows.net';
+// 環境変数から接続文字列を取得（ハードコード禁止）
+const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
 const containerName = 'knowledge';
 
 if (!connectionString) {
