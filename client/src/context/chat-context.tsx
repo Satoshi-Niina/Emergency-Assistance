@@ -848,13 +848,23 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
       // エクスポートデータを準備
       const exportData = {
         title: messages.find(m => !m.isAiResponse)?.content?.substring(0, 50) || `チャット履歴 ${new Date().toISOString().split('T')[0]}`,
-        messages: messages.map(msg => ({
-          id: msg.id,
-          content: msg.content,
-          isAiResponse: msg.isAiResponse,
-          timestamp: msg.timestamp,
-          media: msg.media || [],
-        })),
+        chatData: {
+          machineInfo: {
+            machineTypeName: selectedMachineType || 'Unknown',
+            machineNumber: selectedMachineNumber || 'Unknown',
+            selectedMachineType: selectedMachineType || 'Unknown',
+            selectedMachineNumber: selectedMachineNumber || 'Unknown',
+          },
+          messages: messages.map(msg => ({
+            id: msg.id,
+            content: msg.content,
+            isAiResponse: msg.isAiResponse,
+            timestamp: msg.timestamp,
+            media: msg.media || [],
+          })),
+        },
+        machineType: selectedMachineType || 'Unknown',
+        machineNumber: selectedMachineNumber || 'Unknown',
         savedImages: messages
           .filter(msg => msg.media && msg.media.length > 0)
           .flatMap(msg =>

@@ -316,11 +316,14 @@ export default function MessageBubble({
                               });
                             }}
                             onError={e => {
-                              console.warn('画像読み込みエラー:', {
+                              console.error('🖼️ 画像読み込みエラー:', {
                                 messageId: message.id,
                                 mediaIndex: index,
-                                url: media.url.substring(0, 100) + '...',
+                                fullUrl: media.url,
+                                urlLength: media.url?.length,
+                                fileName: media.fileName,
                                 isBase64: media.url.startsWith('data:'),
+                                startsWithApi: media.url.startsWith('/api/'),
                                 error: e,
                               });
 
