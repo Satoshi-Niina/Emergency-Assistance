@@ -1,80 +1,44 @@
-import fs from 'fs';
-import path from 'path';
-import { getBlobServiceClient, containerName, norm } from '../../infra/blob.mjs';
+import { getBlobServiceClient, containerName } from '../../infra/blob.mjs';
 import { AUTO_INGEST_CHAT_EXPORTS } from '../../config/env.mjs';
 
 const EXPORT_SUBDIR = 'exports';
 
-const ensureDir = (dirPath) => {
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true });
-  }
-};
-
 async function saveJsonFile(fileName, content) {
   const blobServiceClient = getBlobServiceClient();
 
-  if (blobServiceClient) {
-    try {
-      const containerClient = blobServiceClient.getContainerClient(containerName);
-      await containerClient.createIfNotExists();
-      const blobName = `knowledge-base/${EXPORT_SUBDIR}/${fileName}`;
-      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-      await blockBlobClient.upload(content, Buffer.byteLength(content), {
-        blobHTTPHeaders: { blobContentType: 'application/json' },
-      });
-      return { storage: 'blob', blobName };
-    } catch (error) {
-      console.warn('[api/chats] Blob upload failed, falling back to local file:', error.message);
-    }
+  if (!blobServiceClient) {
+    throw new Error('BLOB storage is not configured. Please check AZURE_STORAGE_CONNECTION_STRING environment variable.');
   }
 
-  const exportDir = path.join(process.cwd(), 'knowledge-base', EXPORT_SUBDIR);
-  ensureDir(exportDir);
-  const filePath = path.join(exportDir, fileName);
-  fs.writeFileSync(filePath, content, 'utf8');
-  return { storage: 'local', filePath };
+  const containerClient = blobServiceClient.getContainerClient(containerName);
+  await containerClient.createIfNotExists();
+  const blobName = `knowledge-base/${EXPORT_SUBDIR}/${fileName}`;
+  const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+  await blockBlobClient.upload(content, Buffer.byteLength(content), {
+    blobHTTPHeaders: { blobContentType: 'application/json' },
+  });
+  return { storage: 'blob', blobName };
 }
 
 async function getLatestExport(chatId) {
   let latest = null;
   const blobServiceClient = getBlobServiceClient();
 
-  if (blobServiceClient) {
-    try {
-      const containerClient = blobServiceClient.getContainerClient(containerName);
-      const prefix = `knowledge-base/${EXPORT_SUBDIR}/`;
-      for await (const blob of containerClient.listBlobsFlat({ prefix })) {
-        if (!blob.name.endsWith('.json')) continue;
-        if (!chatId || blob.name.includes(chatId)) {
-          if (!latest || (blob.properties.lastModified && blob.properties.lastModified > latest.lastModified)) {
-            latest = {
-              source: 'blob',
-              name: blob.name,
-              lastModified: blob.properties.lastModified,
-            };
-          }
-        }
-      }
-      if (latest) return latest;
-    } catch (error) {
-      console.warn('[api/chats] Blob list failed:', error.message);
-    }
+  if (!blobServiceClient) {
+    console.warn('[api/chats] BLOB storage not configured');
+    return null;
   }
 
-  // Local fallback
-  const exportDir = path.join(process.cwd(), 'knowledge-base', EXPORT_SUBDIR);
-  if (fs.existsSync(exportDir)) {
-    const files = fs
-      .readdirSync(exportDir)
-      .filter((f) => f.endsWith('.json') && (!chatId || f.includes(chatId)));
-    for (const file of files) {
-      const stats = fs.statSync(path.join(exportDir, file));
-      if (!latest || stats.mtime > latest.lastModified) {
+  const containerClient = blobServiceClient.getContainerClient(containerName);
+  const prefix = `knowledge-base/${EXPORT_SUBDIR}/`;
+  for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+    if (!blob.name.endsWith('.json')) continue;
+    if (!chatId || blob.name.includes(chatId)) {
+      if (!latest || (blob.properties.lastModified && blob.properties.lastModified > latest.lastModified)) {
         latest = {
-          source: 'local',
-          name: file,
-          lastModified: stats.mtime,
+          source: 'blob',
+          name: blob.name,
+          lastModified: blob.properties.lastModified,
         };
       }
     }
@@ -85,32 +49,28 @@ async function getLatestExport(chatId) {
 
 async function downloadExport(fileName) {
   const blobServiceClient = getBlobServiceClient();
-  if (blobServiceClient) {
-    try {
-      const containerClient = blobServiceClient.getContainerClient(containerName);
-      // Blobパスを直接指定
-      const blobName = `knowledge-base/${EXPORT_SUBDIR}/${fileName}`;
-      console.log('[api/chats] Downloading from Blob:', blobName);
-      const blobClient = containerClient.getBlobClient(blobName);
-      if (await blobClient.exists()) {
-        const downloadResponse = await blobClient.download();
-        const chunks = [];
-        if (downloadResponse.readableStreamBody) {
-          for await (const chunk of downloadResponse.readableStreamBody) {
-            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-          }
-          return Buffer.concat(chunks);
-        }
-      }
-    } catch (error) {
-      console.warn('[api/chats] Blob download failed:', error.message);
-    }
+  
+  if (!blobServiceClient) {
+    console.warn('[api/chats] BLOB storage not configured');
+    return null;
   }
 
-  const localPath = path.join(process.cwd(), 'knowledge-base', EXPORT_SUBDIR, fileName);
-  if (fs.existsSync(localPath)) {
-    return fs.readFileSync(localPath);
+  const containerClient = blobServiceClient.getContainerClient(containerName);
+  const blobName = `knowledge-base/${EXPORT_SUBDIR}/${fileName}`;
+  console.log('[api/chats] Downloading from Blob:', blobName);
+  const blobClient = containerClient.getBlobClient(blobName);
+  
+  if (await blobClient.exists()) {
+    const downloadResponse = await blobClient.download();
+    const chunks = [];
+    if (downloadResponse.readableStreamBody) {
+      for await (const chunk of downloadResponse.readableStreamBody) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      return Buffer.concat(chunks);
+    }
   }
+  
   return null;
 }
 

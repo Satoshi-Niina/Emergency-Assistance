@@ -1,7 +1,8 @@
 // ESM形式 - 応急復旧フローエンドポイント
 // /api/emergency-flow/* にマッピング
 
-import { getBlobServiceClient, containerName, norm } from '../../infra/blob.mjs';
+import { getBlobServiceClient, containerName, norm, upload } from '../../infra/blob.mjs';
+import path from 'path';
 
 // 複数パスを試して既存データのプレフィックス違いに対応
 function buildCandidatePaths(fileName, skipNorm = false) {
@@ -216,6 +217,133 @@ export default async function emergencyFlowHandler(req, res) {
       return res.status(500).json({ 
         success: false, 
         error: error.message 
+      });
+    }
+  }
+
+  // /api/emergency-flow/upload-image - POST画像アップロード
+  if (pathParts[2] === 'upload-image' && method === 'POST') {
+    // multerミドルウェアを手動で適用
+    return upload.single('image')(req, res, async (err) => {
+      if (err) {
+        console.error('[api/emergency-flow/upload-image] Upload error:', err);
+        return res.status(500).json({
+          success: false,
+          error: 'ファイルのアップロードに失敗しました',
+          details: err.message
+        });
+      }
+
+      try {
+        if (!req.file) {
+          return res.status(400).json({
+            success: false,
+            error: 'ファイルがアップロードされていません'
+          });
+        }
+
+        console.log('[api/emergency-flow/upload-image] Uploading:', {
+          fileName: req.file.originalname,
+          size: req.file.size,
+          mimetype: req.file.mimetype
+        });
+
+        const timestamp = Date.now();
+        const ext = path.extname(req.file.originalname);
+        const fileName = `emergency_flow_${timestamp}${ext}`;
+        const blobServiceClient = getBlobServiceClient();
+
+        if (!blobServiceClient) {
+          return res.status(503).json({
+            success: false,
+            error: 'BLOB storage is not configured. Please check AZURE_STORAGE_CONNECTION_STRING environment variable.'
+          });
+        }
+
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        // Blob保存先: knowledge-base/images/emergency-flows/
+        const blobName = `knowledge-base/images/emergency-flows/${fileName}`;
+        console.log('[api/emergency-flow/upload-image] Uploading to Blob:', blobName);
+        const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+        const containerExists = await containerClient.exists();
+        if (!containerExists) {
+          await containerClient.createIfNotExists();
+        }
+
+        await blockBlobClient.uploadData(req.file.buffer, {
+          blobHTTPHeaders: {
+            blobContentType: req.file.mimetype
+          },
+          metadata: {
+            originalName: req.file.originalname,
+            uploadedAt: new Date().toISOString()
+          }
+        });
+
+        console.log(`[api/emergency-flow/upload-image] Uploaded: ${blobName}`);
+
+        const imageUrl = `/api/images/emergency-flows/${fileName}`;
+
+        return res.json({
+          success: true,
+          imageUrl: imageUrl,
+          fileName: fileName,
+          blobName: blobName,
+          size: req.file.size,
+          storage: 'blob'
+        });
+      } catch (error) {
+        console.error('[api/emergency-flow/upload-image] Error:', error);
+        return res.status(500).json({
+          success: false,
+          error: '画像のアップロードに失敗しました',
+          details: error.message
+        });
+      }
+    });
+  }
+
+  // /api/emergency-flow/image/:fileName - DELETE画像削除
+  if (pathParts[2] === 'image' && pathParts[3] && method === 'DELETE') {
+    try {
+      const fileName = pathParts[3];
+      console.log('[api/emergency-flow/delete-image] Deleting:', fileName);
+
+      const blobServiceClient = getBlobServiceClient();
+      if (!blobServiceClient) {
+        return res.status(503).json({
+          success: false,
+          error: 'BLOB storage not available'
+        });
+      }
+
+      const containerClient = blobServiceClient.getContainerClient(containerName);
+      const blobName = `knowledge-base/images/emergency-flows/${fileName}`;
+      const blobClient = containerClient.getBlobClient(blobName);
+
+      const exists = await blobClient.exists();
+      if (!exists) {
+        console.log('[api/emergency-flow/delete-image] Image not found:', blobName);
+        return res.status(404).json({
+          success: false,
+          error: '画像が見つかりません'
+        });
+      }
+
+      await blobClient.delete();
+      console.log(`[api/emergency-flow/delete-image] Deleted: ${blobName}`);
+
+      return res.json({
+        success: true,
+        message: '画像を削除しました',
+        deletedFile: fileName
+      });
+    } catch (error) {
+      console.error('[api/emergency-flow/delete-image] Error:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message
       });
     }
   }

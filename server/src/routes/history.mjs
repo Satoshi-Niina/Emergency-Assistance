@@ -201,32 +201,6 @@ router.get('/', async (req, res) => {
       }
     }
 
-    // 2. DBから取得 (バックアップ/フォールバック) - Blobが空の場合やエラー時のみ、またはマージする
-    // ユーザー要望によりファイル優先。DB読み込みは一旦スキップするか、Blobがない場合のみにする
-    if (items.length === 0 && dbQuery) {
-      try {
-        console.log('[history] Blob empty, trying Database...');
-        const result = await dbQuery(`
-          SELECT id, title, machine_type, machine_number, created_at, user_id
-          FROM chat_history
-          ORDER BY created_at DESC
-          LIMIT 100
-        `);
-        
-        if (result.rows.length > 0) {
-           return res.json({
-            success: true,
-            data: result.rows,
-            total: result.rows.length,
-            source: 'database',
-            timestamp: new Date().toISOString()
-          });
-        }
-      } catch (dbError) {
-        console.warn('[history] Database query failed:', dbError.message);
-      }
-    }
-
     res.json({
       success: true,
       data: items,
@@ -288,20 +262,10 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
       const fileName = `chat_image_${timestamp}${ext}`;
       const blobServiceClient = getBlobServiceClient();
 
-      // Blobが使えない場合はローカルに保存してレスポンスする
       if (!blobServiceClient) {
-        const localDir = path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
-        fs.mkdirSync(localDir, { recursive: true });
-        const localPath = path.join(localDir, fileName);
-        fs.writeFileSync(localPath, req.file.buffer);
-
-        console.warn('[history/upload-image] Blob unavailable. Saved locally:', localPath);
-
-        return res.json({
-          success: true,
-          imageUrl: `/api/images/chat-exports/${fileName}`,
-          fileName,
-          storage: 'local'
+        return res.status(503).json({
+          success: false,
+          error: 'BLOB storage is not configured. Please check AZURE_STORAGE_CONNECTION_STRING environment variable.'
         });
       }
 
@@ -543,18 +507,6 @@ async function handleUpdateHistory(req, res, rawId) {
       blobHTTPHeaders: { blobContentType: 'application/json' }
     });
 
-    // DBもベストエフォートで更新
-    try {
-      if (dbQuery) {
-        await dbQuery(
-          `UPDATE fault_history SET json_data = $1, updated_at = NOW() WHERE chat_id = $2`,
-          [JSON.stringify(merged), normalizedId]
-        );
-      }
-    } catch (dbError) {
-      console.warn('[history/update] DB update skipped:', dbError.message);
-    }
-
     return res.json({
       success: true,
       message: '保存しました',
@@ -597,15 +549,6 @@ router.delete('/:id', async (req, res) => {
 
     await containerClient.getBlobClient(found.blobName).delete();
     console.log(`[history/delete] Deleted: ${found.blobName}`);
-
-    // DB削除はベストエフォート
-    try {
-      if (dbQuery) {
-        await dbQuery('DELETE FROM fault_history WHERE chat_id = $1', [normalizedId]);
-      }
-    } catch (dbError) {
-      console.warn('[history/delete] DB delete skipped:', dbError.message);
-    }
 
     return res.json({ success: true, message: '削除しました', deletedFile: found.fileName });
   } catch (error) {
