@@ -339,11 +339,22 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
       // 本番環境: BLOBに保存
       const containerClient = blobServiceClient.getContainerClient(containerName);
       const blobName = `knowledge-base/images/chat-exports/${fileName}`;
-      console.log('[history/upload-image] Uploading to Blob:', blobName);
+      console.log('[history/upload-image] 📤 Starting BLOB upload:', {
+        container: containerName,
+        blobName: blobName,
+        fullPath: `${containerName}/${blobName}`,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype
+      });
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
       const containerExists = await containerClient.exists();
+      console.log('[history/upload-image] Container check:', {
+        container: containerName,
+        exists: containerExists
+      });
       if (!containerExists) {
+        console.log('[history/upload-image] Creating container:', containerName);
         await containerClient.createIfNotExists();
       }
 
@@ -363,7 +374,21 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
 
       await Promise.race([uploadPromise, timeoutPromise]);
 
-      console.log(`[history/upload-image] Uploaded: ${blobName}`);
+      console.log(`[history/upload-image] ✅ BLOB Upload SUCCESS:`, {
+        container: containerName,
+        blobName: blobName,
+        fullPath: `${containerName}/${blobName}`,
+        fileName: fileName,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      });
+
+      // アップロード後に存在確認
+      const uploadedBlobExists = await blockBlobClient.exists();
+      console.log(`[history/upload-image] Upload verification:`, {
+        exists: uploadedBlobExists,
+        blobUrl: blockBlobClient.url
+      });
 
       const imageUrl = `/api/images/chat-exports/${fileName}`;
 

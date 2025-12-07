@@ -2080,7 +2080,9 @@ export default function HistoryPage() {
 
                           try {
                             const { buildApiUrl } = await import('../lib/api');
-                            const response = await fetch(buildApiUrl('/history/upload-image'), {
+                            const uploadUrl = buildApiUrl('/history/upload-image');
+                            console.log('📎 編集画面画像アップロードURL:', uploadUrl);
+                            const response = await fetch(uploadUrl, {
                               method: 'POST',
                               credentials: 'include',
                               body: formData,

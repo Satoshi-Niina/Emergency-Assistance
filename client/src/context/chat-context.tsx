@@ -871,6 +871,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
             msg.media.map((media: any) => {
               // URLから実際のファイル名を抽出
               const actualFileName = media.url?.split('/').pop() || media.fileName || '';
+              console.log('🖼️ エクスポート対象画像:', {
+                messageId: msg.id,
+                mediaUrl: media.url,
+                fileName: actualFileName,
+                hasUrl: !!media.url,
+                urlStartsWith: media.url?.substring(0, 30)
+              });
               return {
                 messageId: msg.id,
                 fileName: actualFileName,  // 正規化されたファイル名
@@ -881,6 +888,12 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
             })
           ),
       };
+
+      console.log('📦 エクスポートデータ:', {
+        savedImagesCount: exportData.savedImages.length,
+        messagesWithMedia: messages.filter(m => m.media && m.media.length > 0).length,
+        totalMessages: messages.length
+      });
 
       const data = await apiRequest(`/api/chats/${chatId}/export`, {
         method: 'POST',

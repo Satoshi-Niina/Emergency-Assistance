@@ -362,8 +362,10 @@ export default function CameraModal() {
 
         // サーバーに画像をアップロード
         const uploadUrl = buildApiUrl('/history/upload-image');
+        console.log('🔗 アップロードURL:', uploadUrl);
         const uploadResponse = await fetch(uploadUrl, {
           method: 'POST',
+          credentials: 'include',
           body: formData,
         });
 
@@ -393,14 +395,32 @@ export default function CameraModal() {
         console.log('✅ メディア情報を作成:', {
           url: uploadData.imageUrl,
           fileName: actualFileName,
-          storage: uploadData.storage
+          storage: uploadData.storage,
+          blobName: uploadData.blobName
+        });
+
+        // 完全なURLに正規化（本番環境対応）
+        let fullImageUrl = uploadData.imageUrl;
+        if (!fullImageUrl.startsWith('http')) {
+          const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+          const cleanBaseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
+          fullImageUrl = fullImageUrl.startsWith('/api') 
+            ? `${cleanBaseUrl}${fullImageUrl}`
+            : `${cleanBaseUrl}/api/images/chat-exports/${actualFileName}`;
+        }
+
+        console.log('📝 チャットに送信するメディア情報:', {
+          originalUrl: uploadData.imageUrl,
+          fullImageUrl: fullImageUrl,
+          fileName: actualFileName,
+          isFullUrl: fullImageUrl.startsWith('http')
         });
         
         await sendMessage('画像を送信しました', [
           {
             type: 'image',
-            url: uploadData.imageUrl,  // /api/images/chat-exports/camera_xxx.jpg
-            thumbnail: uploadData.thumbnailUrl || uploadData.imageUrl,
+            url: fullImageUrl,  // 完全なURL (https://...)
+            thumbnail: fullImageUrl,
             fileName: actualFileName,  // camera_xxx.jpg (ファイル名のみ)
             title: 'カメラ画像',
           },

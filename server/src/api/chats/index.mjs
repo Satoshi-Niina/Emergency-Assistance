@@ -153,8 +153,24 @@ export default async function chatsHandler(req, res) {
     const title = deriveExportTitle(payload);
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const fileName = `${title}_${chatId}_${timestamp}.json`;
+    
+    // 画像データのログ出力
+    const savedImages = payload.savedImages || [];
+    console.log('[chats/export] Export request:', {
+      chatId,
+      title,
+      savedImagesCount: savedImages.length,
+      savedImages: savedImages.map(img => ({
+        fileName: img.fileName,
+        url: img.url?.substring(0, 50)
+      }))
+    });
+    
     const content = JSON.stringify({ chatId, exportType: 'manual_export', ...payload, savedAt: new Date().toISOString(), title }, null, 2);
     const saveResult = await saveJsonFile(fileName, content);
+    
+    console.log('[chats/export] Saved to:', saveResult.storage, fileName);
+    
     return res.json({ success: true, fileName, storage: saveResult.storage });
   }
 
