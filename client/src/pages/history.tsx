@@ -2317,37 +2317,37 @@ export default function HistoryPage() {
                                     const currentSavedImages = editingItem.jsonData?.savedImages || [];
                                     console.log('📋 現在の画像リスト:', currentSavedImages);
 
-                                    // 削除対象の画像を特定（fileName または url で完全一致）
-                                    // いずれかの条件に一致したら削除（!== を使って、一致しないものだけ残す）
+                                    // 削除対象の画像を特定（柔軟な比較）
                                     const updatedSavedImages = currentSavedImages.filter((img: any) => {
-                                      // fileName が両方存在する場合は fileName で比較
-                                      if (image.fileName && img.fileName) {
-                                        const isMatch = img.fileName === image.fileName;
-                                        console.log(`  - fileName比較: ${img.fileName} === ${image.fileName} = ${isMatch}`);
-                                        if (isMatch) return false; // 一致したら削除（falseで除外）
+                                      // 比較用の正規化関数
+                                      const normalizeForCompare = (str: string): string => {
+                                        if (!str) return '';
+                                        // URLから実際のファイル名を抽出
+                                        return str.split('/').pop()?.split('\\').pop() || str;
+                                      };
+                                      
+                                      const imageFileName = normalizeForCompare(image.fileName || image.url || '');
+                                      const imgFileName = normalizeForCompare(img.fileName || img.url || img.path || '');
+                                      
+                                      // ファイル名ベースで比較（最も確実）
+                                      if (imageFileName && imgFileName && imageFileName === imgFileName) {
+                                        console.log(`  ✅ 削除対象: ${imgFileName}`);
+                                        return false; // 削除
                                       }
-
-                                      // url が両方存在する場合は url で比較
-                                      if (image.url && img.url) {
-                                        const isMatch = img.url === image.url;
-                                        console.log(`  - url比較: ${img.url} === ${image.url} = ${isMatch}`);
-                                        if (isMatch) return false; // 一致したら削除
+                                      
+                                      // URL完全一致チェック
+                                      if (image.url && img.url && image.url === img.url) {
+                                        console.log(`  ✅ 削除対象(URL): ${img.url}`);
+                                        return false;
                                       }
-
-                                      // pathとurlで比較（フォールバック）
-                                      if (img.path && image.url) {
-                                        const isMatch = img.path === image.url;
-                                        console.log(`  - path比較: ${img.path} === ${image.url} = ${isMatch}`);
-                                        if (isMatch) return false; // 一致したら削除
+                                      
+                                      // fileName完全一致チェック
+                                      if (image.fileName && img.fileName && image.fileName === img.fileName) {
+                                        console.log(`  ✅ 削除対象(fileName): ${img.fileName}`);
+                                        return false;
                                       }
-
-                                      // fileNameとurlのクロス比較（urlがfileNameを含む場合）
-                                      if (img.fileName && image.url && image.url.includes(img.fileName)) {
-                                        console.log(`  - クロス比較: url(${image.url})にfileName(${img.fileName})が含まれる`);
-                                        return false; // 一致したら削除
-                                      }
-
-                                      // どの条件にも一致しない場合は残す
+                                      
+                                      // 残す
                                       return true;
                                     });
 
@@ -2358,12 +2358,21 @@ export default function HistoryPage() {
                                       削除後の画像: updatedSavedImages
                                     });
 
-                                    setEditingItem({
+                                    // state を更新
+                                    const newEditingItem = {
                                       ...editingItem,
                                       jsonData: {
                                         ...editingItem.jsonData,
                                         savedImages: updatedSavedImages,
                                       },
+                                    };
+                                    
+                                    setEditingItem(newEditingItem);
+                                    
+                                    // UIに反映されたことを確認
+                                    console.log('✅ 画像削除後のstate更新完了:', {
+                                      updatedItem: newEditingItem,
+                                      savedImagesCount: newEditingItem.jsonData?.savedImages?.length || 0
                                     });
                                   }}
                                 >
