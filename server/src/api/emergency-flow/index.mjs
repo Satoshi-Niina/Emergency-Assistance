@@ -176,6 +176,7 @@ export default async function emergencyFlowHandler(req, res) {
 
       const blobServiceClient = getBlobServiceClient();
       if (!blobServiceClient) {
+        console.error('[api/emergency-flow/save] ❌ BLOB service client not available');
         return res.status(503).json({ 
           success: false, 
           error: 'BLOB storage not available' 
@@ -183,17 +184,30 @@ export default async function emergencyFlowHandler(req, res) {
       }
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
+      
+      // コンテナが存在するか確認
+      const containerExists = await containerClient.exists();
+      if (!containerExists) {
+        console.log('[api/emergency-flow/save] Creating container:', containerName);
+        await containerClient.create();
+      }
+      
       // 既存データとの互換性のため base付きとなし両方で保存を試みる
       const blobNamePrimary = norm(`troubleshooting/${flowId || 'flow-' + Date.now()}.json`);
       const blobClientPrimary = containerClient.getBlockBlobClient(blobNamePrimary);
 
       const content = typeof flowData === 'string' ? flowData : JSON.stringify(flowData, null, 2);
 
+      console.log('[api/emergency-flow/save] ✅ Saving flow data to BLOB');
+      console.log('[api/emergency-flow/save]   Container:', containerName);
+      console.log('[api/emergency-flow/save]   BLOB path:', blobNamePrimary);
+      console.log('[api/emergency-flow/save]   Flow ID:', flowId);
+
       await blobClientPrimary.upload(content, content.length, {
         blobHTTPHeaders: { blobContentType: 'application/json' }
       });
 
-      console.log(`[api/emergency-flow/save] Saved to: ${blobNamePrimary}`);
+      console.log(`[api/emergency-flow/save] ✅ Saved successfully to: ${blobNamePrimary}`);
 
       // baseなしプレフィックスにもベストエフォートで保存（既存ファイル構造との互換性）
       try {
@@ -469,10 +483,21 @@ export default async function emergencyFlowHandler(req, res) {
       if (blobServiceClient) {
         try {
           const containerClient = blobServiceClient.getContainerClient(containerName);
+          
+          // コンテナが存在するか確認し、なければ作成
+          const containerExists = await containerClient.exists();
+          if (!containerExists) {
+            console.log('[api/emergency-flow/generate] Creating container:', containerName);
+            await containerClient.create();
+          }
+          
           const fileName = `${flowId}.json`;
           const blobName = norm(`troubleshooting/${fileName}`);
           
-          console.log('[api/emergency-flow/generate] Saving generated flow to BLOB:', blobName);
+          console.log('[api/emergency-flow/generate] ✅ Saving generated flow to BLOB');
+          console.log('[api/emergency-flow/generate]   Container:', containerName);
+          console.log('[api/emergency-flow/generate]   BLOB path:', blobName);
+          console.log('[api/emergency-flow/generate]   File name:', fileName);
           
           const blockBlobClient = containerClient.getBlockBlobClient(blobName);
           const content = JSON.stringify(flowTemplate, null, 2);
@@ -486,7 +511,7 @@ export default async function emergencyFlowHandler(req, res) {
             }
           });
           
-          console.log('[api/emergency-flow/generate] Flow saved successfully to BLOB');
+          console.log('[api/emergency-flow/generate] ✅ Flow saved successfully to BLOB:', blobName);
           
           return res.json({
             success: true,
@@ -494,30 +519,104 @@ export default async function emergencyFlowHandler(req, res) {
             saved: true,
             blobName: blobName,
             fileName: fileName,
-            message: 'フローを生成してBLOBに保存しました'
+            message: `フローを生成してBLOBに保存しました (${blobName})`
           });
         } catch (blobError) {
-          console.error('[api/emergency-flow/generate] BLOB save failed:', blobError);
+          console.error('[api/emergency-flow/generate] ❌ BLOB save failed:', blobError);
+          console.error('[api/emergency-flow/generate] Error details:', blobError.stack);
           // BLOB保存に失敗してもフローデータは返す
           return res.json({
             success: true,
             data: flowTemplate,
             saved: false,
             warning: 'フローを生成しましたが、保存に失敗しました',
-            error: blobError.message
+            error: blobError.message,
+            errorStack: blobError.stack
           });
         }
       } else {
-        console.warn('[api/emergency-flow/generate] BLOB client not available');
+        console.warn('[api/emergency-flow/generate] ⚠️ BLOB client not available');
         return res.json({
           success: true,
           data: flowTemplate,
           saved: false,
-          warning: 'BLOB storage not available'
+          warning: 'BLOB storage not available - please check AZURE_STORAGE_CONNECTION_STRING'
         });
       }
     } catch (error) {
       console.error('[api/emergency-flow/generate] Error:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  // /api/emergency-flow/:id - PUT更新（編集後の差分上書き）
+  if (pathParts[2] && method === 'PUT') {
+    try {
+      const flowId = pathParts[2].replace('.json', '');
+      const fileName = flowId.endsWith('.json') ? flowId : `${flowId}.json`;
+      const flowData = req.body;
+
+      console.log('[api/emergency-flow/PUT] Updating flow:', flowId);
+
+      const blobServiceClient = getBlobServiceClient();
+      if (!blobServiceClient) {
+        return res.status(503).json({
+          success: false,
+          error: 'BLOB storage not available'
+        });
+      }
+
+      const containerClient = blobServiceClient.getContainerClient(containerName);
+      
+      // 既存のBLOBを探す
+      const resolved = await resolveBlobClient(containerClient, fileName);
+      
+      if (!resolved) {
+        return res.status(404).json({
+          success: false,
+          error: 'フローが見つかりません'
+        });
+      }
+
+      // updatedAtを更新
+      const updatedFlowData = {
+        ...flowData,
+        updatedAt: new Date().toISOString()
+      };
+
+      // 画像数をログ出力
+      const imageCount = updatedFlowData.steps?.reduce((count, step) => {
+        return count + (step.images?.length || 0);
+      }, 0) || 0;
+
+      console.log(`[api/emergency-flow/PUT] Flow has ${imageCount} images`);
+
+      const content = JSON.stringify(updatedFlowData, null, 2);
+
+      // 差分で上書き保存（既存データを完全に置き換え）
+      const blockBlobClient = containerClient.getBlockBlobClient(resolved.blobName);
+      await blockBlobClient.upload(content, content.length, {
+        blobHTTPHeaders: { blobContentType: 'application/json' },
+        metadata: {
+          lastModified: new Date().toISOString(),
+          flowId: flowId
+        }
+      });
+
+      console.log(`[api/emergency-flow/PUT] ✅ Updated successfully: ${resolved.blobName}`);
+
+      return res.json({
+        success: true,
+        message: 'フローを更新しました',
+        data: updatedFlowData,
+        blobName: resolved.blobName,
+        imageCount: imageCount
+      });
+    } catch (error) {
+      console.error('[api/emergency-flow/PUT] ❌ Error:', error);
       return res.status(500).json({
         success: false,
         error: error.message

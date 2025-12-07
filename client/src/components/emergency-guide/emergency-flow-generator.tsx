@@ -161,6 +161,10 @@ export default function mergencyFlowGenerator({
         </CardTitle>
         <CardDescription>
           ドキュメントファイルまたはキーワードから、応急処置フローの草案を自動で生成します。
+          <br />
+          <span className='text-blue-600 font-semibold mt-2 inline-block'>
+            ※ 画像は生成されません。フロー編集画面で後から追加できます。
+          </span>
         </CardDescription>
       </CardHeader>
       <CardContent className='space-y-6'>

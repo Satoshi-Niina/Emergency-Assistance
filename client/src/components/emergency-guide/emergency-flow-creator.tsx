@@ -1260,23 +1260,24 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
               onClick={() =>
                 document.getElementById(`image-upload-${slide.id}`)?.click()
               }
-              className='text-base-2x h-12 px-4'
+              className='text-base-2x h-12 px-4 bg-blue-50 hover:bg-blue-100 border-blue-300'
+              title='このステップに画像を追加（最大3枚）'
             >
               <Upload className='w-6 h-6 mr-2' />
-              画像アデ�ローデ
+              画像を追加
             </Button>
           </div>
         </div>
 
-        {/* 画像表示部刁ー改善*/}
+        {/* 画像表示部分：改善*/}
         {currentFlowData &&
           (() => {
             const step = currentFlowData.steps.find(s => s.id === slide.id);
             if (step && step.images && step.images.length > 0) {
               return (
                 <div className='mt-6'>
-                  <Label className='text-base-2x font-medium'>
-                    アデ�ロード済み画僁
+                  <Label className='text-base-2x font-medium text-blue-700'>
+                    アップロード済み画像 ({step.images.length}/3)
                   </Label>
                   <div className='mt-3 grid grid-cols-2 md:grid-cols-3 gap-3'>
                     {step.images.map((image, index) => (
@@ -1316,7 +1317,14 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
                 </div>
               );
             }
-            return null;
+            // 画像がない場合のヘルプメッセージ
+            return (
+              <div className='mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg'>
+                <p className='text-sm text-blue-700'>
+                  💡 ヒント: 「画像を追加」ボタンから、このステップに関連する画像を最大3枚まで追加できます。
+                </p>
+              </div>
+            );
           })()}
 
         {slide.type === 'decision' && (

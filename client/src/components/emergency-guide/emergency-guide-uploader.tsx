@@ -394,6 +394,9 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({
                         「キャラクター編集」タブ：フローチャートとして視覚的に編集
                       </li>
                     </ul>
+                    <li className='font-semibold text-blue-700 mt-2'>
+                      ※ 画像は自動生成されません。編集画面で各ステップに個別に追加してください。
+                    </li>
                   </ol>
                 </div>
               </div>
