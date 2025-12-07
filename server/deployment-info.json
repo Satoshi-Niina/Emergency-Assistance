@@ -1,11 +1,11 @@
 {
-  "commit_sha": "208b5e17",
-  "commit_time": "2025-12-07T00:00:00Z",
-  "build_time": "2025-12-07T00:00:00Z",
-  "workflow_run": "auto-deploy",
-  "deployed_by": "GitHub Actions",
-  "deployment_type": "IMAGE_CLEANUP_AND_CORS_FIX",
-  "version": "2.0.1-esm",
+  "commit_sha": "945deb46",
+  "commit_time": "2025-12-07T15:30:00Z",
+  "build_time": "2025-12-07T15:30:00Z",
+  "workflow_run": "manual-trigger",
+  "deployed_by": "Manual Deploy",
+  "deployment_type": "BLOB_ONLY_FIX",
+  "version": "2.0.2-blob-only",
   "features": {
     "esm_modules": 16,
     "auto_routing": true,
