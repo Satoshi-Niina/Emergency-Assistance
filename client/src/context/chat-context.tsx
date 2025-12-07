@@ -42,6 +42,7 @@ interface ChatContextType {
   searching: boolean;
   setSearching: (searching: boolean) => void;
   sendEmergencyGuide: (guideData: any) => Promise<void>;
+  hasUnexportedMessages: boolean;
   // searchBySelectedText: (text: string) => Promise<void>; // 画像検索機能を削除
 }
 
@@ -1512,6 +1513,51 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
     }
   }, [messages, lastExportTimestamp]);
 
+  // 🔧 追加: ページを閉じる前に未エクスポート画像を削除
+  useEffect(() => {
+    const handleBeforeUnload = async (event: BeforeUnloadEvent) => {
+      // 未エクスポートのメッセージがある場合のみクリーンアップ
+      if (hasUnexportedMessages && messages.length > 0) {
+        console.log('🗑️ ページ終了前: 未エクスポート画像のクリーンアップを実行');
+        
+        // 画像を含むメッセージから画像ファイル名を収集
+        const imageFileNames: string[] = [];
+        messages.forEach(msg => {
+          if (msg.media && Array.isArray(msg.media)) {
+            msg.media.forEach((m: any) => {
+              const fileName = m.fileName || m.url?.split('/').pop();
+              if (fileName && !fileName.startsWith('http')) {
+                imageFileNames.push(fileName);
+              }
+            });
+          }
+        });
+
+        if (imageFileNames.length > 0) {
+          console.log(`🗑️ 削除対象画像: ${imageFileNames.length}件`, imageFileNames);
+          
+          // 孤立画像クリーンアップを実行
+          try {
+            const { buildApiUrl } = await import('../lib/api');
+            // sendBeaconで非同期送信（ページ遷移中でも送信可能）
+            const cleanupUrl = buildApiUrl('/history/cleanup-orphaned-images');
+            const data = JSON.stringify({ dryRun: false });
+            navigator.sendBeacon(cleanupUrl, new Blob([data], { type: 'application/json' }));
+            console.log('✅ クリーンアップリクエスト送信完了');
+          } catch (err) {
+            console.warn('⚠️ クリーンアップ送信失敗:', err);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [hasUnexportedMessages, messages]);
+
   // コンテキスト値を提供
   const contextValue: ChatContextType = {
     messages,
@@ -1528,6 +1574,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
     searching,
     setSearching,
     sendEmergencyGuide,
+    hasUnexportedMessages,
     // searchBySelectedText, // 画像検索機能を削除
   };
 

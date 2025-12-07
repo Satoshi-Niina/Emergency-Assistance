@@ -561,13 +561,48 @@ export default function HistoryPage() {
 
       console.log('💾 保存対象のID:', itemId);
 
-      // 更新データの準備（画像データを含む）
-      const savedImages = editedItem.jsonData?.savedImages || editedItem.images || [];
+      // 🔧 修正: 画像データを正規化して送信（重複削除）
+      // 優先順位: jsonData.savedImages > savedImages > images
+      let rawImages = editedItem.jsonData?.savedImages || editedItem.savedImages || editedItem.images || [];
+      
+      // 重複削除と正規化
+      const seenFileNames = new Set<string>();
+      const normalizedImages = rawImages
+        .map((img: any) => {
+          if (typeof img === 'string') {
+            return { url: img, fileName: img.split('/').pop() || img };
+          }
+          return {
+            url: img.url || img.path || img.fileName || '',
+            fileName: img.fileName || img.url?.split('/').pop() || img.path?.split('/').pop() || ''
+          };
+        })
+        .filter((img: any) => {
+          const fileName = img.fileName;
+          if (!fileName || fileName.startsWith('data:image/') || seenFileNames.has(fileName)) {
+            return false;
+          }
+          seenFileNames.add(fileName);
+          return true;
+        });
 
       console.log('📤 サーバーへ送信する画像データ:', {
-        savedImagesCount: savedImages.length,
-        savedImages: savedImages
+        元の画像数: rawImages.length,
+        正規化後: normalizedImages.length,
+        画像リスト: normalizedImages.map((img: any) => img.fileName)
       });
+
+      // chatData.messages も更新された画像で再構築
+      const updatedChatData = editedItem.jsonData?.chatData ? {
+        ...editedItem.jsonData.chatData,
+        messages: (editedItem.jsonData.chatData.messages || []).map((msg: any) => ({
+          ...msg,
+          media: msg.media ? msg.media.filter((m: any) => {
+            const mediaFileName = m.fileName || m.url?.split('/').pop();
+            return normalizedImages.some((img: any) => img.fileName === mediaFileName);
+          }) : []
+        }))
+      } : undefined;
 
       const updatePayload = {
         updatedData: {
@@ -580,8 +615,8 @@ export default function HistoryPage() {
           ...(editedItem.jsonData?.location && { location: editedItem.jsonData.location }),
           ...(editedItem.jsonData?.status && { status: editedItem.jsonData.status }),
           ...(editedItem.jsonData?.remarks && { remarks: editedItem.jsonData.remarks }),
-          savedImages: savedImages,  // 画像データを必ず含める
-          images: savedImages,        // imagesフィールドも含める
+          savedImages: normalizedImages,
+          ...(updatedChatData && { chatData: updatedChatData }),
           ...(editedItem.machineType && { machineType: editedItem.machineType }),
           ...(editedItem.machineNumber && { machineNumber: editedItem.machineNumber }),
           lastModified: new Date().toISOString(),
@@ -634,11 +669,11 @@ export default function HistoryPage() {
       const serverUpdatedData = result.updatedData || {};
       const serverImages = serverUpdatedData.savedImages || serverUpdatedData.images || serverUpdatedData.jsonData?.savedImages || [];
 
-      // サーバーからの画像データが存在する場合はそれを使用、なければローカルのデータを使用
-      const finalImages = serverImages.length > 0 ? serverImages : savedImages;
+      // サーバーからの画像データが存在する場合はそれを使用、なければローカルのnormalizedImagesを使用
+      const finalImages = serverImages.length > 0 ? serverImages : normalizedImages;
 
-      // 画像データの正規化
-      const normalizedImages = finalImages.map((img: any) => {
+      // 画像データの正規化（既にnormalizedImagesがあるので、サーバーから取得した場合のみ正規化）
+      const finalNormalizedImages = serverImages.length > 0 ? finalImages.map((img: any) => {
         if (typeof img === 'string') {
           return { url: img, fileName: img };
         }
@@ -650,15 +685,15 @@ export default function HistoryPage() {
           };
         }
         return img;
-      });
+      }) : normalizedImages;
 
       console.log('✅ 保存後の画像データ:', {
         itemId,
         serverImagesCount: serverImages.length,
-        savedImagesCount: savedImages.length,
-        finalImagesCount: finalImages.length,
         normalizedImagesCount: normalizedImages.length,
-        images: normalizedImages,
+        finalImagesCount: finalImages.length,
+        finalNormalizedImagesCount: finalNormalizedImages.length,
+        images: finalNormalizedImages,
         usingServerData: serverImages.length > 0
       });
 
@@ -672,10 +707,10 @@ export default function HistoryPage() {
         jsonData: {
           ...editedItem.jsonData,
           ...(serverUpdatedData.jsonData || {}),
-          savedImages: normalizedImages,
+          savedImages: finalNormalizedImages,
         },
-        images: normalizedImages,  // imagesフィールドも更新
-        savedImages: normalizedImages,
+        images: finalNormalizedImages,  // imagesフィールドも更新
+        savedImages: finalNormalizedImages,
         lastModified: serverUpdatedData.lastModified || new Date().toISOString(),
         incidentTitle: serverUpdatedData.title || editedItem.jsonData?.title || editedItem.incidentTitle,
       };
@@ -2162,7 +2197,6 @@ export default function HistoryPage() {
                         
                         // 既に完全なURLの場合はそのまま返す
                         if (url.startsWith('http://') || url.startsWith('https://')) {
-                          console.log('🖼️ 編集画面: 完全URL:', url);
                           return url;
                         }
                         
@@ -2178,12 +2212,9 @@ export default function HistoryPage() {
                         
                         // 既に /api/images/ で始まっている場合
                         if (cleanUrl.startsWith('/api/images/')) {
-                          // 相対パスを完全URLに変換
                           let baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
                           baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
-                          const fullUrl = `${baseUrl}${cleanUrl}`;
-                          console.log('🖼️ 編集画面: URL正規化:', { original: url, cleaned: cleanUrl, baseUrl, fullUrl });
-                          return fullUrl;
+                          return `${baseUrl}${cleanUrl}`;
                         }
                         
                         // ファイル名のみの場合は /api/images/chat-exports/ を追加
@@ -2198,134 +2229,76 @@ export default function HistoryPage() {
                         return `${baseUrl}${finalPath}`;
                       };
 
-                      // 1. chatData.messagesから画像を抽出（最優先）
-                      const messages = item?.jsonData?.chatData?.messages || [];
-                      console.log('🔍 編集画面: chatData.messages:', messages.length, '件');
+                      // 🔧 修正: 単一の信頼できるソース（savedImages）から画像を取得
+                      // 優先順位: jsonData.savedImages > savedImages > images
+                      let sourceImages: any[] = [];
+                      let sourceName = '';
                       
-                      messages.forEach((msg: any, msgIdx: number) => {
-                        const media = msg.media || [];
-                        console.log(`  メッセージ${msgIdx}: media配列`, media.length, '件');
-                        
-                        media.forEach((img: any, idx: number) => {
-                          console.log(`    画像${idx}:`, img);
+                      if (Array.isArray(item?.jsonData?.savedImages) && item.jsonData.savedImages.length > 0) {
+                        sourceImages = item.jsonData.savedImages;
+                        sourceName = 'jsonData.savedImages';
+                      } else if (Array.isArray(item?.savedImages) && item.savedImages.length > 0) {
+                        sourceImages = item.savedImages;
+                        sourceName = 'savedImages';
+                      } else if (Array.isArray(item?.images) && item.images.length > 0) {
+                        sourceImages = item.images;
+                        sourceName = 'images';
+                      }
+                      
+                      console.log(`🔍 編集画面: 画像ソース=${sourceName}, 画像数=${sourceImages.length}`);
+                      
+                      sourceImages.forEach((img: any, idx: number) => {
+                        // 文字列の場合
+                        if (typeof img === 'string' && !img.startsWith('data:image/')) {
+                          const imageUrl = normalizeImageUrl(img);
+                          const actualFileName = img.split('/').pop();
+                          images.push({ url: imageUrl, fileName: actualFileName, index: images.length });
+                          console.log(`  ✅ [${idx}] 文字列: ${actualFileName}`);
+                        } 
+                        // オブジェクトの場合
+                        else if (img && typeof img === 'object') {
+                          let imageUrl = '';
+                          let actualFileName = '';
                           
-                          // URLが存在する場合はそれを優先
                           if (img.url) {
-                            const imageUrl = normalizeImageUrl(img.url);
-                            // URLからファイル名を抽出
-                            const actualFileName = img.url.split('/').pop() || img.fileName;
-                            images.push({ url: imageUrl, fileName: actualFileName, index: images.length });
-                            console.log(`    ✅ 追加 (url):`, imageUrl, 'fileName:', actualFileName);
+                            imageUrl = normalizeImageUrl(img.url);
+                            actualFileName = img.url.split('/').pop() || img.fileName || '';
                           } else if (img.fileName) {
-                            const actualFileName = img.fileName.includes('/')
+                            const cleanFileName = img.fileName.includes('/')
                               ? img.fileName.split('/').pop()
                               : img.fileName.includes('\\')
                                 ? img.fileName.split('\\').pop()
                                 : img.fileName;
-                            const imagePath = `/api/images/chat-exports/${actualFileName}`;
-                            const fullImageUrl = normalizeImageUrl(imagePath);
-                            images.push({ url: fullImageUrl, fileName: actualFileName, index: images.length });
-                            console.log(`    ✅ 追加 (fileName):`, fullImageUrl);
+                            imageUrl = normalizeImageUrl(`/api/images/chat-exports/${cleanFileName}`);
+                            actualFileName = cleanFileName;
+                          } else if (img.path) {
+                            imageUrl = normalizeImageUrl(img.path);
+                            actualFileName = img.path.split('/').pop() || '';
                           }
-                        });
-                      });
-                      
-                      // 2. jsonData.savedImages（追加で取得）
-                      if (Array.isArray(item?.jsonData?.savedImages) && item.jsonData.savedImages.length > 0) {
-                        console.log('🔍 編集画面: jsonData.savedImages:', item.jsonData.savedImages.length, '件');
-                        item.jsonData.savedImages.forEach((img: any, idx: number) => {
-                          if (typeof img === 'string' && !img.startsWith('data:image/')) {
-                            const imageUrl = normalizeImageUrl(img);
-                            const actualFileName = img.split('/').pop();
+                          
+                          if (imageUrl && actualFileName) {
                             images.push({ url: imageUrl, fileName: actualFileName, index: images.length });
-                          } else if (img && typeof img === 'object') {
-                            // URLを優先
-                            if (img.url) {
-                              const imageUrl = normalizeImageUrl(img.url);
-                              const actualFileName = img.url.split('/').pop() || img.fileName;
-                              images.push({ url: imageUrl, fileName: actualFileName, index: images.length });
-                            } else if (img.fileName) {
-                              const actualFileName = img.fileName.includes('/')
-                                ? img.fileName.split('/').pop()
-                                : img.fileName.includes('\\')
-                                  ? img.fileName.split('\\').pop()
-                                  : img.fileName;
-                              const imagePath = `/api/images/chat-exports/${actualFileName}`;
-                              const fullImageUrl = normalizeImageUrl(imagePath);
-                              images.push({ url: fullImageUrl, fileName: actualFileName, index: images.length });
-                            } else if (img.path) {
-                              const imageUrl = normalizeImageUrl(img.path);
-                              const actualFileName = img.path.split('/').pop();
-                              images.push({ url: imageUrl, fileName: actualFileName, index: images.length });
-                            }
+                            console.log(`  ✅ [${idx}] オブジェクト: ${actualFileName}`);
                           }
-                        });
-                      }
-                      
-                      // 3. savedImages（追加で取得）
-                      if (Array.isArray(item?.savedImages) && item.savedImages.length > 0) {
-                        console.log('🔍 編集画面: savedImages:', item.savedImages.length, '件');
-                        item.savedImages.forEach((img: any, idx: number) => {
-                          if (typeof img === 'string' && !img.startsWith('data:image/')) {
-                            images.push({ url: normalizeImageUrl(img), index: images.length });
-                          } else if (img && typeof img === 'object') {
-                            if (img.fileName) {
-                              const actualFileName = img.fileName.includes('/')
-                                ? img.fileName.split('/').pop()
-                                : img.fileName.includes('\\')
-                                  ? img.fileName.split('\\').pop()
-                                  : img.fileName;
-                              const imagePath = `/api/images/chat-exports/${actualFileName}`;
-                              const fullImageUrl = normalizeImageUrl(imagePath);
-                              images.push({ url: fullImageUrl, fileName: img.fileName, index: images.length });
-                            } else if (img.url) {
-                              images.push({ url: normalizeImageUrl(img.url), fileName: img.fileName, index: images.length });
-                            } else if (img.path) {
-                              images.push({ url: normalizeImageUrl(img.path), fileName: img.fileName, index: images.length });
-                            }
-                          }
-                        });
-                      }
-                      
-                      // 4. images（追加で取得）
-                      if (Array.isArray(item?.images) && item.images.length > 0) {
-                        console.log('🔍 編集画面: images:', item.images.length, '件');
-                        item.images.forEach((img: any, idx: number) => {
-                          if (typeof img === 'string') {
-                            images.push({ url: normalizeImageUrl(img), index: images.length });
-                          } else if (img && typeof img === 'object') {
-                            const url = img.url || img.path || img.fileName;
-                            if (url && !url.startsWith('data:image/')) {
-                              images.push({ url: normalizeImageUrl(url), fileName: img.fileName, index: images.length });
-                            }
-                          }
-                        });
-                      }
-
-                      console.log('📊 編集画面: 収集した画像総数:', images.length, '件');
-
-                      // 重複削除（URLとfileNameの両方で判定）
-                      const uniqueImages: Array<{ url: string; fileName?: string; index: number }> = [];
-                      const seenKeys = new Set<string>();
-                      images.forEach(img => {
-                        const key = img.fileName || img.url;
-                        if (!seenKeys.has(key)) {
-                          seenKeys.add(key);
-                          uniqueImages.push(img);
                         }
                       });
 
-                      console.log('✅ 編集画面: 重複削除後の画像数:', uniqueImages.length, '件');
-                      console.log('📋 画像URL一覧:', uniqueImages.map(img => img.url));
+                      console.log(`📊 編集画面: 最終画像数=${images.length}`);
+                      console.log('📋 画像一覧:', images.map(img => img.fileName || img.url.split('/').pop()));
 
                       return uniqueImages;
                     };
 
                     const imageList = getAllImages(editingItem);
                     if (imageList.length > 0) {
+                      // 最大6枚まで表示（横3列×縦2行）
+                      const displayImages = imageList.slice(0, 6);
+                      const hasMoreImages = imageList.length > 6;
+                      
                       return (
+                        <>
                         <div className="grid grid-cols-3 gap-4">
-                          {imageList.map((image, mapIndex) => {
+                          {displayImages.map((image, mapIndex) => {
                             // 一意なキーを生成（fileName + index の組み合わせ）
                             const imageKey = `${image.fileName || 'img'}-${image.index}-${mapIndex}`;
 
@@ -2348,70 +2321,62 @@ export default function HistoryPage() {
                                   onClick={() => {
                                     console.log('🗑️ 画像削除リクエスト:', {
                                       fileName: image.fileName,
-                                      url: image.url,
-                                      クリックされた画像: image
+                                      url: image.url
                                     });
 
-                                    const currentSavedImages = editingItem.jsonData?.savedImages || [];
-                                    console.log('📋 現在の画像リスト:', currentSavedImages);
-
-                                    // 削除対象の画像を特定（柔軟な比較）
-                                    const updatedSavedImages = currentSavedImages.filter((img: any) => {
-                                      // 比較用の正規化関数
-                                      const normalizeForCompare = (str: string): string => {
-                                        if (!str) return '';
-                                        // URLから実際のファイル名を抽出
-                                        return str.split('/').pop()?.split('\\').pop() || str;
-                                      };
-                                      
-                                      const imageFileName = normalizeForCompare(image.fileName || image.url || '');
+                                    // 比較用の正規化関数
+                                    const normalizeForCompare = (str: string): string => {
+                                      if (!str) return '';
+                                      return str.split('/').pop()?.split('\\').pop() || str;
+                                    };
+                                    
+                                    const targetFileName = normalizeForCompare(image.fileName || image.url || '');
+                                    
+                                    // 画像削除フィルター関数
+                                    const filterOutImage = (img: any) => {
                                       const imgFileName = normalizeForCompare(img.fileName || img.url || img.path || '');
-                                      
-                                      // ファイル名ベースで比較（最も確実）
-                                      if (imageFileName && imgFileName && imageFileName === imgFileName) {
-                                        console.log(`  ✅ 削除対象: ${imgFileName}`);
-                                        return false; // 削除
+                                      const shouldDelete = imgFileName && targetFileName && imgFileName === targetFileName;
+                                      if (shouldDelete) {
+                                        console.log(`  ✅ 削除: ${imgFileName}`);
                                       }
-                                      
-                                      // URL完全一致チェック
-                                      if (image.url && img.url && image.url === img.url) {
-                                        console.log(`  ✅ 削除対象(URL): ${img.url}`);
-                                        return false;
-                                      }
-                                      
-                                      // fileName完全一致チェック
-                                      if (image.fileName && img.fileName && image.fileName === img.fileName) {
-                                        console.log(`  ✅ 削除対象(fileName): ${img.fileName}`);
-                                        return false;
-                                      }
-                                      
-                                      // 残す
-                                      return true;
+                                      return !shouldDelete;
+                                    };
+
+                                    // 🔧 修正: すべてのソースから削除
+                                    const updatedJsonDataSavedImages = (editingItem.jsonData?.savedImages || []).filter(filterOutImage);
+                                    const updatedSavedImages = (editingItem.savedImages || []).filter(filterOutImage);
+                                    const updatedImages = (editingItem.images || []).filter(filterOutImage);
+                                    
+                                    // chatData.messages[].media からも削除
+                                    const updatedMessages = (editingItem.jsonData?.chatData?.messages || []).map((msg: any) => ({
+                                      ...msg,
+                                      media: (msg.media || []).filter(filterOutImage)
+                                    }));
+
+                                    console.log('📝 削除結果:', {
+                                      'jsonData.savedImages': `${(editingItem.jsonData?.savedImages || []).length} → ${updatedJsonDataSavedImages.length}`,
+                                      'savedImages': `${(editingItem.savedImages || []).length} → ${updatedSavedImages.length}`,
+                                      'images': `${(editingItem.images || []).length} → ${updatedImages.length}`,
+                                      'messages.media': `更新済み`
                                     });
 
-                                    console.log('📝 削除後の画像リスト:', {
-                                      削除前: currentSavedImages.length,
-                                      削除後: updatedSavedImages.length,
-                                      削除された画像数: currentSavedImages.length - updatedSavedImages.length,
-                                      削除後の画像: updatedSavedImages
-                                    });
-
-                                    // state を更新
+                                    // state を更新（すべてのソース）
                                     const newEditingItem = {
                                       ...editingItem,
+                                      savedImages: updatedSavedImages,
+                                      images: updatedImages,
                                       jsonData: {
                                         ...editingItem.jsonData,
-                                        savedImages: updatedSavedImages,
+                                        savedImages: updatedJsonDataSavedImages,
+                                        chatData: {
+                                          ...(editingItem.jsonData?.chatData || {}),
+                                          messages: updatedMessages
+                                        }
                                       },
                                     };
                                     
                                     setEditingItem(newEditingItem);
-                                    
-                                    // UIに反映されたことを確認
-                                    console.log('✅ 画像削除後のstate更新完了:', {
-                                      updatedItem: newEditingItem,
-                                      savedImagesCount: newEditingItem.jsonData?.savedImages?.length || 0
-                                    });
+                                    console.log('✅ 画像削除完了 - すべてのソース更新済み');
                                   }}
                                 >
                                   <X className="h-4 w-4" />
@@ -2420,6 +2385,12 @@ export default function HistoryPage() {
                             );
                           })}
                         </div>
+                        {hasMoreImages && (
+                          <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-700">
+                            ⚠️ 画像が6枚を超えています（全{imageList.length}枚）。最初の6枚のみ表示しています。
+                          </div>
+                        )}
+                        </>
                       );
                     }
                     return (

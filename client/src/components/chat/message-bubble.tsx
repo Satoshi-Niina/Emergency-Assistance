@@ -218,10 +218,10 @@ export default function MessageBubble({
             {isEmergencyGuideMessage && message.media.length > 0 && (
               <div className='mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg'>
                 <div className='text-sm text-blue-700 font-medium mb-2'>
-                  📋 応急処置ガイド画像 ({message.media.length}件)
+                  📋 応急処置ガイド画像 ({Math.min(message.media.length, 6)}/{message.media.length}件{message.media.length > 6 ? ' - 最大6枚まで表示' : ''})
                 </div>
                 <div className='grid grid-cols-2 md:grid-cols-3 gap-2'>
-                  {message.media.map((media, index) => (
+                  {message.media.slice(0, 6).map((media, index) => (
                     <div
                       key={`${message.id}-guide-media-${index}`}
                       className='relative'
@@ -309,7 +309,7 @@ export default function MessageBubble({
               message.media &&
               message.media.length > 0 && (
                 <>
-                  {message.media.map((media, index) => {
+                  {message.media.slice(0, 6).map((media, index) => {
                     const imageUrl = normalizeImageUrl(media.url);
                     return (
                     <div key={`${message.id}-media-${index}`} className='mt-2'>
@@ -463,6 +463,12 @@ export default function MessageBubble({
                     </div>
                   );
                   })}
+                  {/* 6枚超過時のメッセージ */}
+                  {message.media.length > 6 && (
+                    <div className='mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700'>
+                      ⚠️ 画像が6枚を超えています（全{message.media.length}枚）。最初の6枚のみ表示しています。
+                    </div>
+                  )}
                 </>
               )}
           </div>

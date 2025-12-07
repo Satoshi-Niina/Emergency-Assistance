@@ -86,6 +86,7 @@ export default function ChatPage() {
     chatId,
     initializeChat,
     exportChatHistory,
+    hasUnexportedMessages,
   } = useChat();
 
   // 管理者権限の確認
@@ -1016,8 +1017,31 @@ export default function ChatPage() {
         document.body.removeChild(dialog);
         resolve(true);
       };
-      document.getElementById('end-btn')!.onclick = () => {
+      document.getElementById('end-btn')!.onclick = async () => {
         document.body.removeChild(dialog);
+        
+        // 🔧 未エクスポート画像の削除処理
+        if (hasUnexportedMessages && messages.length > 0) {
+          console.log('🗑️ AI支援終了: 未エクスポート画像のクリーンアップを実行');
+          
+          try {
+            const { buildApiUrl } = await import('../lib/api');
+            const cleanupResponse = await fetch(buildApiUrl('/history/cleanup-orphaned-images'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ dryRun: false }),
+            });
+            
+            if (cleanupResponse.ok) {
+              const result = await cleanupResponse.json();
+              console.log('✅ 孤立画像クリーンアップ完了:', result.stats);
+            }
+          } catch (err) {
+            console.warn('⚠️ クリーンアップ失敗:', err);
+          }
+        }
+        
         resolve(false);
       };
     });

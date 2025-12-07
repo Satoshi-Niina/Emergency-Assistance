@@ -589,10 +589,24 @@ async function handleUpdateHistory(req, res, rawId) {
       lastModified: new Date().toISOString(),
     });
 
-    // savedImages を jsonData にも保持
+    // 🔧 修正: savedImages を単一のソースに統一（jsonData.savedImagesに集約）
     if (updatePayload.savedImages) {
+      console.log('[history/update] Saving images:', {
+        count: updatePayload.savedImages.length,
+        images: updatePayload.savedImages.map(img => img.fileName || img.url?.substring(0, 50))
+      });
+      
       merged.savedImages = updatePayload.savedImages;
       merged.jsonData = mergeData(merged.jsonData || {}, { savedImages: updatePayload.savedImages });
+      
+      // chatData が送信された場合はそれを使用、なければ既存を保持
+      if (updatePayload.chatData) {
+        merged.jsonData.chatData = updatePayload.chatData;
+      }
+      
+      // 他の画像フィールドは削除して単一ソースに統一
+      delete merged.images;
+      console.log('[history/update] Images unified to jsonData.savedImages');
     }
 
     // 更新履歴を追加
