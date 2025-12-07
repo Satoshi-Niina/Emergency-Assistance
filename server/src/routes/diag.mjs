@@ -28,7 +28,15 @@ router.get('/env', (req, res) => {
     env: safeEnv,
     cwd: process.cwd(),
     dirname: __dirname,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    // 重要な環境変数の確認
+    criticalEnvVars: {
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY ? '✅ SET' : '❌ NOT SET',
+      AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING ? '✅ SET' : '❌ NOT SET',
+      DATABASE_URL: process.env.DATABASE_URL ? '✅ SET' : '❌ NOT SET',
+      NODE_ENV: process.env.NODE_ENV || 'not set',
+      PORT: process.env.PORT || 'not set'
+    }
   });
 });
 

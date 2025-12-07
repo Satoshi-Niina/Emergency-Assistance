@@ -5,9 +5,12 @@ export const allowedOrigins = [
   STATIC_WEB_APP_URL,
   'http://localhost:5173',
   'http://localhost:5174',
+  'http://localhost:5175',
+  'http://localhost:5176',
   'http://localhost:5002',
   'http://localhost:3000',
   'http://localhost:8080',
+  'https://emergency-assistantapp.azurewebsites.net',  // 本番App Service
   'https://happy-bush-083160b00.3.azurestaticapps.net',
   'https://witty-river-012f39e00.1.azurestaticapps.net'
 ];
@@ -19,8 +22,14 @@ export const corsOptions = {
       callback(null, true);
     } else if (allowedOrigins.includes(origin)) {
       callback(null, true);
-    } else if (process.env.NODE_ENV === 'production' && origin && origin.includes('azurestaticapps.net')) {
-      // 本番環境: すべての azurestaticapps.net ドメインを許可
+    } else if (origin && origin.includes('azurestaticapps.net')) {
+      // すべての azurestaticapps.net ドメインを許可
+      callback(null, true);
+    } else if (origin && origin.includes('azurewebsites.net')) {
+      // すべての azurewebsites.net ドメインを許可
+      callback(null, true);
+    } else if (process.env.NODE_ENV === 'development') {
+      // 開発環境: すべて許可
       callback(null, true);
     } else {
       console.warn('❌ CORS blocked origin:', origin);
