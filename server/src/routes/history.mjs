@@ -348,32 +348,45 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
         blobName: blobName,
         fullPath: `${containerName}/${blobName}`,
         fileSize: req.file.size,
-        mimeType: req.file.mimetype
+        mimeType: req.file.mimetype,
+        attempt: attempt
       });
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
-      const containerExists = await containerClient.exists();
-      console.log('[history/upload-image] Container check:', {
-        container: containerName,
-        exists: containerExists
+      // コンテナの存在確認と作成（確実に実行）
+      console.log('[history/upload-image] Ensuring container exists...');
+      await containerClient.createIfNotExists({
+        access: 'container' // パブリックアクセス（必要に応じて変更）
       });
+      
+      const containerExists = await containerClient.exists();
+      console.log('[history/upload-image] Container status:', {
+        container: containerName,
+        exists: containerExists,
+        confirmed: containerExists ? '✅' : '❌'
+      });
+
       if (!containerExists) {
-        console.log('[history/upload-image] Creating container:', containerName);
-        await containerClient.createIfNotExists();
+        throw new Error(`Container '${containerName}' does not exist and could not be created`);
       }
 
+      // BLOB アップロード実行
+      console.log('[history/upload-image] Uploading to BLOB...');
       const uploadPromise = blockBlobClient.uploadData(req.file.buffer, {
         blobHTTPHeaders: {
-          blobContentType: req.file.mimetype
+          blobContentType: req.file.mimetype,
+          blobCacheControl: 'public, max-age=31536000' // 1年キャッシュ
         },
         metadata: {
           originalName: req.file.originalname,
-          uploadedAt: new Date().toISOString()
+          uploadedAt: new Date().toISOString(),
+          source: 'chat-camera'
         }
       });
 
+      // タイムアウトを60秒に延長
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('BLOB upload timeout (30s)')), 30000);
+        setTimeout(() => reject(new Error('BLOB upload timeout (60s)')), 60000);
       });
 
       await Promise.race([uploadPromise, timeoutPromise]);
