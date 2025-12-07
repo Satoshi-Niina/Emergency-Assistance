@@ -901,6 +901,27 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
       setLastExportTimestamp(new Date());
       setHasUnexportedMessages(false);
 
+      // エクスポート後に孤立画像をクリーンアップ（バックグラウンドで実行）
+      try {
+        const { buildApiUrl } = await import('../lib/api');
+        console.log('🧹 エクスポート後の孤立画像クリーンアップを開始します');
+        fetch(buildApiUrl('/history/cleanup-orphaned-images'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ dryRun: false }),
+        }).then(async (response) => {
+          if (response.ok) {
+            const result = await response.json();
+            console.log('✅ エクスポート後の孤立画像クリーンアップ完了:', result.stats);
+          }
+        }).catch((err) => {
+          console.warn('⚠️ 孤立画像クリーンアップ失敗:', err);
+        });
+      } catch (cleanupError) {
+        console.warn('⚠️ 孤立画像クリーンアップ開始失敗:', cleanupError);
+      }
+
       return data;
     } catch (error) {
       console.error('エクスポートエラー:', error);
@@ -1357,6 +1378,27 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
 
       // 3. 新しいチャットセッションとして初期化
       console.log('🆕 新しいチャットセッションを開始します');
+
+      // 4. 孤立画像のクリーンアップ（バックグラウンドで実行）
+      try {
+        const { buildApiUrl } = await import('../lib/api');
+        console.log('🧹 孤立画像のクリーンアップを開始します');
+        fetch(buildApiUrl('/history/cleanup-orphaned-images'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ dryRun: false }),
+        }).then(async (response) => {
+          if (response.ok) {
+            const result = await response.json();
+            console.log('✅ 孤立画像クリーンアップ完了:', result.stats);
+          }
+        }).catch((err) => {
+          console.warn('⚠️ 孤立画像クリーンアップ失敗:', err);
+        });
+      } catch (cleanupError) {
+        console.warn('⚠️ 孤立画像クリーンアップ開始失敗:', cleanupError);
+      }
 
       toast({
         title: 'クリア完了',

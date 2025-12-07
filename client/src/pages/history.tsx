@@ -590,11 +590,13 @@ export default function HistoryPage() {
       };
 
       // サーバーに更新リクエストを送信
-      const response = await fetch(`/api/history/update-item/${itemId}`, {
+      const { buildApiUrl } = await import('../lib/api');
+      const response = await fetch(buildApiUrl(`/history/update-item/${itemId}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(updatePayload),
       });
 
@@ -1646,13 +1648,24 @@ export default function HistoryPage() {
                                     };
 
                                     const normalized = normalizeImageUrl(image);
-                                    if (!normalized) return null;
+                                    if (!normalized) {
+                                      console.warn('⚠️ 画像正規化失敗:', image);
+                                      return null;
+                                    }
 
                                     const { url: imageUrl, fileName } = normalized;
 
-                                    if (!imageUrl) return null;
+                                    if (!imageUrl) {
+                                      console.warn('⚠️ 画像URL不明:', normalized);
+                                      return null;
+                                    }
 
-                                    console.log('📸 画像表示:', { fileName, imageUrl, image });
+                                    console.log('📸 一覧表画像表示:', { 
+                                      fileName, 
+                                      imageUrl, 
+                                      originalImage: image,
+                                      baseUrl: import.meta.env.VITE_API_BASE_URL
+                                    });
 
                                     // 一意なキーを生成
                                     const imageKey = `${item.id}-${fileName || idx}-${idx}`;
@@ -2086,6 +2099,7 @@ export default function HistoryPage() {
                             }
 
                             const result = await response.json();
+                            console.log('✅ 画像アップロード成功:', result);
                             newImages.push({
                               fileName: result.fileName,
                               url: result.imageUrl || result.url,
@@ -2139,10 +2153,14 @@ export default function HistoryPage() {
 
                       // 画像URLを正規化する関数（本番環境対応：完全URL化）
                       const normalizeImageUrl = (url: string): string => {
-                        if (!url) return '';
+                        if (!url) {
+                          console.warn('🖼️ 編集画面: 空のURL');
+                          return '';
+                        }
                         
                         // 既に完全なURLの場合はそのまま返す
                         if (url.startsWith('http://') || url.startsWith('https://')) {
+                          console.log('🖼️ 編集画面: 完全URL:', url);
                           return url;
                         }
                         
@@ -2161,7 +2179,9 @@ export default function HistoryPage() {
                           // 相対パスを完全URLに変換
                           let baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
                           baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
-                          return `${baseUrl}${cleanUrl}`;
+                          const fullUrl = `${baseUrl}${cleanUrl}`;
+                          console.log('🖼️ 編集画面: URL正規化:', { original: url, cleaned: cleanUrl, baseUrl, fullUrl });
+                          return fullUrl;
                         }
                         
                         // ファイル名のみの場合は /api/images/chat-exports/ を追加

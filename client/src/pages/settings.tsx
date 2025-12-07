@@ -204,6 +204,26 @@ export default function SettingsPage() {
     }
   };
 
+  // チャットクリア後に孤立画像をクリーンアップ
+  const cleanupOrphanedImagesAfterChatClear = async () => {
+    try {
+      const { buildApiUrl } = await import('../lib/api');
+      const response = await fetch(buildApiUrl('/history/cleanup-orphaned-images'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ dryRun: false }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ チャットクリア後の孤立画像クリーンアップ:', result.stats);
+      }
+    } catch (error) {
+      console.warn('⚠️ 孤立画像クリーンアップ失敗:', error);
+    }
+  };
+
   const handleCleanupOrphanedImages = async () => {
     try {
       // まずドライランで孤立画像の数を確認
