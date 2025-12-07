@@ -181,6 +181,32 @@ jobs:
           
           echo "✅ ZIP deployment mode configured"
 
+      - name: Configure Environment Variables
+        run: |
+          echo "⚙️ Configuring environment variables..."
+          
+          az webapp config appsettings set \
+            --name emergency-assistantapp \
+            --resource-group rg-Emergencyassistant-app \
+            --settings \
+              NODE_ENV=production \
+              PORT=8080 \
+              DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+              SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
+              AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
+              AZURE_STORAGE_CONTAINER_NAME="${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}" \
+              AZURE_STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
+              FRONTEND_URL="https://happy-bush-083160b00.3.azurestaticapps.net" \
+              STATIC_WEB_APP_URL="https://happy-bush-083160b00.3.azurestaticapps.net" \
+              OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+              HEALTH_TOKEN="${{ secrets.HEALTH_TOKEN }}" \
+              AUTO_INGEST_CHAT_EXPORTS=true \
+              BLOB_PREFIX="knowledge-base/" \
+              SCM_DO_BUILD_DURING_DEPLOYMENT=false \
+              WEBSITE_NODE_DEFAULT_VERSION="~20"
+          
+          echo "✅ Environment variables configured"
+
       - name: Stop App Service (force clean deployment)
         run: |
           echo "🛑 Stopping app service for clean deployment..."
