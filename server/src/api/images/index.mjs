@@ -15,10 +15,21 @@ export default async function imagesHandler(req, res) {
     // /api/images/emergency-flows/xxx.jpg → category: emergency-flows, fileName: xxx.jpg
     const pathParts = req.path.split('/').filter(Boolean);
     
-    if (pathParts.length < 3) {
+    console.log('[api/images] DEBUG: Full path:', req.path);
+    console.log('[api/images] DEBUG: pathParts:', pathParts);
+    
+    // pathParts = ['api', 'images', 'chat-exports', 'xxx.jpg']
+    // index 0: 'api'
+    // index 1: 'images'
+    // index 2: 'chat-exports' (category)
+    // index 3+: 'xxx.jpg' (fileName)
+    
+    if (pathParts.length < 4) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid path format. Expected: /api/images/{category}/{fileName}'
+        error: 'Invalid path format. Expected: /api/images/{category}/{fileName}',
+        receivedPath: req.path,
+        pathParts: pathParts
       });
     }
     

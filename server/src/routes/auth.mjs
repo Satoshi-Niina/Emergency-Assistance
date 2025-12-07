@@ -46,11 +46,24 @@ router.post('/login', async (req, res) => {
       console.warn('[auth/login] Warning: Stored password might not be a valid bcrypt hash for user:', username);
     }
 
+    console.log('[auth/login] Password validation debug:', {
+      username,
+      passwordLength: password.length,
+      hasSpecialChars: /[&<>"']/.test(password),
+      hashPrefix: user.password?.substring(0, 10)
+    });
+
     // パスワードはbcryptハッシュのみで認証（平文不可）
+    // bcryptは特殊文字(&, <, >, ", 'など)を正しく処理します
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
       console.log('[auth/login] Password validation failed for user:', username);
+      console.log('[auth/login] Failed password info:', {
+        length: password.length,
+        hasAmpersand: password.includes('&'),
+        hashStart: user.password?.substring(0, 20)
+      });
       return res.status(401).json({
         success: false,
         error: 'ユーザー名またはパスワードが間違っています'

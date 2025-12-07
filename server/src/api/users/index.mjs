@@ -115,9 +115,16 @@ export default async function usersHandler(req, res) {
         let paramIndex = 1;
 
         if (password) {
-          console.log('[api/users] Hashing new password for user:', id);
+          console.log('[api/users] Hashing new password for user:', id, {
+            passwordLength: password.length,
+            hasSpecialChars: /[&<>"']/.test(password),
+            hasAmpersand: password.includes('&')
+          });
+          // bcryptは特殊文字(&, <, >, ", 'など)をそのまま正しくハッシュ化します
           const hashedPassword = await bcrypt.hash(password, 10);
-          console.log('[api/users] New password hashed successfully');
+          console.log('[api/users] New password hashed successfully:', {
+            hashPrefix: hashedPassword.substring(0, 10)
+          });
           updates.push(`password = $${paramIndex++}`);
           params.push(hashedPassword);
         }
