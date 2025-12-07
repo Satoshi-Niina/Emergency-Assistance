@@ -1,18 +1,18 @@
-// ESM形弁E- 応急復旧フローエンド�EインチE// /api/emergency-flow/* にマッピング
+// ESM形弁E- 応急復旧フローエンド�EインチE// /api/emergency-flow/* にマッピング
 
 import fs from 'fs';
 import { getBlobServiceClient, containerName, norm, upload } from '../../infra/blob.mjs';
 import { getOpenAIClient, isOpenAIAvailable } from '../../infra/openai.mjs';
 import path from 'path';
 
-// 褁E��パスを試して既存データのプレフィチE��ス違いに対忁Efunction buildCandidatePaths(fileName, skipNorm = false) {
+// 褁E��パスを試して既存データのプレフィチE��ス違いに対忁Efunction buildCandidatePaths(fileName, skipNorm = false) {
   const baseName = fileName || '';
   const paths = [
-    // 現衁E base付き�E�Eormで knowledge-base/ が付与される�E�E    skipNorm ? null : norm(`troubleshooting/${baseName}`),
+    // 現衁E base付き�E�Eormで knowledge-base/ が付与される�E�E    skipNorm ? null : norm(`troubleshooting/${baseName}`),
     // 旧: baseなぁE    `troubleshooting/${baseName}`,
     // 念のため: baseを直書ぁE    `knowledge-base/troubleshooting/${baseName}`,
   ].filter(Boolean);
-  // 重褁E��除
+  // 重褁E��除
   return [...new Set(paths)];
 }
 
@@ -65,7 +65,7 @@ export default async function emergencyFlowHandler(req, res) {
           });
         }
 
-        // まず現行パス�E�Eorm�E�で列挙し、E件なら旧パスも試ぁE        const prefixes = [norm('troubleshooting/'), 'troubleshooting/', 'knowledge-base/troubleshooting/'];
+        // まず現行パス�E�Eorm�E�で列挙し、E件なら旧パスも試ぁE        const prefixes = [norm('troubleshooting/'), 'troubleshooting/', 'knowledge-base/troubleshooting/'];
         const seen = new Set();
 
         for (const prefix of prefixes) {
@@ -177,7 +177,7 @@ export default async function emergencyFlowHandler(req, res) {
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
       
-      // コンチE��が存在するか確誁E      const containerExists = await containerClient.exists();
+      // コンチE��が存在するか確誁E      const containerExists = await containerClient.exists();
       if (!containerExists) {
         console.log('[api/emergency-flow/save] Creating container:', containerName);
         await containerClient.create();
@@ -199,7 +199,7 @@ export default async function emergencyFlowHandler(req, res) {
 
       console.log(`[api/emergency-flow/save] ✁ESaved successfully to: ${blobNamePrimary}`);
 
-      // baseなし�EレフィチE��スにも�Eストエフォートで保存（既存ファイル構造との互換性�E�E      try {
+      // baseなし�EレフィチE��スにも�Eストエフォートで保存（既存ファイル構造との互換性�E�E      try {
         const altName = `troubleshooting/${flowId || 'flow-' + Date.now()}.json`;
         const altClient = containerClient.getBlockBlobClient(altName);
         await altClient.upload(content, content.length, {
@@ -225,14 +225,14 @@ export default async function emergencyFlowHandler(req, res) {
     }
   }
 
-  // /api/emergency-flow/upload-image - POST画像アチE�EローチE  if (pathParts[2] === 'upload-image' && method === 'POST') {
+  // /api/emergency-flow/upload-image - POST画像アチE�EローチE  if (pathParts[2] === 'upload-image' && method === 'POST') {
     // multerミドルウェアを手動で適用
     return upload.single('image')(req, res, async (err) => {
       if (err) {
         console.error('[api/emergency-flow/upload-image] Upload error:', err);
         return res.status(500).json({
           success: false,
-          error: 'ファイルのアチE�Eロードに失敗しました',
+          error: 'ファイルのアチE�Eロードに失敗しました',
           details: err.message
         });
       }
@@ -241,7 +241,7 @@ export default async function emergencyFlowHandler(req, res) {
         if (!req.file) {
           return res.status(400).json({
             success: false,
-            error: 'ファイルがアチE�EロードされてぁE��せん'
+            error: 'ファイルがアチE�EロードされてぁE��せん'
           });
         }
 
@@ -256,7 +256,7 @@ export default async function emergencyFlowHandler(req, res) {
         const fileName = `emergency_flow_${timestamp}${ext}`;
         const blobServiceClient = getBlobServiceClient();
 
-        // 開発環墁E BLOBが利用できなぁE��合�Eローカル保孁E        if (!blobServiceClient) {
+        // 開発環墁E BLOBが利用できなぁE��合�Eローカル保孁E        if (!blobServiceClient) {
           console.warn('[api/emergency-flow/upload-image] BLOB unavailable, saving locally');
           const fs = await import('fs');
           const localDir = path.join(process.cwd(), 'knowledge-base', 'images', 'emergency-flows');
@@ -316,7 +316,7 @@ export default async function emergencyFlowHandler(req, res) {
         console.error('[api/emergency-flow/upload-image] Error:', error);
         return res.status(500).json({
           success: false,
-          error: '画像�EアチE�Eロードに失敗しました',
+          error: '画像�EアチE�Eロードに失敗しました',
           details: error.message
         });
       }
@@ -367,7 +367,7 @@ export default async function emergencyFlowHandler(req, res) {
     }
   }
 
-  // /api/emergency-flow/generate - POSTフロー生�E�E�EPT統合！E  if (pathParts[2] === 'generate' && method === 'POST') {
+  // /api/emergency-flow/generate - POSTフロー生�E�E�EPT統合！E  if (pathParts[2] === 'generate' && method === 'POST') {
     try {
       const { keyword } = req.body;
       console.log('[api/emergency-flow/generate] Generate request:', keyword);
@@ -375,7 +375,7 @@ export default async function emergencyFlowHandler(req, res) {
       if (!keyword) {
         return res.status(400).json({
           success: false,
-          error: 'キーワードが忁E��でぁE
+          error: 'キーワードが忁E��でぁE
         });
       }
 
@@ -383,25 +383,25 @@ export default async function emergencyFlowHandler(req, res) {
       const flowId = `flow_${timestamp}`;
       let flowTemplate;
 
-      // OpenAI APIを使用してフロー生�E
+      // OpenAI APIを使用してフロー生�E
       if (isOpenAIAvailable) {
         console.log('[api/emergency-flow/generate] 🤁EUsing OpenAI to generate flow for keyword:', keyword);
         const openai = getOpenAIClient();
 
-        const prompt = `建設機械の応急処置フローをJSON形式で生�Eしてください、EキーワーチE ${keyword}
+        const prompt = `建設機械の応急処置フローをJSON形式で生�Eしてください、EキーワーチE ${keyword}
 
-以下�E構造でJSONを生成してください:
+以下�E構造でJSONを生成してください:
 {
-  "title": "フローのタイトル�E�E{keyword}に関連�E�E,
+  "title": "フローのタイトル�E�E{keyword}に関連�E�E,
   "description": "フローの説昁E,
   "triggerKeywords": ["${keyword}", "関連キーワーチE", "関連キーワーチE"],
   "steps": [
     {
       "id": "step1",
       "type": "step",
-      "title": "スチE��プ�Eタイトル",
+      "title": "スチE��プ�Eタイトル",
       "description": "詳細な説昁E,
-      "message": "作業老E��のメチE��ージ",
+      "message": "作業老E��のメチE��ージ",
       "nextStep": "step2"
     },
     {
@@ -409,7 +409,7 @@ export default async function emergencyFlowHandler(req, res) {
       "type": "decision",
       "title": "判断ポインチE,
       "description": "状況判断の説昁E,
-      "message": "判断メチE��ージ",
+      "message": "判断メチE��ージ",
       "options": [
         { "label": "選択肢1", "nextStep": "step3" },
         { "label": "選択肢2", "nextStep": "step4" }
@@ -419,9 +419,9 @@ export default async function emergencyFlowHandler(req, res) {
 }
 
 注意事頁E
-- stepタイチE 通常の作業スチE��プ！EextStepで次のスチE��プIDを指定！E- decisionタイチE 判断刁E���Eイント！Eptionsで選択肢を提供！E- 最終スチE��プ�EnextStepは "complete" にする
-- 安�E確認、症状確認、応急処置、報告�E流れを含める
-- 建設機械の専門用語を使用し、実践皁E��冁E��にする`;
+- stepタイチE 通常の作業スチE��プ！EextStepで次のスチE��プIDを指定！E- decisionタイチE 判断刁E���Eイント！Eptionsで選択肢を提供！E- 最終スチE��プ�EnextStepは "complete" にする
+- 安�E確認、症状確認、応急処置、報告�E流れを含める
+- 建設機械の専門用語を使用し、実践皁E��冁E��にする`;
 
         try {
           const completion = await openai.chat.completions.create({
@@ -429,7 +429,7 @@ export default async function emergencyFlowHandler(req, res) {
             messages: [
               {
                 role: 'system',
-                content: 'あなた�E建設機械の保守�EメンチE��ンスの専門家です。安�Eで実践皁E��応急処置フローを生成してください、E
+                content: 'あなた�E建設機械の保守�EメンチE��ンスの専門家です。安�Eで実践皁E��応急処置フローを生成してください、E
               },
               {
                 role: 'user',
@@ -448,7 +448,7 @@ export default async function emergencyFlowHandler(req, res) {
           flowTemplate = {
             id: flowId,
             title: parsedFlow.title || keyword,
-            description: parsedFlow.description || `キーワード、E{keyword}」から�E動生成された応急処置フロー`,
+            description: parsedFlow.description || `キーワード、E{keyword}」から�E動生成された応急処置フロー`,
             triggerKeywords: parsedFlow.triggerKeywords || [keyword],
             steps: parsedFlow.steps || [],
             createdAt: new Date().toISOString(),
@@ -463,17 +463,17 @@ export default async function emergencyFlowHandler(req, res) {
           flowTemplate = createFallbackTemplate(flowId, keyword);
         }
       } else {
-        console.warn('[api/emergency-flow/generate] ⚠�E�EOpenAI not available, using fallback template');
+        console.warn('[api/emergency-flow/generate] ⚠�E�EOpenAI not available, using fallback template');
         flowTemplate = createFallbackTemplate(flowId, keyword);
       }
 
-      // 🔧 生�Eしたフローを�E動的にBLOBに保孁E      const blobServiceClient = getBlobServiceClient();
+      // 🔧 生�Eしたフローを�E動的にBLOBに保孁E      const blobServiceClient = getBlobServiceClient();
       
       if (blobServiceClient) {
         try {
           const containerClient = blobServiceClient.getContainerClient(containerName);
           
-          // コンチE��が存在するか確認し、なければ作�E
+          // コンチE��が存在するか確認し、なければ作�E
           const containerExists = await containerClient.exists();
           if (!containerExists) {
             console.log('[api/emergency-flow/generate] Creating container:', containerName);
@@ -513,7 +513,7 @@ export default async function emergencyFlowHandler(req, res) {
         } catch (blobError) {
           console.error('[api/emergency-flow/generate] ❁EBLOB save failed:', blobError);
           console.error('[api/emergency-flow/generate] Error details:', blobError.stack);
-          // BLOB保存に失敗してもフローチE�Eタは返す
+          // BLOB保存に失敗してもフローチE�Eタは返す
           return res.json({
             success: true,
             data: flowTemplate,
@@ -524,7 +524,7 @@ export default async function emergencyFlowHandler(req, res) {
           });
         }
       } else {
-        console.warn('[api/emergency-flow/generate] ⚠�E�EBLOB client not available');
+        console.warn('[api/emergency-flow/generate] ⚠�E�EBLOB client not available');
         return res.json({
           success: true,
           data: flowTemplate,
@@ -541,7 +541,7 @@ export default async function emergencyFlowHandler(req, res) {
     }
   }
 
-  // /api/emergency-flow/:id - PUT更新�E�編雁E���E差刁E��書き！E  if (pathParts[2] && method === 'PUT') {
+  // /api/emergency-flow/:id - PUT更新�E�編雁E���E差刁E��書き！E  if (pathParts[2] && method === 'PUT') {
     try {
       const flowId = pathParts[2].replace('.json', '');
       const fileName = flowId.endsWith('.json') ? flowId : `${flowId}.json`;
@@ -559,7 +559,7 @@ export default async function emergencyFlowHandler(req, res) {
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
       
-      // 既存�EBLOBを探ぁE      const resolved = await resolveBlobClient(containerClient, fileName);
+      // 既存�EBLOBを探ぁE      const resolved = await resolveBlobClient(containerClient, fileName);
       
       if (!resolved) {
         return res.status(404).json({
@@ -582,7 +582,7 @@ export default async function emergencyFlowHandler(req, res) {
 
       const content = JSON.stringify(updatedFlowData, null, 2);
 
-      // 差刁E��上書き保存（既存データを完�Eに置き換え！E      const blockBlobClient = containerClient.getBlockBlobClient(resolved.blobName);
+      // 差刁E��上書き保存（既存データを完�Eに置き換え！E      const blockBlobClient = containerClient.getBlockBlobClient(resolved.blobName);
       await blockBlobClient.upload(content, content.length, {
         blobHTTPHeaders: { blobContentType: 'application/json' },
         metadata: {
@@ -644,7 +644,7 @@ export default async function emergencyFlowHandler(req, res) {
           const buffer = Buffer.concat(chunks);
           const jsonData = JSON.parse(buffer.toString('utf-8'));
           
-          // steps配�Eから画像を抽出
+          // steps配�Eから画像を抽出
           if (Array.isArray(jsonData.steps)) {
             jsonData.steps.forEach(step => {
               if (step.images && Array.isArray(step.images)) {
@@ -705,28 +705,28 @@ export default async function emergencyFlowHandler(req, res) {
   });
 }
 
-// フォールバックチE��プレート生成関数
+// フォールバックチE��プレート生成関数
 function createFallbackTemplate(flowId, keyword) {
   return {
     id: flowId,
     title: keyword,
-    description: `キーワード、E{keyword}」から�E動生成された応急処置フロー`,
+    description: `キーワード、E{keyword}」から�E動生成された応急処置フロー`,
     triggerKeywords: [keyword],
     steps: [
       {
         id: 'step1',
         type: 'step',
-        title: '安�E確誁E,
-        description: '作業エリアの安�Eを確認し、忁E��な保護具を着用してください、E,
-        message: '作業エリアの安�Eを確認し、忁E��な保護具を着用してください、E,
+        title: '安�E確誁E,
+        description: '作業エリアの安�Eを確認し、忁E��な保護具を着用してください、E,
+        message: '作業エリアの安�Eを確認し、忁E��な保護具を着用してください、E,
         nextStep: 'step2'
       },
       {
         id: 'step2',
         type: 'step',
-        title: '痁E��の確誁E,
-        description: `${keyword}の痁E��を詳しく確認してください。`,
-        message: `${keyword}の痁E��を詳しく確認してください。`,
+        title: '痁E��の確誁E,
+        description: `${keyword}の痁E��を詳しく確認してください。`,
+        message: `${keyword}の痁E��を詳しく確認してください。`,
         nextStep: 'step3'
       },
       {
@@ -738,48 +738,48 @@ function createFallbackTemplate(flowId, keyword) {
         options: [
           { label: '軽微な問顁E, nextStep: 'step4' },
           { label: '深刻な問顁E, nextStep: 'step5' },
-          { label: '緊急対応忁E��E, nextStep: 'step6' },
-          { label: '不�E', nextStep: 'step7' }
+          { label: '緊急対応忁E��E, nextStep: 'step6' },
+          { label: '不�E', nextStep: 'step7' }
         ]
       },
       {
         id: 'step4',
         type: 'step',
         title: '応急処置',
-        description: '基本皁E��点検と調整を行ってください、E,
-        message: '基本皁E��点検と調整を行ってください、E,
+        description: '基本皁E��点検と調整を行ってください、E,
+        message: '基本皁E��点検と調整を行ってください、E,
         nextStep: 'complete'
       },
       {
         id: 'step5',
         type: 'step',
         title: '詳細点椁E,
-        description: '詳細な点検を実施し、問題箁E��を特定してください、E,
-        message: '詳細な点検を実施し、問題箁E��を特定してください、E,
+        description: '詳細な点検を実施し、問題箁E��を特定してください、E,
+        message: '詳細な点検を実施し、問題箁E��を特定してください、E,
         nextStep: 'step8'
       },
       {
         id: 'step6',
         type: 'step',
         title: '緊急対忁E,
-        description: '直ちに専門技術老E��連絡し、指示を仰ぁE��ください、E,
-        message: '直ちに専門技術老E��連絡し、指示を仰ぁE��ください、E,
+        description: '直ちに専門技術老E��連絡し、指示を仰ぁE��ください、E,
+        message: '直ちに専門技術老E��連絡し、指示を仰ぁE��ください、E,
         nextStep: 'complete'
       },
       {
         id: 'step7',
         type: 'step',
         title: '専門家への相諁E,
-        description: '判断が困難な場合�E、専門技術老E��連絡してください、E,
-        message: '判断が困難な場合�E、専門技術老E��連絡してください、E,
+        description: '判断が困難な場合�E、専門技術老E��連絡してください、E,
+        message: '判断が困難な場合�E、専門技術老E��連絡してください、E,
         nextStep: 'complete'
       },
       {
         id: 'step8',
         type: 'step',
         title: '報呁E,
-        description: '確認した�E容を記録し、E��係老E��報告してください、E,
-        message: '確認した�E容を記録し、E��係老E��報告してください、E,
+        description: '確認した�E容を記録し、E��係老E��報告してください、E,
+        message: '確認した�E容を記録し、E��係老E��報告してください、E,
         nextStep: 'complete'
       }
     ],
@@ -789,7 +789,9 @@ function createFallbackTemplate(flowId, keyword) {
   };
 }
 
-export const methods = ['get', 'post', 'delete', 'put'];
+export const methods = ['get', 'post', 'put', 'delete'];
+    try {
+      const flowId = pathParts[2].replace('.json', '');
       const fileName = flowId.endsWith('.json') ? flowId : `${flowId}.json`;
       const flowData = req.body;
 
@@ -805,7 +807,7 @@ export const methods = ['get', 'post', 'delete', 'put'];
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
       
-      // 既存�EBLOBを探ぁE      const resolved = await resolveBlobClient(containerClient, fileName);
+      // 既存�EBLOBを探ぁE      const resolved = await resolveBlobClient(containerClient, fileName);
       
       if (!resolved) {
         return res.status(404).json({
@@ -813,6 +815,3 @@ export const methods = ['get', 'post', 'delete', 'put'];
           error: 'フローが見つかりません'
         });
       }
-
-      // updatedAtを更新
-      const updatedFlowData = {
