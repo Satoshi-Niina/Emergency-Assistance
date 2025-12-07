@@ -151,16 +151,39 @@ export default function MessageBubble({
     }
   };
 
+  // 画像URLを完全URLに変換（本番環境対応）
+  const normalizeImageUrl = (url: string): string => {
+    if (!url) return url;
+    
+    // 既に完全URLの場合はそのまま
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // data:URLの場合はそのまま
+    if (url.startsWith('data:')) {
+      return url;
+    }
+    
+    // ベースURLを取得
+    let baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+    baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
+    
+    // 相対URLを完全URLに変換
+    const normalizedPath = url.startsWith('/') ? url : `/${url}`;
+    return `${baseUrl}${normalizedPath}`;
+  };
+
   // プレビュー表示用の共通イベント発火関数
   const handleImagePreview = (mediaUrl: string) => {
     // 全スライドデータをメディア配列から作成
-    const allMediaUrls = message.media?.map(m => m.url) || [];
+    const allMediaUrls = message.media?.map(m => normalizeImageUrl(m.url)) || [];
 
     // イベントを発火して画像プレビューモーダルを表示
     window.dispatchEvent(
       new CustomEvent('preview-image', {
         detail: {
-          url: mediaUrl,
+          url: normalizeImageUrl(mediaUrl),
           all_slides: allMediaUrls.length > 1 ? allMediaUrls : undefined,
           title: '応急処置ガイド',
           content: message.content,
@@ -286,12 +309,14 @@ export default function MessageBubble({
               message.media &&
               message.media.length > 0 && (
                 <>
-                  {message.media.map((media, index) => (
+                  {message.media.map((media, index) => {
+                    const imageUrl = normalizeImageUrl(media.url);
+                    return (
                     <div key={`${message.id}-media-${index}`} className='mt-2'>
                       {media.type === 'image' && (
                         <div className='relative'>
                           <img
-                            src={media.url}
+                            src={imageUrl}
                             alt='添付画像'
                             className='rounded-lg w-full cursor-pointer border border-blue-200 shadow-md'
                             style={{
@@ -303,9 +328,11 @@ export default function MessageBubble({
                             }}
                             onClick={() => handleImagePreview(media.url)}
                             onLoad={e => {
-                              console.log('画像読み込み成功:', {
+                              console.log('✅ 画像読み込み成功:', {
                                 messageId: message.id,
                                 mediaIndex: index,
+                                originalUrl: media.url,
+                                normalizedUrl: imageUrl,
                                 width: (e.target as HTMLImageElement)
                                   .naturalWidth,
                                 height: (e.target as HTMLImageElement)
@@ -319,7 +346,8 @@ export default function MessageBubble({
                               console.error('🖼️ 画像読み込みエラー:', {
                                 messageId: message.id,
                                 mediaIndex: index,
-                                fullUrl: media.url,
+                                originalUrl: media.url,
+                                normalizedUrl: imageUrl,
                                 urlLength: media.url?.length,
                                 fileName: media.fileName,
                                 isBase64: media.url?.startsWith('data:'),
@@ -345,7 +373,7 @@ export default function MessageBubble({
                               }
                               
                               errorDiv.innerHTML =
-                                `<div class="text-center"><div class="text-red-500 text-sm">${errorMessage}</div><div class="text-xs text-gray-500 mt-1">URL: ${(media.url || '').substring(0, 50)}...</div></div>`;
+                                `<div class="text-center"><div class="text-red-500 text-sm">${errorMessage}</div><div class="text-xs text-gray-500 mt-1">URL: ${imageUrl.substring(0, 50)}...</div></div>`;
                               img.parentNode?.insertBefore(errorDiv, img);
                             }}
                           />
@@ -433,7 +461,8 @@ export default function MessageBubble({
                         </div>
                       )}
                     </div>
-                  ))}
+                  );
+                  })}
                 </>
               )}
           </div>

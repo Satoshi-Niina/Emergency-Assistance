@@ -1568,13 +1568,31 @@ export default function HistoryPage() {
                                   {displayImages.slice(0, 3).map((image: any, idx: number) => {
                                     // 画像データの正規化
                                     const normalizeImageUrl = (img: any): { url: string; fileName: string } | null => {
+                                      // 完全URL構築ヘルパー
+                                      const buildFullImageUrl = (path: string): string => {
+                                        if (path.startsWith('http://') || path.startsWith('https://')) {
+                                          return path; // 既に完全URL
+                                        }
+                                        
+                                        // ベースURLを取得（末尾の/apiを除去）
+                                        let baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+                                        baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
+                                        
+                                        // パスを正規化
+                                        const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+                                        const finalPath = normalizedPath.startsWith('/api') ? normalizedPath : `/api${normalizedPath}`;
+                                        
+                                        return `${baseUrl}${finalPath}`;
+                                      };
+
                                       // 文字列の場合
                                       if (typeof img === 'string') {
                                         const fileName = img.split('/').pop()?.split('\\').pop() || img;
+                                        const relativePath = img.startsWith('/api/') || img.startsWith('http') 
+                                          ? img 
+                                          : `/api/images/chat-exports/${fileName}`;
                                         return {
-                                          url: img.startsWith('/api/') || img.startsWith('http') 
-                                            ? img 
-                                            : `/api/images/chat-exports/${fileName}`,
+                                          url: buildFullImageUrl(relativePath),
                                           fileName
                                         };
                                       }
@@ -1584,10 +1602,11 @@ export default function HistoryPage() {
                                         // urlフィールドを優先
                                         if (img.url) {
                                           const fileName = img.fileName || img.url.split('/').pop()?.split('\\').pop() || `image_${idx}`;
+                                          const relativePath = img.url.startsWith('/api/') || img.url.startsWith('http')
+                                            ? img.url
+                                            : `/api/images/chat-exports/${fileName}`;
                                           return {
-                                            url: img.url.startsWith('/api/') || img.url.startsWith('http')
-                                              ? img.url
-                                              : `/api/images/chat-exports/${fileName}`,
+                                            url: buildFullImageUrl(relativePath),
                                             fileName
                                           };
                                         }
@@ -1595,7 +1614,7 @@ export default function HistoryPage() {
                                         if (img.fileName) {
                                           const fileName = img.fileName.split('/').pop()?.split('\\').pop() || img.fileName;
                                           return {
-                                            url: `/api/images/chat-exports/${fileName}`,
+                                            url: buildFullImageUrl(`/api/images/chat-exports/${fileName}`),
                                             fileName
                                           };
                                         }
@@ -1603,7 +1622,7 @@ export default function HistoryPage() {
                                         if (img.path) {
                                           const fileName = img.path.split('/').pop()?.split('\\').pop() || img.path;
                                           return {
-                                            url: `/api/images/chat-exports/${fileName}`,
+                                            url: buildFullImageUrl(`/api/images/chat-exports/${fileName}`),
                                             fileName
                                           };
                                         }
@@ -2102,7 +2121,7 @@ export default function HistoryPage() {
                     const getAllImages = (item: SupportHistoryItem): Array<{ url: string; fileName?: string; index: number }> => {
                       const images: Array<{ url: string; fileName?: string; index: number }> = [];
 
-                      // 画像URLを正規化する関数
+                      // 画像URLを正規化する関数（本番環境対応：完全URL化）
                       const normalizeImageUrl = (url: string): string => {
                         if (!url) return '';
                         
@@ -2121,9 +2140,12 @@ export default function HistoryPage() {
                         cleanUrl = cleanUrl.replace('/chat-exports/exports/', '/chat-exports/');
                         cleanUrl = cleanUrl.replace('/emergency-flows/exports/', '/emergency-flows/');
                         
-                        // 既に /api/images/ で始まっている場合はそのまま返す
+                        // 既に /api/images/ で始まっている場合
                         if (cleanUrl.startsWith('/api/images/')) {
-                          return cleanUrl;
+                          // 相対パスを完全URLに変換
+                          let baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+                          baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
+                          return `${baseUrl}${cleanUrl}`;
                         }
                         
                         // ファイル名のみの場合は /api/images/chat-exports/ を追加
@@ -2131,8 +2153,11 @@ export default function HistoryPage() {
                           cleanUrl = `/api/images/chat-exports/${cleanUrl}`;
                         }
                         
-                        // /api/ で始まっていない場合はそのまま返す（相対パス）
-                        return cleanUrl;
+                        // 完全URLに変換
+                        let baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+                        baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
+                        const finalPath = cleanUrl.startsWith('/api') ? cleanUrl : `/api${cleanUrl}`;
+                        return `${baseUrl}${finalPath}`;
                       };
 
                       // 1. chatData.messagesから画像を抽出（最優先）
@@ -2160,8 +2185,9 @@ export default function HistoryPage() {
                                 ? img.fileName.split('\\').pop()
                                 : img.fileName;
                             const imagePath = `/api/images/chat-exports/${actualFileName}`;
-                            images.push({ url: imagePath, fileName: actualFileName, index: images.length });
-                            console.log(`    ✅ 追加 (fileName):`, imagePath);
+                            const fullImageUrl = normalizeImageUrl(imagePath);
+                            images.push({ url: fullImageUrl, fileName: actualFileName, index: images.length });
+                            console.log(`    ✅ 追加 (fileName):`, fullImageUrl);
                           }
                         });
                       });
@@ -2187,7 +2213,8 @@ export default function HistoryPage() {
                                   ? img.fileName.split('\\').pop()
                                   : img.fileName;
                               const imagePath = `/api/images/chat-exports/${actualFileName}`;
-                              images.push({ url: imagePath, fileName: actualFileName, index: images.length });
+                              const fullImageUrl = normalizeImageUrl(imagePath);
+                              images.push({ url: fullImageUrl, fileName: actualFileName, index: images.length });
                             } else if (img.path) {
                               const imageUrl = normalizeImageUrl(img.path);
                               const actualFileName = img.path.split('/').pop();
@@ -2211,7 +2238,8 @@ export default function HistoryPage() {
                                   ? img.fileName.split('\\').pop()
                                   : img.fileName;
                               const imagePath = `/api/images/chat-exports/${actualFileName}`;
-                              images.push({ url: imagePath, fileName: img.fileName, index: images.length });
+                              const fullImageUrl = normalizeImageUrl(imagePath);
+                              images.push({ url: fullImageUrl, fileName: img.fileName, index: images.length });
                             } else if (img.url) {
                               images.push({ url: normalizeImageUrl(img.url), fileName: img.fileName, index: images.length });
                             } else if (img.path) {

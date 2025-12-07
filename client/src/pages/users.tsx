@@ -281,6 +281,7 @@ export default function UsersPage() {
       role: user.role,
       department: user.department || '',
       description: user.description || '',
+      password: '', // パスワードフィールドを追加（空文字列）
     });
     setShowEditUserDialog(true);
   };
@@ -299,7 +300,19 @@ export default function UsersPage() {
         return;
       }
 
-      const result = await userApi.put(`/users/${editUser.id}`, editUser);
+      // パスワードが空の場合は送信しない（既存のパスワードを維持）
+      const updateData = { ...editUser };
+      if (!updateData.password || updateData.password.trim() === '') {
+        delete updateData.password;
+        console.log('[users] パスワードが空のため、パスワード更新をスキップします');
+      } else {
+        console.log('[users] パスワードを更新します:', {
+          passwordLength: updateData.password.length,
+          hasSpecialChars: /[&<>"']/.test(updateData.password)
+        });
+      }
+
+      const result = await userApi.put(`/users/${editUser.id}`, updateData);
       console.log('✅ ユーザー更新成功:', result);
 
       // APIレスポンスからusers配列を取得して更新

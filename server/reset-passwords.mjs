@@ -75,9 +75,10 @@ async function main() {
     const usersToReset = [
       { username: 'admin', password: 'admin123' },
       { username: 'employee', password: 'employee123' },
-      { username: 'Kosei001', password: 'Kosei001' },
+      { username: 'Kosei001', password: '12345678' },
       { username: 'takabeni1', password: 'takabeni1' },
-      { username: 'takabeni2', password: 'takabeni2' }
+      { username: 'takabeni2', password: 'takabeni2' },
+      { username: 'niina', password: 'niina' }
     ];
     
     console.log('📋 以下のユーザーのパスワードをリセットします:');
