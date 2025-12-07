@@ -181,32 +181,6 @@ jobs:
           
           echo "✅ ZIP deployment mode configured"
 
-      - name: Configure Environment Variables
-        run: |
-          echo "⚙️ Configuring environment variables..."
-          
-          az webapp config appsettings set \
-            --name emergency-assistantapp \
-            --resource-group rg-Emergencyassistant-app \
-            --settings \
-              NODE_ENV=production \
-              PORT=8080 \
-              DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-              SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
-              AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
-              AZURE_STORAGE_CONTAINER_NAME="${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}" \
-              AZURE_STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
-              FRONTEND_URL="https://happy-bush-083160b00.3.azurestaticapps.net" \
-              STATIC_WEB_APP_URL="https://happy-bush-083160b00.3.azurestaticapps.net" \
-              OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-              HEALTH_TOKEN="${{ secrets.HEALTH_TOKEN }}" \
-              AUTO_INGEST_CHAT_EXPORTS=true \
-              BLOB_PREFIX="knowledge-base/" \
-              SCM_DO_BUILD_DURING_DEPLOYMENT=false \
-              WEBSITE_NODE_DEFAULT_VERSION="~20"
-          
-          echo "✅ Environment variables configured"
-
       - name: Stop App Service (force clean deployment)
         run: |
           echo "🛑 Stopping app service for clean deployment..."
@@ -392,14 +366,15 @@ jobs:
           
           echo "::add-mask::$PASSWORD"
           
-          # Deploy using ZipDeploy API
-          echo "📤 Uploading ZIP (this may take 1-2 minutes)..."
+          # Deploy using ZipDeploy API with increased timeout
+          echo "📤 Uploading ZIP (this may take 2-5 minutes)..."
           HTTP_CODE=$(curl -X POST \
-            "https://emergency-assistantapp.scm.azurewebsites.net/api/zipdeploy" \
+            "https://emergency-assistantapp.scm.azurewebsites.net/api/zipdeploy?isAsync=true" \
             -u "$USERNAME:$PASSWORD" \
             -H "Content-Type: application/zip" \
             --data-binary @deploy.zip \
-            --max-time 600 \
+            --max-time 900 \
+            --connect-timeout 120 \
             -w "%{http_code}" \
             -s \
             -o deploy_response.txt)
@@ -412,7 +387,36 @@ jobs:
           echo "Duration: ${DEPLOY_DURATION}s"
           
           if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "202" ]; then
-            echo "✅ Deployment upload successful"
+            echo "✅ Deployment upload successful (async deployment started)"
+            echo ""
+            echo "⏳ Waiting for async deployment to complete (60s)..."
+            sleep 60
+          elif [ "$HTTP_CODE" = "503" ] || [ "$HTTP_CODE" = "502" ]; then
+            echo "⚠️  Service temporarily unavailable ($HTTP_CODE)"
+            echo "Retrying after 30 seconds..."
+            sleep 30
+            
+            echo "🔄 Retry attempt..."
+            HTTP_CODE=$(curl -X POST \
+              "https://emergency-assistantapp.scm.azurewebsites.net/api/zipdeploy?isAsync=true" \
+              -u "$USERNAME:$PASSWORD" \
+              -H "Content-Type: application/zip" \
+              --data-binary @deploy.zip \
+              --max-time 900 \
+              --connect-timeout 120 \
+              -w "%{http_code}" \
+              -s \
+              -o deploy_response_retry.txt)
+            
+            if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "202" ]; then
+              echo "✅ Deployment successful on retry"
+              sleep 60
+            else
+              echo "❌ Deployment failed after retry"
+              echo "Response:"
+              cat deploy_response_retry.txt
+              exit 1
+            fi
           else
             echo "❌ Deployment failed"
             echo "Response:"
@@ -485,6 +489,31 @@ jobs:
           else
             echo "⚠️  node_modules count is low. ZIP upload might have been incomplete."
           fi
+
+      - name: Configure Environment Variables
+        run: |
+          echo "⚙️ Configuring environment variables..."
+          
+          az webapp config appsettings set \
+            --name emergency-assistantapp \
+            --resource-group rg-Emergencyassistant-app \
+            --settings \
+              NODE_ENV=production \
+              PORT=8080 \
+              DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+              SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
+              AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
+              AZURE_STORAGE_CONTAINER_NAME="${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}" \
+              AZURE_STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
+              FRONTEND_URL="https://happy-bush-083160b00.3.azurestaticapps.net" \
+              STATIC_WEB_APP_URL="https://happy-bush-083160b00.3.azurestaticapps.net" \
+              OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+              AUTO_INGEST_CHAT_EXPORTS=true \
+              BLOB_PREFIX="knowledge-base/" \
+              SCM_DO_BUILD_DURING_DEPLOYMENT=false \
+              WEBSITE_NODE_DEFAULT_VERSION="~20"
+          
+          echo "✅ Environment variables configured"
 
       - name: Clear all Azure caches before restart
         run: |
