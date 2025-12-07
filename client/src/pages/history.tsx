@@ -601,13 +601,27 @@ export default function HistoryPage() {
       if (!response.ok) {
         const errorText = await response.text();
         let errorMessage = `履歴の更新に失敗しました (${response.status})`;
+        let errorDetails = '';
         try {
           const errorData = JSON.parse(errorText);
           errorMessage = errorData.error || errorMessage;
+          errorDetails = errorData.details || '';
+          console.error('❌ サーバーエラー詳細:', {
+            status: response.status,
+            error: errorData.error,
+            details: errorData.details,
+            updatePayload: updatePayload
+          });
         } catch (e) {
-          errorMessage += ': ' + errorText;
+          errorMessage += ': ' + errorText.substring(0, 200);
+          errorDetails = errorText;
+          console.error('❌ サーバーエラー（JSONパース失敗）:', {
+            status: response.status,
+            errorText: errorText.substring(0, 500),
+            updatePayload: updatePayload
+          });
         }
-        alert(errorMessage);
+        alert(errorMessage + (errorDetails ? '\n詳細: ' + errorDetails.substring(0, 200) : ''));
         return;
       }
 
@@ -2052,8 +2066,10 @@ export default function HistoryPage() {
                           formData.append('image', file);
 
                           try {
-                            const response = await fetch('/api/history/upload-image', {
+                            const { buildApiUrl } = await import('../lib/api');
+                            const response = await fetch(buildApiUrl('/history/upload-image'), {
                               method: 'POST',
+                              credentials: 'include',
                               body: formData,
                             });
 

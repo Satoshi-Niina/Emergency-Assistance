@@ -8,6 +8,15 @@ import { getBlobServiceClient, containerName } from '../../infra/blob.mjs';
 export default async function imagesHandler(req, res) {
   const method = req.method;
   
+  // OPTIONS preflight対応
+  if (method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+    return res.status(200).end();
+  }
+  
   // GETリクエスト: 画像取得
   if (method === 'GET') {
     // パスから category と fileName を抽出

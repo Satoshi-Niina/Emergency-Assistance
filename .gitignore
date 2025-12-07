@@ -22,6 +22,12 @@ final-deploy.txt
 force-deploy.txt
 frontend-trigger.txt
 trigger.txt
+
+# セキュリティ: パスワードが含まれる開発用スクリプト（ローカルのみ使用）
+server/reset-passwords.mjs
+server/find-password.mjs
+server/test-login.mjs
+server/check-user-passwords.mjs
 # Environment variables (Local・Docker use)
 # Exclude ALL .env files by default
 # Exclude ALL .env files by default

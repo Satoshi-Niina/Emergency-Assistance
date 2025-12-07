@@ -204,6 +204,98 @@ export default function SettingsPage() {
     }
   };
 
+  const handleCleanupOrphanedImages = async () => {
+    try {
+      // まずドライランで孤立画像の数を確認
+      toast({
+        title: 'スキャン中',
+        description: '孤立画像をスキャンしています...',
+      });
+
+      const dryRunResponse = await fetch(
+        `${API_BASE_URL}/history/cleanup-orphaned-images`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ dryRun: true }),
+        }
+      );
+
+      if (!dryRunResponse.ok) {
+        const errorData = await dryRunResponse.json();
+        throw new Error(errorData.error || 'スキャンに失敗しました');
+      }
+
+      const dryRunResult = await dryRunResponse.json();
+      const orphanedCount = dryRunResult.stats.orphanedImages;
+      const orphanedSizeMB = dryRunResult.stats.deletedSizeMB;
+
+      if (orphanedCount === 0) {
+        toast({
+          title: '孤立画像なし',
+          description: '削除対象の孤立画像はありません。',
+        });
+        return;
+      }
+
+      // 確認ダイアログ
+      const confirmed = window.confirm(
+        `${orphanedCount}個の孤立画像 (約${orphanedSizeMB} MB) が見つかりました。\n\n` +
+        '削除すると元に戻せません。削除しますか？'
+      );
+
+      if (!confirmed) {
+        toast({
+          title: 'キャンセル',
+          description: 'クリーンアップをキャンセルしました。',
+        });
+        return;
+      }
+
+      // 実際に削除
+      toast({
+        title: 'クリーンアップ開始',
+        description: '孤立画像を削除しています...',
+      });
+
+      const response = await fetch(
+        `${API_BASE_URL}/history/cleanup-orphaned-images`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ dryRun: false }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'クリーンアップに失敗しました');
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        const deletedCount = result.stats.deletedCount;
+        const deletedSizeMB = result.stats.deletedSizeMB;
+        toast({
+          title: 'クリーンアップ完了',
+          description: `${deletedCount}個の孤立画像を削除しました (${deletedSizeMB} MB)`,
+        });
+      } else {
+        throw new Error(result.error || 'クリーンアップに失敗しました');
+      }
+    } catch (error) {
+      console.error('孤立画像クリーンアップエラー:', error);
+      toast({
+        title: 'エラー',
+        description: error instanceof Error ? error.message : 'クリーンアップに失敗しました',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleBackupLogs = async () => {
     try {
       toast({
@@ -440,6 +532,30 @@ export default function SettingsPage() {
                     >
                       <FileType className='mr-2 h-4 w-4' />
                       ログファイルバックアップ
+                    </Button>
+                  </div>
+
+                  {/* 孤立画像クリーンアップ */}
+                  <div className='bg-purple-50 border border-purple-200 rounded-lg p-3'>
+                    <div className='flex items-start justify-between mb-2'>
+                      <div className='flex-1'>
+                        <div className='flex items-center mb-1'>
+                          <Info className='h-4 w-4 text-purple-600 mr-2' />
+                          <p className='font-medium text-purple-900 text-sm'>孤立画像ファイルとは？</p>
+                        </div>
+                        <p className='text-xs text-purple-700 mb-2'>
+                          チャットで送信したがエクスポートしなかった画像や、削除された履歴に紐づいていた画像です。
+                          これらの画像はJSONファイルから参照されておらず、ストレージを圧迫します。
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={handleCleanupOrphanedImages}
+                      variant='destructive'
+                      className='w-full'
+                    >
+                      <FileX className='mr-2 h-4 w-4' />
+                      孤立画像を削除
                     </Button>
                   </div>
                 </div>

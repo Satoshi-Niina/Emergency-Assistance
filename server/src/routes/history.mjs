@@ -267,6 +267,11 @@ router.get('/machine-data', async (req, res) => {
 });
 
 // Upload image
+// CORS preflight対応
+router.options('/upload-image', (req, res) => {
+  res.status(200).end();
+});
+
 router.post('/upload-image', upload.single('image'), async (req, res) => {
   const maxRetries = 3;
   let lastError = null;
@@ -541,7 +546,17 @@ async function handleUpdateHistory(req, res, rawId) {
     const targetBlobName = found?.blobName || `knowledge-base/exports/${normalizedId}.json`;
     const targetFileName = found?.fileName || `${normalizedId}.json`;
 
-    const originalData = (await downloadJson(containerClient, targetBlobName)) || {};
+    console.log('[history/update] Target:', { normalizedId, targetBlobName, found: !!found });
+
+    let originalData = {};
+    try {
+      originalData = (await downloadJson(containerClient, targetBlobName)) || {};
+      console.log('[history/update] Original data loaded:', Object.keys(originalData));
+    } catch (downloadError) {
+      console.warn('[history/update] Failed to load original data:', downloadError.message);
+      // 新規作成として扱う
+      originalData = {};
+    }
 
     const updatePayload = req.body?.updatedData || req.body || {};
     const merged = mergeData(originalData, {
@@ -576,8 +591,17 @@ async function handleUpdateHistory(req, res, rawId) {
       updatedFile: targetFileName
     });
   } catch (error) {
-    console.error('[history/update] Error:', error);
-    return res.status(500).json({ success: false, error: error.message });
+    console.error('[history/update] Error:', {
+      message: error.message,
+      stack: error.stack,
+      normalizedId,
+      updatePayload: req.body?.updatedData || req.body
+    });
+    return res.status(500).json({ 
+      success: false, 
+      error: error.message,
+      details: error.stack?.split('\n').slice(0, 3).join('\n')
+    });
   }
 }
 
@@ -649,6 +673,120 @@ router.delete('/:id', async (req, res) => {
   } catch (error) {
     console.error('[history/delete] Error:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 孤立画像ファイルのクリーンアップ
+router.post('/cleanup-orphaned-images', async (req, res) => {
+  try {
+    console.log('[history/cleanup-orphaned-images] Starting cleanup...');
+    
+    const blobServiceClient = getBlobServiceClient();
+    if (!blobServiceClient) {
+      return res.status(503).json({ success: false, error: 'BLOB storage not available' });
+    }
+
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    
+    // 1. すべてのJSONファイルから参照されている画像を収集
+    const referencedImages = new Set();
+    const jsonPrefix = 'knowledge-base/exports/';
+    
+    console.log('[cleanup] Step 1: Collecting referenced images from JSON files...');
+    for await (const blob of containerClient.listBlobsFlat({ prefix: jsonPrefix })) {
+      if (!blob.name.endsWith('.json')) continue;
+      
+      try {
+        const jsonData = await downloadJson(containerClient, blob.name);
+        const metadata = extractMetadataFromJson(jsonData, blob.name);
+        const images = metadata.images || [];
+        
+        images.forEach(img => {
+          const fileName = img.fileName || img.url?.split('/').pop();
+          if (fileName && !fileName.startsWith('http')) {
+            referencedImages.add(fileName);
+          }
+        });
+      } catch (err) {
+        console.warn(`[cleanup] Failed to parse JSON: ${blob.name}`, err.message);
+      }
+    }
+    
+    console.log(`[cleanup] Found ${referencedImages.size} referenced images`);
+    
+    // 2. chat-exports内のすべての画像ファイルを取得
+    const imagePrefix = 'knowledge-base/images/chat-exports/';
+    const allImages = [];
+    
+    console.log('[cleanup] Step 2: Listing all images in chat-exports...');
+    for await (const blob of containerClient.listBlobsFlat({ prefix: imagePrefix })) {
+      const fileName = blob.name.split('/').pop();
+      if (fileName) {
+        allImages.push({
+          fileName,
+          blobName: blob.name,
+          size: blob.properties.contentLength || 0,
+          lastModified: blob.properties.lastModified
+        });
+      }
+    }
+    
+    console.log(`[cleanup] Found ${allImages.length} total images`);
+    
+    // 3. 孤立画像（参照されていない画像）を特定
+    const orphanedImages = allImages.filter(img => !referencedImages.has(img.fileName));
+    
+    console.log(`[cleanup] Found ${orphanedImages.length} orphaned images`);
+    
+    // 4. 孤立画像を削除（dryRun モードに対応）
+    const dryRun = req.body?.dryRun === true;
+    let deletedCount = 0;
+    let deletedSize = 0;
+    const deletedList = [];
+    
+    if (!dryRun) {
+      console.log('[cleanup] Step 3: Deleting orphaned images...');
+      for (const img of orphanedImages) {
+        try {
+          const imageBlob = containerClient.getBlobClient(img.blobName);
+          await imageBlob.delete();
+          deletedCount++;
+          deletedSize += img.size;
+          deletedList.push(img.fileName);
+          console.log(`[cleanup] Deleted: ${img.fileName} (${img.size} bytes)`);
+        } catch (delErr) {
+          console.error(`[cleanup] Failed to delete: ${img.fileName}`, delErr.message);
+        }
+      }
+    }
+    
+    return res.json({
+      success: true,
+      message: dryRun ? '孤立画像の検出が完了しました' : '孤立画像のクリーンアップが完了しました',
+      dryRun,
+      stats: {
+        totalImages: allImages.length,
+        referencedImages: referencedImages.size,
+        orphanedImages: orphanedImages.length,
+        deletedCount: dryRun ? 0 : deletedCount,
+        deletedSize: dryRun ? 0 : deletedSize,
+        deletedSizeMB: dryRun ? 0 : (deletedSize / 1024 / 1024).toFixed(2)
+      },
+      orphanedList: orphanedImages.map(img => ({
+        fileName: img.fileName,
+        size: img.size,
+        lastModified: img.lastModified?.toISOString()
+      })),
+      deletedList: dryRun ? [] : deletedList
+    });
+    
+  } catch (error) {
+    console.error('[history/cleanup-orphaned-images] Error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: error.message,
+      details: error.stack
+    });
   }
 });
 
