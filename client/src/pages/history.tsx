@@ -2286,7 +2286,7 @@ export default function HistoryPage() {
                       console.log(`📊 編集画面: 最終画像数=${images.length}`);
                       console.log('📋 画像一覧:', images.map(img => img.fileName || img.url.split('/').pop()));
 
-                      return uniqueImages;
+                      return images;
                     };
 
                     const imageList = getAllImages(editingItem);
