@@ -391,7 +391,7 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
 
       await Promise.race([uploadPromise, timeoutPromise]);
 
-      console.log(`[history/upload-image] ✅ BLOB Upload SUCCESS:`, {
+      console.log(`[history/upload-image] ✅ BLOB Upload command completed:`, {
         container: containerName,
         blobName: blobName,
         fullPath: `${containerName}/${blobName}`,
@@ -400,12 +400,20 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
         mimetype: req.file.mimetype
       });
 
-      // アップロード後に存在確認
+      // アップロード後に存在確認（必須）
       const uploadedBlobExists = await blockBlobClient.exists();
       console.log(`[history/upload-image] Upload verification:`, {
         exists: uploadedBlobExists,
-        blobUrl: blockBlobClient.url
+        blobUrl: blockBlobClient.url,
+        verified: uploadedBlobExists ? '✅' : '❌'
       });
+
+      // 🔧 重要: BLOBに存在しない場合はエラー
+      if (!uploadedBlobExists) {
+        throw new Error(`BLOB upload failed: File does not exist after upload - ${blobName}`);
+      }
+
+      console.log(`[history/upload-image] ✅✅ BLOB Upload VERIFIED - File exists in storage`);
 
       const imageUrl = `/api/images/chat-exports/${fileName}`;
 
@@ -415,7 +423,8 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
         fileName: fileName,
         blobName: blobName,
         size: req.file.size,
-        storage: 'blob'
+        storage: 'blob',
+        verified: true
       });
     } catch (error) {
       lastError = error;

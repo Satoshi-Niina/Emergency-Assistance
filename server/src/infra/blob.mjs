@@ -8,31 +8,45 @@ const require = createRequire(import.meta.url);
 export const containerName = AZURE_STORAGE_CONTAINER_NAME;
 
 export const getBlobServiceClient = () => {
+  console.log('[Blob] Initializing BLOB service client...', {
+    hasConnectionString: !!(AZURE_STORAGE_CONNECTION_STRING && AZURE_STORAGE_CONNECTION_STRING.trim()),
+    hasAccountName: !!(AZURE_STORAGE_ACCOUNT_NAME && AZURE_STORAGE_ACCOUNT_NAME.trim()),
+    containerName: AZURE_STORAGE_CONTAINER_NAME
+  });
+
   if (AZURE_STORAGE_CONNECTION_STRING && AZURE_STORAGE_CONNECTION_STRING.trim()) {
     try {
-      return BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING.trim());
+      console.log('[Blob] Using connection string authentication');
+      const client = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING.trim());
+      console.log('[Blob] ✅ BLOB service client created successfully');
+      return client;
     } catch (error) {
-      console.error('[Blob] Client initialization failed:', error);
+      console.error('[Blob] ❌ Client initialization failed:', error.message);
+      console.error('[Blob] Error details:', error);
       return null;
     }
   }
 
   if (AZURE_STORAGE_ACCOUNT_NAME && AZURE_STORAGE_ACCOUNT_NAME.trim()) {
-    console.log('[Blob] Trying Managed Identity...');
+    console.log('[Blob] Trying Managed Identity authentication...');
     try {
       const { DefaultAzureCredential } = require('@azure/identity');
       const credential = new DefaultAzureCredential();
-      return new BlobServiceClient(
+      const client = new BlobServiceClient(
         `https://${AZURE_STORAGE_ACCOUNT_NAME.trim()}.blob.core.windows.net`,
         credential
       );
+      console.log('[Blob] ✅ BLOB service client created with Managed Identity');
+      return client;
     } catch (error) {
-      console.error('[Blob] Managed Identity initialization failed:', error);
+      console.error('[Blob] ❌ Managed Identity initialization failed:', error.message);
+      console.error('[Blob] Error details:', error);
       return null;
     }
   }
 
-  console.warn('[Blob] No connection string or account name provided.');
+  console.error('[Blob] ❌ No connection string or account name provided.');
+  console.error('[Blob] Please set AZURE_STORAGE_CONNECTION_STRING or AZURE_STORAGE_ACCOUNT_NAME');
   return null;
 };
 
