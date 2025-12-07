@@ -3,6 +3,7 @@
 
 import fs from 'fs';
 import { getBlobServiceClient, containerName, norm, upload } from '../../infra/blob.mjs';
+import { getOpenAIClient, isOpenAIAvailable } from '../../infra/openai.mjs';
 import path from 'path';
 
 // 複数パスを試して既存データのプレフィックス違いに対応
@@ -381,7 +382,7 @@ export default async function emergencyFlowHandler(req, res) {
     }
   }
 
-  // /api/emergency-flow/generate - POSTフロー生成（AI未対応のため簡易テンプレート返却）
+  // /api/emergency-flow/generate - POSTフロー生成（GPT統合）
   if (pathParts[2] === 'generate' && method === 'POST') {
     try {
       const { keyword } = req.body;
@@ -394,88 +395,96 @@ export default async function emergencyFlowHandler(req, res) {
         });
       }
 
-      // 簡易テンプレート（OpenAI統合は別途実装）
       const timestamp = Date.now();
-      const flowId = `flow_${keyword}_${timestamp}`;
-      const flowTemplate = {
-        id: flowId,
-        title: keyword,
-        description: `キーワード「${keyword}」から自動生成された応急処置フロー`,
-        triggerKeywords: [keyword],
-        steps: [
-          {
-            id: 'step1',
-            type: 'step',
-            title: '安全確認',
-            description: '作業エリアの安全を確認し、必要な保護具を着用してください。',
-            message: '作業エリアの安全を確認し、必要な保護具を着用してください。',
-            nextStep: 'step2'
-          },
-          {
-            id: 'step2',
-            type: 'step',
-            title: '症状の確認',
-            description: `${keyword}の症状を詳しく確認してください。`,
-            message: `${keyword}の症状を詳しく確認してください。`,
-            nextStep: 'step3'
-          },
-          {
-            id: 'step3',
-            type: 'decision',
-            title: '状況判断',
-            description: '現在の状況を選択してください。',
-            message: '現在の状況を選択してください。',
-            options: [
-              { label: '軽微な問題', nextStep: 'step4' },
-              { label: '深刻な問題', nextStep: 'step5' },
-              { label: '緊急対応必要', nextStep: 'step6' },
-              { label: '不明', nextStep: 'step7' }
-            ]
-          },
-          {
-            id: 'step4',
-            type: 'step',
-            title: '応急処置',
-            description: '基本的な点検と調整を行ってください。',
-            message: '基本的な点検と調整を行ってください。',
-            nextStep: 'complete'
-          },
-          {
-            id: 'step5',
-            type: 'step',
-            title: '詳細点検',
-            description: '詳細な点検を実施し、問題箇所を特定してください。',
-            message: '詳細な点検を実施し、問題箇所を特定してください。',
-            nextStep: 'step8'
-          },
-          {
-            id: 'step6',
-            type: 'step',
-            title: '緊急対応',
-            description: '直ちに専門技術者に連絡し、指示を仰いでください。',
-            message: '直ちに専門技術者に連絡し、指示を仰いでください。',
-            nextStep: 'complete'
-          },
-          {
-            id: 'step7',
-            type: 'step',
-            title: '専門家への相談',
-            description: '判断が困難な場合は、専門技術者に連絡してください。',
-            message: '判断が困難な場合は、専門技術者に連絡してください。',
-            nextStep: 'complete'
-          },
-          {
-            id: 'step8',
-            type: 'step',
-            title: '報告',
-            description: '確認した内容を記録し、関係者に報告してください。',
-            message: '確認した内容を記録し、関係者に報告してください。',
-            nextStep: 'complete'
-          }
-        ],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
+      const flowId = `flow_${timestamp}`;
+      let flowTemplate;
+
+      // OpenAI APIを使用してフロー生成
+      if (isOpenAIAvailable) {
+        console.log('[api/emergency-flow/generate] 🤖 Using OpenAI to generate flow for keyword:', keyword);
+        const openai = getOpenAIClient();
+
+        const prompt = `建設機械の応急処置フローをJSON形式で生成してください。
+キーワード: ${keyword}
+
+以下の構造でJSONを生成してください:
+{
+  "title": "フローのタイトル（${keyword}に関連）",
+  "description": "フローの説明",
+  "triggerKeywords": ["${keyword}", "関連キーワード1", "関連キーワード2"],
+  "steps": [
+    {
+      "id": "step1",
+      "type": "step",
+      "title": "ステップのタイトル",
+      "description": "詳細な説明",
+      "message": "作業者へのメッセージ",
+      "nextStep": "step2"
+    },
+    {
+      "id": "step2",
+      "type": "decision",
+      "title": "判断ポイント",
+      "description": "状況判断の説明",
+      "message": "判断メッセージ",
+      "options": [
+        { "label": "選択肢1", "nextStep": "step3" },
+        { "label": "選択肢2", "nextStep": "step4" }
+      ]
+    }
+  ]
+}
+
+注意事項:
+- stepタイプ: 通常の作業ステップ（nextStepで次のステップIDを指定）
+- decisionタイプ: 判断分岐ポイント（optionsで選択肢を提供）
+- 最終ステップのnextStepは "complete" にする
+- 安全確認、症状確認、応急処置、報告の流れを含める
+- 建設機械の専門用語を使用し、実践的な内容にする`;
+
+        try {
+          const completion = await openai.chat.completions.create({
+            model: 'gpt-4o',
+            messages: [
+              {
+                role: 'system',
+                content: 'あなたは建設機械の保守・メンテナンスの専門家です。安全で実践的な応急処置フローを生成してください。'
+              },
+              {
+                role: 'user',
+                content: prompt
+              }
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.7,
+          });
+
+          const gptResponse = completion.choices[0].message.content;
+          console.log('[api/emergency-flow/generate] ✅ GPT response received');
+          
+          const parsedFlow = JSON.parse(gptResponse);
+          
+          flowTemplate = {
+            id: flowId,
+            title: parsedFlow.title || keyword,
+            description: parsedFlow.description || `キーワード「${keyword}」から自動生成された応急処置フロー`,
+            triggerKeywords: parsedFlow.triggerKeywords || [keyword],
+            steps: parsedFlow.steps || [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            generatedBy: 'GPT-4'
+          };
+
+          console.log('[api/emergency-flow/generate] ✅ Flow generated with', flowTemplate.steps.length, 'steps');
+        } catch (gptError) {
+          console.error('[api/emergency-flow/generate] ❌ GPT generation failed:', gptError.message);
+          // GPT失敗時はフォールバック
+          flowTemplate = createFallbackTemplate(flowId, keyword);
+        }
+      } else {
+        console.warn('[api/emergency-flow/generate] ⚠️ OpenAI not available, using fallback template');
+        flowTemplate = createFallbackTemplate(flowId, keyword);
+      }
 
       // 🔧 生成したフローを自動的にBLOBに保存
       const blobServiceClient = getBlobServiceClient();
@@ -551,6 +560,259 @@ export default async function emergencyFlowHandler(req, res) {
       });
     }
   }
+
+  // /api/emergency-flow/:id - PUT更新（編集後の差分上書き）
+  if (pathParts[2] && method === 'PUT') {
+    try {
+      const flowId = pathParts[2].replace('.json', '');
+      const fileName = flowId.endsWith('.json') ? flowId : `${flowId}.json`;
+      const flowData = req.body;
+
+      console.log('[api/emergency-flow/PUT] Updating flow:', flowId);
+
+      const blobServiceClient = getBlobServiceClient();
+      if (!blobServiceClient) {
+        return res.status(503).json({
+          success: false,
+          error: 'BLOB storage not available'
+        });
+      }
+
+      const containerClient = blobServiceClient.getContainerClient(containerName);
+      
+      // 既存のBLOBを探す
+      const resolved = await resolveBlobClient(containerClient, fileName);
+      
+      if (!resolved) {
+        return res.status(404).json({
+          success: false,
+          error: 'フローが見つかりません'
+        });
+      }
+
+      // updatedAtを更新
+      const updatedFlowData = {
+        ...flowData,
+        updatedAt: new Date().toISOString()
+      };
+
+      // 画像数をログ出力
+      const imageCount = updatedFlowData.steps?.reduce((count, step) => {
+        return count + (step.images?.length || 0);
+      }, 0) || 0;
+
+      console.log(`[api/emergency-flow/PUT] Flow has ${imageCount} images`);
+
+      const content = JSON.stringify(updatedFlowData, null, 2);
+
+      // 差分で上書き保存（既存データを完全に置き換え）
+      const blockBlobClient = containerClient.getBlockBlobClient(resolved.blobName);
+      await blockBlobClient.upload(content, content.length, {
+        blobHTTPHeaders: { blobContentType: 'application/json' },
+        metadata: {
+          lastModified: new Date().toISOString(),
+          flowId: flowId
+        }
+      });
+
+      console.log(`[api/emergency-flow/PUT] ✅ Updated successfully: ${resolved.blobName}`);
+
+      return res.json({
+        success: true,
+        message: 'フローを更新しました',
+        data: updatedFlowData,
+        blobName: resolved.blobName,
+        imageCount: imageCount
+      });
+    } catch (error) {
+      console.error('[api/emergency-flow/PUT] ❌ Error:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  // /api/emergency-flow/:id - DELETE削除
+  if (pathParts[2] && method === 'DELETE') {
+    try {
+      const fileName = pathParts[2];
+      console.log('[api/emergency-flow/delete] Deleting:', fileName);
+
+      const blobServiceClient = getBlobServiceClient();
+      if (!blobServiceClient) {
+        return res.status(503).json({
+          success: false,
+          error: 'BLOB storage not available'
+        });
+      }
+
+      const containerClient = blobServiceClient.getContainerClient(containerName);
+      const resolved = await resolveBlobClient(containerClient, fileName);
+
+      if (!resolved) {
+        return res.status(404).json({
+          success: false,
+          error: 'フローが見つかりません'
+        });
+      }
+
+      // JSONをダウンロードして画像ファイル名を取得
+      let imagesToDelete = [];
+      try {
+        const downloadResponse = await resolved.blobClient.download();
+        if (downloadResponse.readableStreamBody) {
+          const chunks = [];
+          for await (const chunk of downloadResponse.readableStreamBody) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          }
+          const buffer = Buffer.concat(chunks);
+          const jsonData = JSON.parse(buffer.toString('utf-8'));
+          
+          // steps配列から画像を抽出
+          if (Array.isArray(jsonData.steps)) {
+            jsonData.steps.forEach(step => {
+              if (step.images && Array.isArray(step.images)) {
+                step.images.forEach(image => {
+                  if (image.fileName) {
+                    imagesToDelete.push(image.fileName);
+                  }
+                });
+              }
+            });
+          }
+        }
+      } catch (parseError) {
+        console.warn('[api/emergency-flow/delete] Could not parse JSON for image cleanup:', parseError.message);
+      }
+
+      // 関連画像を削除
+      if (imagesToDelete.length > 0) {
+        console.log(`[api/emergency-flow/delete] Deleting ${imagesToDelete.length} related images`);
+        for (const imageFileName of imagesToDelete) {
+          try {
+            const imageBlobName = `knowledge-base/images/emergency-flows/${imageFileName}`;
+            const imageBlob = containerClient.getBlockBlobClient(imageBlobName);
+            const exists = await imageBlob.exists();
+            if (exists) {
+              await imageBlob.delete();
+              console.log(`[api/emergency-flow/delete] Deleted image: ${imageFileName}`);
+            }
+          } catch (imgError) {
+            console.warn(`[api/emergency-flow/delete] Failed to delete image ${imageFileName}:`, imgError.message);
+          }
+        }
+      }
+
+      // JSONファイルを削除
+      await resolved.blobClient.delete();
+      console.log(`[api/emergency-flow/delete] Deleted JSON: ${resolved.blobName}`);
+
+      return res.json({
+        success: true,
+        message: '削除しました',
+        deletedFile: fileName,
+        deletedImages: imagesToDelete.length
+      });
+    } catch (error) {
+      console.error('[api/emergency-flow/delete] Error:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  return res.status(404).json({
+    success: false,
+    error: 'Endpoint not found',
+    path: req.path
+  });
+}
+
+// フォールバックテンプレート生成関数
+function createFallbackTemplate(flowId, keyword) {
+  return {
+    id: flowId,
+    title: keyword,
+    description: `キーワード「${keyword}」から自動生成された応急処置フロー`,
+    triggerKeywords: [keyword],
+    steps: [
+      {
+        id: 'step1',
+        type: 'step',
+        title: '安全確認',
+        description: '作業エリアの安全を確認し、必要な保護具を着用してください。',
+        message: '作業エリアの安全を確認し、必要な保護具を着用してください。',
+        nextStep: 'step2'
+      },
+      {
+        id: 'step2',
+        type: 'step',
+        title: '症状の確認',
+        description: `${keyword}の症状を詳しく確認してください。`,
+        message: `${keyword}の症状を詳しく確認してください。`,
+        nextStep: 'step3'
+      },
+      {
+        id: 'step3',
+        type: 'decision',
+        title: '状況判断',
+        description: '現在の状況を選択してください。',
+        message: '現在の状況を選択してください。',
+        options: [
+          { label: '軽微な問題', nextStep: 'step4' },
+          { label: '深刻な問題', nextStep: 'step5' },
+          { label: '緊急対応必要', nextStep: 'step6' },
+          { label: '不明', nextStep: 'step7' }
+        ]
+      },
+      {
+        id: 'step4',
+        type: 'step',
+        title: '応急処置',
+        description: '基本的な点検と調整を行ってください。',
+        message: '基本的な点検と調整を行ってください。',
+        nextStep: 'complete'
+      },
+      {
+        id: 'step5',
+        type: 'step',
+        title: '詳細点検',
+        description: '詳細な点検を実施し、問題箇所を特定してください。',
+        message: '詳細な点検を実施し、問題箇所を特定してください。',
+        nextStep: 'step8'
+      },
+      {
+        id: 'step6',
+        type: 'step',
+        title: '緊急対応',
+        description: '直ちに専門技術者に連絡し、指示を仰いでください。',
+        message: '直ちに専門技術者に連絡し、指示を仰いでください。',
+        nextStep: 'complete'
+      },
+      {
+        id: 'step7',
+        type: 'step',
+        title: '専門家への相談',
+        description: '判断が困難な場合は、専門技術者に連絡してください。',
+        message: '判断が困難な場合は、専門技術者に連絡してください。',
+        nextStep: 'complete'
+      },
+      {
+        id: 'step8',
+        type: 'step',
+        title: '報告',
+        description: '確認した内容を記録し、関係者に報告してください。',
+        message: '確認した内容を記録し、関係者に報告してください。',
+        nextStep: 'complete'
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    generatedBy: 'Fallback Template'
+  };
+}
 
   // /api/emergency-flow/:id - PUT更新（編集後の差分上書き）
   if (pathParts[2] && method === 'PUT') {
