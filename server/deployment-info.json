@@ -1,16 +1,19 @@
 {
-  "commit_sha": "06afaf0df3aa18a0bf7d5021d2e60bed1c623534",
-  "commit_time": "2025-12-06T11:31:04Z",
-  "build_time": "2025-12-06T11:35:00Z",
-  "workflow_run": "manual-redeploy",
-  "deployed_by": "Satoshi Niina",
-  "deployment_type": "HOTFIX_EXPORT_TITLE",
-  "version": "2.0.0-esm",
+  "commit_sha": "208b5e17",
+  "commit_time": "2025-12-07T00:00:00Z",
+  "build_time": "2025-12-07T00:00:00Z",
+  "workflow_run": "auto-deploy",
+  "deployed_by": "GitHub Actions",
+  "deployment_type": "IMAGE_CLEANUP_AND_CORS_FIX",
+  "version": "2.0.1-esm",
   "features": {
     "esm_modules": 16,
     "auto_routing": true,
     "inline_implementations_removed": true,
-    "blob_path_unified": true
+    "blob_path_unified": true,
+    "image_cleanup_on_chat_clear": true,
+    "image_cleanup_on_export": true,
+    "cors_preflight_support": true
   },
-  "notes": "Complete ESM conversion with auto-routing. All major endpoints converted to ESM modules. Inline implementations commented out. Ready for production."
+  "notes": "Added automatic orphaned image cleanup on chat clear and export. Fixed CORS preflight for image upload and retrieval. Image lifecycle management fully implemented."
 }
