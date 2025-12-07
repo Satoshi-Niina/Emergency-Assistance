@@ -315,9 +315,28 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
       // 🔧 修正: BLOB必須、ローカル保存は使用しない
       if (!blobServiceClient) {
         console.error('[history/upload-image] ❌ BLOB storage not configured');
+        console.error('[history/upload-image] AZURE_STORAGE_CONNECTION_STRING:', AZURE_STORAGE_CONNECTION_STRING ? 'SET' : 'NOT SET');
         return res.status(503).json({
           success: false,
           error: 'BLOB storage not available. Please configure Azure Storage connection string.'
+        });
+      }
+
+      // BLOB接続テスト
+      try {
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        const exists = await containerClient.exists();
+        console.log('[history/upload-image] BLOB connection test:', {
+          containerName,
+          exists,
+          canConnect: true
+        });
+      } catch (testError) {
+        console.error('[history/upload-image] ❌ BLOB connection test failed:', testError);
+        return res.status(503).json({
+          success: false,
+          error: 'BLOB storage connection failed',
+          details: testError.message
         });
       }
 
@@ -387,19 +406,34 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
       });
     } catch (error) {
       lastError = error;
-      console.error(`[history/upload-image] Attempt ${attempt} failed:`, error.message);
+      console.error(`[history/upload-image] ❌ Attempt ${attempt} failed:`, {
+        message: error.message,
+        stack: error.stack,
+        code: error.code,
+        statusCode: error.statusCode,
+        name: error.name
+      });
 
       if (attempt < maxRetries) {
+        console.log(`[history/upload-image] Retrying in ${attempt}s...`);
         await new Promise(resolve => setTimeout(resolve, attempt * 1000));
         continue;
       }
     }
   }
 
+  console.error('[history/upload-image] ❌ All retry attempts failed:', {
+    lastError: lastError?.message,
+    stack: lastError?.stack,
+    attempts: maxRetries
+  });
+
   return res.status(500).json({
     success: false,
     error: '画像のアップロードに失敗しました',
-    details: lastError?.message
+    details: lastError?.message,
+    errorCode: lastError?.code,
+    errorName: lastError?.name
   });
 });
 
@@ -662,40 +696,59 @@ router.delete('/:id', async (req, res) => {
     const metadata = extractMetadataFromJson(jsonData, found.fileName);
     const imagesToDelete = metadata.images || [];
 
-    console.log(`[history/delete] Found ${imagesToDelete.length} images to delete`);
+    console.log(`[history/delete] Found ${imagesToDelete.length} images to delete from JSON`);
+    console.log('[history/delete] Images to delete:', imagesToDelete.map(img => img.fileName || img.url));
 
     // 関連する画像をBLOBから削除
+    let deletedImagesCount = 0;
+    const deletedImagesList = [];
+    
     for (const img of imagesToDelete) {
       try {
-        const fileName = img.fileName || img.url?.split('/').pop();
-        if (fileName && !fileName.startsWith('http')) {
+        // ファイル名を抽出（URL、fileName、pathのいずれかから）
+        let fileName = null;
+        if (img.fileName && !img.fileName.startsWith('http')) {
+          fileName = img.fileName.split('/').pop();
+        } else if (img.url && !img.url.startsWith('http')) {
+          fileName = img.url.split('/').pop();
+        } else if (img.path) {
+          fileName = img.path.split('/').pop();
+        }
+        
+        if (fileName) {
           const imageBlobName = `knowledge-base/images/chat-exports/${fileName}`;
           const imageBlob = containerClient.getBlobClient(imageBlobName);
           const exists = await imageBlob.exists();
           
           if (exists) {
             await imageBlob.delete();
-            console.log(`[history/delete] Deleted image: ${imageBlobName}`);
+            deletedImagesCount++;
+            deletedImagesList.push(fileName);
+            console.log(`[history/delete] ✅ Deleted image: ${imageBlobName}`);
+          } else {
+            console.log(`[history/delete] ⚠️ Image not found: ${imageBlobName}`);
           }
         }
       } catch (imgError) {
-        console.warn(`[history/delete] Failed to delete image:`, imgError.message);
+        console.warn(`[history/delete] ❌ Failed to delete image:`, imgError.message);
         // 画像削除失敗は警告のみ、処理は継続
       }
     }
 
     // JSONファイルを削除
     await containerClient.getBlobClient(found.blobName).delete();
-    console.log(`[history/delete] Deleted JSON: ${found.blobName}`);
+    console.log(`[history/delete] ✅ Deleted JSON: ${found.blobName}`);
 
     return res.json({ 
       success: true, 
       message: '削除しました', 
       deletedFile: found.fileName,
-      deletedImages: imagesToDelete.length
+      deletedImages: deletedImagesCount,
+      deletedImagesList: deletedImagesList,
+      totalImagesFound: imagesToDelete.length
     });
   } catch (error) {
-    console.error('[history/delete] Error:', error);
+    console.error('[history/delete] ❌ Error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
