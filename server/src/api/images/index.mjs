@@ -55,7 +55,13 @@ export default async function imagesHandler(req, res) {
       '.gif': 'image/gif',
       '.webp': 'image/webp'
     };
-    const contentType = mimeTypes[extension] || 'application/octet-stream';
+    const contentType = mimeTypes[extension] || 'image/jpeg'; // デフォルトをimage/jpegに変更
+    
+    console.log('[api/images] Content-Type determination:', {
+      fileName,
+      extension,
+      contentType
+    });
     
     try {
       const blobServiceClient = getBlobServiceClient();

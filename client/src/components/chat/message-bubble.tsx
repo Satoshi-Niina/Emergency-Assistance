@@ -322,8 +322,9 @@ export default function MessageBubble({
                                 fullUrl: media.url,
                                 urlLength: media.url?.length,
                                 fileName: media.fileName,
-                                isBase64: media.url.startsWith('data:'),
-                                startsWithApi: media.url.startsWith('/api/'),
+                                isBase64: media.url?.startsWith('data:'),
+                                startsWithApi: media.url?.startsWith('/api/'),
+                                hasExtension: /\.(jpg|jpeg|png|gif|webp)$/i.test(media.url || ''),
                                 error: e,
                               });
 
@@ -339,10 +340,12 @@ export default function MessageBubble({
                               let errorMessage = '画像の読み込みに失敗しました';
                               if (media.fileName) {
                                 errorMessage = `画像が見つかりません: ${media.fileName}`;
+                              } else if (!media.url?.includes('.')) {
+                                errorMessage = '画像URL形式が不正です（拡張子なし）';
                               }
                               
                               errorDiv.innerHTML =
-                                `<div class="text-center"><div class="text-red-500 text-sm">${errorMessage}</div><div class="text-xs text-gray-500 mt-1">URL: ${media.url.substring(0, 50)}...</div></div>`;
+                                `<div class="text-center"><div class="text-red-500 text-sm">${errorMessage}</div><div class="text-xs text-gray-500 mt-1">URL: ${(media.url || '').substring(0, 50)}...</div></div>`;
                               img.parentNode?.insertBefore(errorDiv, img);
                             }}
                           />

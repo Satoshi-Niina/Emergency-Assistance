@@ -287,8 +287,24 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
       });
 
       const timestamp = Date.now();
-      const ext = path.extname(req.file.originalname);
+      let ext = path.extname(req.file.originalname);
+      
+      // 拡張子がない場合、mimetypeから推定
+      if (!ext) {
+        const mimeToExt = {
+          'image/jpeg': '.jpg',
+          'image/jpg': '.jpg',
+          'image/png': '.png',
+          'image/gif': '.gif',
+          'image/webp': '.webp'
+        };
+        ext = mimeToExt[req.file.mimetype] || '.jpg'; // デフォルトは.jpg
+        console.log(`[history/upload-image] No extension found, using mimetype: ${req.file.mimetype} -> ${ext}`);
+      }
+      
       const fileName = `chat_image_${timestamp}${ext}`;
+      console.log(`[history/upload-image] Generated fileName: ${fileName}`);
+      
       const blobServiceClient = getBlobServiceClient();
 
       // 開発環境: BLOBが利用できない場合はローカル保存
