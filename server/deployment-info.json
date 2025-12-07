@@ -1,11 +1,11 @@
 {
-  "commit_sha": "945deb46",
-  "commit_time": "2025-12-07T15:30:00Z",
-  "build_time": "2025-12-07T15:30:00Z",
-  "workflow_run": "manual-trigger",
-  "deployed_by": "Manual Deploy",
-  "deployment_type": "BLOB_ONLY_FIX",
-  "version": "2.0.2-blob-only",
+  "commit_sha": "fafa56ef",
+  "commit_time": "2025-12-07T18:20:00Z",
+  "build_time": "2025-12-07T18:20:00Z",
+  "workflow_run": "blob-exists-check",
+  "deployed_by": "Auto Deploy",
+  "deployment_type": "BLOB_EXISTS_VERIFICATION",
+  "version": "2.0.3-blob-verify",
   "features": {
     "esm_modules": 16,
     "auto_routing": true,
