@@ -112,6 +112,20 @@ function getBlobServiceClient() {
   }
 }
 
+// ストリームを文字列に変換するヘルパー関数
+async function streamToString(readableStream) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    readableStream.on('data', (data) => {
+      chunks.push(data instanceof Buffer ? data : Buffer.from(data));
+    });
+    readableStream.on('end', () => {
+      resolve(Buffer.concat(chunks).toString('utf8'));
+    });
+    readableStream.on('error', reject);
+  });
+}
+
 // 画像URL生成関数（環境変数対応：ローカル/本番切り替え）
 function getImageUrl(fileName, category = 'chat-exports') {
   const storageMode = process.env.STORAGE_MODE || 'local';
@@ -2611,54 +2625,71 @@ apiRouter.post('/history/upload-image', imageUpload.single('image'), async (req,
       });
     }
 
-    // 保存先ディレクトリのパス（環境変数対応）
-    const imagesDir = resolveKnowledgeBasePath('images/chat-exports');
-    if (!fs.existsSync(imagesDir)) {
-      fs.mkdirSync(imagesDir, { recursive: true });
-      console.log('✅ 画像ディレクトリを作成:', imagesDir);
-    }
-
     // ファイル名を生成（タイムスタンプ + ランダム文字列）
-    // リサイズ後は常にJPEG形式なので拡張子は.jpgに統一
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 8);
     const fileName = `history_${timestamp}_${randomStr}.jpg`;
-    const filePath = path.join(imagesDir, fileName);
 
-    // 画像を120pxにリサイズして保存
-    try {
-      const resizedBuffer = await sharp(req.file.buffer)
-        .resize(120, 120, {
-          fit: 'inside', // アスペクト比を維持しながら、120x120以内に収める
-          withoutEnlargement: true, // 拡大しない
-        })
-        .jpeg({ quality: 85 })
-        .toBuffer();
+    // 画像を120pxにリサイズ
+    const resizedBuffer = await sharp(req.file.buffer)
+      .resize(120, 120, {
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
+      .jpeg({ quality: 85 })
+      .toBuffer();
 
-      fs.writeFileSync(filePath, resizedBuffer);
-      console.log('✅ 画像ファイルを保存しました（120pxにリサイズ）:', filePath);
+    const storageMode = process.env.STORAGE_MODE || 'local';
+    console.log(`💾 画像保存モード: ${storageMode}`);
 
-      const imageUrl = getImageUrl(fileName, 'chat-exports');
+    // BLOBストレージに保存
+    if (storageMode === 'azure' || storageMode === 'blob') {
+      try {
+        const blobServiceClient = getBlobServiceClient();
+        if (!blobServiceClient) {
+          throw new Error('BLOB service client not initialized');
+        }
 
-      res.json({
-        success: true,
-        imageUrl,
-        fileName,
-        url: imageUrl,
-      });
-    } catch (resizeError) {
-      console.error('❌ 画像リサイズエラー:', resizeError);
-      // リサイズに失敗した場合は元の画像を保存
-      fs.writeFileSync(filePath, req.file.buffer);
-      const imageUrl = getImageUrl(fileName, 'chat-exports');
-      res.json({
-        success: true,
-        imageUrl,
-        fileName,
-        url: imageUrl,
-        warning: 'リサイズに失敗しましたが、元の画像を保存しました',
-      });
+        const containerClient = blobServiceClient.getContainerClient(process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge');
+        const blobPath = `${process.env.BLOB_PREFIX || 'knowledge-base/'}images/chat-exports/${fileName}`;
+        const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
+
+        await blockBlobClient.uploadData(resizedBuffer, {
+          blobHTTPHeaders: { blobContentType: 'image/jpeg' }
+        });
+
+        console.log(`✅ BLOBに保存: ${blobPath}`);
+
+        const imageUrl = getImageUrl(fileName, 'chat-exports');
+        return res.json({
+          success: true,
+          imageUrl,
+          fileName,
+          url: imageUrl,
+        });
+      } catch (blobError) {
+        console.error('❌ BLOB保存エラー:', blobError.message);
+        // フォールバックしてローカルに保存
+      }
     }
+
+    // ローカルファイルシステムに保存
+    const imagesDir = resolveKnowledgeBasePath('images/chat-exports');
+    if (!fs.existsSync(imagesDir)) {
+      fs.mkdirSync(imagesDir, { recursive: true });
+    }
+
+    const filePath = path.join(imagesDir, fileName);
+    fs.writeFileSync(filePath, resizedBuffer);
+    console.log(`✅ ローカルに保存: ${filePath}`);
+
+    const imageUrl = getImageUrl(fileName, 'chat-exports');
+    res.json({
+      success: true,
+      imageUrl,
+      fileName,
+      url: imageUrl,
+    });
   } catch (error) {
     console.error('❌ 画像アップロードエラー:', error);
     res.status(500).json({
@@ -2825,62 +2856,135 @@ apiRouter.get('/emergency-flow/list', async (req, res) => {
   try {
     console.log('🔍 応急処置フロー一覧取得リクエスト');
 
-    // 環境変数対応のパス解決
-    const troubleshootingDir = resolveKnowledgeBasePath('troubleshooting');
+    const storageMode = process.env.STORAGE_MODE || 'local';
+    let flows = [];
 
-    if (!fs.existsSync(troubleshootingDir)) {
-      console.error('❌ トラブルシューティングディレクトリが見つかりません:', troubleshootingDir);
-      return res.json({
-        success: false,
-        error: 'トラブルシューティングディレクトリが見つかりません',
-        path: troubleshootingDir,
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    const targetDir = troubleshootingDir;
-
-    const files = fs.readdirSync(targetDir);
-    const jsonFiles = files.filter(file => file.endsWith('.json'));
-
-    const flows = jsonFiles.map(file => {
+    // BLOBストレージから取得
+    if (storageMode === 'azure' || storageMode === 'blob') {
       try {
-        const filePath = path.join(targetDir, file);
-        const fileContent = fs.readFileSync(filePath, { encoding: 'utf8' });
-        const jsonData = JSON.parse(fileContent);
-
-        // 画像URLを環境変数対応に変換
-        if (jsonData.steps && Array.isArray(jsonData.steps)) {
-          jsonData.steps.forEach(step => {
-            if (step.images && Array.isArray(step.images)) {
-              step.images = step.images.map(img => {
-                if (img.fileName) {
-                  img.url = getImageUrl(img.fileName, 'emergency-flows');
-                }
-                return img;
-              });
-            }
-          });
+        const blobServiceClient = getBlobServiceClient();
+        if (!blobServiceClient) {
+          throw new Error('BLOB service client not initialized');
         }
 
-        return {
-          id: jsonData.id || file.replace('.json', ''),
-          title: jsonData.title || 'タイトルなし',
-          description: jsonData.description || '',
-          fileName: file,
-          filePath: `knowledge-base/troubleshooting/${file}`,
-          createdAt: jsonData.createdAt || new Date().toISOString(),
-          updatedAt: jsonData.updatedAt || new Date().toISOString(),
-          triggerKeywords: jsonData.triggerKeywords || [],
-          category: jsonData.category || '',
-          steps: jsonData.steps || [],
-          dataSource: 'file'
-        };
-      } catch (error) {
-        console.error(`ファイル読み込みエラー: ${file}`, error);
-        return null;
+        const containerClient = blobServiceClient.getContainerClient(process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge');
+        const prefix = `${process.env.BLOB_PREFIX || 'knowledge-base/'}troubleshooting/`;
+
+        console.log(`📦 BLOB一覧取得: ${prefix}`);
+
+        for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+          if (blob.name.endsWith('.json')) {
+            try {
+              const blockBlobClient = containerClient.getBlockBlobClient(blob.name);
+              const downloadResponse = await blockBlobClient.download();
+              const fileContent = await streamToString(downloadResponse.readableStreamBody);
+              const jsonData = JSON.parse(fileContent);
+
+              // 画像URLを環境変数対応に変換
+              if (jsonData.steps && Array.isArray(jsonData.steps)) {
+                jsonData.steps.forEach(step => {
+                  if (step.images && Array.isArray(step.images)) {
+                    step.images = step.images.map(img => {
+                      if (img.fileName) {
+                        img.url = getImageUrl(img.fileName, 'emergency-flows');
+                      }
+                      return img;
+                    });
+                  }
+                });
+              }
+
+              flows.push({
+                id: jsonData.id || blob.name.split('/').pop().replace('.json', ''),
+                title: jsonData.title || 'タイトルなし',
+                description: jsonData.description || '',
+                fileName: blob.name.split('/').pop(),
+                filePath: blob.name,
+                createdAt: jsonData.createdAt || blob.properties.createdOn?.toISOString() || new Date().toISOString(),
+                updatedAt: jsonData.updatedAt || blob.properties.lastModified?.toISOString() || new Date().toISOString(),
+                triggerKeywords: jsonData.triggerKeywords || [],
+                category: jsonData.category || '',
+                steps: jsonData.steps || [],
+                dataSource: 'blob'
+              });
+            } catch (error) {
+              console.error(`BLOBファイル読み込みエラー: ${blob.name}`, error.message);
+            }
+          }
+        }
+
+        console.log(`✅ BLOBから${flows.length}件のフローを取得`);
+      } catch (blobError) {
+        console.error('❌ BLOB取得エラー:', blobError.message);
+        // フォールバックしてローカルを試行
       }
-    }).filter(item => item !== null);
+    }
+
+    // ローカルファイルシステムから取得（フォールバックまたはローカルモード）
+    if (flows.length === 0 || storageMode === 'local' || storageMode === 'hybrid') {
+      const troubleshootingDir = resolveKnowledgeBasePath('troubleshooting');
+
+      if (!fs.existsSync(troubleshootingDir)) {
+        console.error('❌ トラブルシューティングディレクトリが見つかりません:', troubleshootingDir);
+        return res.json({
+          success: true,
+          data: flows,
+          total: flows.length,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const files = fs.readdirSync(troubleshootingDir);
+      const jsonFiles = files.filter(file => file.endsWith('.json'));
+
+      const localFlows = jsonFiles.map(file => {
+        try {
+          const filePath = path.join(troubleshootingDir, file);
+          const fileContent = fs.readFileSync(filePath, { encoding: 'utf8' });
+          const jsonData = JSON.parse(fileContent);
+
+          // 画像URLを環境変数対応に変換
+          if (jsonData.steps && Array.isArray(jsonData.steps)) {
+            jsonData.steps.forEach(step => {
+              if (step.images && Array.isArray(step.images)) {
+                step.images = step.images.map(img => {
+                  if (img.fileName) {
+                    img.url = getImageUrl(img.fileName, 'emergency-flows');
+                  }
+                  return img;
+                });
+              }
+            });
+          }
+
+          return {
+            id: jsonData.id || file.replace('.json', ''),
+            title: jsonData.title || 'タイトルなし',
+            description: jsonData.description || '',
+            fileName: file,
+            filePath: `knowledge-base/troubleshooting/${file}`,
+            createdAt: jsonData.createdAt || new Date().toISOString(),
+            updatedAt: jsonData.updatedAt || new Date().toISOString(),
+            triggerKeywords: jsonData.triggerKeywords || [],
+            category: jsonData.category || '',
+            steps: jsonData.steps || [],
+            dataSource: 'file'
+          };
+        } catch (error) {
+          console.error(`ファイル読み込みエラー: ${file}`, error);
+          return null;
+        }
+      }).filter(item => item !== null);
+
+      // ローカルフローを結合（重複除去）
+      localFlows.forEach(localFlow => {
+        if (!flows.some(f => f.id === localFlow.id)) {
+          flows.push(localFlow);
+        }
+      });
+
+      console.log(`✅ ローカルから${localFlows.length}件のフローを取得`);
+    }
 
     // 作成日時でソート（新しい順）
     flows.sort((a, b) => {
@@ -4114,30 +4218,56 @@ ${toneInstruction}${questionFlowGuide}${customInstructionText}
 
     // knowledge-base/troubleshootingフォルダに保存
     try {
-      const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-      const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+      const storageMode = process.env.STORAGE_MODE || 'local';
+      const fileName = `${flowData.id}.json`;
+      const fileContent = JSON.stringify(flowData, null, 2);
 
-      let targetDir = troubleshootingDir;
-      if (!fs.existsSync(troubleshootingDir)) {
-        if (fs.existsSync(alternativeDir)) {
-          targetDir = alternativeDir;
-        } else {
-          fs.mkdirSync(troubleshootingDir, { recursive: true });
-          targetDir = troubleshootingDir;
+      // BLOBストレージに保存
+      if (storageMode === 'azure' || storageMode === 'blob') {
+        try {
+          const blobServiceClient = getBlobServiceClient();
+          if (!blobServiceClient) {
+            throw new Error('BLOB service client not initialized');
+          }
+
+          const containerClient = blobServiceClient.getContainerClient(process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge');
+          const blobPath = `${process.env.BLOB_PREFIX || 'knowledge-base/'}troubleshooting/${fileName}`;
+          const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
+
+          await blockBlobClient.upload(fileContent, fileContent.length, {
+            blobHTTPHeaders: { blobContentType: 'application/json' }
+          });
+
+          console.log('✅ フローをBLOBに保存:', {
+            id: flowData.id,
+            title: flowData.title,
+            stepsCount: flowData.steps.length,
+            blobPath: blobPath,
+          });
+        } catch (blobError) {
+          console.error('❌ BLOB保存エラー:', blobError.message);
+          // フォールバックしてローカルに保存
         }
       }
 
-      const filePath = path.join(targetDir, `${flowData.id}.json`);
+      // ローカルファイルシステムに保存（フォールバックまたはローカルモード）
+      if (storageMode === 'local' || storageMode === 'hybrid') {
+        const troubleshootingDir = resolveKnowledgeBasePath('troubleshooting');
+        
+        if (!fs.existsSync(troubleshootingDir)) {
+          fs.mkdirSync(troubleshootingDir, { recursive: true });
+        }
 
-      // ファイルに保存
-      fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf8');
+        const filePath = path.join(troubleshootingDir, fileName);
+        fs.writeFileSync(filePath, fileContent, 'utf8');
 
-      console.log('✅ 生成フロー保存成功:', {
-        id: flowData.id,
-        title: flowData.title,
-        stepsCount: flowData.steps.length,
-        filePath: filePath,
-      });
+        console.log('✅ フローをローカルに保存:', {
+          id: flowData.id,
+          title: flowData.title,
+          stepsCount: flowData.steps.length,
+          filePath: filePath,
+        });
+      }
     } catch (fileError) {
       console.error('❌ ファイル保存エラー:', fileError);
       // ファイル保存に失敗しても、レスポンスは返す
@@ -5369,11 +5499,39 @@ apiRouter.get('/admin/dashboard', async (req, res) => {
 apiRouter.get('/images/emergency-flows/:filename', async (req, res) => {
   try {
     const { filename } = req.params;
-    console.log(`🖼️ emergency-flows画像ファイル取得: ${filename}`);
+    const storageMode = process.env.STORAGE_MODE || 'local';
+    console.log(`🖼️ emergency-flows画像ファイル取得: ${filename} (STORAGE_MODE: ${storageMode})`);
 
-    // 環境変数対応のパス解決
+    // BLOBストレージから取得
+    if (storageMode === 'azure' || storageMode === 'blob') {
+      try {
+        const blobServiceClient = getBlobServiceClient();
+        if (!blobServiceClient) {
+          throw new Error('BLOB service client not initialized');
+        }
+
+        const containerClient = blobServiceClient.getContainerClient(process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge');
+        const blobPath = `${process.env.BLOB_PREFIX || 'knowledge-base/'}images/emergency-flows/${filename}`;
+        const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
+
+        console.log(`📦 BLOB取得: ${blobPath}`);
+
+        const downloadResponse = await blockBlobClient.download();
+        const contentType = downloadResponse.contentType || 'image/jpeg';
+
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=31536000');
+        
+        downloadResponse.readableStreamBody.pipe(res);
+        return;
+      } catch (blobError) {
+        console.error('❌ BLOB画像取得エラー:', blobError.message);
+        // フォールバックしてローカルを試行
+      }
+    }
+
+    // ローカルファイルシステムから取得
     const imagesDir = resolveKnowledgeBasePath('images/emergency-flows');
-
     const imagePath = path.resolve(imagesDir, filename);
 
     if (!fs.existsSync(imagePath)) {
@@ -5409,20 +5567,46 @@ apiRouter.get('/images/emergency-flows/:filename', async (req, res) => {
 apiRouter.get('/images/chat-exports/:filename', async (req, res) => {
   try {
     const { filename } = req.params;
-    console.log(`🖼️ chat-exports画像ファイル取得: ${filename}`);
+    const storageMode = process.env.STORAGE_MODE || 'local';
+    console.log(`🖼️ chat-exports画像ファイル取得: ${filename} (STORAGE_MODE: ${storageMode})`);
 
-    // 環境変数対応のパス解決
+    // BLOBストレージから取得
+    if (storageMode === 'azure' || storageMode === 'blob') {
+      try {
+        const blobServiceClient = getBlobServiceClient();
+        if (!blobServiceClient) {
+          throw new Error('BLOB service client not initialized');
+        }
+
+        const containerClient = blobServiceClient.getContainerClient(process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge');
+        const blobPath = `${process.env.BLOB_PREFIX || 'knowledge-base/'}images/chat-exports/${filename}`;
+        const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
+
+        console.log(`📦 BLOB取得: ${blobPath}`);
+
+        const downloadResponse = await blockBlobClient.download();
+        const contentType = downloadResponse.contentType || 'image/jpeg';
+
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=31536000');
+        
+        downloadResponse.readableStreamBody.pipe(res);
+        return;
+      } catch (blobError) {
+        console.error('❌ BLOB画像取得エラー:', blobError.message);
+        // フォールバックしてローカルを試行
+      }
+    }
+
+    // ローカルファイルシステムから取得
     const imagesDir = resolveKnowledgeBasePath('images/chat-exports');
+    console.log(`🔍 ローカル画像検索:`, { filename, imagesDir, exists: fs.existsSync(imagesDir) });
 
-    console.log(`🔍 画像検索開始:`, { filename, imagesDir, exists: fs.existsSync(imagesDir) });
-
-    // ディレクトリが存在しない場合は404を返す
     if (!fs.existsSync(imagesDir)) {
       console.log(`❌ 画像ディレクトリが存在しません: ${imagesDir}`);
       return res.status(404).json({
         success: false,
-        error: '画像ディレクトリが見つかりません',
-        imagesDir: imagesDir
+        error: '画像が見つかりません',
       });
     }
 
