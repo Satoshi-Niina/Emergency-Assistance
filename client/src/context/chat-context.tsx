@@ -870,20 +870,20 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
           .filter(msg => msg.media && msg.media.length > 0)
           .flatMap(msg =>
             msg.media.map((media: any) => {
-              // URLから実際のファイル名を抽出（media.fileNameを最優先）
-              const actualFileName = media.fileName || media.url?.split('/').pop() || '';
+              // media.fileNameを最優先で使用（サーバーが生成した正確なファイル名）
+              // URLからの抽出はフォールバックとして使用
+              const fileName = media.fileName || media.url?.split('/').pop() || '';
               console.log('🖼️ エクスポート対象画像:', {
                 messageId: msg.id,
                 mediaFileName: media.fileName,
                 mediaUrl: media.url,
-                actualFileName: actualFileName,
+                extractedFileName: fileName,
                 hasUrl: !!media.url,
                 urlStartsWith: media.url?.substring(0, 30)
               });
               return {
                 messageId: msg.id,
-                fileName: actualFileName,      // 元のファイル名を保持
-                originalFileName: media.fileName || actualFileName, // オリジナルファイル名も保持
+                fileName: fileName,            // サーバーが生成したファイル名（history_xxx.jpg）
                 url: media.url || '',          // 完全なURL (/api/images/chat-exports/xxx.jpg)
                 type: media.type || 'image',
                 timestamp: msg.timestamp || new Date().toISOString(),

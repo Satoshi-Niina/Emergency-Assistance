@@ -388,36 +388,28 @@ export default function CameraModal() {
         }
 
         // アップロードされた画像をメディアとしてチャットに添付
-        // URL形式: /api/images/chat-exports/camera_timestamp.jpg
-        // fileName形式: camera_timestamp.jpg
-        const actualFileName = uploadData.imageUrl.split('/').pop() || uploadData.fileName || fileName;
+        // サーバーから返却されたファイル名を使用（history_timestamp_random.jpg形式）
+        const serverFileName = uploadData.fileName; // サーバーが生成したファイル名
+        const imageUrl = uploadData.imageUrl; // サーバーが返却した完全なURL
         
-        console.log('✅ メディア情報を作成:', {
-          url: uploadData.imageUrl,
-          fileName: actualFileName,
+        console.log('✅ サーバーから返却された画像情報:', {
+          serverFileName,
+          imageUrl,
           storage: uploadData.storage,
           blobName: uploadData.blobName
         });
 
-        // 相対パスを使用（ローカル/本番の切り替えはブラウザとサーバーに任せる）
-        // 外部接続（http://...）を強制しない
-        let imageUrl = uploadData.imageUrl;
-        if (!imageUrl.startsWith('/api') && !imageUrl.startsWith('http')) {
-           imageUrl = `/api/images/chat-exports/${actualFileName}`;
-        }
-
         console.log('📝 チャットに送信するメディア情報:', {
-          originalUrl: uploadData.imageUrl,
-          imageUrl: imageUrl,
-          fileName: actualFileName
+          url: imageUrl,
+          fileName: serverFileName
         });
         
         await sendMessage('画像を送信しました', [
           {
             type: 'image',
-            url: imageUrl,  // 相対パス (/api/...)
+            url: imageUrl,  // サーバーから返却されたURL（相対パス）
             thumbnail: capturedImage, // ローカルのBlob URLをサムネイルとして使用（即時表示用）
-            fileName: actualFileName,  // camera_xxx.jpg (ファイル名のみ)
+            fileName: serverFileName,  // サーバーが生成したファイル名（history_xxx.jpg）
             title: 'カメラ画像',
           },
         ]);

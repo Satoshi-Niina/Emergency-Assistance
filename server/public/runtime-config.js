@@ -30,8 +30,7 @@
       console.warn('⚠️ Attempting to use default Azure App Service URL...');
 
       // デフォルトのAzure App Service URL（環境変数から取得した固定値）
-      // 実際のApp Service名に置き換えてください
-      apiBaseUrl = "https://emergency-assistantapp-gwgscxcca5cahyb9.japanwest-01.azurewebsites.net/api";
+      apiBaseUrl = "https://emergency-assistantapp.azurewebsites.net/api";
 
       console.log('ℹ️ Fallback API_BASE_URL:', apiBaseUrl);
     }

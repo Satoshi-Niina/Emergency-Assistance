@@ -116,19 +116,11 @@ function getBlobServiceClient() {
 function getImageUrl(fileName, category = 'chat-exports') {
   const storageMode = process.env.STORAGE_MODE || 'local';
 
-  // 本番環境（BLOBストレージ）の場合
-  if (storageMode === 'hybrid' || storageMode === 'blob' || storageMode === 'azure') {
-    // Azure StorageのSAS URLを生成するAPIエンドポイントを使用
-    // 実際のSAS URL生成はクライアント側で行う
-    const blobUrl = `/api/storage/image-url?name=images/${category}/${fileName}`;
-    console.log(`🔗 [BLOB] 画像URL生成: ${fileName} -> ${blobUrl} (STORAGE_MODE: ${storageMode})`);
-    return blobUrl;
-  }
-
-  // ローカル環境（ファイルシステム）の場合
-  const localUrl = `/api/images/${category}/${fileName}`;
-  console.log(`🔗 [LOCAL] 画像URL生成: ${fileName} -> ${localUrl} (STORAGE_MODE: ${storageMode})`);
-  return localUrl;
+  // 常に統一されたURL形式を返す（/api/images/category/fileName）
+  // サーバー側で自動的にローカル/BLOBを切り替える
+  const imageUrl = `/api/images/${category}/${fileName}`;
+  console.log(`🔗 画像URL生成: ${fileName} -> ${imageUrl} (STORAGE_MODE: ${storageMode})`);
+  return imageUrl;
 }
 
 // 環境変数の読み込み
@@ -4361,6 +4353,35 @@ apiRouter.post('/chats/:id/send-test', async (req, res) => {
     const cleanedChatData = JSON.parse(JSON.stringify(chatData)); // ディープコピー
 
     for (const message of cleanedChatData.messages) {
+      // 🔧 修正: message.media配列から画像を収集（カメラ撮影画像）
+      if (message.media && Array.isArray(message.media) && message.media.length > 0) {
+        for (const mediaItem of message.media) {
+          try {
+            const imageFileName = mediaItem.fileName || mediaItem.url?.split('/').pop();
+            if (imageFileName && imageFileName.startsWith('history_')) {
+              const imagePath = path.join(imagesDir, imageFileName);
+              // 重複チェック
+              if (!savedImages.some(img => img.fileName === imageFileName)) {
+                savedImages.push({
+                  messageId: message.id,
+                  fileName: imageFileName,
+                  originalFileName: imageFileName,
+                  path: imagePath,
+                  url: `/api/images/chat-exports/${imageFileName}`,
+                  mimeType: 'image/jpeg',
+                  fileSize: fs.existsSync(imagePath) ? fs.statSync(imagePath).size.toString() : '0',
+                  description: `Chat image ${imageFileName}`,
+                  createdAt: new Date().toISOString(),
+                });
+                console.log('📸 message.mediaから画像を検出:', imageFileName);
+              }
+            }
+          } catch (error) {
+            console.warn('⚠️ message.media画像抽出エラー:', error);
+          }
+        }
+      }
+      
       // 既存の画像URL（/api/images/chat-exports/）を検出
       if (message.content && message.content.includes('/api/images/chat-exports/')) {
         try {
@@ -4368,106 +4389,32 @@ apiRouter.post('/chats/:id/send-test', async (req, res) => {
           const urlMatch = message.content.match(/\/api\/images\/chat-exports\/([^"'\s]+)/);
           if (urlMatch && urlMatch[1]) {
             const imageFileName = urlMatch[1];
-            const imagePath = path.join(imagesDir, imageFileName);
-            savedImages.push({
-              messageId: message.id,
-              fileName: imageFileName,
-              originalFileName: imageFileName,
-              path: imagePath,
-              url: `/api/images/chat-exports/${imageFileName}`,
-              mimeType: 'image/jpeg',
-              fileSize: fs.existsSync(imagePath) ? fs.statSync(imagePath).size.toString() : '0',
-              description: `Chat image ${imageFileName}`,
-              createdAt: new Date().toISOString(),
-            });
-            console.log('既存の画像URLを検出:', imageFileName);
+            // 重複チェック
+            if (!savedImages.some(img => img.fileName === imageFileName)) {
+              const imagePath = path.join(imagesDir, imageFileName);
+              savedImages.push({
+                messageId: message.id,
+                fileName: imageFileName,
+                originalFileName: imageFileName,
+                path: imagePath,
+                url: `/api/images/chat-exports/${imageFileName}`,
+                mimeType: 'image/jpeg',
+                fileSize: fs.existsSync(imagePath) ? fs.statSync(imagePath).size.toString() : '0',
+                description: `Chat image ${imageFileName}`,
+                createdAt: new Date().toISOString(),
+              });
+              console.log('📸 message.contentから既存の画像URLを検出:', imageFileName);
+            }
           }
         } catch (error) {
-          console.warn('画像URL抽出エラー:', error);
+          console.warn('⚠️ 画像URL抽出エラー:', error);
         }
       }
-      // Base64画像の処理（後方互換性のため）
+      // 🗑️ BASE64画像処理を完全削除 - ファイルベースのみ使用
       else if (message.content && message.content.startsWith('data:image/')) {
-        try {
-          // Base64データから画像を抽出
-          const base64Data = message.content.replace(/^data:image\/[a-z]+;base64,/, '');
-          const buffer = Buffer.from(base64Data, 'base64');
-
-          // ファイル名を生成
-          const imageTimestamp = Date.now();
-          const imageFileName = `history_${imageTimestamp}_${crypto.randomBytes(4).toString('hex')}.jpg`;
-          const imagePath = path.join(imagesDir, imageFileName);
-
-          // 画像を120pxにリサイズして保存
-          const resizedBuffer = await sharp(buffer)
-            .resize(120, 120, {
-              fit: 'inside', // アスペクト比を維持しながら、120x120以内に収める
-              withoutEnlargement: true, // 拡大しない
-            })
-            .jpeg({ quality: 85 })
-            .toBuffer();
-
-          // 環境変数に応じてローカルまたはBLOBストレージに保存
-          const storageMode = process.env.STORAGE_MODE || 'local';
-          let imageSavedPath = '';
-          let imageBlobName = '';
-
-          if (storageMode === 'hybrid' || storageMode === 'blob' || storageMode === 'azure') {
-            // BLOBストレージに保存
-            const blobServiceClient = getBlobServiceClient();
-            if (blobServiceClient) {
-              const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
-              const containerClient = blobServiceClient.getContainerClient(containerName);
-              imageBlobName = `images/chat-exports/${imageFileName}`;
-              const blockBlobClient = containerClient.getBlockBlobClient(imageBlobName);
-
-              await blockBlobClient.upload(resizedBuffer, resizedBuffer.length, {
-                blobHTTPHeaders: {
-                  blobContentType: 'image/jpeg'
-                },
-                metadata: {
-                  chatId: id,
-                  uploadedAt: new Date().toISOString()
-                }
-              });
-
-              imageSavedPath = imageBlobName;
-              console.log(`✅ 画像ファイルを保存しました (BLOB): ${imageBlobName} (120pxにリサイズ)`);
-            } else {
-              console.warn('⚠️ BLOBストレージが利用できないため、ローカルに保存します');
-              fs.writeFileSync(imagePath, resizedBuffer);
-              imageSavedPath = imagePath;
-              console.log('✅ 画像ファイルを保存しました（120pxにリサイズ）:', imagePath);
-            }
-          } else {
-            // ローカルファイルシステムに直接保存
-            fs.writeFileSync(imagePath, resizedBuffer);
-            imageSavedPath = imagePath;
-            console.log('✅ 画像ファイルを保存しました（120pxにリサイズ）:', imagePath);
-          }
-
-          const imageUrl = getImageUrl(imageFileName, 'chat-exports');
-          console.log(`🔗 生成された画像URL: ${imageUrl} (STORAGE_MODE: ${storageMode})`);
-
-          // base64をURLに置き換え
-          message.content = imageUrl;
-
-          savedImages.push({
-            messageId: message.id,
-            fileName: imageFileName,
-            originalFileName: imageFileName,
-            path: imageSavedPath,
-            url: imageUrl,
-            mimeType: 'image/jpeg',
-            fileSize: resizedBuffer.length.toString(),
-            description: `Chat image ${imageFileName}`,
-            createdAt: new Date().toISOString(),
-          });
-        } catch (imageError) {
-          console.warn('画像保存エラー:', imageError);
-          // エラー時はbase64を削除
-          message.content = '[画像データ削除]';
-        }
+        // BASE64は使用せず、プレースホルダーに置換
+        message.content = '[画像はファイルベースで管理されます]';
+        console.warn('⚠️ BASE64画像を検出しました。画像はmessage.mediaから取得してください。');
       }
     }
 
@@ -4824,6 +4771,35 @@ apiRouter.post('/chats/:id/send', async (req, res) => {
     const cleanedChatData = JSON.parse(JSON.stringify(chatData)); // ディープコピー
 
     for (const message of cleanedChatData.messages) {
+      // 🔧 修正: message.media配列から画像を収集（カメラ撮影画像）
+      if (message.media && Array.isArray(message.media) && message.media.length > 0) {
+        for (const mediaItem of message.media) {
+          try {
+            const imageFileName = mediaItem.fileName || mediaItem.url?.split('/').pop();
+            if (imageFileName && imageFileName.startsWith('history_')) {
+              const imagePath = path.join(imagesDir, imageFileName);
+              // 重複チェック
+              if (!savedImages.some(img => img.fileName === imageFileName)) {
+                savedImages.push({
+                  messageId: message.id,
+                  fileName: imageFileName,
+                  originalFileName: imageFileName,
+                  path: imagePath,
+                  url: `/api/images/chat-exports/${imageFileName}`,
+                  mimeType: 'image/jpeg',
+                  fileSize: fs.existsSync(imagePath) ? fs.statSync(imagePath).size.toString() : '0',
+                  description: `Chat image ${imageFileName}`,
+                  createdAt: new Date().toISOString(),
+                });
+                console.log('📸 message.mediaから画像を検出:', imageFileName);
+              }
+            }
+          } catch (error) {
+            console.warn('⚠️ message.media画像抽出エラー:', error);
+          }
+        }
+      }
+      
       // 既存の画像URL（/api/images/chat-exports/）を検出
       if (message.content && message.content.includes('/api/images/chat-exports/')) {
         try {
@@ -4831,106 +4807,42 @@ apiRouter.post('/chats/:id/send', async (req, res) => {
           const urlMatch = message.content.match(/\/api\/images\/chat-exports\/([^"'\s]+)/);
           if (urlMatch && urlMatch[1]) {
             const imageFileName = urlMatch[1];
-            const imagePath = path.join(imagesDir, imageFileName);
-            savedImages.push({
-              messageId: message.id,
-              fileName: imageFileName,
-              originalFileName: imageFileName,
-              path: imagePath,
-              url: `/api/images/chat-exports/${imageFileName}`,
-              mimeType: 'image/jpeg',
-              fileSize: fs.existsSync(imagePath) ? fs.statSync(imagePath).size.toString() : '0',
-              description: `Chat image ${imageFileName}`,
-              createdAt: new Date().toISOString(),
-            });
-            console.log('既存の画像URLを検出:', imageFileName);
+            // 重複チェック
+            if (!savedImages.some(img => img.fileName === imageFileName)) {
+              const imagePath = path.join(imagesDir, imageFileName);
+              savedImages.push({
+                messageId: message.id,
+                fileName: imageFileName,
+                originalFileName: imageFileName,
+                path: imagePath,
+                url: `/api/images/chat-exports/${imageFileName}`,
+                mimeType: 'image/jpeg',
+                fileSize: fs.existsSync(imagePath) ? fs.statSync(imagePath).size.toString() : '0',
+                description: `Chat image ${imageFileName}`,
+                createdAt: new Date().toISOString(),
+              });
+              console.log('📸 message.contentから既存の画像URLを検出:', imageFileName);
+            }
           }
         } catch (error) {
-          console.warn('画像URL抽出エラー:', error);
+          console.warn('⚠️ 画像URL抽出エラー:', error);
         }
       }
-      // Base64画像の処理（後方互換性のため）
+      // 🗑️ BASE64画像処理を完全削除 - ファイルベースのみ使用
       else if (message.content && message.content.startsWith('data:image/')) {
-        try {
-          // Base64データから画像を抽出
-          const base64Data = message.content.replace(/^data:image\/[a-z]+;base64,/, '');
-          const buffer = Buffer.from(base64Data, 'base64');
-
-          // ファイル名を生成
-          const imageTimestamp = Date.now();
-          const imageFileName = `history_${imageTimestamp}_${crypto.randomBytes(4).toString('hex')}.jpg`;
-          const imagePath = path.join(imagesDir, imageFileName);
-
-          // 画像を120pxにリサイズして保存
-          const resizedBuffer = await sharp(buffer)
-            .resize(120, 120, {
-              fit: 'inside',
-              withoutEnlargement: true,
-            })
-            .jpeg({ quality: 85 })
-            .toBuffer();
-
-          // 環境変数に応じてローカルまたはBLOBストレージに保存
-          const storageMode = process.env.STORAGE_MODE || 'local';
-          let imageSavedPath = '';
-
-          if (storageMode === 'hybrid' || storageMode === 'blob' || storageMode === 'azure') {
-            // BLOBストレージに保存
-            const blobServiceClient = getBlobServiceClient();
-            if (blobServiceClient) {
-              const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
-              const containerClient = blobServiceClient.getContainerClient(containerName);
-              const imageBlobName = `images/chat-exports/${imageFileName}`;
-              const blockBlobClient = containerClient.getBlockBlobClient(imageBlobName);
-
-              await blockBlobClient.upload(resizedBuffer, resizedBuffer.length, {
-                blobHTTPHeaders: {
-                  blobContentType: 'image/jpeg'
-                },
-                metadata: {
-                  chatId: id,
-                  uploadedAt: new Date().toISOString()
-                }
-              });
-
-              imageSavedPath = imageBlobName;
-              console.log(`✅ 画像ファイルを保存しました (BLOB): ${imageBlobName} (120pxにリサイズ)`);
-            } else {
-              console.warn('⚠️ BLOBストレージが利用できないため、ローカルに保存します');
-              fs.writeFileSync(imagePath, resizedBuffer);
-              imageSavedPath = imagePath;
-              console.log('✅ 画像ファイルを保存しました（120pxにリサイズ）:', imagePath);
-            }
-          } else {
-            // ローカルファイルシステムに直接保存
-            fs.writeFileSync(imagePath, resizedBuffer);
-            imageSavedPath = imagePath;
-            console.log('✅ 画像ファイルを保存しました（120pxにリサイズ）:', imagePath);
-          }
-
-          const imageUrl = getImageUrl(imageFileName, 'chat-exports');
-          console.log(`🔗 生成された画像URL: ${imageUrl} (STORAGE_MODE: ${storageMode})`);
-
-          // base64をURLに置き換え
-          message.content = imageUrl;
-
-          savedImages.push({
-            messageId: message.id,
-            fileName: imageFileName,
-            originalFileName: imageFileName,
-            path: imageSavedPath,
-            url: imageUrl,
-            mimeType: 'image/jpeg',
-            fileSize: resizedBuffer.length.toString(),
-            description: `Chat image ${imageFileName}`,
-            createdAt: new Date().toISOString(),
-          });
-        } catch (imageError) {
-          console.warn('画像保存エラー:', imageError);
-          // エラー時はbase64を削除
-          message.content = '[画像データ削除]';
-        }
+        // BASE64は削除してプレースホルダーに置換
+        message.content = '[画像はファイルベースで管理されます]';
+        console.warn('⚠️ BASE64画像を検出しました。ファイルベースに移行してください。');
+        continue; // 次のメッセージへ
       }
+    }
+
+    // BASE64処理の削除: 以下のBase64データから画像を抽出する大きなコードブロックを削除
+    // 代わりに、すべて message.media と URL ベースで処理
+    
+    console.log('📸 収集した画像数:', savedImages.length);
+    if (savedImages.length > 0) {
+      console.log('📋 画像一覧:', savedImages.map(img => img.fileName));
     }
 
     // チャットデータをJSONファイルとして保存
@@ -4944,22 +4856,23 @@ apiRouter.post('/chats/:id/send', async (req, res) => {
       .map((m) => m.content)
       .filter((content) => {
         if (!content) {
-          console.log('🔍 /send フィルタ - 空のコンテンツ');
+          console.log('🔍 フィルタ - 空のコンテンツ');
           return false;
         }
         const trimmed = content.trim();
-        console.log('🔍 /send フィルタ - チェック中:', {
+        console.log('🔍 フィルタ - チェック中:', {
           content: trimmed.substring(0, 50),
           isDataImage: trimmed.startsWith('data:image/'),
           isApiImages: trimmed.startsWith('/api/images/'),
           includesChatExports: trimmed.includes('/api/images/chat-exports/'),
-          isDeleted: trimmed === '[画像データ削除]',
+          isDeleted: trimmed === '[画像データ削除]' || trimmed === '[画像はファイルベースで管理されます]',
         });
         const result = !trimmed.startsWith('data:image/') &&
           !trimmed.startsWith('/api/images/') &&
           !trimmed.includes('/api/images/chat-exports/') &&
-          trimmed !== '[画像データ削除]';
-        console.log('🔍 /send フィルタ - 結果:', result ? 'テキストとして採用' : '画像として除外');
+          trimmed !== '[画像データ削除]' &&
+          trimmed !== '[画像はファイルベースで管理されます]';
+        console.log('🔍 フィルタ - 結果:', result ? 'テキストとして採用' : '画像として除外');
         return result;
       })
       .join('\n')
@@ -6236,13 +6149,15 @@ apiRouter.post('/history/summarize', async (req, res) => {
 apiRouter.put('/history/update-item/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { updatedData, updatedBy = 'user' } = req.body;
+    const { updatedData, updatedBy = 'user', deletedImages = [] } = req.body;
 
     console.log('📝 履歴アイテム更新リクエスト（統一サーバー）:', {
       id,
       updatedDataType: typeof updatedData,
       updatedDataKeys: updatedData ? Object.keys(updatedData) : [],
       updatedBy,
+      deletedImagesCount: deletedImages.length,
+      deletedImages: deletedImages,
     });
 
     // IDを正規化（export_プレフィックス除去など）
@@ -6403,6 +6318,32 @@ apiRouter.put('/history/update-item/:id', async (req, res) => {
 
     console.log('✅ 履歴ファイル更新完了:', targetFile);
     console.log('📊 更新されたフィールド:', Object.keys(updatedData).filter(key => updatedData[key] !== undefined));
+
+    // 削除された画像ファイルを物理的に削除
+    if (deletedImages && Array.isArray(deletedImages) && deletedImages.length > 0) {
+      console.log('🗑️ 削除された画像ファイルを削除開始:', deletedImages);
+      const imagesDir = resolveKnowledgeBasePath('images/chat-exports');
+      let deletedCount = 0;
+      let failedCount = 0;
+
+      for (const fileName of deletedImages) {
+        try {
+          const imagePath = path.join(imagesDir, fileName);
+          if (fs.existsSync(imagePath)) {
+            fs.unlinkSync(imagePath);
+            deletedCount++;
+            console.log(`✅ 画像ファイル削除: ${fileName}`);
+          } else {
+            console.warn(`⚠️ 画像ファイルが見つかりません: ${fileName}`);
+          }
+        } catch (deleteError) {
+          failedCount++;
+          console.error(`❌ 画像ファイル削除エラー (${fileName}):`, deleteError);
+        }
+      }
+
+      console.log(`🗑️ 画像削除完了: 成功=${deletedCount}件, 失敗=${failedCount}件`);
+    }
 
     // データベースにも反映（PostgreSQLまたはSQLite）
     try {
@@ -7631,12 +7572,12 @@ ${text}
 });
 
 // 診断用エンドポイントをマウント
-import('./routes/_diag.js').then(module => {
-  module.default(app);
-  console.log('✅ Diagnostic routes mounted');
-}).catch(err => {
-  console.error('❌ Failed to load diagnostic routes:', err);
-});
+// import('./routes/_diag.js').then(module => {
+//   module.default(app);
+//   console.log('✅ Diagnostic routes mounted');
+// }).catch(err => {
+//   console.error('❌ Failed to load diagnostic routes:', err);
+// });
 
 // Tech Support エンドポイント（直接実装）
 apiRouter.post('/tech-support/cleanup-uploads', async (req, res) => {

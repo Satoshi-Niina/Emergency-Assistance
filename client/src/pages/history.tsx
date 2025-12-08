@@ -567,9 +567,99 @@ export default function HistoryPage() {
 
       console.log('💾 保存対象のID:', itemId);
 
-      // 🔧 修正: 画像データを正規化して送信（重複削除）
-      // 優先順位: jsonData.savedImages > savedImages > images
-      let rawImages = editedItem.jsonData?.savedImages || editedItem.savedImages || editedItem.images || [];
+      // 🔧 修正: すべてのソースから画像を収集（重複削除）
+      console.log('🔍 編集保存: editedItem構造確認:', {
+        hasSavedImages: !!editedItem.savedImages,
+        savedImagesLength: editedItem.savedImages?.length,
+        savedImagesData: editedItem.savedImages,
+        hasJsonData: !!editedItem.jsonData,
+        hasJsonDataSavedImages: !!editedItem.jsonData?.savedImages,
+        jsonDataSavedImagesLength: editedItem.jsonData?.savedImages?.length,
+        jsonDataSavedImagesData: editedItem.jsonData?.savedImages,
+        hasChatData: !!(editedItem.jsonData as any)?.chatData,
+        hasChatDataSavedImages: !!(editedItem.jsonData as any)?.chatData?.savedImages,
+        chatDataSavedImagesLength: (editedItem.jsonData as any)?.chatData?.savedImages?.length,
+        chatDataSavedImagesData: (editedItem.jsonData as any)?.chatData?.savedImages,
+        hasImages: !!editedItem.images,
+        imagesLength: editedItem.images?.length,
+        imagesData: editedItem.images
+      });
+      
+      const rawImageSources = [
+        ...(editedItem.savedImages || []),
+        ...(editedItem.jsonData?.savedImages || []),
+        ...((editedItem.jsonData as any)?.chatData?.savedImages || []),
+        ...(editedItem.images || [])
+      ];
+      
+      console.log('🔍 編集保存: rawImageSources統合:', {
+        totalCount: rawImageSources.length,
+        sources: rawImageSources
+      });
+      
+      // 重複を除外してrawImagesを作成
+      const rawImageMap = new Map<string, any>();
+      rawImageSources.forEach(img => {
+        const fileName = typeof img === 'string' 
+          ? img.split('/').pop()?.split('\\').pop()
+          : img.fileName || img.url?.split('/').pop();
+        console.log('  - 画像処理:', { img, fileName });
+        if (fileName && !fileName.startsWith('data:image/') && !rawImageMap.has(fileName)) {
+          rawImageMap.set(fileName, img);
+        }
+      });
+      const rawImages = Array.from(rawImageMap.values());
+      
+      console.log('🔍 編集保存: 収集した画像数:', {
+        savedImages: editedItem.savedImages?.length || 0,
+        jsonDataSavedImages: editedItem.jsonData?.savedImages?.length || 0,
+        chatDataSavedImages: (editedItem.jsonData as any)?.chatData?.savedImages?.length || 0,
+        images: editedItem.images?.length || 0,
+        rawImages統合後: rawImages.length,
+        rawImagesData: rawImages
+      });
+      
+      // 元のアイテムから全画像を取得（削除検出用）
+      const originalImages = new Set<string>();
+      if (originalEditingItem) {
+        const collectImageFileNames = (item: any) => {
+          const images: string[] = [];
+          
+          // savedImagesから取得
+          if (item.savedImages && Array.isArray(item.savedImages)) {
+            item.savedImages.forEach((img: any) => {
+              const fileName = typeof img === 'string' 
+                ? img.split('/').pop()?.split('\\').pop() 
+                : img.fileName || img.url?.split('/').pop();
+              if (fileName) images.push(fileName);
+            });
+          }
+          
+          // jsonData.savedImagesから取得
+          if (item.jsonData?.savedImages && Array.isArray(item.jsonData.savedImages)) {
+            item.jsonData.savedImages.forEach((img: any) => {
+              const fileName = typeof img === 'string' 
+                ? img.split('/').pop()?.split('\\').pop() 
+                : img.fileName || img.url?.split('/').pop();
+              if (fileName) images.push(fileName);
+            });
+          }
+          
+          // chatData.savedImagesから取得
+          if (item.jsonData?.chatData?.savedImages && Array.isArray(item.jsonData.chatData.savedImages)) {
+            item.jsonData.chatData.savedImages.forEach((img: any) => {
+              const fileName = typeof img === 'string' 
+                ? img.split('/').pop()?.split('\\').pop() 
+                : img.fileName || img.url?.split('/').pop();
+              if (fileName) images.push(fileName);
+            });
+          }
+          
+          return images;
+        };
+        
+        collectImageFileNames(originalEditingItem).forEach(fileName => originalImages.add(fileName));
+      }
       
       // 重複削除と正規化
       const seenFileNames = new Set<string>();
@@ -605,15 +695,24 @@ export default function HistoryPage() {
           return true;
         });
 
+      // 削除された画像を検出
+      const currentFileNames = new Set(normalizedImages.map((img: any) => img.fileName));
+      const deletedImages = Array.from(originalImages).filter(fileName => !currentFileNames.has(fileName));
+
       console.log('📤 サーバーへ送信する画像データ:', {
         元の画像数: rawImages.length,
         正規化後: normalizedImages.length,
-        画像リスト: normalizedImages.map((img: any) => img.fileName)
+        削除された画像: deletedImages.length,
+        画像リスト: normalizedImages.map((img: any) => img.fileName),
+        削除リスト: deletedImages
       });
 
-      // chatData.messages も更新された画像で再構築
+      // chatData全体を更新（messages と savedImages の両方）
       const updatedChatData = editedItem.jsonData?.chatData ? {
         ...editedItem.jsonData.chatData,
+        // chatData.savedImages も同期
+        savedImages: normalizedImages,
+        // messages内のmediaも更新
         messages: (editedItem.jsonData.chatData.messages || []).map((msg: any) => ({
           ...msg,
           media: msg.media ? msg.media.filter((m: any) => {
@@ -641,6 +740,8 @@ export default function HistoryPage() {
           lastModified: new Date().toISOString(),
         },
         updatedBy: 'user',
+        // 削除された画像のファイル名を送信（サーバー側で物理削除）
+        deletedImages: deletedImages.length > 0 ? deletedImages : undefined,
       };
 
       // サーバーに更新リクエストを送信
@@ -1607,33 +1708,72 @@ export default function HistoryPage() {
                         <td className="border border-gray-300 p-3">
                           <div className="flex justify-center gap-1 flex-wrap">
                             {(() => {
-                              // 複数のパスから画像を抽出（優先順位順）
+                              // 複数のパスから画像を抽出して統合（重複排除）
                               let displayImages: any[] = [];
+                              const imageMap = new Map<string, any>(); // fileName をキーとして重複排除
                               
-                              // 1. item.jsonData.savedImagesから取得（最優先・正規化済み）
+                              // 1. item.savedImagesから取得（編集で追加された画像）
+                              if (item.savedImages && Array.isArray(item.savedImages) && item.savedImages.length > 0) {
+                                item.savedImages.forEach((img: any) => {
+                                  const fileName = img.fileName || img.url?.split('/').pop();
+                                  if (fileName && !imageMap.has(fileName)) {
+                                    imageMap.set(fileName, img);
+                                  }
+                                });
+                                console.log(`📸 [一覧表示] アイテム[${item.id}] savedImages: ${item.savedImages.length}件`);
+                              }
+                              
+                              // 2. item.jsonData.savedImagesから取得
                               if (item.jsonData?.savedImages && Array.isArray(item.jsonData.savedImages) && item.jsonData.savedImages.length > 0) {
-                                displayImages = item.jsonData.savedImages;
-                                console.log(`📸 [一覧表示] アイテム[${item.id}]の画像ソース: jsonData.savedImages (${displayImages.length}件)`);
+                                item.jsonData.savedImages.forEach((img: any) => {
+                                  const fileName = img.fileName || img.url?.split('/').pop();
+                                  if (fileName && !imageMap.has(fileName)) {
+                                    imageMap.set(fileName, img);
+                                  }
+                                });
+                                console.log(`📸 [一覧表示] アイテム[${item.id}] jsonData.savedImages: ${item.jsonData.savedImages.length}件`);
                               }
-                              // 2. item.savedImagesから取得
-                              else if (item.savedImages && Array.isArray(item.savedImages) && item.savedImages.length > 0) {
-                                displayImages = item.savedImages;
-                                console.log(`📸 [一覧表示] アイテム[${item.id}]の画像ソース: savedImages (${displayImages.length}件)`);
+                              
+                              // 3. item.jsonData.chatData.savedImagesから取得
+                              if (item.jsonData?.chatData?.savedImages && Array.isArray(item.jsonData.chatData.savedImages) && item.jsonData.chatData.savedImages.length > 0) {
+                                item.jsonData.chatData.savedImages.forEach((img: any) => {
+                                  const fileName = img.fileName || img.url?.split('/').pop();
+                                  if (fileName && !imageMap.has(fileName)) {
+                                    imageMap.set(fileName, img);
+                                  }
+                                });
+                                console.log(`📸 [一覧表示] アイテム[${item.id}] chatData.savedImages: ${item.jsonData.chatData.savedImages.length}件`);
                               }
-                              // 3. item.imagesから取得
-                              else if (item.images && Array.isArray(item.images) && item.images.length > 0) {
-                                displayImages = item.images;
-                                console.log(`📸 [一覧表示] アイテム[${item.id}]の画像ソース: images (${displayImages.length}件)`);
+                              
+                              // 4. item.imagesから取得（DB由来）
+                              if (item.images && Array.isArray(item.images) && item.images.length > 0) {
+                                item.images.forEach((img: any) => {
+                                  const fileName = img.fileName || img.url?.split('/').pop();
+                                  if (fileName && !imageMap.has(fileName)) {
+                                    imageMap.set(fileName, img);
+                                  }
+                                });
+                                console.log(`📸 [一覧表示] アイテム[${item.id}] images: ${item.images.length}件`);
                               }
-                              // 4. chatData.messagesから画像を抽出（最後のフォールバック）
-                              else if (item.jsonData?.chatData?.messages) {
+                              
+                              // 5. chatData.messagesから画像を抽出（最後のフォールバック）
+                              if (item.jsonData?.chatData?.messages) {
                                 const messages = item.jsonData.chatData.messages || [];
                                 const messageImages = messages.flatMap((msg: any) => msg.media || []);
+                                messageImages.forEach((img: any) => {
+                                  const fileName = img.fileName || img.url?.split('/').pop();
+                                  if (fileName && !imageMap.has(fileName)) {
+                                    imageMap.set(fileName, img);
+                                  }
+                                });
                                 if (messageImages.length > 0) {
-                                  displayImages = messageImages;
-                                  console.log(`📸 [一覧表示] アイテム[${item.id}]の画像ソース: chatData.messages (${displayImages.length}件)`);
+                                  console.log(`📸 [一覧表示] アイテム[${item.id}] chatData.messages: ${messageImages.length}件`);
                                 }
                               }
+                              
+                              // Mapから配列に変換
+                              displayImages = Array.from(imageMap.values());
+                              console.log(`📸 [一覧表示] アイテム[${item.id}] 統合後の合計画像数: ${displayImages.length}件`);
 
                               return displayImages.length > 0 ? (
                                 <>
@@ -2136,11 +2276,17 @@ export default function HistoryPage() {
                             統合後: updatedSavedImages
                           });
 
+                          // 🔧 修正: すべてのフィールドを同期
                           setEditingItem({
                             ...editingItem,
+                            savedImages: updatedSavedImages, // ルートレベルにも追加
                             jsonData: {
                               ...editingItem.jsonData,
                               savedImages: updatedSavedImages,
+                              chatData: {
+                                ...(editingItem.jsonData?.chatData || {}),
+                                savedImages: updatedSavedImages, // chatData.savedImagesにも追加
+                              },
                             },
                           });
                         }
@@ -2204,23 +2350,32 @@ export default function HistoryPage() {
                         return cleanUrl.startsWith('/') ? `/api${cleanUrl}` : `/api/${cleanUrl}`;
                       };
 
-                      // 🔧 修正: 単一の信頼できるソース（savedImages）から画像を取得
-                      // 優先順位: jsonData.savedImages > savedImages > images
-                      let sourceImages: any[] = [];
-                      let sourceName = '';
+                      // 🔧 修正: 複数のソースから画像を統合
+                      // 優先順位: savedImages > jsonData.savedImages > jsonData.chatData.savedImages > images
+                      const imageMap = new Map<string, any>();
+                      const sources = [
+                        { data: item?.savedImages, name: 'savedImages' },
+                        { data: item?.jsonData?.savedImages, name: 'jsonData.savedImages' },
+                        { data: (item?.jsonData as any)?.chatData?.savedImages, name: 'chatData.savedImages' },
+                        { data: item?.images, name: 'images' }
+                      ];
                       
-                      if (Array.isArray(item?.jsonData?.savedImages) && item.jsonData.savedImages.length > 0) {
-                        sourceImages = item.jsonData.savedImages;
-                        sourceName = 'jsonData.savedImages';
-                      } else if (Array.isArray(item?.savedImages) && item.savedImages.length > 0) {
-                        sourceImages = item.savedImages;
-                        sourceName = 'savedImages';
-                      } else if (Array.isArray(item?.images) && item.images.length > 0) {
-                        sourceImages = item.images;
-                        sourceName = 'images';
-                      }
+                      sources.forEach(source => {
+                        if (Array.isArray(source.data) && source.data.length > 0) {
+                          console.log(`🔍 編集画面: ${source.name}から${source.data.length}件の画像を検出`);
+                          source.data.forEach((img: any) => {
+                            const fileName = typeof img === 'string' 
+                              ? img.split('/').pop()?.split('\\').pop()
+                              : img.fileName || img.url?.split('/').pop();
+                            if (fileName && !fileName.startsWith('data:image/') && !imageMap.has(fileName)) {
+                              imageMap.set(fileName, img);
+                            }
+                          });
+                        }
+                      });
                       
-                      console.log(`🔍 編集画面: 画像ソース=${sourceName}, 画像数=${sourceImages.length}`);
+                      const sourceImages = Array.from(imageMap.values());
+                      console.log(`🔍 編集画面: 統合後の画像数=${sourceImages.length}`, Array.from(imageMap.keys()));
                       
                       sourceImages.forEach((img: any, idx: number) => {
                         // 文字列の場合
@@ -2323,6 +2478,7 @@ export default function HistoryPage() {
                                     const updatedJsonDataSavedImages = (editingItem.jsonData?.savedImages || []).filter(filterOutImage);
                                     const updatedSavedImages = (editingItem.savedImages || []).filter(filterOutImage);
                                     const updatedImages = (editingItem.images || []).filter(filterOutImage);
+                                    const updatedChatDataSavedImages = ((editingItem.jsonData as any)?.chatData?.savedImages || []).filter(filterOutImage);
                                     
                                     // chatData.messages[].media からも削除
                                     const updatedMessages = (editingItem.jsonData?.chatData?.messages || []).map((msg: any) => ({
@@ -2347,6 +2503,7 @@ export default function HistoryPage() {
                                         savedImages: updatedJsonDataSavedImages,
                                         chatData: {
                                           ...(editingItem.jsonData?.chatData || {}),
+                                          savedImages: updatedChatDataSavedImages, // 🔧 修正: chatData.savedImagesも更新
                                           messages: updatedMessages
                                         }
                                       },

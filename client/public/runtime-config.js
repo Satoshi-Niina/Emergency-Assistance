@@ -21,12 +21,12 @@
   } else if (isAzureStaticWebApp) {
     // Azure Static Web Apps: App ServiceバックエンドAPI使用
     // CORS_ALLOW_ORIGINSは現在のオリジンを使用（動的）
-    // PLACEHOLDER_API_BASE_URL はデプロイ時に VITE_API_BASE_URL で置換される
-    let apiBaseUrl = "PLACEHOLDER_API_BASE_URL";
+    // https://emergency-assistantapp.azurewebsites.net/api はデプロイ時に VITE_API_BASE_URL で置換される
+    let apiBaseUrl = "https://emergency-assistantapp.azurewebsites.net/api";
 
     // PLACEHOLDER が置換されていない場合のフォールバック
-    if (apiBaseUrl === "PLACEHOLDER_API_BASE_URL" || apiBaseUrl.includes("PLACEHOLDER")) {
-      console.warn('⚠️ PLACEHOLDER_API_BASE_URL was not replaced during build');
+    if (apiBaseUrl === "https://emergency-assistantapp.azurewebsites.net/api" || apiBaseUrl.includes("PLACEHOLDER")) {
+      console.warn('⚠️ https://emergency-assistantapp.azurewebsites.net/api was not replaced during build');
       console.warn('⚠️ Attempting to use default Azure App Service URL...');
 
       // デフォルトのAzure App Service URL（環境変数から取得した固定値）
