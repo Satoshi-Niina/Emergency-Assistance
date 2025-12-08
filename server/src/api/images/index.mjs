@@ -74,62 +74,108 @@ export default async function imagesHandler(req, res) {
     
     try {
       const blobServiceClient = getBlobServiceClient();
+      const isProduction = process.env.NODE_ENV === 'production';
       
-      // BLOB専用アーキテクチャ: BLOBが利用できない場合はエラー
-      if (!blobServiceClient) {
-        console.error('[api/images] BLOB service client not available');
+      // 本番環境: BLOB必須
+      if (isProduction && !blobServiceClient) {
+        console.error('[api/images] PRODUCTION: BLOB service client not available');
         return res.status(503).json({
           success: false,
-          error: 'ストレージサービスが利用できません'
+          error: 'ストレージサービスが利用できません（本番環境）'
         });
       }
-
-      // 本番環境: BLOBから取得
-      try {
-        const containerClient = blobServiceClient.getContainerClient(containerName);
-        const blobName = `knowledge-base/images/${category}/${fileName}`;
-        console.log('[api/images] Looking for blob:', blobName);
-        
-        const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-        const exists = await blockBlobClient.exists();
-        
-        if (!exists) {
-          console.log('[api/images] BLOB not found:', blobName);
-          return res.status(404).json({
-            success: false,
-            error: '画像が見つかりません',
-            fileName: fileName
-          });
-        }
-        
-        console.log('[api/images] BLOB found:', blobName);
-        const downloadResponse = await blockBlobClient.download();
-        const chunks = [];
-        
-        if (downloadResponse.readableStreamBody) {
-          for await (const chunk of downloadResponse.readableStreamBody) {
-            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      
+      // BLOBサービスが利用可能な場合: BLOBから取得
+      if (blobServiceClient) {
+        try {
+          const containerClient = blobServiceClient.getContainerClient(containerName);
+          const blobName = `knowledge-base/images/${category}/${fileName}`;
+          console.log('[api/images] Looking for blob:', blobName);
+          
+          const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+          const exists = await blockBlobClient.exists();
+          
+          if (!exists) {
+            console.log('[api/images] BLOB not found:', blobName);
+            // 本番環境ではBLOBに存在しない場合は404
+            if (isProduction) {
+              return res.status(404).json({
+                success: false,
+                error: '画像が見つかりません（本番環境）',
+                fileName: fileName,
+                blobName: blobName
+              });
+            }
+            // 開発環境のみローカルファイルシステムにフォールバック
+          } else {
+            console.log('[api/images] BLOB found:', blobName);
+            const downloadResponse = await blockBlobClient.download();
+            const chunks = [];
+            
+            if (downloadResponse.readableStreamBody) {
+              for await (const chunk of downloadResponse.readableStreamBody) {
+                chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+              }
+              const buffer = Buffer.concat(chunks);
+              setImageHeaders(contentType);
+              return res.status(200).send(buffer);
+            }
+            
+            console.error('[api/images] readableStreamBody is null');
+            if (isProduction) {
+              return res.status(500).json({
+                success: false,
+                error: '画像データの読み込みに失敗しました'
+              });
+            }
           }
-          const buffer = Buffer.concat(chunks);
+        } catch (blobError) {
+          console.error('[api/images] BLOB error:', blobError.message);
+          // 本番環境ではBLOBエラーは致命的
+          if (isProduction) {
+            return res.status(500).json({
+              success: false,
+              error: 'BLOB取得エラー（本番環境）',
+              details: blobError.message
+            });
+          }
+          // 開発環境のみローカルファイルシステムにフォールバック
+        }
+      }
+      
+      // 開発環境のみ: ローカルファイルシステムからの取得
+      if (!isProduction) {
+        console.log('[api/images] DEV: Trying local filesystem fallback');
+        const localBasePath = path.resolve(process.cwd(), 'knowledge-base', 'images', category);
+        const localFilePath = path.join(localBasePath, fileName);
+        
+        console.log('[api/images] DEV: Local file path:', localFilePath);
+        
+        if (fs.existsSync(localFilePath)) {
+          console.log('[api/images] DEV: Local file found:', localFilePath);
+          const fileBuffer = fs.readFileSync(localFilePath);
           setImageHeaders(contentType);
-          return res.status(200).send(buffer);
+          return res.status(200).send(fileBuffer);
         }
         
-        console.error('[api/images] readableStreamBody is null');
-        return res.status(500).json({
+        console.log('[api/images] DEV: File not found in local filesystem:', localFilePath);
+        return res.status(404).json({
           success: false,
-          error: '画像データの読み込みに失敗しました'
-        });
-      } catch (blobError) {
-        console.error('[api/images] BLOB error:', blobError.message);
-        
-        // BLOB専用: フォールバックなし
-        return res.status(500).json({
-          success: false,
-          error: 'BLOB取得エラー',
-          details: blobError.message
+          error: '画像が見つかりません（開発環境）',
+          fileName: fileName,
+          searchedPaths: {
+            blob: blobServiceClient ? `knowledge-base/images/${category}/${fileName}` : 'BLOB not configured',
+            local: localFilePath
+          }
         });
       }
+      
+      // 本番環境でBLOBから取得できなかった場合
+      return res.status(404).json({
+        success: false,
+        error: '画像が見つかりません',
+        fileName: fileName
+      });
       
     } catch (error) {
       console.error('[api/images] Error (falling back to 404):', error);

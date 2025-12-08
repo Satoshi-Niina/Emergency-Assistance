@@ -67,6 +67,106 @@ router.get('/blob-test', async (req, res) => {
   }
 });
 
+// 詳細BLOB診断 (画像アップロード問題用)
+router.get('/blob-detailed', async (req, res) => {
+  const diagnostics = {
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    config: {
+      containerName: containerName,
+      connectionStringSet: !!AZURE_STORAGE_CONNECTION_STRING,
+      containerNameFromEnv: AZURE_STORAGE_CONTAINER_NAME
+    },
+    tests: {}
+  };
+
+  try {
+    // Test 1: Client initialization
+    const blobServiceClient = getBlobServiceClient();
+    diagnostics.tests.clientInit = blobServiceClient ? '✅ Success' : '❌ Failed';
+    
+    if (!blobServiceClient) {
+      diagnostics.error = 'BLOB client could not be initialized';
+      return res.status(503).json(diagnostics);
+    }
+
+    diagnostics.config.accountName = blobServiceClient.accountName;
+
+    // Test 2: Container existence
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const containerExists = await containerClient.exists();
+    diagnostics.tests.containerExists = containerExists ? '✅ Exists' : '❌ Not Found';
+
+    if (!containerExists) {
+      diagnostics.error = `Container '${containerName}' does not exist`;
+      diagnostics.solution = 'Create container in Azure Portal or run: az storage container create';
+      return res.status(404).json(diagnostics);
+    }
+
+    // Test 3: Container properties
+    const containerProps = await containerClient.getProperties();
+    diagnostics.tests.containerProps = '✅ Retrieved';
+    diagnostics.container = {
+      publicAccess: containerProps.publicAccess || 'none',
+      lastModified: containerProps.lastModified?.toISOString(),
+      etag: containerProps.etag
+    };
+
+    // Test 4: List blobs (sample)
+    let blobCount = 0;
+    const sampleBlobs = [];
+    for await (const blob of containerClient.listBlobsFlat({ prefix: 'knowledge-base/images/' })) {
+      if (blobCount < 5) {
+        sampleBlobs.push({
+          name: blob.name,
+          size: blob.properties.contentLength,
+          contentType: blob.properties.contentType,
+          lastModified: blob.properties.lastModified?.toISOString()
+        });
+      }
+      blobCount++;
+    }
+    diagnostics.tests.listBlobs = `✅ Found ${blobCount} image blobs`;
+    diagnostics.sampleBlobs = sampleBlobs;
+
+    // Test 5: Upload test
+    const testBlobName = `knowledge-base/images/chat-exports/_test_${Date.now()}.txt`;
+    const testContent = 'Upload test - ' + new Date().toISOString();
+    const testBlockBlobClient = containerClient.getBlockBlobClient(testBlobName);
+    
+    await testBlockBlobClient.upload(testContent, testContent.length, {
+      blobHTTPHeaders: { blobContentType: 'text/plain' }
+    });
+    
+    const uploadExists = await testBlockBlobClient.exists();
+    diagnostics.tests.uploadTest = uploadExists ? '✅ Upload successful' : '❌ Upload failed';
+    
+    if (uploadExists) {
+      diagnostics.testBlobUrl = testBlockBlobClient.url;
+      // クリーンアップ
+      await testBlockBlobClient.delete();
+      diagnostics.tests.cleanup = '✅ Test blob deleted';
+    }
+
+    // Final status
+    diagnostics.status = 'healthy';
+    diagnostics.message = 'All BLOB storage tests passed successfully';
+
+    res.json(diagnostics);
+
+  } catch (error) {
+    diagnostics.status = 'error';
+    diagnostics.error = error.message;
+    diagnostics.errorCode = error.code;
+    diagnostics.errorDetails = {
+      name: error.name,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    };
+
+    res.status(500).json(diagnostics);
+  }
+});
+
 export default function registerDiagRoutes(app) {
   app.use('/api/_diag', router);
   

@@ -1167,12 +1167,24 @@ export default function ChatPage() {
               fileName: media.fileName || '',
             })) || [],
         })),
+        savedImages: messages
+          .flatMap(msg => msg.media || [])
+          .filter((media: any) => media.type === 'image')
+          .map((media: any) => ({
+            id: media.id,
+            type: media.type,
+            url: media.url,
+            title: media.title,
+            fileName: media.fileName || '',
+          })),
       };
 
       console.log('📤 送信シューティング:', {
         chatId: chatData.chatId,
         messageCount: chatData.messages.length,
         machineInfo: chatData.machineInfo,
+        savedImagesCount: chatData.savedImages?.length,
+        savedImages: chatData.savedImages,
         totalDataSize: JSON.stringify(chatData).length,
       });
 

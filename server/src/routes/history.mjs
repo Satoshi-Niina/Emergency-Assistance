@@ -62,6 +62,11 @@ function extractMetadataFromJson(json = {}, fileName = '') {
   const chatData = json.chatData || {};
   const machineInfo = chatData.machineInfo || json.machineInfo || {};
 
+  console.log('[extractMetadata] Input JSON keys:', Object.keys(json));
+  if (json.chatData) console.log('[extractMetadata] chatData keys:', Object.keys(json.chatData));
+  if (json.savedImages) console.log('[extractMetadata] json.savedImages length:', json.savedImages.length);
+  if (chatData.savedImages) console.log('[extractMetadata] chatData.savedImages length:', chatData.savedImages.length);
+
   const machineType =
     machineInfo.machineTypeName || json.machineType || 'Unknown';
   const machineNumber =
@@ -311,14 +316,46 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
       console.log(`[history/upload-image] Generated fileName: ${fileName}`);
       
       const blobServiceClient = getBlobServiceClient();
+      const isProduction = process.env.NODE_ENV === 'production';
 
-      // 🔧 修正: BLOB必須、ローカル保存は使用しない
+      // 本番環境: BLOB必須
       if (!blobServiceClient) {
-        console.error('[history/upload-image] ❌ BLOB storage not configured');
-        console.error('[history/upload-image] AZURE_STORAGE_CONNECTION_STRING:', AZURE_STORAGE_CONNECTION_STRING ? 'SET' : 'NOT SET');
-        return res.status(503).json({
-          success: false,
-          error: 'BLOB storage not available. Please configure Azure Storage connection string.'
+        if (isProduction) {
+          console.error('[history/upload-image] PRODUCTION: ❌ BLOB storage not configured');
+          console.error('[history/upload-image] AZURE_STORAGE_CONNECTION_STRING:', AZURE_STORAGE_CONNECTION_STRING ? 'SET' : 'NOT SET');
+          return res.status(503).json({
+            success: false,
+            error: 'BLOB storage not available. Please configure Azure Storage connection string. (本番環境)'
+          });
+        }
+        
+        // 開発環境のみ: ローカルファイルシステムに保存
+        console.warn('[history/upload-image] DEV: ⚠️ BLOB storage not configured, using local filesystem');
+        console.warn('[history/upload-image] AZURE_STORAGE_CONNECTION_STRING:', AZURE_STORAGE_CONNECTION_STRING ? 'SET' : 'NOT SET');
+        
+        const localDir = path.resolve(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
+        const localFilePath = path.join(localDir, fileName);
+        
+        // ディレクトリが存在しない場合は作成
+        if (!fs.existsSync(localDir)) {
+          fs.mkdirSync(localDir, { recursive: true });
+          console.log('[history/upload-image] DEV: Created local directory:', localDir);
+        }
+        
+        // ファイルを保存
+        fs.writeFileSync(localFilePath, req.file.buffer);
+        console.log('[history/upload-image] DEV: ✅ Saved to local filesystem:', localFilePath);
+        
+        const imageUrl = `/api/images/chat-exports/${fileName}`;
+        
+        return res.json({
+          success: true,
+          imageUrl: imageUrl,
+          fileName: fileName,
+          size: req.file.size,
+          storage: 'local',
+          verified: true,
+          environment: 'development'
         });
       }
 
@@ -497,13 +534,42 @@ router.get('/exports/:fileName', async (req, res) => {
 router.get('/export-files', async (req, res) => {
   try {
     console.log('[history/export-files] Fetching export files');
+    console.log('[history/export-files] 🔍 BLOB接続診断開始');
+    console.log('[history/export-files] 環境変数:', {
+      AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING ? '設定済み' : '未設定',
+      BLOB_CONTAINER_NAME: process.env.BLOB_CONTAINER_NAME || 'デフォルト'
+    });
+    
     const blobServiceClient = getBlobServiceClient();
+    console.log('[history/export-files] BLOBクライアント:', blobServiceClient ? '取得成功' : '取得失敗');
+    
     const items = [];
 
     if (blobServiceClient) {
       try {
         const containerClient = blobServiceClient.getContainerClient(containerName);
+        console.log('[history/export-files] コンテナ名:', containerName);
+        
+        const containerExists = await containerClient.exists();
+        console.log('[history/export-files] コンテナ存在確認:', containerExists ? 'あり' : 'なし');
+        
+        if (!containerExists) {
+          console.error('[history/export-files] ❌ コンテナが存在しません:', containerName);
+          return res.json({
+            success: true,
+            files: [],
+            count: 0,
+            warning: `コンテナ "${containerName}" が見つかりません`,
+            diagnostics: {
+              blobClientAvailable: true,
+              containerExists: false,
+              containerName: containerName
+            }
+          });
+        }
+        
         const prefix = 'knowledge-base/exports/';
+        console.log('[history/export-files] 検索プレフィックス:', prefix);
         
         for await (const blob of containerClient.listBlobsFlat({ prefix })) {
           if (blob.name.endsWith('.json')) {
@@ -528,15 +594,25 @@ router.get('/export-files', async (req, res) => {
             });
           }
         }
+        console.log('[history/export-files] ✅ 取得完了:', items.length, '件');
       } catch (blobError) {
-        console.error('[history/export-files] Blob error:', blobError);
+        console.error('[history/export-files] ❌ BLOBエラー:', blobError);
+        console.error('[history/export-files] エラー詳細:', blobError.message);
+        console.error('[history/export-files] スタックトレース:', blobError.stack);
       }
+    } else {
+      console.error('[history/export-files] ❌ BLOBクライアントが利用できません');
     }
 
     res.json({
       success: true,
       files: items,
-      count: items.length
+      count: items.length,
+      diagnostics: {
+        blobClientAvailable: !!blobServiceClient,
+        containerName: containerName,
+        filesFound: items.length
+      }
     });
   } catch (error) {
     console.error('[history/export-files] Error:', error);
@@ -636,6 +712,35 @@ async function handleUpdateHistory(req, res, rawId) {
         count: updatePayload.savedImages.length,
         images: updatePayload.savedImages.map(img => img.fileName || img.url?.substring(0, 50))
       });
+
+      // 削除された画像の検出と削除
+      const oldImages = originalData.savedImages || originalData.jsonData?.savedImages || [];
+      const newImages = updatePayload.savedImages || [];
+      const newImageNames = new Set(newImages.map(img => img.fileName || img.url?.split('/').pop()));
+      
+      const deletedImages = oldImages.filter(img => {
+        const fileName = img.fileName || img.url?.split('/').pop();
+        return fileName && !newImageNames.has(fileName);
+      });
+
+      if (deletedImages.length > 0) {
+        console.log(`[history/update] Found ${deletedImages.length} images to delete`);
+        for (const img of deletedImages) {
+          const fileName = img.fileName || img.url?.split('/').pop();
+          if (fileName) {
+            try {
+              const imageBlobName = `knowledge-base/images/chat-exports/${fileName}`;
+              const imageBlob = containerClient.getBlobClient(imageBlobName);
+              if (await imageBlob.exists()) {
+                await imageBlob.delete();
+                console.log(`[history/update] 🗑️ Deleted removed image: ${fileName}`);
+              }
+            } catch (delErr) {
+              console.warn(`[history/update] ⚠️ Failed to delete image: ${fileName}`, delErr.message);
+            }
+          }
+        }
+      }
       
       merged.savedImages = updatePayload.savedImages;
       merged.jsonData = mergeData(merged.jsonData || {}, { savedImages: updatePayload.savedImages });
@@ -719,7 +824,7 @@ router.delete('/:id', async (req, res) => {
     const imagesToDelete = metadata.images || [];
 
     console.log(`[history/delete] Found ${imagesToDelete.length} images to delete from JSON`);
-    console.log('[history/delete] Images to delete:', imagesToDelete.map(img => img.fileName || img.url));
+    console.log('[history/delete] Images to delete details:', JSON.stringify(imagesToDelete, null, 2));
 
     // 関連する画像をBLOBから削除
     let deletedImagesCount = 0;

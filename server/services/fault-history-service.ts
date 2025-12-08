@@ -20,7 +20,8 @@ export class FaultHistoryService {
 
   constructor() {
     // 標準はファイルシステム、DATABASE_BACKUP=trueの場合のみDBにもバックアップ
-    this.useDatabase = process.env.DATABASE_BACKUP === 'true' && !!process.env.DATABASE_URL;
+    // ユーザー要望によりDBバックアップを無効化（パフォーマンス改善のため）
+    this.useDatabase = false; // process.env.DATABASE_BACKUP === 'true' && !!process.env.DATABASE_URL;
 
     // 画像保存ディレクトリを設定
     this.imagesDir = process.env.FAULT_HISTORY_IMAGES_DIR ||
@@ -117,6 +118,7 @@ export class FaultHistoryService {
         emergencyGuideTitle,
         emergencyGuideContent,
         jsonData,
+        savedImages: imageRecords, // クライアントでの表示用にトップレベルにも保存
         metadata: {
           storageMode: 'file',
           imagePaths,

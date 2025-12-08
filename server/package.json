@@ -20,7 +20,8 @@
     "prebuild": "echo Preparing deployment...",
     "postbuild": "echo Deployment package ready",
     "type-check": "tsc --noEmit --project ../tsconfig.server.json",
-    "test": "echo No tests specified"
+    "test": "echo No tests specified",
+    "diagnose:blob": "node scripts/diagnose-blob-production.mjs"
   },
   "dependencies": {
     "@azure/functions": "^4.0.0",

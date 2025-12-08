@@ -543,7 +543,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
   const sendMessage = useCallback(
     async (
       content: string,
-      mediaUrls?: { type: string; url: string; thumbnail?: string }[],
+      mediaUrls?: { type: string; url: string; thumbnail?: string; fileName?: string }[],
       isAiResponse: boolean = false
     ) => {
       // 入力値の検証
@@ -585,7 +585,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
             type: media.type,
             url: media.url,
             thumbnail: media.thumbnail || media.url,
-            fileName: `${media.type}_${timestamp}_${index}`,
+            fileName: media.fileName || `${media.type}_${timestamp}_${index}`,
             title:
               content.substring(0, MAX_TEXT_LENGTH) || `${media.type}ファイル`,
           }));
@@ -870,21 +870,26 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
           .filter(msg => msg.media && msg.media.length > 0)
           .flatMap(msg =>
             msg.media.map((media: any) => {
-              // URLから実際のファイル名を抽出
-              const actualFileName = media.url?.split('/').pop() || media.fileName || '';
+              // URLから実際のファイル名を抽出（media.fileNameを最優先）
+              const actualFileName = media.fileName || media.url?.split('/').pop() || '';
               console.log('🖼️ エクスポート対象画像:', {
                 messageId: msg.id,
+                mediaFileName: media.fileName,
                 mediaUrl: media.url,
-                fileName: actualFileName,
+                actualFileName: actualFileName,
                 hasUrl: !!media.url,
                 urlStartsWith: media.url?.substring(0, 30)
               });
               return {
                 messageId: msg.id,
-                fileName: actualFileName,  // 正規化されたファイル名
-                url: media.url || '',      // 完全なURL (/api/images/chat-exports/xxx.jpg)
+                fileName: actualFileName,      // 元のファイル名を保持
+                originalFileName: media.fileName || actualFileName, // オリジナルファイル名も保持
+                url: media.url || '',          // 完全なURL (/api/images/chat-exports/xxx.jpg)
                 type: media.type || 'image',
-                timestamp: msg.timestamp || new Date().toISOString()
+                timestamp: msg.timestamp || new Date().toISOString(),
+                // 追加のメタデータも保持
+                thumbnail: media.thumbnail,
+                title: media.title
               };
             })
           ),
@@ -915,7 +920,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
       setLastExportTimestamp(new Date());
       setHasUnexportedMessages(false);
 
-      // エクスポート後に孤立画像をクリーンアップ（バックグラウンドで実行）
+      // エクスポート後の孤立画像クリーンアップは実行しない（エクスポートした画像を保持するため）
+      // クリーンアップは「チャットクリア」または「AI支援終了」時のみ実行する
+      /*
       try {
         const { buildApiUrl } = await import('../lib/api');
         console.log('🧹 エクスポート後の孤立画像クリーンアップを開始します');
@@ -935,6 +942,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
       } catch (cleanupError) {
         console.warn('⚠️ 孤立画像クリーンアップ開始失敗:', cleanupError);
       }
+      */
 
       return data;
     } catch (error) {
@@ -1394,24 +1402,29 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({
       console.log('🆕 新しいチャットセッションを開始します');
 
       // 4. 孤立画像のクリーンアップ（バックグラウンドで実行）
-      try {
-        const { buildApiUrl } = await import('../lib/api');
-        console.log('🧹 孤立画像のクリーンアップを開始します');
-        fetch(buildApiUrl('/history/cleanup-orphaned-images'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ dryRun: false }),
-        }).then(async (response) => {
-          if (response.ok) {
-            const result = await response.json();
-            console.log('✅ 孤立画像クリーンアップ完了:', result.stats);
-          }
-        }).catch((err) => {
-          console.warn('⚠️ 孤立画像クリーンアップ失敗:', err);
-        });
-      } catch (cleanupError) {
-        console.warn('⚠️ 孤立画像クリーンアップ開始失敗:', cleanupError);
+      // 未エクスポートのメッセージがある場合のみ実行（エクスポート済みの画像を守るため）
+      if (hasUnexportedMessages) {
+        try {
+          const { buildApiUrl } = await import('../lib/api');
+          console.log('🧹 孤立画像のクリーンアップを開始します（未エクスポートデータあり・強制削除モード）');
+          fetch(buildApiUrl('/history/cleanup-orphaned-images'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ dryRun: false, force: true }), // force: trueを追加して即時削除
+          }).then(async (response) => {
+            if (response.ok) {
+              const result = await response.json();
+              console.log('✅ 孤立画像クリーンアップ完了:', result.stats);
+            }
+          }).catch((err) => {
+            console.warn('⚠️ 孤立画像クリーンアップ失敗:', err);
+          });
+        } catch (cleanupError) {
+          console.warn('⚠️ 孤立画像クリーンアップ開始失敗:', cleanupError);
+        }
+      } else {
+        console.log('🛡️ 全てエクスポート済みのため、画像クリーンアップをスキップします');
       }
 
       toast({

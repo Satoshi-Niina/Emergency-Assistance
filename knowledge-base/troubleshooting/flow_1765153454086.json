@@ -1,0 +1,226 @@
+{
+  "id": "flow_1765153454086",
+  "title": "エンジン アイドリング回転異常（上昇しない）",
+  "description": "自動生成されたエンジン　アイドリング回転異常上昇しないの応急処置フロー",
+  "triggerKeywords": [
+    "エンジン　アイドリング回転異常上昇しない"
+  ],
+  "steps": [
+    {
+      "id": "step_1",
+      "title": "エンジンを始動し、アイドリング状態を確認してください。",
+      "description": "エンジンが始動してから数分間アイドリング状態を観察し、エンジン回転数が規定値に達しているか確認します。",
+      "message": "エンジンが始動してから数分間アイドリング状態を観察し、エンジン回転数が規定値に達しているか確認します。",
+      "type": "step",
+      "imageUrl": "",
+      "options": [],
+      "images": [
+        {
+          "url": "/api/emergency-flow/image/emergency-flow-step1765164467294.jpg",
+          "fileName": "emergency-flow-step1765164467294.jpg"
+        }
+      ],
+      "conditions": []
+    },
+    {
+      "id": "step_2",
+      "title": "（decision）：エンジンのアイドリング回転数は規定値に達していますか？",
+      "description": "エンジンのアイドリング回転数を確認し、規定値に達しているか選択してください。",
+      "message": "エンジンのアイドリング回転数を確認し、規定値に達しているか選択してください。",
+      "type": "decision",
+      "imageUrl": "",
+      "options": [
+        {
+          "text": "規定値に達している（正常）",
+          "nextStepId": "step_3",
+          "isTerminal": false,
+          "conditionType": "yes",
+          "condition": "規定値に達している（正常）"
+        },
+        {
+          "text": "規定値に達していない",
+          "nextStepId": "step_4",
+          "isTerminal": false,
+          "conditionType": "no",
+          "condition": "規定値に達していない"
+        },
+        {
+          "text": "規定値が不明",
+          "nextStepId": "step_5",
+          "isTerminal": false,
+          "conditionType": "maybe",
+          "condition": "規定値が不明"
+        },
+        {
+          "text": "エンジンが始動しない",
+          "nextStepId": "step_6",
+          "isTerminal": false,
+          "conditionType": "other",
+          "condition": "エンジンが始動しない"
+        }
+      ],
+      "images": [],
+      "conditions": []
+    },
+    {
+      "id": "step_3",
+      "title": "アクセルペダルを軽く踏んで、エンジン回転数の反応を確認してください。",
+      "description": "アクセルを軽く踏み込み、エンジン回転数が増えるか確認します。",
+      "message": "アクセルを軽く踏み込み、エンジン回転数が増えるか確認します。",
+      "type": "step",
+      "imageUrl": "",
+      "options": [],
+      "images": [],
+      "conditions": []
+    },
+    {
+      "id": "step_4",
+      "title": "（decision）：アクセルペダルを操作したときのエンジン反応はどうですか？",
+      "description": "アクセルペダルの操作に対するエンジンの反応を確認し、問題があれば選択してください。",
+      "message": "アクセルペダルの操作に対するエンジンの反応を確認し、問題があれば選択してください。",
+      "type": "decision",
+      "imageUrl": "",
+      "options": [
+        {
+          "text": "回転数が増える（正常）",
+          "nextStepId": "step_5",
+          "isTerminal": false,
+          "conditionType": "yes",
+          "condition": "回転数が増える（正常）"
+        },
+        {
+          "text": "回転数が増えない",
+          "nextStepId": "step_6",
+          "isTerminal": false,
+          "conditionType": "no",
+          "condition": "回転数が増えない"
+        },
+        {
+          "text": "回転数が不安定",
+          "nextStepId": "step_6",
+          "isTerminal": false,
+          "conditionType": "maybe",
+          "condition": "回転数が不安定"
+        },
+        {
+          "text": "アクセルペダルが硬い",
+          "nextStepId": "step_6",
+          "isTerminal": false,
+          "conditionType": "other",
+          "condition": "アクセルペダルが硬い"
+        }
+      ],
+      "images": [],
+      "conditions": []
+    },
+    {
+      "id": "step_5",
+      "title": "エンジンを停止し、エアフィルターの詰まりを確認してください。",
+      "description": "エンジンを停止させた後、エアフィルター部を開けて詰まりや異物の有無を確認します。",
+      "message": "エンジンを停止させた後、エアフィルター部を開けて詰まりや異物の有無を確認します。",
+      "type": "step",
+      "imageUrl": "",
+      "options": [],
+      "images": [],
+      "conditions": []
+    },
+    {
+      "id": "step_6",
+      "title": "（decision）：エアフィルターの状態はどうですか？",
+      "description": "エアフィルターの状態を確認し、問題があれば選択してください。\n最終ステップ（step）：確認した内容と状態を専門技術者に報告し、指示を仰いでください。\nエンジンのアイドリング回転数、アクセルペダルの反応、エアフィルターの状態など、確認した内容を専門技術者に伝え、次の対応を指示してもらいます。",
+      "message": "エアフィルターの状態を確認し、問題があれば選択してください。\n最終ステップ（step）：確認した内容と状態を専門技術者に報告し、指示を仰いでください。\nエンジンのアイドリング回転数、アクセルペダルの反応、エアフィルターの状態など、確認した内容を専門技術者に伝え、次の対応を指示してもらいます。",
+      "type": "decision",
+      "imageUrl": "",
+      "options": [
+        {
+          "text": "詰まりや異物はない（正常）",
+          "nextStepId": "step_6",
+          "isTerminal": false,
+          "conditionType": "yes",
+          "condition": "詰まりや異物はない（正常）"
+        },
+        {
+          "text": "詰まりがある",
+          "nextStepId": "step_6",
+          "isTerminal": false,
+          "conditionType": "no",
+          "condition": "詰まりがある"
+        },
+        {
+          "text": "異物がある",
+          "nextStepId": "step_6",
+          "isTerminal": false,
+          "conditionType": "maybe",
+          "condition": "異物がある"
+        },
+        {
+          "text": "エアフィルターが破損している",
+          "nextStepId": "step_6",
+          "isTerminal": false,
+          "conditionType": "other",
+          "condition": "エアフィルターが破損している"
+        }
+      ],
+      "images": [],
+      "conditions": []
+    }
+  ],
+  "createdAt": "2025-12-08T00:24:14.086Z",
+  "updatedAt": "2025-12-08T03:27:47.416Z",
+  "updateHistory": [
+    {
+      "timestamp": "2025-12-08T00:24:33.423Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-12-08T00:24:39.560Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-12-08T00:24:39.570Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt",
+        "updateHistory"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-12-08T03:27:47.416Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt",
+        "updateHistory"
+      ],
+      "updatedBy": "user"
+    }
+  ]
+}

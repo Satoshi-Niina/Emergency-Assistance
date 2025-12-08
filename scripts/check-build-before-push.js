@@ -48,6 +48,24 @@ if (styleCssFiles.length === 0) {
     process.exit(1);
 }
 
+// 3. サーバー側の重要な.mjsファイルの存在確認
+const CRITICAL_SERVER_FILES = [
+    'server/azure-server.mjs',
+    'server/src/api/emergency-flow/index.mjs',
+    'server/src/routes/history.mjs',
+    'server/src/infra/blob.mjs'
+];
+
+const missingServerFiles = CRITICAL_SERVER_FILES.filter(file =>
+    !fs.existsSync(path.join(__dirname, '..', file))
+);
+
+if (missingServerFiles.length > 0) {
+    console.error(`❌ ERROR: Missing critical server files: ${missingServerFiles.join(', ')}`);
+    console.error('📋 These files are required for production deployment!');
+    process.exit(1);
+}
+
 // 3. ビルドファイルの新しさ確認
 const packageJsonPath = path.join(__dirname, '../client/package.json');
 const distStats = fs.statSync(path.join(CLIENT_DIST_PATH, 'index.html'));

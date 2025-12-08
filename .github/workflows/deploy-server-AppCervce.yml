@@ -60,6 +60,40 @@ jobs:
           
           echo "✅ Source is latest from main branch"
 
+      - name: Verify critical server files exist
+        run: |
+          echo "🔍 Verifying critical server .mjs files..."
+          
+          CRITICAL_FILES=(
+            "server/azure-server.mjs"
+            "server/src/api/emergency-flow/index.mjs"
+            "server/src/routes/history.mjs"
+            "server/src/infra/blob.mjs"
+            "server/src/config/env.mjs"
+          )
+          
+          MISSING_FILES=()
+          for file in "${CRITICAL_FILES[@]}"; do
+            if [ ! -f "$file" ]; then
+              MISSING_FILES+=("$file")
+              echo "❌ MISSING: $file"
+            else
+              echo "✅ Found: $file"
+              # ファイルの最終更新日時を表示
+              echo "   Last modified: $(git log -1 --format=%cI -- "$file" 2>/dev/null || echo 'N/A')"
+            fi
+          done
+          
+          if [ ${#MISSING_FILES[@]} -gt 0 ]; then
+            echo ""
+            echo "❌ ERROR: Critical server files are missing!"
+            echo "Missing files: ${MISSING_FILES[*]}"
+            exit 1
+          fi
+          
+          echo ""
+          echo "✅ All critical server files present"
+
       - name: Generate deployment metadata
         id: metadata
         run: |

@@ -4,20 +4,45 @@ import { AUTO_INGEST_CHAT_EXPORTS } from '../../config/env.mjs';
 const EXPORT_SUBDIR = 'exports';
 
 async function saveJsonFile(fileName, content) {
+  const isProduction = process.env.NODE_ENV === 'production';
   const blobServiceClient = getBlobServiceClient();
 
-  if (!blobServiceClient) {
-    throw new Error('BLOB storage is not configured. Please check AZURE_STORAGE_CONNECTION_STRING environment variable.');
+  // 本番環境ではBLOBが必須
+  if (isProduction && !blobServiceClient) {
+    throw new Error('BLOB storage is not configured in production. Please check AZURE_STORAGE_CONNECTION_STRING environment variable.');
   }
 
-  const containerClient = blobServiceClient.getContainerClient(containerName);
-  await containerClient.createIfNotExists();
-  const blobName = `knowledge-base/${EXPORT_SUBDIR}/${fileName}`;
-  const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-  await blockBlobClient.upload(content, Buffer.byteLength(content), {
-    blobHTTPHeaders: { blobContentType: 'application/json' },
-  });
-  return { storage: 'blob', blobName };
+  // BLOBが利用可能な場合は使用
+  if (blobServiceClient) {
+    try {
+      const containerClient = blobServiceClient.getContainerClient(containerName);
+      await containerClient.createIfNotExists();
+      const blobName = `knowledge-base/${EXPORT_SUBDIR}/${fileName}`;
+      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+      await blockBlobClient.upload(content, Buffer.byteLength(content), {
+        blobHTTPHeaders: { blobContentType: 'application/json' },
+      });
+      console.log(`[saveJsonFile] Successfully saved to BLOB: ${blobName}`);
+      return { storage: 'blob', blobName };
+    } catch (error) {
+      console.error('[saveJsonFile] BLOB upload failed:', error);
+      if (isProduction) {
+        throw error; // 本番ではエラーを投げる
+      }
+      // 開発環境ではローカルにフォールバック
+    }
+  }
+
+  // 開発環境: ローカルファイルシステムにフォールバック
+  console.log('[saveJsonFile] Using local filesystem fallback:', fileName);
+  const fs = await import('fs');
+  const path = await import('path');
+  const localDir = path.join(process.cwd(), 'knowledge-base', EXPORT_SUBDIR);
+  await fs.promises.mkdir(localDir, { recursive: true });
+  const localPath = path.join(localDir, fileName);
+  await fs.promises.writeFile(localPath, content, 'utf8');
+  console.log(`[saveJsonFile] Successfully saved to local: ${localPath}`);
+  return { storage: 'local', path: localPath };
 }
 
 async function getLatestExport(chatId) {

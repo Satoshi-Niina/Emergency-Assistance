@@ -8,7 +8,8 @@
   "scripts": {
     "predev": "powershell -ExecutionPolicy Bypass -File scripts/kill-port-8080.ps1",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "dev:server": "cross-env NODE_ENV=development PORT=8080 node server/unified-hot-reload-server.js",
+    "dev:server": "cross-env NODE_ENV=development PORT=8080 NODE_OPTIONS=--no-warnings node --no-warnings server/unified-hot-reload-server.js",
+    "dev:clean": "npm run predev && npm run dev",
     "dev:client": "npm --prefix client run vite-only",
     "start": "cross-env NODE_ENV=production PORT=8080 node server/azure-server.mjs",
     "start:prod": "cross-env NODE_ENV=production PORT=8080 node server/azure-server.mjs",
@@ -17,6 +18,7 @@
     "prebuild": "echo 🔨 Building client for production deployment...",
     "postbuild": "echo ✅ Client build completed. Ready for deployment!",
     "deploy-check": "node scripts/check-build-before-push.js",
+    "pre-deploy": "node scripts/pre-deploy-check.mjs",
     "security:check-rsc": "node scripts/check-rsc-vulnerabilities.mjs",
     "pre-commit": "pwsh -File scripts/pre-commit.ps1",
     "commit": "npm run pre-commit && git add . && git commit",

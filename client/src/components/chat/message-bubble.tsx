@@ -164,14 +164,20 @@ export default function MessageBubble({
     if (url.startsWith('data:')) {
       return url;
     }
+
+    // blob:URLの場合はそのまま（ローカルプレビュー用）
+    if (url.startsWith('blob:')) {
+      return url;
+    }
+
+    // ファイル名のみの場合はパスを付与
+    if (!url.startsWith('/') && !url.startsWith('http') && /\.(jpg|jpeg|png|gif|webp)$/i.test(url)) {
+      url = `/api/images/chat-exports/${url}`;
+    }
     
-    // ベースURLを取得
-    let baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-    baseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
-    
-    // 相対URLを完全URLに変換
-    const normalizedPath = url.startsWith('/') ? url : `/${url}`;
-    return `${baseUrl}${normalizedPath}`;
+    // 相対パスのまま返す（プロキシまたは同一オリジンで解決させる）
+    // 外部接続（http://...）を強制しない
+    return url.startsWith('/') ? url : `/${url}`;
   };
 
   // プレビュー表示用の共通イベント発火関数
@@ -229,7 +235,7 @@ export default function MessageBubble({
                       {media.type === 'image' && (
                         <div className='group cursor-pointer'>
                           <img
-                            src={media.url}
+                            src={normalizeImageUrl(media.url)}
                             alt={
                               (media as any).title || `ガイド画像${index + 1}`
                             }
@@ -310,7 +316,11 @@ export default function MessageBubble({
               message.media.length > 0 && (
                 <>
                   {message.media.slice(0, 6).map((media, index) => {
-                    const imageUrl = normalizeImageUrl(media.url);
+                    // サムネイル（ローカルBlob URL）があればそれを優先使用して高速表示
+                    const imageUrl = media.thumbnail && media.thumbnail.startsWith('blob:') 
+                      ? media.thumbnail 
+                      : normalizeImageUrl(media.url);
+                      
                     return (
                     <div key={`${message.id}-media-${index}`} className='mt-2'>
                       {media.type === 'image' && (
@@ -504,15 +514,21 @@ export default function MessageBubble({
       >
         {(() => {
           const content = message.content || '';
-          const isImageUrl =
+          let isImageUrl =
             content.startsWith('/api/images/') ||
             (content.startsWith('http') && (content.includes('.jpg') || content.includes('.png') || content.includes('.jpeg')));
+          
+          // ファイル名のみの場合も画像として判定
+          if (!isImageUrl && !content.includes(' ') && /\.(jpg|jpeg|png|gif|webp)$/i.test(content)) {
+            isImageUrl = true;
+          }
 
           if (isImageUrl) {
+            const imageUrl = normalizeImageUrl(content);
             return (
               <>
                 <img
-                  src={content}
+                  src={imageUrl}
                   alt='画像'
                   className='rounded-lg cursor-pointer shadow-md'
                   style={{

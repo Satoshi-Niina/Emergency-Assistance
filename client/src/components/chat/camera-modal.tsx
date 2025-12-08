@@ -399,35 +399,34 @@ export default function CameraModal() {
           blobName: uploadData.blobName
         });
 
-        // 完全なURLに正規化（本番環境対応）
-        let fullImageUrl = uploadData.imageUrl;
-        if (!fullImageUrl.startsWith('http')) {
-          const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-          const cleanBaseUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
-          fullImageUrl = fullImageUrl.startsWith('/api') 
-            ? `${cleanBaseUrl}${fullImageUrl}`
-            : `${cleanBaseUrl}/api/images/chat-exports/${actualFileName}`;
+        // 相対パスを使用（ローカル/本番の切り替えはブラウザとサーバーに任せる）
+        // 外部接続（http://...）を強制しない
+        let imageUrl = uploadData.imageUrl;
+        if (!imageUrl.startsWith('/api') && !imageUrl.startsWith('http')) {
+           imageUrl = `/api/images/chat-exports/${actualFileName}`;
         }
 
         console.log('📝 チャットに送信するメディア情報:', {
           originalUrl: uploadData.imageUrl,
-          fullImageUrl: fullImageUrl,
-          fileName: actualFileName,
-          isFullUrl: fullImageUrl.startsWith('http')
+          imageUrl: imageUrl,
+          fileName: actualFileName
         });
         
         await sendMessage('画像を送信しました', [
           {
             type: 'image',
-            url: fullImageUrl,  // 完全なURL (https://...)
-            thumbnail: fullImageUrl,
+            url: imageUrl,  // 相対パス (/api/...)
+            thumbnail: capturedImage, // ローカルのBlob URLをサムネイルとして使用（即時表示用）
             fileName: actualFileName,  // camera_xxx.jpg (ファイル名のみ)
             title: 'カメラ画像',
           },
         ]);
 
-        // BlobURLをクリーンアップ
-        URL.revokeObjectURL(capturedImage);
+        // BlobURLをクリーンアップ（即時ではなく遅延させることで表示を維持）
+        // メッセージバブルが表示された後に破棄されるようにする
+        setTimeout(() => {
+          if (capturedImage) URL.revokeObjectURL(capturedImage);
+        }, 60000); // 1分後に破棄
 
         setIsOpen(false);
         setCapturedImage(null);

@@ -40,12 +40,18 @@ export default async function emergencyFlowHandler(req, res) {
   if (pathParts[2] === 'list' && method === 'GET') {
     try {
       console.log('[api/emergency-flow/list] Fetching flows');
+      console.log('[api/emergency-flow/list] 🔍 BLOB接続診断開始');
+      console.log('[api/emergency-flow/list] 環境変数:', {
+        AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING ? '設定済み' : '未設定',
+        BLOB_CONTAINER_NAME: process.env.BLOB_CONTAINER_NAME || 'デフォルト'
+      });
       
       const flows = [];
       const blobServiceClient = getBlobServiceClient();
+      console.log('[api/emergency-flow/list] BLOBクライアント:', blobServiceClient ? '取得成功' : '取得失敗');
 
       if (!blobServiceClient) {
-        console.warn('[api/emergency-flow/list] BLOB client not available');
+        console.warn('[api/emergency-flow/list] ❌ BLOB client not available');
         return res.json({
           success: true,
           data: flows,
@@ -124,13 +130,87 @@ export default async function emergencyFlowHandler(req, res) {
     }
   }
 
-  // /api/emergency-flow/:fileName - GET個別取得
-  if (pathParts[2] && !pathParts[2].includes('list') && !pathParts[2].includes('image') && !pathParts[2].includes('save') && method === 'GET') {
+  // /api/emergency-flow/detail/:id - GET詳細取得（JSONパース済み）
+  if (pathParts[2] === 'detail' && pathParts[3] && method === 'GET') {
+    try {
+      const flowId = pathParts[3].replace('.json', '');
+      const fileName = flowId.endsWith('.json') ? flowId : `${flowId}.json`;
+      console.log(`[api/emergency-flow/detail] Fetching detail: ${flowId}`);
+      console.log('[api/emergency-flow/detail] 🔍 BLOB接続診断開始');
+      console.log('[api/emergency-flow/detail] 環境変数:', {
+        AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING ? '設定済み' : '未設定',
+        BLOB_CONTAINER_NAME: process.env.BLOB_CONTAINER_NAME || 'デフォルト'
+      });
+
+      const blobServiceClient = getBlobServiceClient();
+      console.log('[api/emergency-flow/detail] BLOBクライアント:', blobServiceClient ? '取得成功' : '取得失敗');
+      
+      if (!blobServiceClient) {
+        return res.status(503).json({
+          success: false,
+          error: 'BLOB storage not available'
+        });
+      }
+
+      const containerClient = blobServiceClient.getContainerClient(containerName);
+      console.log('[api/emergency-flow/detail] コンテナ名:', containerName);
+      
+      const resolved = await resolveBlobClient(containerClient, fileName);
+      if (!resolved) {
+        console.warn('[api/emergency-flow/detail] ❌ Blob not found for', fileName);
+        return res.status(404).json({ 
+          success: false, 
+          error: 'フローが見つかりません',
+          fileName: fileName,
+          flowId: flowId
+        });
+      }
+
+      console.log(`[api/emergency-flow/detail] ✅ BLOB path: ${resolved.blobName}`);
+      const downloadResponse = await resolved.blobClient.download();
+      
+      // JSONとしてパースして返す
+      const chunks = [];
+      if (downloadResponse.readableStreamBody) {
+        for await (const chunk of downloadResponse.readableStreamBody) {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        }
+        const buffer = Buffer.concat(chunks);
+        const jsonData = JSON.parse(buffer.toString('utf8'));
+        
+        console.log('[api/emergency-flow/detail] ✅ フロー詳細取得完了');
+        console.log('[api/emergency-flow/detail] steps:', jsonData.steps?.length || 0, '件');
+        
+        return res.json({
+          success: true,
+          data: jsonData,
+          ...jsonData
+        });
+      }
+      
+      return res.status(500).json({
+        success: false,
+        error: 'データの読み込みに失敗しました'
+      });
+    } catch (error) {
+      console.error('[api/emergency-flow/detail] ❌ Error:', error);
+      return res.status(404).json({
+        success: false,
+        error: 'フロー詳細の取得に失敗しました',
+        details: error.message
+      });
+    }
+  }
+
+  // /api/emergency-flow/:fileName - GET個別取得（生データ）
+  if (pathParts[2] && !pathParts[2].includes('list') && !pathParts[2].includes('detail') && !pathParts[2].includes('image') && !pathParts[2].includes('save') && !pathParts[2].includes('generate') && method === 'GET') {
     try {
       const fileName = pathParts[2];
       console.log(`[api/emergency-flow] Fetching: ${fileName}`);
+      console.log('[api/emergency-flow] 🔍 BLOB接続診断開始');
 
       const blobServiceClient = getBlobServiceClient();
+      console.log('[api/emergency-flow] BLOBクライアント:', blobServiceClient ? '取得成功' : '取得失敗');
       if (!blobServiceClient) {
         return res.status(503).json({
           success: false,
@@ -487,14 +567,23 @@ export default async function emergencyFlowHandler(req, res) {
       }
 
       // 🔧 生成したフローを自動的にBLOBに保存
+      console.log('[api/emergency-flow/generate] 🔍 BLOB保存診断開始');
+      console.log('[api/emergency-flow/generate] 環境変数:', {
+        AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING ? '設定済み' : '未設定',
+        BLOB_CONTAINER_NAME: process.env.BLOB_CONTAINER_NAME || 'デフォルト'
+      });
+      
       const blobServiceClient = getBlobServiceClient();
+      console.log('[api/emergency-flow/generate] BLOBクライアント:', blobServiceClient ? '取得成功' : '取得失敗');
       
       if (blobServiceClient) {
         try {
           const containerClient = blobServiceClient.getContainerClient(containerName);
+          console.log('[api/emergency-flow/generate] コンテナ名:', containerName);
           
           // コンテナが存在するか確認し、なければ作成
           const containerExists = await containerClient.exists();
+          console.log('[api/emergency-flow/generate] コンテナ存在確認:', containerExists ? 'あり' : 'なし');
           if (!containerExists) {
             console.log('[api/emergency-flow/generate] Creating container:', containerName);
             await containerClient.create();
@@ -569,8 +658,14 @@ export default async function emergencyFlowHandler(req, res) {
       const flowData = req.body;
 
       console.log('[api/emergency-flow/PUT] Updating flow:', flowId);
+      console.log('[api/emergency-flow/PUT] 🔍 BLOB更新診断開始');
+      console.log('[api/emergency-flow/PUT] 環境変数:', {
+        AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING ? '設定済み' : '未設定',
+        BLOB_CONTAINER_NAME: process.env.BLOB_CONTAINER_NAME || 'デフォルト'
+      });
 
       const blobServiceClient = getBlobServiceClient();
+      console.log('[api/emergency-flow/PUT] BLOBクライアント:', blobServiceClient ? '取得成功' : '取得失敗');
       if (!blobServiceClient) {
         return res.status(503).json({
           success: false,
@@ -590,18 +685,87 @@ export default async function emergencyFlowHandler(req, res) {
         });
       }
 
+      // 🔍 既存のフローデータを取得して画像の差分を確認
+      let oldImageFileNames = new Set();
+      try {
+        const downloadResponse = await resolved.blobClient.download();
+        if (downloadResponse.readableStreamBody) {
+          const chunks = [];
+          for await (const chunk of downloadResponse.readableStreamBody) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          }
+          const buffer = Buffer.concat(chunks);
+          const oldJsonData = JSON.parse(buffer.toString('utf-8'));
+          
+          // 既存フローの画像ファイル名を収集
+          if (Array.isArray(oldJsonData.steps)) {
+            oldJsonData.steps.forEach(step => {
+              if (step.images && Array.isArray(step.images)) {
+                step.images.forEach(image => {
+                  if (image.fileName) {
+                    oldImageFileNames.add(image.fileName);
+                  }
+                });
+              }
+            });
+          }
+          console.log(`[api/emergency-flow/PUT] 既存フローの画像数: ${oldImageFileNames.size}`);
+        }
+      } catch (downloadError) {
+        console.warn('[api/emergency-flow/PUT] Could not download old flow for diff:', downloadError.message);
+      }
+
       // updatedAtを更新
       const updatedFlowData = {
         ...flowData,
         updatedAt: new Date().toISOString()
       };
 
-      // 画像数をログ出力
-      const imageCount = updatedFlowData.steps?.reduce((count, step) => {
-        return count + (step.images?.length || 0);
-      }, 0) || 0;
+      // 新しいフローの画像ファイル名を収集
+      const newImageFileNames = new Set();
+      if (Array.isArray(updatedFlowData.steps)) {
+        updatedFlowData.steps.forEach(step => {
+          if (step.images && Array.isArray(step.images)) {
+            step.images.forEach(image => {
+              if (image.fileName) {
+                newImageFileNames.add(image.fileName);
+              }
+            });
+          }
+        });
+      }
 
-      console.log(`[api/emergency-flow/PUT] Flow has ${imageCount} images`);
+      // 画像数をログ出力
+      const imageCount = newImageFileNames.size;
+      console.log(`[api/emergency-flow/PUT] 新しいフローの画像数: ${imageCount}`);
+
+      // 🗑️ 削除された画像をクリーンアップ
+      const imagesToDelete = [...oldImageFileNames].filter(fileName => !newImageFileNames.has(fileName));
+      if (imagesToDelete.length > 0) {
+        console.log(`[api/emergency-flow/PUT] 🗑️ 削除対象の画像: ${imagesToDelete.length}件`);
+        console.log('[api/emergency-flow/PUT] 削除対象:', imagesToDelete);
+        
+        let deletedCount = 0;
+        for (const imageFileName of imagesToDelete) {
+          try {
+            const imageBlobName = `knowledge-base/images/emergency-flows/${imageFileName}`;
+            const imageBlob = containerClient.getBlockBlobClient(imageBlobName);
+            const exists = await imageBlob.exists();
+            if (exists) {
+              await imageBlob.delete();
+              deletedCount++;
+              console.log(`[api/emergency-flow/PUT] ✅ 画像削除成功: ${imageFileName}`);
+            } else {
+              console.log(`[api/emergency-flow/PUT] ⚠️ 画像が既に存在しません: ${imageFileName}`);
+            }
+          } catch (imgError) {
+            console.warn(`[api/emergency-flow/PUT] ❌ 画像削除失敗 ${imageFileName}:`, imgError.message);
+          }
+        }
+        console.log(`[api/emergency-flow/PUT] 画像クリーンアップ完了: ${deletedCount}/${imagesToDelete.length}件削除`);
+      } else {
+        console.log('[api/emergency-flow/PUT] 削除対象の画像はありません');
+      }
 
       const content = JSON.stringify(updatedFlowData, null, 2);
 
@@ -622,7 +786,8 @@ export default async function emergencyFlowHandler(req, res) {
         message: 'フローを更新しました',
         data: updatedFlowData,
         blobName: resolved.blobName,
-        imageCount: imageCount
+        imageCount: imageCount,
+        deletedImages: imagesToDelete.length
       });
     } catch (error) {
       console.error('[api/emergency-flow/PUT] ❌ Error:', error);
