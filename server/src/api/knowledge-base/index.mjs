@@ -24,13 +24,18 @@ export default async function (req, res) {
 
     try {
       // 生のSQLクエリで直接データを取得
+      // base_documentsテーブルにはcontentカラムがないため、file_pathを使用
       const result = await dbQuery(`
-              SELECT id, title, content, category, created_at
+              SELECT id, title, file_path, created_at
               FROM base_documents
               ORDER BY created_at DESC
           `);
 
-      rows = result.rows;
+      rows = result.rows.map(row => ({
+        ...row,
+        content: row.file_path, // file_pathをcontentとして扱う（互換性のため）
+        category: 'base_document'
+      }));
       console.log('Knowledge base query result:', { count: rows.length });
     } catch (dbError) {
       console.warn('Knowledge base DB query failed, falling back to storage:', dbError.message);

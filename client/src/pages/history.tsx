@@ -302,15 +302,17 @@ export default function HistoryPage() {
         const normalizedImages = savedImages.map((img: any) => {
           if (typeof img === 'string') {
             const fileName = img.split('/').pop()?.split('\\').pop() || img;
+            const cleanBaseUrl = baseUrl.replace(/\/api\/?$/, '');
             return { 
-              url: `${baseUrl}/api/images/chat-exports/${fileName}`, 
+              url: `${cleanBaseUrl}/api/images/chat-exports/${fileName}`, 
               fileName: fileName 
             };
           }
           if (img && typeof img === 'object') {
             const fileName = img.fileName || img.url?.split('/').pop()?.split('\\').pop() || img.path?.split('/').pop()?.split('\\').pop() || '';
+            const cleanBaseUrl = baseUrl.replace(/\/api\/?$/, '');
             return {
-              url: `${baseUrl}/api/images/chat-exports/${fileName}`,
+              url: `${cleanBaseUrl}/api/images/chat-exports/${fileName}`,
               fileName: fileName,
               ...img
             };
@@ -682,8 +684,9 @@ export default function HistoryPage() {
           // 常に標準的なオブジェクト形式に変換
           // URLは絶対URL形式に統一
           const baseUrl = API_BASE || window.location.origin;
+          const cleanBaseUrl = baseUrl.replace(/\/api\/?$/, '');
           return {
-            url: `${baseUrl}/api/images/chat-exports/${fileName}`,
+            url: `${cleanBaseUrl}/api/images/chat-exports/${fileName}`,
             fileName: fileName
           };
         })

@@ -168,7 +168,9 @@ export default async function emergencyFlowHandler(req, res) {
   // /api/emergency-flow/detail/:id - GET詳細取得（JSONパース済み）
   if (pathParts[2] === 'detail' && pathParts[3] && method === 'GET') {
     try {
-      const flowId = pathParts[3].replace('.json', '');
+      // URLエンコードされたパスをデコード（日本語ファイル名対応）
+      const decodedFlowId = decodeURIComponent(pathParts[3]).replace('.json', '');
+      const flowId = decodedFlowId;
       const fileName = flowId.endsWith('.json') ? flowId : `${flowId}.json`;
       console.log(`[api/emergency-flow/detail] Fetching detail: ${flowId}`);
       
