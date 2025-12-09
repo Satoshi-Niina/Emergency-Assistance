@@ -219,33 +219,26 @@ router.get('/', async (req, res) => {
             images: [],
           };
 
-          // 一覧表示用：軽量メタデータのみ取得（パフォーマンス最適化）
+          // メタデータと画像データを取得（サムネイル表示用）
           try {
             const blobClient = containerClient.getBlobClient(blob.name);
             const downloadResponse = await blobClient.download();
             if (downloadResponse.readableStreamBody) {
               const buffer = await streamToBuffer(downloadResponse.readableStreamBody);
               const json = JSON.parse(buffer.toString('utf8'));
+              meta = extractMetadataFromJson(json, fileName);
               
-              // 軽量版：画像の詳細は取得せず、カウントのみ
-              const chatData = json.chatData || {};
-              const machineInfo = chatData.machineInfo || json.machineInfo || {};
+              // titleが取得できなかった場合はファイル名から生成したタイトルを使用
+              if (!meta.title || meta.title === '故障履歴') {
+                meta.title = defaultTitle;
+              }
               
-              let machineType = machineInfo.machineTypeName || 
-                                machineInfo.selectedMachineType ||
-                                json.machineType || '未設定';
-              let machineNumber = machineInfo.machineNumber || 
-                                  machineInfo.selectedMachineNumber ||
-                                  json.machineNumber || '未設定';
-              
-              const title = json.title || chatData.title || defaultTitle;
-              const savedImages = json.savedImages || chatData.savedImages || [];
-              const imageCount = Array.isArray(savedImages) ? savedImages.length : 0;
-              
-              meta = { title, machineType, machineNumber, imageCount, images: [] };
-              
-              console.log('[history] Lightweight metadata extracted:', {
-                fileName, title, machineType, machineNumber, imageCount
+              console.log('[history] Metadata extracted:', {
+                fileName,
+                title: meta.title,
+                machineType: meta.machineType,
+                machineNumber: meta.machineNumber,
+                imageCount: meta.images.length
               });
             }
           } catch (blobMetaError) {
@@ -259,8 +252,8 @@ router.get('/', async (req, res) => {
             title: meta.title,
             machineType: meta.machineType,
             machineNumber: meta.machineNumber,
-            imageCount: meta.imageCount || meta.images.length,
-            images: [], // 一覧では空配列（詳細取得時のみロード）
+            imageCount: meta.images.length,
+            images: meta.images,
             createdAt: blob.properties.lastModified,
             lastModified: blob.properties.lastModified,
             source: 'blob'
