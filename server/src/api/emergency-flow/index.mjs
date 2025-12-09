@@ -974,23 +974,8 @@ export default async function emergencyFlowHandler(req, res) {
         updatedAt: new Date().toISOString()
       };
 
-      // 新しいフローの画像ファイル名を収集
-      const newImageFileNames = new Set();
-      if (Array.isArray(updatedFlowData.steps)) {
-        updatedFlowData.steps.forEach(step => {
-          if (step.images && Array.isArray(step.images)) {
-            step.images.forEach(image => {
-              if (image.fileName) {
-                newImageFileNames.add(image.fileName);
-              }
-            });
-          }
-        });
-      }
-
-      // 画像数をログ出力
-      const imageCount = newImageFileNames.size;
-      console.log(`[api/emergency-flow/PUT] 新しいフローの画像数: ${imageCount}`);
+      // 画像数をログ出力（newImageFileNamesは既に定義済み）
+      console.log(`[api/emergency-flow/PUT] AZURE: 新しいフローの画像数: ${imageCount}`);
 
       // 🗑️ 削除された画像をクリーンアップ
       const imagesToDelete = [...oldImageFileNames].filter(fileName => !newImageFileNames.has(fileName));
