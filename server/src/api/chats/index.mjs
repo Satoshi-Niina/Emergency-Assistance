@@ -11,7 +11,7 @@ async function saveJsonFile(fileName, content) {
   // ローカルモード: knowledge-base/exports/ へ保存
   if (!useAzure) {
     console.log('[saveJsonFile] LOCAL: Using local filesystem:', fileName);
-    const localDir = path.join(process.cwd(), 'knowledge-base', EXPORT_SUBDIR);
+    const localDir = path.join(process.cwd(), '..', 'knowledge-base', EXPORT_SUBDIR);
     await fs.promises.mkdir(localDir, { recursive: true });
     const localPath = path.join(localDir, fileName);
     await fs.promises.writeFile(localPath, content, 'utf8');
@@ -46,7 +46,7 @@ async function getLatestExport(chatId) {
 
   // ローカルモード: knowledge-base/exports/ から最新ファイルを検索
   if (!useAzure) {
-    const localDir = path.join(process.cwd(), 'knowledge-base', EXPORT_SUBDIR);
+    const localDir = path.join(process.cwd(), '..', 'knowledge-base', EXPORT_SUBDIR);
     try {
       const files = await fs.promises.readdir(localDir);
       for (const fileName of files) {
@@ -101,7 +101,7 @@ async function downloadExport(fileName) {
 
   // ローカルモード: knowledge-base/exports/ から読み取り
   if (!useAzure) {
-    const localPath = path.join(process.cwd(), 'knowledge-base', EXPORT_SUBDIR, fileName);
+    const localPath = path.join(process.cwd(), '..', 'knowledge-base', EXPORT_SUBDIR, fileName);
     console.log('[api/chats] LOCAL: Downloading from local:', localPath);
     try {
       if (await fs.promises.access(localPath).then(() => true).catch(() => false)) {
