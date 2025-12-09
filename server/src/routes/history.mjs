@@ -200,8 +200,8 @@ router.get('/', async (req, res) => {
     if (blobServiceClient) {
       try {
         const containerClient = blobServiceClient.getContainerClient(containerName);
-        // Blob一覧取得: knowledge-base/exports/
-        const prefix = 'knowledge-base/exports/';
+        // Blob一覧取得: exports/
+        const prefix = norm('exports/');
 
         for await (const blob of containerClient.listBlobsFlat({ prefix })) {
           if (!blob.name.endsWith('.json')) continue;
@@ -419,7 +419,7 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
 
       // BLOBに保存
       const containerClient = blobServiceClient.getContainerClient(containerName);
-      const blobName = `knowledge-base/images/chat-exports/${fileName}`;
+      const blobName = norm(`images/chat-exports/${fileName}`);
       console.log('[history/upload-image] 📤 Starting BLOB upload:', {
         container: containerName,
         blobName: blobName,
@@ -790,7 +790,7 @@ async function handleUpdateHistory(req, res, rawId) {
           const fileName = img.fileName || img.url?.split('/').pop();
           if (fileName) {
             try {
-              const imageBlobName = `knowledge-base/images/chat-exports/${fileName}`;
+              const imageBlobName = norm(`images/chat-exports/${fileName}`);
               const imageBlob = containerClient.getBlobClient(imageBlobName);
               if (await imageBlob.exists()) {
                 await imageBlob.delete();
@@ -904,7 +904,7 @@ router.delete('/:id', async (req, res) => {
         }
         
         if (fileName) {
-          const imageBlobName = `knowledge-base/images/chat-exports/${fileName}`;
+          const imageBlobName = norm(`images/chat-exports/${fileName}`);
           const imageBlob = containerClient.getBlobClient(imageBlobName);
           const exists = await imageBlob.exists();
           
@@ -980,7 +980,7 @@ router.post('/cleanup-orphaned-images', async (req, res) => {
     console.log(`[cleanup] Found ${referencedImages.size} referenced images`);
     
     // 2. chat-exports内のすべての画像ファイルを取得
-    const imagePrefix = 'knowledge-base/images/chat-exports/';
+    const imagePrefix = norm('images/chat-exports/');
     const allImages = [];
     
     console.log('[cleanup] Step 2: Listing all images in chat-exports...');

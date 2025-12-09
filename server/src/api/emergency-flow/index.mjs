@@ -7,19 +7,11 @@ import { getOpenAIClient, isOpenAIAvailable } from '../../infra/openai.mjs';
 import { isAzureEnvironment } from '../../config/env.mjs';
 import path from 'path';
 
-// 複数パスを試して既存データのプレフィックス違いに対応
-function buildCandidatePaths(fileName, skipNorm = false) {
+// BLOBパスをnorm()で生成（BLOB_PREFIX環境変数に対応）
+function buildCandidatePaths(fileName) {
   const baseName = fileName || '';
-  const paths = [
-    // 現行: base付き（normで knowledge-base/ が付与される）
-    skipNorm ? null : norm(`troubleshooting/${baseName}`),
-    // 旧: baseなし
-    `troubleshooting/${baseName}`,
-    // 念のため: baseを直書き
-    `knowledge-base/troubleshooting/${baseName}`,
-  ].filter(Boolean);
-  // 重複排除
-  return [...new Set(paths)];
+  // norm()を使用してBLOB_PREFIXを自動適用
+  return [norm(`troubleshooting/${baseName}`)];
 }
 
 async function resolveBlobClient(containerClient, fileName) {
@@ -120,8 +112,8 @@ export default async function emergencyFlowHandler(req, res) {
           });
         }
 
-        // まず現行パス（norm）で列挙し、0件なら旧パスも試す
-        const prefixes = [norm('troubleshooting/'), 'troubleshooting/', 'knowledge-base/troubleshooting/'];
+        // norm()でBLOB_PREFIXを自動適用
+        const prefixes = [norm('troubleshooting/')];
         const seen = new Set();
 
         for (const prefix of prefixes) {

@@ -3,7 +3,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { getBlobServiceClient, containerName } from '../../infra/blob.mjs';
+import { getBlobServiceClient, containerName, norm } from '../../infra/blob.mjs';
 import { isAzureEnvironment } from '../../config/env.mjs';
 
 export default async function imagesHandler(req, res) {
@@ -101,7 +101,7 @@ export default async function imagesHandler(req, res) {
         
         try {
           const containerClient = blobServiceClient.getContainerClient(containerName);
-          const blobName = `knowledge-base/images/${category}/${fileName}`;
+          const blobName = norm(`images/${category}/${fileName}`);
           console.log('[api/images] AZURE: Looking for blob:', blobName);
           
           const blockBlobClient = containerClient.getBlockBlobClient(blobName);
@@ -148,7 +148,7 @@ export default async function imagesHandler(req, res) {
             errorCode: blobError.code,
             fileName: fileName,
             category: category,
-            blobName: `knowledge-base/images/${category}/${fileName}`,
+            blobName: norm(`images/${category}/${fileName}`),
             containerName: containerName
           });
         }
