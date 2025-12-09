@@ -77,24 +77,40 @@ export const STORAGE_MODE = process.env.STORAGE_MODE || 'auto';
 
 // Azure環境かどうかを判定する統一関数
 export function isAzureEnvironment() {
+  // デバッグログ
+  const debugInfo = {
+    STORAGE_MODE,
+    NODE_ENV,
+    hasWebsiteInstanceId: !!process.env.WEBSITE_INSTANCE_ID,
+    hasWebsiteSiteName: !!process.env.WEBSITE_SITE_NAME,
+    hasStorageConnection: !!(AZURE_STORAGE_CONNECTION_STRING && AZURE_STORAGE_CONNECTION_STRING.trim()),
+    portNumber: process.env.PORT
+  };
+  
   // 1. STORAGE_MODEが明示的に設定されている場合
   if (STORAGE_MODE === 'azure' || STORAGE_MODE === 'blob') {
+    console.log('[isAzureEnvironment] TRUE - STORAGE_MODE set to azure/blob', debugInfo);
     return true;
   }
   if (STORAGE_MODE === 'local') {
+    console.log('[isAzureEnvironment] FALSE - STORAGE_MODE set to local', debugInfo);
     return false;
   }
   
   // 2. Azure App Service固有の環境変数
   if (process.env.WEBSITE_INSTANCE_ID || process.env.WEBSITE_SITE_NAME) {
+    console.log('[isAzureEnvironment] TRUE - Azure App Service detected', debugInfo);
     return true;
   }
   
   // 3. AZURE_STORAGE_CONNECTION_STRINGが設定されていればAzure環境
   if (AZURE_STORAGE_CONNECTION_STRING && AZURE_STORAGE_CONNECTION_STRING.trim()) {
+    console.log('[isAzureEnvironment] TRUE - BLOB connection string present', debugInfo);
     return true;
   }
   
-  // 4. デフォルト: 本番環境はAzure
-  return NODE_ENV === 'production';
+  // 4. デフォルト: 本番環境はAzure（ポート番号も考慮）
+  const isProduction = NODE_ENV === 'production' || process.env.PORT === '8080' || process.env.PORT === '80';
+  console.log('[isAzureEnvironment]', isProduction ? 'TRUE' : 'FALSE', '- Default production check', debugInfo);
+  return isProduction;
 }

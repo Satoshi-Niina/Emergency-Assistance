@@ -502,7 +502,15 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
     error: '画像のアップロードに失敗しました',
     details: lastError?.message,
     errorCode: lastError?.code,
-    errorName: lastError?.name
+    errorName: lastError?.name,
+    diagnostics: {
+      hasStorageConnection: !!(process.env.AZURE_STORAGE_CONNECTION_STRING),
+      containerName: containerName,
+      isAzureEnv: isAzureEnvironment(),
+      nodeEnv: process.env.NODE_ENV,
+      storageMode: process.env.STORAGE_MODE,
+      hasWebsiteSiteName: !!process.env.WEBSITE_SITE_NAME
+    }
   });
 });
 
