@@ -214,7 +214,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       console.log('🗑️ フロー削除開始:', flowToDelete);
 
       // 削除APIを呼び出し
-      const response = await fetch(`/api/emergency-flow/${flowToDelete}`, {
+      const response = await fetch(buildApiUrl(`/emergency-flow/${flowToDelete}`), {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

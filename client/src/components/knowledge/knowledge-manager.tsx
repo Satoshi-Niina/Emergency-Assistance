@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '../../hooks/use-toast.ts';
+import { buildApiUrl } from '../../lib/api/config.ts';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
@@ -89,7 +90,7 @@ const KnowledgeManager: React.FC = () => {
     try {
       setLoading(true);
       const params = filterType ? `?type=${filterType}` : '';
-      const response = await fetch(`/api/knowledge-base${params}`);
+      const response = await fetch(buildApiUrl(`/knowledge-base${params}`));
 
       if (!response.ok) {
         throw new Error(
@@ -233,7 +234,7 @@ const KnowledgeManager: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`/api/knowledge-base/${id}`, {
+      const response = await fetch(buildApiUrl(`/knowledge-base/${id}`), {
         method: 'DELETE',
       });
 

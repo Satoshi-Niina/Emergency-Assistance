@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useToast } from '../../hooks/use-toast.ts';
+import { buildApiUrl } from '../../lib/api/config.ts';
 import {
   Card,
   CardContent,
@@ -51,7 +52,7 @@ const KnowledgeUploader: React.FC = () => {
   const handleProcessDocument = async (docId: string, title: string) => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/knowledge/${docId}/process`, {
+      const response = await fetch(buildApiUrl(`/knowledge/${docId}/process`), {
         method: 'POST',
       });
 
@@ -160,7 +161,7 @@ const KnowledgeUploader: React.FC = () => {
   // ドキュメント削除ハンドラ
   const handleDeleteDocument = async (docId: string, title: string) => {
     try {
-      const response = await fetch(`/api/knowledge/${docId}`, {
+      const response = await fetch(buildApiUrl(`/knowledge/${docId}`), {
         method: 'DELETE',
       });
 

@@ -298,18 +298,19 @@ export default function HistoryPage() {
       const historyItems = items.map((file: any) => {
         // 画像データの正規化（初期ロード時）
         const savedImages = file.jsonData?.savedImages || file.savedImages || file.images || [];
+        const baseUrl = API_BASE || window.location.origin;
         const normalizedImages = savedImages.map((img: any) => {
           if (typeof img === 'string') {
             const fileName = img.split('/').pop()?.split('\\').pop() || img;
             return { 
-              url: `/api/images/chat-exports/${fileName}`, 
+              url: `${baseUrl}/api/images/chat-exports/${fileName}`, 
               fileName: fileName 
             };
           }
           if (img && typeof img === 'object') {
             const fileName = img.fileName || img.url?.split('/').pop()?.split('\\').pop() || img.path?.split('/').pop()?.split('\\').pop() || '';
             return {
-              url: `/api/images/chat-exports/${fileName}`,
+              url: `${baseUrl}/api/images/chat-exports/${fileName}`,
               fileName: fileName,
               ...img
             };
@@ -679,9 +680,10 @@ export default function HistoryPage() {
           }
 
           // 常に標準的なオブジェクト形式に変換
-          // URLは常に相対パス形式 (/api/images/chat-exports/filename.jpg) に統一
+          // URLは絶対URL形式に統一
+          const baseUrl = API_BASE || window.location.origin;
           return {
-            url: `/api/images/chat-exports/${fileName}`,
+            url: `${baseUrl}/api/images/chat-exports/${fileName}`,
             fileName: fileName
           };
         })
@@ -1791,9 +1793,10 @@ export default function HistoryPage() {
 
                                       if (!fileName) return null;
 
-                                      // 常に /api/images/chat-exports/ 形式のURLを返す
+                                      // 本番環境では絶対URL、開発環境では相対パス
+                                      const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
                                       return {
-                                        url: `/api/images/chat-exports/${fileName}`,
+                                        url: `${baseUrl}/api/images/chat-exports/${fileName}`,
                                         fileName
                                       };
                                     };
@@ -2310,7 +2313,7 @@ export default function HistoryPage() {
                     const getAllImages = (item: SupportHistoryItem): Array<{ url: string; fileName?: string; index: number }> => {
                       const images: Array<{ url: string; fileName?: string; index: number }> = [];
 
-                      // 画像URLを正規化する関数（相対パス化）
+                      // 画像URLを正規化する関数（本番環境では絶対URL）
                       const normalizeImageUrl = (url: string): string => {
                         if (!url) {
                           console.warn('🖼️ 編集画面: 空のURL');
@@ -2322,6 +2325,8 @@ export default function HistoryPage() {
                           return url;
                         }
                         
+                        const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+                        
                         // /api/api/ のような重複を削除
                         let cleanUrl = url;
                         while (cleanUrl.includes('/api/api/')) {
@@ -2332,9 +2337,9 @@ export default function HistoryPage() {
                         cleanUrl = cleanUrl.replace('/chat-exports/exports/', '/chat-exports/');
                         cleanUrl = cleanUrl.replace('/emergency-flows/exports/', '/emergency-flows/');
                         
-                        // 既に /api/images/ で始まっている場合
+                        // 既に /api/images/ で始まっている場合は絶対URLに変換
                         if (cleanUrl.startsWith('/api/images/')) {
-                          return cleanUrl;
+                          return `${baseUrl}${cleanUrl}`;
                         }
                         
                         // ファイル名のみの場合は /api/images/chat-exports/ を追加
@@ -2342,12 +2347,13 @@ export default function HistoryPage() {
                           cleanUrl = `/api/images/chat-exports/${cleanUrl}`;
                         }
                         
-                        // 相対パスに変換
+                        // 絶対URLに変換
                         if (cleanUrl.startsWith('/api')) {
-                            return cleanUrl;
+                          return `${baseUrl}${cleanUrl}`;
                         }
                         
-                        return cleanUrl.startsWith('/') ? `/api${cleanUrl}` : `/api/${cleanUrl}`;
+                        const finalPath = cleanUrl.startsWith('/') ? `/api${cleanUrl}` : `/api/${cleanUrl}`;
+                        return `${baseUrl}${finalPath}`;
                       };
 
                       // 🔧 修正: 複数のソースから画像を統合

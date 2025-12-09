@@ -184,8 +184,7 @@ export default function TroubleshootingPage() {
     mutationFn: async (flowId: string) => {
       console.log('🗑️ フロー削除開始', flowId);
 
-      const apiBase = import.meta.env.VITE_API_BASE_URL || '';
-      const response = await fetch(`${apiBase}/api/emergency-flow/${flowId}`, {
+      const response = await fetch(buildApiUrl(`/emergency-flow/${flowId}`), {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
