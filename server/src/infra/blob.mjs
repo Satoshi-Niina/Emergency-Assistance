@@ -1,6 +1,6 @@
 import { BlobServiceClient } from '@azure/storage-blob';
 import { createRequire } from 'module';
-import { AZURE_STORAGE_CONNECTION_STRING, AZURE_STORAGE_ACCOUNT_NAME, AZURE_STORAGE_CONTAINER_NAME } from '../config/env.mjs';
+import { AZURE_STORAGE_CONNECTION_STRING, AZURE_STORAGE_ACCOUNT_NAME, AZURE_STORAGE_CONTAINER_NAME, BLOB_PREFIX } from '../config/env.mjs';
 import multer from 'multer';
 
 const require = createRequire(import.meta.url);
@@ -62,18 +62,15 @@ export const getBlobServiceClient = () => {
   return null;
 };
 
-const BASE = (process.env.AZURE_KNOWLEDGE_BASE_PATH ?? 'knowledge-base')
-  .replace(/^[\\/]+|[\\/]+$/g, '');
-
-console.log(`[Blob] Configuration: Container=${containerName}, BasePath=${BASE}`);
+console.log(`[Blob] Configuration: Container=${containerName}, BlobPrefix='${BLOB_PREFIX}'`);
 
 export const norm = (p) => {
-  const path = [BASE, String(p || '')]
+  const path = [BLOB_PREFIX, String(p || '')]
     .filter(Boolean)
     .join('/')
     .replace(/\\+/g, '/')
     .replace(/\/+/g, '/');
-  // console.log(`[Blob] Normalized path: ${p} -> ${path}`);
+  console.log(`[Blob] Normalized path: ${p} -> ${path}`);
   return path;
 };
 
