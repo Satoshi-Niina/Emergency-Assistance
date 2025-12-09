@@ -62,7 +62,9 @@ export const AZURE_STORAGE_CONTAINER_NAME = process.env.AZURE_STORAGE_CONTAINER_
 // Azure環境変数: BLOB_PREFIX または AZURE_KNOWLEDGE_BASE_PATH
 // デフォルト: 空文字列（knowledge-base/プレフィックスなし）
 export const BLOB_PREFIX = (process.env.BLOB_PREFIX ?? process.env.AZURE_KNOWLEDGE_BASE_PATH ?? '')
-  .replace(/^[\/]+|[\/]+$/g, ''); // 前後のスラッシュを削除
+  .replace(/^[\\/]+|[\\/]+$/g, ''); // 前後のスラッシュとバックスラッシュを削除
+
+console.log(`[Config] BLOB_PREFIX='${BLOB_PREFIX}' (length: ${BLOB_PREFIX.length})`);
 
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
