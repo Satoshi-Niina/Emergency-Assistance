@@ -3,7 +3,7 @@ import { PORT } from './src/config/env.mjs';
 import { initializeDatabase, ensureTables } from './src/infra/db.mjs';
 import { getBlobServiceClient, containerName } from './src/infra/blob.mjs';
 
-console.log('  Azure Server Starting (ES Module)...');
+console.log('  Azure Server Starting...');
 
 async function startupSequence() {
   console.log('  Running startup sequence...');
@@ -36,7 +36,7 @@ async function startupSequence() {
   try {
     const app = await createApp();
     
-    const server = app.listen(PORT, '0.0.0.0', () => {
+    const server = app.listen(PORT, () => {
       console.log('');
       console.log('  ================================================');
       console.log('  Azure Production Server Started Successfully!');

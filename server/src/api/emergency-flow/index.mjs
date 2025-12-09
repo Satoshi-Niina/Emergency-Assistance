@@ -279,10 +279,38 @@ export default async function emergencyFlowHandler(req, res) {
     try {
       const fileName = pathParts[2];
       console.log(`[api/emergency-flow] Fetching: ${fileName}`);
-      console.log('[api/emergency-flow] 🔍 BLOB接続診断開始');
 
+      // Azure環境かどうかを判定
+      const useAzure = isAzureEnvironment();
+      console.log('[api/emergency-flow] Environment check:', {
+        NODE_ENV: process.env.NODE_ENV,
+        STORAGE_MODE: process.env.STORAGE_MODE,
+        hasStorageConnectionString: !!process.env.AZURE_STORAGE_CONNECTION_STRING,
+        isAzureEnvironment: useAzure
+      });
+
+      // ローカル環境: ローカルファイルシステムから取得
+      if (!useAzure) {
+        console.log('[api/emergency-flow] LOCAL: Using local filesystem');
+        const basePath = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+        const filePath = path.join(basePath, fileName);
+
+        if (!fs.existsSync(filePath)) {
+          console.warn('[api/emergency-flow] LOCAL: File not found:', filePath);
+          return res.status(404).json({ success: false, error: 'フローが見つかりません' });
+        }
+
+        const content = await fs.promises.readFile(filePath, 'utf-8');
+        console.log('[api/emergency-flow] LOCAL: ✅ Loaded from local filesystem:', filePath);
+
+        res.setHeader('Content-Type', 'application/json');
+        return res.send(content);
+      }
+
+      // Azure環境: BLOBストレージから取得
+      console.log('[api/emergency-flow] AZURE: Using BLOB storage');
       const blobServiceClient = getBlobServiceClient();
-      console.log('[api/emergency-flow] BLOBクライアント:', blobServiceClient ? '取得成功' : '取得失敗');
+      console.log('[api/emergency-flow] AZURE: BLOBクライアント:', blobServiceClient ? '取得成功' : '取得失敗');
       if (!blobServiceClient) {
         return res.status(503).json({
           success: false,
@@ -293,11 +321,11 @@ export default async function emergencyFlowHandler(req, res) {
       const containerClient = blobServiceClient.getContainerClient(containerName);
       const resolved = await resolveBlobClient(containerClient, fileName);
       if (!resolved) {
-        console.warn('[api/emergency-flow] Blob not found for', fileName);
+        console.warn('[api/emergency-flow] AZURE: Blob not found for', fileName);
         return res.status(404).json({ success: false, error: 'フローが見つかりません' });
       }
 
-      console.log(`[api/emergency-flow] BLOB path: ${resolved.blobName}`);
+      console.log(`[api/emergency-flow] AZURE: ✅ BLOB path: ${resolved.blobName}`);
       const downloadResponse = await resolved.blobClient.download();
       const contentType = downloadResponse.contentType || 'application/json';
 
@@ -440,12 +468,19 @@ export default async function emergencyFlowHandler(req, res) {
         const timestamp = Date.now();
         const ext = path.extname(req.file.originalname);
         const fileName = `emergency_flow_${timestamp}${ext}`;
-        const blobServiceClient = getBlobServiceClient();
 
-        // 開発環境: BLOBが利用できない場合はローカル保存
-        if (!blobServiceClient) {
-          console.warn('[api/emergency-flow/upload-image] BLOB unavailable, saving locally');
-          const fs = await import('fs');
+        // Azure環境かどうかを判定
+        const useAzure = isAzureEnvironment();
+        console.log('[api/emergency-flow/upload-image] Environment check:', {
+          NODE_ENV: process.env.NODE_ENV,
+          STORAGE_MODE: process.env.STORAGE_MODE,
+          hasStorageConnectionString: !!process.env.AZURE_STORAGE_CONNECTION_STRING,
+          isAzureEnvironment: useAzure
+        });
+
+        // ローカル環境: ローカルファイルシステムのみ使用
+        if (!useAzure) {
+          console.log('[api/emergency-flow/upload-image] LOCAL: Using local filesystem');
           const localDir = path.join(process.cwd(), 'knowledge-base', 'images', 'emergency-flows');
           
           if (!fs.existsSync(localDir)) {
@@ -455,7 +490,7 @@ export default async function emergencyFlowHandler(req, res) {
           const localPath = path.join(localDir, fileName);
           fs.writeFileSync(localPath, req.file.buffer);
           
-          console.log('[api/emergency-flow/upload-image] Saved locally:', localPath);
+          console.log('[api/emergency-flow/upload-image] LOCAL: ✅ Saved to local filesystem:', localPath);
           const imageUrl = `/api/images/emergency-flows/${fileName}`;
           
           return res.json({
@@ -467,10 +502,19 @@ export default async function emergencyFlowHandler(req, res) {
           });
         }
 
-        // 本番環境: BLOBに保存
+        // Azure環境: BLOBストレージのみ使用
+        console.log('[api/emergency-flow/upload-image] AZURE: Using BLOB storage');
+        const blobServiceClient = getBlobServiceClient();
+        if (!blobServiceClient) {
+          return res.status(503).json({
+            success: false,
+            error: 'BLOB storage not available'
+          });
+        }
+
         const containerClient = blobServiceClient.getContainerClient(containerName);
         const blobName = `knowledge-base/images/emergency-flows/${fileName}`;
-        console.log('[api/emergency-flow/upload-image] Uploading to Blob:', blobName);
+        console.log('[api/emergency-flow/upload-image] AZURE: Uploading to Blob:', blobName);
         const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
         const containerExists = await containerClient.exists();
@@ -517,6 +561,41 @@ export default async function emergencyFlowHandler(req, res) {
       const fileName = pathParts[3];
       console.log('[api/emergency-flow/delete-image] Deleting:', fileName);
 
+      // Azure環境かどうかを判定
+      const useAzure = isAzureEnvironment();
+      console.log('[api/emergency-flow/delete-image] Environment check:', {
+        NODE_ENV: process.env.NODE_ENV,
+        STORAGE_MODE: process.env.STORAGE_MODE,
+        hasStorageConnectionString: !!process.env.AZURE_STORAGE_CONNECTION_STRING,
+        isAzureEnvironment: useAzure
+      });
+
+      // ローカル環境: ローカルファイルシステムから削除
+      if (!useAzure) {
+        console.log('[api/emergency-flow/delete-image] LOCAL: Using local filesystem');
+        const localFilePath = path.join(process.cwd(), 'knowledge-base', 'images', 'emergency-flows', fileName);
+
+        if (!fs.existsSync(localFilePath)) {
+          console.log('[api/emergency-flow/delete-image] LOCAL: Image not found:', localFilePath);
+          return res.status(404).json({
+            success: false,
+            error: '画像が見つかりません'
+          });
+        }
+
+        await fs.promises.unlink(localFilePath);
+        console.log('[api/emergency-flow/delete-image] LOCAL: ✅ Deleted from local filesystem:', localFilePath);
+
+        return res.json({
+          success: true,
+          message: '画像を削除しました',
+          deletedFile: fileName,
+          storage: 'local'
+        });
+      }
+
+      // Azure環境: BLOBストレージから削除
+      console.log('[api/emergency-flow/delete-image] AZURE: Using BLOB storage');
       const blobServiceClient = getBlobServiceClient();
       if (!blobServiceClient) {
         return res.status(503).json({
@@ -531,7 +610,7 @@ export default async function emergencyFlowHandler(req, res) {
 
       const exists = await blobClient.exists();
       if (!exists) {
-        console.log('[api/emergency-flow/delete-image] Image not found:', blobName);
+        console.log('[api/emergency-flow/delete-image] AZURE: Image not found:', blobName);
         return res.status(404).json({
           success: false,
           error: '画像が見つかりません'
@@ -539,12 +618,13 @@ export default async function emergencyFlowHandler(req, res) {
       }
 
       await blobClient.delete();
-      console.log(`[api/emergency-flow/delete-image] Deleted: ${blobName}`);
+      console.log(`[api/emergency-flow/delete-image] AZURE: ✅ Deleted: ${blobName}`);
 
       return res.json({
         success: true,
         message: '画像を削除しました',
-        deletedFile: fileName
+        deletedFile: fileName,
+        storage: 'azure'
       });
     } catch (error) {
       console.error('[api/emergency-flow/delete-image] Error:', error);

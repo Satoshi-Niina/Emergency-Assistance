@@ -1,0 +1,63 @@
+{
+  "chatId": "dab12f2e-e576-4182-ac1e-a8a14822d07f",
+  "exportType": "manual_send",
+  "chatData": {
+    "chatId": "dab12f2e-e576-4182-ac1e-a8a14822d07f",
+    "timestamp": "2025-12-09T07:52:17.364Z",
+    "machineInfo": {
+      "selectedMachineType": "a8ee08ea-7f26-4595-b6f8-a841840a6f31",
+      "selectedMachineNumber": "43dce423-d734-423f-a1f4-8f12bf08f5be",
+      "machineTypeName": "MC300(堀川）",
+      "machineNumber": "400"
+    },
+    "messages": [
+      {
+        "id": "1765266684804",
+        "content": "何か問題がありましたか？お困りの事象を教えてください。",
+        "isAiResponse": true,
+        "timestamp": "2025-12-09T07:51:24.804Z",
+        "media": []
+      },
+      {
+        "id": "1765266720022",
+        "content": "走行中にエンジンの回転が徐々に下がり停止した",
+        "isAiResponse": false,
+        "timestamp": "2025-12-09T07:52:00.022Z",
+        "media": []
+      },
+      {
+        "id": "1765266726771",
+        "content": "走行中にエンジンが停止した場合、以下の点を確認してみてくださいねね：\n\n1. **燃料の残量**：ガソリンが切れていないか確認。\n2. **バッテリー**：バッテリーが上がっていないか確認。\n3. **エン",
+        "isAiResponse": true,
+        "timestamp": "2025-12-09T07:52:06.770Z",
+        "media": []
+      },
+      {
+        "id": 1765266735842,
+        "content": "画像を送信しました",
+        "isAiResponse": false,
+        "timestamp": "2025-12-09T07:52:15.842Z",
+        "media": [
+          {
+            "id": "media_1765266735842_0",
+            "type": "image",
+            "url": "/api/images/chat-exports/chat_image_1765266735833.jpg",
+            "title": "画像を送信しました",
+            "fileName": "chat_image_1765266735833.jpg"
+          }
+        ]
+      }
+    ],
+    "savedImages": [
+      {
+        "id": "media_1765266735842_0",
+        "type": "image",
+        "url": "/api/images/chat-exports/chat_image_1765266735833.jpg",
+        "title": "画像を送信しました",
+        "fileName": "chat_image_1765266735833.jpg"
+      }
+    ]
+  },
+  "savedAt": "2025-12-09T07:52:17.376Z",
+  "title": "走行中にエンジンの回転が徐々に下がり停止した"
+}

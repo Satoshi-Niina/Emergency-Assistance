@@ -1,6 +1,8 @@
 import fs from 'fs';
 import { join } from 'path';
 import { dbQuery } from '../../infra/db.mjs';
+import { isAzureEnvironment } from '../../config/env.mjs';
+import { getBlobServiceClient, containerName } from '../../infra/blob.mjs';
 
 export default async function (req, res) {
   try {
@@ -31,52 +33,72 @@ export default async function (req, res) {
       rows = result.rows;
       console.log('Knowledge base query result:', { count: rows.length });
     } catch (dbError) {
-      console.warn('Knowledge base DB query failed, falling back to Blob documents:', dbError.message);
-      try {
-        const { getBlobServiceClient, containerName } = await import('../../infra/blob.mjs');
-        const blobServiceClient = getBlobServiceClient();
+      console.warn('Knowledge base DB query failed, falling back to storage:', dbError.message);
+      
+      // Azure環境かどうかを判定
+      const useAzure = isAzureEnvironment();
+      console.log('[knowledge-base] Environment check:', {
+        NODE_ENV: process.env.NODE_ENV,
+        STORAGE_MODE: process.env.STORAGE_MODE,
+        hasStorageConnectionString: !!process.env.AZURE_STORAGE_CONNECTION_STRING,
+        isAzureEnvironment: useAzure
+      });
+
+      // ローカル環境: ローカルファイルシステムから取得
+      if (!useAzure) {
+        console.log('[knowledge-base] LOCAL: Using local filesystem');
+        const localPath = join(process.cwd(), 'knowledge-base', 'index.json');
         
-        if (blobServiceClient) {
-          const containerClient = blobServiceClient.getContainerClient(containerName);
-          const prefix = 'knowledge-base/documents/';
-          
-          for await (const blob of containerClient.listBlobsFlat({ prefix })) {
-            if (!blob.name.endsWith('.json')) continue;
-            
-            try {
-              const blobClient = containerClient.getBlobClient(blob.name);
-              const downloadResponse = await blobClient.download();
-              const chunks = [];
-              
-              if (downloadResponse.readableStreamBody) {
-                for await (const chunk of downloadResponse.readableStreamBody) {
-                  chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-                }
-                const buffer = Buffer.concat(chunks);
-                const data = JSON.parse(buffer.toString('utf8'));
-                
-                if (Array.isArray(data)) {
-                  rows.push(...data);
-                } else if (data.title && data.content) {
-                  rows.push(data);
-                }
-              }
-            } catch (blobError) {
-              console.warn(`Failed to load blob ${blob.name}:`, blobError.message);
-            }
-          }
-          console.log(`Loaded ${rows.length} documents from Blob storage`);
+        if (fs.existsSync(localPath)) {
+          const raw = fs.readFileSync(localPath, 'utf8');
+          const fallbackData = JSON.parse(raw);
+          rows = Array.isArray(fallbackData) ? fallbackData : [];
+          console.log(`[knowledge-base] LOCAL: Loaded ${rows.length} documents from local file`);
         } else {
-          // Blobも利用不可の場合はローカルファイルフォールバック
-          const localPath = join(process.cwd(), 'knowledge-base', 'index.json');
-          if (fs.existsSync(localPath)) {
-            const raw = fs.readFileSync(localPath, 'utf8');
-            const fallbackData = JSON.parse(raw);
-            rows = Array.isArray(fallbackData) ? fallbackData : [];
-          }
+          console.log('[knowledge-base] LOCAL: No local file found:', localPath);
         }
-      } catch (fileError) {
-        console.error('Knowledge base fallback load failed:', fileError.message);
+      } else {
+        // Azure環境: BLOBストレージから取得
+        console.log('[knowledge-base] AZURE: Using BLOB storage');
+        try {
+          const blobServiceClient = getBlobServiceClient();
+          
+          if (blobServiceClient) {
+            const containerClient = blobServiceClient.getContainerClient(containerName);
+            const prefix = 'knowledge-base/documents/';
+            
+            for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+              if (!blob.name.endsWith('.json')) continue;
+              
+              try {
+                const blobClient = containerClient.getBlobClient(blob.name);
+                const downloadResponse = await blobClient.download();
+                const chunks = [];
+                
+                if (downloadResponse.readableStreamBody) {
+                  for await (const chunk of downloadResponse.readableStreamBody) {
+                    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+                  }
+                  const buffer = Buffer.concat(chunks);
+                  const data = JSON.parse(buffer.toString('utf8'));
+                  
+                  if (Array.isArray(data)) {
+                    rows.push(...data);
+                  } else if (data.title && data.content) {
+                    rows.push(data);
+                  }
+                }
+              } catch (blobError) {
+                console.warn(`[knowledge-base] AZURE: Failed to load blob ${blob.name}:`, blobError.message);
+              }
+            }
+            console.log(`[knowledge-base] AZURE: ✅ Loaded ${rows.length} documents from Blob storage`);
+          } else {
+            console.warn('[knowledge-base] AZURE: BLOB service client unavailable');
+          }
+        } catch (fileError) {
+          console.error('[knowledge-base] AZURE: Fallback load failed:', fileError.message);
+        }
       }
     }
 
