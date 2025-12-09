@@ -848,7 +848,6 @@ export default async function emergencyFlowHandler(req, res) {
           blobHTTPHeaders: { blobContentType: 'application/json' },
           metadata: {
             generatedFrom: 'keyword',
-            keyword: keyword,
             createdAt: new Date().toISOString()
           }
         });

@@ -1795,8 +1795,10 @@ export default function HistoryPage() {
 
                                       // 本番環境では絶対URL、開発環境では相対パス
                                       const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+                                      // baseUrlに/apiが含まれている場合は除去
+                                      const cleanBaseUrl = baseUrl.replace(/\/api\/?$/, '');
                                       return {
-                                        url: `${baseUrl}/api/images/chat-exports/${fileName}`,
+                                        url: `${cleanBaseUrl}/api/images/chat-exports/${fileName}`,
                                         fileName
                                       };
                                     };
