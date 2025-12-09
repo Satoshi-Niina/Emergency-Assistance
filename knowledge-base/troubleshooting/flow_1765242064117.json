@@ -13,7 +13,14 @@
       "message": "エンジンルームを開き、エンジンが動作していないことを確認します。",
       "type": "step",
       "imageUrl": "",
-      "options": []
+      "options": [],
+      "images": [
+        {
+          "url": "/api/emergency-flow/image/emergency-flow-step1765261118361.jpg",
+          "fileName": "emergency-flow-step1765261118361.jpg"
+        }
+      ],
+      "conditions": []
     },
     {
       "id": "step_2",
@@ -51,7 +58,9 @@
           "conditionType": "other",
           "condition": "異常な発熱がある"
         }
-      ]
+      ],
+      "images": [],
+      "conditions": []
     },
     {
       "id": "step_3",
@@ -60,7 +69,9 @@
       "message": "燃料ゲージまたはタンク内を直接確認し、燃料が十分にあることを確認します。",
       "type": "step",
       "imageUrl": "",
-      "options": []
+      "options": [],
+      "images": [],
+      "conditions": []
     },
     {
       "id": "step_4",
@@ -98,7 +109,9 @@
           "conditionType": "other",
           "condition": "燃料に異物が混入している"
         }
-      ]
+      ],
+      "images": [],
+      "conditions": []
     },
     {
       "id": "step_5",
@@ -107,7 +120,9 @@
       "message": "フィルター内に汚れや異物がないことを確認します。",
       "type": "step",
       "imageUrl": "",
-      "options": []
+      "options": [],
+      "images": [],
+      "conditions": []
     },
     {
       "id": "step_6",
@@ -145,9 +160,53 @@
           "conditionType": "other",
           "condition": "フィルターが破損している"
         }
-      ]
+      ],
+      "images": [],
+      "conditions": []
     }
   ],
   "createdAt": "2025-12-09T01:01:04.117Z",
-  "updatedAt": "2025-12-09T01:01:04.117Z"
+  "updatedAt": "2025-12-09T06:18:40.002Z",
+  "updateHistory": [
+    {
+      "timestamp": "2025-12-09T06:18:38.481Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-12-09T06:18:39.984Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-12-09T06:18:40.002Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt",
+        "updateHistory"
+      ],
+      "updatedBy": "user"
+    }
+  ]
 }

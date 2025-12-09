@@ -548,7 +548,6 @@ export default async function emergencyFlowHandler(req, res) {
       }
 
       const timestamp = Date.now();
-      const flowId = `flow_${timestamp}`;
       let flowTemplate;
 
       // OpenAI APIを使用してフロー生成
@@ -615,10 +614,18 @@ export default async function emergencyFlowHandler(req, res) {
           console.log('[api/emergency-flow/generate] ✅ GPT response received');
           
           const parsedFlow = JSON.parse(gptResponse);
+          const title = parsedFlow.title || keyword;
+          
+          // タイトルからファイル名を生成（日本語対応）
+          const sanitizedTitle = title
+            .replace(/[<>:"/\\|?*]/g, '') // 無効な文字を削除
+            .replace(/\s+/g, '_')         // スペースをアンダースコアに
+            .substring(0, 50);            // 50文字に制限
+          const flowId = `${sanitizedTitle}_${timestamp}`;
           
           flowTemplate = {
             id: flowId,
-            title: parsedFlow.title || keyword,
+            title: title,
             description: parsedFlow.description || `キーワード「${keyword}」から自動生成された応急処置フロー`,
             triggerKeywords: parsedFlow.triggerKeywords || [keyword],
             steps: parsedFlow.steps || [],
@@ -627,15 +634,33 @@ export default async function emergencyFlowHandler(req, res) {
             generatedBy: 'GPT-4'
           };
 
-          console.log('[api/emergency-flow/generate] ✅ Flow generated with', flowTemplate.steps.length, 'steps');
+          console.log('[api/emergency-flow/generate] ✅ Flow generated:', {
+            title: flowTemplate.title,
+            flowId: flowId,
+            steps: flowTemplate.steps.length
+          });
         } catch (gptError) {
           console.error('[api/emergency-flow/generate] ❌ GPT generation failed:', gptError.message);
           // GPT失敗時はフォールバック
-          flowTemplate = createFallbackTemplate(flowId, keyword);
+          const tempFlowId = `flow_${timestamp}`;
+          flowTemplate = createFallbackTemplate(tempFlowId, keyword);
+          const sanitizedTitle = flowTemplate.title
+            .replace(/[<>:"/\\|?*]/g, '')
+            .replace(/\s+/g, '_')
+            .substring(0, 50);
+          const flowId = `${sanitizedTitle}_${timestamp}`;
+          flowTemplate.id = flowId;
         }
       } else {
         console.warn('[api/emergency-flow/generate] ⚠️ OpenAI not available, using fallback template');
-        flowTemplate = createFallbackTemplate(flowId, keyword);
+        const tempFlowId = `flow_${timestamp}`;
+        flowTemplate = createFallbackTemplate(tempFlowId, keyword);
+        const sanitizedTitle = flowTemplate.title
+          .replace(/[<>:"/\\|?*]/g, '')
+          .replace(/\s+/g, '_')
+          .substring(0, 50);
+        const flowId = `${sanitizedTitle}_${timestamp}`;
+        flowTemplate.id = flowId;
       }
 
       // 🔧 生成したフローを保存
@@ -648,10 +673,12 @@ export default async function emergencyFlowHandler(req, res) {
         NODE_ENV: process.env.NODE_ENV,
         STORAGE_MODE: process.env.STORAGE_MODE,
         hasStorageConnectionString: !!process.env.AZURE_STORAGE_CONNECTION_STRING,
-        isAzureEnvironment: useAzure
+        isAzureEnvironment: useAzure,
+        flowId: flowTemplate.id,
+        title: flowTemplate.title
       });
       
-      const fileName = `${flowId}.json`;
+      const fileName = `${flowTemplate.id}.json`;
       
       // ローカル環境: ローカルファイルシステムのみ使用
       if (!useAzure) {

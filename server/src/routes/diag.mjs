@@ -2,7 +2,7 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { VERSION, AZURE_STORAGE_CONNECTION_STRING, AZURE_STORAGE_CONTAINER_NAME } from '../config/env.mjs';
+import { VERSION, AZURE_STORAGE_CONNECTION_STRING, AZURE_STORAGE_CONTAINER_NAME, BLOB_PREFIX } from '../config/env.mjs';
 import { getBlobServiceClient, containerName } from '../infra/blob.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -75,7 +75,8 @@ router.get('/blob-detailed', async (req, res) => {
     config: {
       containerName: containerName,
       connectionStringSet: !!AZURE_STORAGE_CONNECTION_STRING,
-      containerNameFromEnv: AZURE_STORAGE_CONTAINER_NAME
+      containerNameFromEnv: AZURE_STORAGE_CONTAINER_NAME,
+      BLOB_PREFIX: BLOB_PREFIX || '(empty string)'
     },
     tests: {}
   };
