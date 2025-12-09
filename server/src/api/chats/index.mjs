@@ -29,7 +29,8 @@ async function saveJsonFile(fileName, content) {
 
   const containerClient = blobServiceClient.getContainerClient(containerName);
   await containerClient.createIfNotExists();
-  const blobName = `knowledge-base/${EXPORT_SUBDIR}/${fileName}`;
+  const { norm } = await import('../../infra/blob.mjs');
+  const blobName = norm(`knowledge-base/${EXPORT_SUBDIR}/${fileName}`);
   const blockBlobClient = containerClient.getBlockBlobClient(blobName);
   await blockBlobClient.upload(content, Buffer.byteLength(content), {
     blobHTTPHeaders: { blobContentType: 'application/json' },
@@ -77,7 +78,8 @@ async function getLatestExport(chatId) {
   }
 
   const containerClient = blobServiceClient.getContainerClient(containerName);
-  const prefix = `knowledge-base/${EXPORT_SUBDIR}/`;
+  const { norm } = await import('../../infra/blob.mjs');
+  const prefix = norm(`knowledge-base/${EXPORT_SUBDIR}/`);
   for await (const blob of containerClient.listBlobsFlat({ prefix })) {
     if (!blob.name.endsWith('.json')) continue;
     if (!chatId || blob.name.includes(chatId)) {
@@ -121,7 +123,8 @@ async function downloadExport(fileName) {
   }
 
   const containerClient = blobServiceClient.getContainerClient(containerName);
-  const blobName = `knowledge-base/${EXPORT_SUBDIR}/${fileName}`;
+  const { norm } = await import('../../infra/blob.mjs');
+  const blobName = norm(`knowledge-base/${EXPORT_SUBDIR}/${fileName}`);
   console.log('[api/chats] AZURE: Downloading from Blob:', blobName);
   const blobClient = containerClient.getBlobClient(blobName);
   

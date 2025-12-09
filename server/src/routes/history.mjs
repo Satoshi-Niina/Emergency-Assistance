@@ -769,7 +769,7 @@ router.get('/export-files', async (req, res) => {
           });
         }
         
-        const prefix = norm('exports/');
+        const prefix = norm('knowledge-base/exports/');
         console.log('[history/export-files] 検索プレフィックス:', prefix);
         
         for await (const blob of containerClient.listBlobsFlat({ prefix })) {

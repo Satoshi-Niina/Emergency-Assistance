@@ -659,7 +659,7 @@ export default async function emergencyFlowHandler(req, res) {
         const prompt = `建設機械の応急処置フローをJSON形式で生成してください。
 キーワード: ${keyword}
 
-以下の構造でJSONを生成してください:
+以下の構造でJSONを生成してください。必ず5～6ステップ以上のフローにしてください:
 {
   "title": "フローのタイトル（${keyword}に関連）",
   "description": "フローの説明",
@@ -668,31 +668,65 @@ export default async function emergencyFlowHandler(req, res) {
     {
       "id": "step1",
       "type": "step",
-      "title": "ステップのタイトル",
-      "description": "詳細な説明",
-      "message": "作業者へのメッセージ",
+      "title": "安全確認",
+      "description": "作業前の安全確保",
+      "message": "機械を停止し、周囲の安全を確保してください",
       "nextStep": "step2"
     },
     {
       "id": "step2",
+      "type": "step",
+      "title": "症状の確認",
+      "description": "${keyword}の症状を詳しく確認",
+      "message": "故障の状態を確認し、記録してください",
+      "nextStep": "step3"
+    },
+    {
+      "id": "step3",
       "type": "decision",
-      "title": "判断ポイント",
-      "description": "状況判断の説明",
-      "message": "判断メッセージ",
+      "title": "緊急度の判断",
+      "description": "即座の対応が必要か判断",
+      "message": "作業を継続できますか？",
       "options": [
-        { "label": "選択肢1", "nextStep": "step3" },
-        { "label": "選択肢2", "nextStep": "step4" }
+        { "label": "継続可能", "nextStep": "step4" },
+        { "label": "継続不可", "nextStep": "step5" }
       ]
+    },
+    {
+      "id": "step4",
+      "type": "step",
+      "title": "応急処置",
+      "description": "${keyword}に対する応急的な対処",
+      "message": "一時的な処置を実施してください",
+      "nextStep": "step6"
+    },
+    {
+      "id": "step5",
+      "type": "step",
+      "title": "作業中止・退避",
+      "description": "安全な場所への移動",
+      "message": "機械を安全な場所に移動し、作業を中止してください",
+      "nextStep": "step6"
+    },
+    {
+      "id": "step6",
+      "type": "step",
+      "title": "記録と報告",
+      "description": "状況の記録と関係者への報告",
+      "message": "写真撮影、記録、上司への報告を行ってください",
+      "nextStep": "complete"
     }
   ]
 }
 
-注意事項:
-- stepタイプ: 通常の作業ステップ（nextStepで次のステップIDを指定）
-- decisionタイプ: 判断分岐ポイント（optionsで選択肢を提供）
-- 最終ステップのnextStepは "complete" にする
-- 安全確認、症状確認、応急処置、報告の流れを含める
-- 建設機械の専門用語を使用し、実践的な内容にする`;
+【重要】必ず守ること:
+1. 最低5～6ステップ以上のフローを生成すること（上記の例を参考に）
+2. 安全確認 → 症状確認 → 判断分岐 → 応急処置/中止 → 報告の流れを必ず含めること
+3. stepタイプ: 通常の作業ステップ（nextStepで次のステップIDを指定）
+4. decisionタイプ: 判断分岐ポイント（optionsで選択肢を提供）
+5. 最終ステップのnextStepは必ず "complete" にすること
+6. ${keyword}に応じた具体的で実践的な作業手順を含めること
+7. 建設機械の専門用語を使用すること`;
 
         try {
           const completion = await openai.chat.completions.create({
