@@ -5,7 +5,20 @@ import process from 'process';
 // サーバーファイルの位置からルートディレクトリに移動
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const rootDir = resolve(__dirname, '..');
+
+// Azure App Service環境の検出と対応
+const isAzure = !!process.env.WEBSITE_SITE_NAME;
+let rootDir;
+
+if (isAzure) {
+  // Azure環境: /home/site/wwwroot がルート
+  rootDir = '/home/site/wwwroot';
+  console.log('  Azure環境を検出: ルートを /home/site/wwwroot に設定');
+} else {
+  // ローカル環境: server/の親ディレクトリがルート
+  rootDir = resolve(__dirname, '..');
+  console.log('  ローカル環境: 相対パスでルートを設定');
+}
 
 // カレントディレクトリをルートに変更（knowledge-base/アクセスのため）
 process.chdir(rootDir);
