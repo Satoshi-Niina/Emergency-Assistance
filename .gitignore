@@ -28,6 +28,9 @@ server/reset-passwords.mjs
 server/find-password.mjs
 server/test-login.mjs
 server/check-user-passwords.mjs
+
+# ローカル開発専用サーバー（本番では不要）
+server/unified-hot-reload-server.js
 # Environment variables (Local・Docker use)
 # Exclude ALL .env files by default
 # Exclude ALL .env files by default
