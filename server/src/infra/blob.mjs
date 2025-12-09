@@ -11,18 +11,30 @@ export const getBlobServiceClient = () => {
   console.log('[Blob] Initializing BLOB service client...', {
     hasConnectionString: !!(AZURE_STORAGE_CONNECTION_STRING && AZURE_STORAGE_CONNECTION_STRING.trim()),
     hasAccountName: !!(AZURE_STORAGE_ACCOUNT_NAME && AZURE_STORAGE_ACCOUNT_NAME.trim()),
-    containerName: AZURE_STORAGE_CONTAINER_NAME
+    containerName: AZURE_STORAGE_CONTAINER_NAME,
+    connectionStringPrefix: AZURE_STORAGE_CONNECTION_STRING ? AZURE_STORAGE_CONNECTION_STRING.substring(0, 30) + '...' : 'N/A'
   });
 
   if (AZURE_STORAGE_CONNECTION_STRING && AZURE_STORAGE_CONNECTION_STRING.trim()) {
+    const connStr = AZURE_STORAGE_CONNECTION_STRING.trim();
+    
+    // 接続文字列の基本的な検証
+    if (!connStr.includes('AccountName=') || !connStr.includes('AccountKey=')) {
+      console.error('[Blob] ❌ Invalid connection string format. Missing AccountName or AccountKey');
+      console.error('[Blob] Connection string should contain: AccountName=xxx;AccountKey=xxx');
+      return null;
+    }
+    
     try {
       console.log('[Blob] Using connection string authentication');
-      const client = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING.trim());
+      const client = BlobServiceClient.fromConnectionString(connStr);
       console.log('[Blob] ✅ BLOB service client created successfully');
       return client;
     } catch (error) {
       console.error('[Blob] ❌ Client initialization failed:', error.message);
-      console.error('[Blob] Error details:', error);
+      console.error('[Blob] Error name:', error.name);
+      console.error('[Blob] Error code:', error.code);
+      console.error('[Blob] Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
       return null;
     }
   }

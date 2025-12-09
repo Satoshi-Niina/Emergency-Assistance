@@ -112,7 +112,24 @@ router.get('/blob-detailed', async (req, res) => {
       etag: containerProps.etag
     };
 
-    // Test 4: List blobs (sample)
+    // Test 4: Write permission test
+    try {
+      const testBlobName = `knowledge-base/test/diag-test-${Date.now()}.txt`;
+      const testBlockBlobClient = containerClient.getBlockBlobClient(testBlobName);
+      await testBlockBlobClient.upload('test', 4);
+      diagnostics.tests.writePermission = '✅ Can Write';
+      // Clean up test file
+      await testBlockBlobClient.delete();
+    } catch (writeError) {
+      diagnostics.tests.writePermission = '❌ Cannot Write';
+      diagnostics.writeError = {
+        message: writeError.message,
+        code: writeError.code,
+        statusCode: writeError.statusCode
+      };
+    }
+
+    // Test 5: List blobs (sample)
     let blobCount = 0;
     const sampleBlobs = [];
     for await (const blob of containerClient.listBlobsFlat({ prefix: 'knowledge-base/images/' })) {

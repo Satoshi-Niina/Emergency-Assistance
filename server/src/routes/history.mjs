@@ -402,9 +402,22 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
 
       // コンテナの存在確認と作成（確実に実行）
       console.log('[history/upload-image] Ensuring container exists...');
-      await containerClient.createIfNotExists({
-        access: 'container' // パブリックアクセス（必要に応じて変更）
-      });
+      try {
+        await containerClient.createIfNotExists({
+          access: 'container' // パブリックアクセス（必要に応じて変更）
+        });
+      } catch (createError) {
+        console.error('[history/upload-image] ⚠️ Container creation failed (may already exist):', {
+          message: createError.message,
+          code: createError.code,
+          statusCode: createError.statusCode,
+          details: createError.details
+        });
+        // コンテナが既に存在する場合はエラーを無視
+        if (createError.code !== 'ContainerAlreadyExists' && createError.statusCode !== 409) {
+          throw createError;
+        }
+      }
       
       const containerExists = await containerClient.exists();
       console.log('[history/upload-image] Container status:', {
