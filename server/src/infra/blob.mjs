@@ -62,7 +62,6 @@ export const getBlobServiceClient = () => {
   }
 
   // ローカル環境（STORAGE_MODE=local）の場合は警告を出さない
-  const isLocalMode = process.env.STORAGE_MODE === 'local';
   if (isLocalMode) {
     console.log('[Blob] ℹ️ Local mode - BLOB client not required');
     return null;
