@@ -67,10 +67,29 @@ function extractMetadataFromJson(json = {}, fileName = '') {
   if (json.savedImages) console.log('[extractMetadata] json.savedImages length:', json.savedImages.length);
   if (chatData.savedImages) console.log('[extractMetadata] chatData.savedImages length:', chatData.savedImages.length);
 
-  const machineType =
-    machineInfo.machineTypeName || json.machineType || 'Unknown';
-  const machineNumber =
-    machineInfo.machineNumber || json.machineNumber || 'Unknown';
+  // 機種情報の抽出（複数ソースから試行）
+  let machineType = machineInfo.machineTypeName || 
+                    machineInfo.selectedMachineType ||
+                    json.machineType || 
+                    '';
+  let machineNumber = machineInfo.machineNumber || 
+                      machineInfo.selectedMachineNumber ||
+                      json.machineNumber || 
+                      '';
+  
+  // 空の場合はファイル名から推測を試みる
+  if (!machineType && !machineNumber) {
+    // ファイル名から機種情報を抽出する試み（例: MC-300_100_xxx.json）
+    const fileNameMatch = fileName.match(/([A-Z]+-\d+)[-_](\d+)/i);
+    if (fileNameMatch) {
+      machineType = fileNameMatch[1] || '';
+      machineNumber = fileNameMatch[2] || '';
+    }
+  }
+  
+  // 最終的にも空の場合のみ"未設定"を設定
+  machineType = machineType || '未設定';
+  machineNumber = machineNumber || '未設定';
 
   console.log('[extractMetadata] Debug:', {
     fileName,
@@ -104,20 +123,32 @@ function extractMetadataFromJson(json = {}, fileName = '') {
       ? chatData.savedImages
       : [];
 
+  // 画像URLからファイル名を抽出する関数
+  const extractFileName = (urlOrPath) => {
+    if (!urlOrPath) return '';
+    // /api/images/chat-exports/xxx.jpg → xxx.jpg
+    const parts = urlOrPath.split('/');
+    return parts[parts.length - 1];
+  };
+
   const mergedImages = [
     ...images,
     ...savedImages.map((img) => {
-      if (typeof img === 'string') return { url: img, fileName: img };
+      if (typeof img === 'string') {
+        const fileName = extractFileName(img);
+        return { url: img, fileName: fileName };
+      }
       if (img && typeof img === 'object') {
+        const fileName = extractFileName(img.fileName || img.url || img.path);
         return {
           url: img.url || img.fileName || img.path,
-          fileName: img.fileName || img.url || img.path,
+          fileName: fileName,
           ...img,
         };
       }
       return { url: '', fileName: '' };
     }),
-  ].filter((img) => img.url);
+  ].filter((img) => img.url && img.fileName);
 
   const title = json.title || chatData.title || deriveTitleFromFileName(fileName);
 
