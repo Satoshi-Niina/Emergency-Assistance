@@ -2,6 +2,18 @@
 // 改良版ローカル開発サーバー
 // src/app.mjsをベースに、Viteプロキシと開発機能を追加
 
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+import process from 'process';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const rootDir = resolve(__dirname, '..');
+
+// カレントディレクトリをルートに変更
+process.chdir(rootDir);
+console.log('  Working directory set to:', process.cwd());
+
 import { createApp } from './src/app.mjs';
 import { PORT as DEFAULT_PORT } from './src/config/env.mjs';
 import { initializeDatabase, ensureTables } from './src/infra/db.mjs';

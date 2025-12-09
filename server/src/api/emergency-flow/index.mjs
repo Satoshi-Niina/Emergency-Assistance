@@ -49,7 +49,7 @@ export default async function emergencyFlowHandler(req, res) {
       // ローカル環境: ローカルファイルシステムから取得
       if (!useAzure) {
         console.log('[api/emergency-flow/list] LOCAL: Reading from local filesystem');
-        const localDir = path.resolve(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+        const localDir = path.resolve(process.cwd(), 'knowledge-base', 'troubleshooting');
         
         if (fs.existsSync(localDir)) {
           const files = fs.readdirSync(localDir);
@@ -185,7 +185,7 @@ export default async function emergencyFlowHandler(req, res) {
       // ローカル環境: ローカルファイルシステムから取得
       if (!useAzure) {
         console.log('[api/emergency-flow/detail] LOCAL: Reading from local filesystem');
-        const localDir = path.resolve(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+        const localDir = path.resolve(process.cwd(), 'knowledge-base', 'troubleshooting');
         const localFilePath = path.join(localDir, fileName);
         
         if (!fs.existsSync(localFilePath)) {
@@ -292,7 +292,7 @@ export default async function emergencyFlowHandler(req, res) {
       // ローカル環境: ローカルファイルシステムから取得
       if (!useAzure) {
         console.log('[api/emergency-flow] LOCAL: Using local filesystem');
-        const basePath = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+        const basePath = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
         const filePath = path.join(basePath, fileName);
 
         if (!fs.existsSync(filePath)) {
@@ -481,7 +481,7 @@ export default async function emergencyFlowHandler(req, res) {
         // ローカル環境: ローカルファイルシステムのみ使用
         if (!useAzure) {
           console.log('[api/emergency-flow/upload-image] LOCAL: Using local filesystem');
-          const localDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows');
+          const localDir = path.join(process.cwd(), 'knowledge-base', 'images', 'emergency-flows');
           
           if (!fs.existsSync(localDir)) {
             fs.mkdirSync(localDir, { recursive: true });
@@ -573,7 +573,7 @@ export default async function emergencyFlowHandler(req, res) {
       // ローカル環境: ローカルファイルシステムから削除
       if (!useAzure) {
         console.log('[api/emergency-flow/delete-image] LOCAL: Using local filesystem');
-        const localFilePath = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows', fileName);
+        const localFilePath = path.join(process.cwd(), 'knowledge-base', 'images', 'emergency-flows', fileName);
 
         if (!fs.existsSync(localFilePath)) {
           console.log('[api/emergency-flow/delete-image] LOCAL: Image not found:', localFilePath);
@@ -785,7 +785,7 @@ export default async function emergencyFlowHandler(req, res) {
       if (!useAzure) {
         console.log('[api/emergency-flow/generate] LOCAL: Using local filesystem');
         
-        const localDir = path.resolve(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+        const localDir = path.resolve(process.cwd(), 'knowledge-base', 'troubleshooting');
         const localFilePath = path.join(localDir, fileName);
         
         // ディレクトリが存在しない場合は作成
@@ -912,8 +912,8 @@ export default async function emergencyFlowHandler(req, res) {
 
       // ローカルモード: knowledge-base/ で更新
       if (!useAzure) {
-        const baseDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-        const imagesDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows');
+        const baseDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+        const imagesDir = path.join(process.cwd(), 'knowledge-base', 'images', 'emergency-flows');
         
         const files = await fs.promises.readdir(baseDir);
         const targetFile = files.find(f => f === fileName || f.includes(flowId));
@@ -1126,8 +1126,8 @@ export default async function emergencyFlowHandler(req, res) {
 
       // ローカルモード: knowledge-base/ から削除
       if (!useAzure) {
-        const baseDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-        const imagesDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows');
+        const baseDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+        const imagesDir = path.join(process.cwd(), 'knowledge-base', 'images', 'emergency-flows');
         
         const files = await fs.promises.readdir(baseDir);
         const targetFile = files.find(f => f === fileName || f === `${fileName}.json`);

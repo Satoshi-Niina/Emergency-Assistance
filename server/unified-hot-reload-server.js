@@ -5,6 +5,18 @@
 // ホットリロード対応、ビルド不要、元データから直接起動
 // UTF-8 (BOMなし) エンコード標準
 
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+import process from 'process';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const rootDir = resolve(__dirname, '..');
+
+// カレントディレクトリをルートに変更
+process.chdir(rootDir);
+console.log('  Working directory set to:', process.cwd());
+
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -48,7 +60,6 @@ function resolveProjectRoot() {
   const possiblePaths = [
     projectRoot,
     path.resolve(process.cwd()),
-    path.resolve(process.cwd(), '..'),
     path.resolve(__dirname, '..', '..'),
   ];
 
@@ -3494,18 +3505,13 @@ apiRouter.put('/emergency-flow/:id', async (req, res) => {
 
     // knowledge-baseディレクトリのパス解決
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
 
     let targetDir = troubleshootingDir;
     if (!fs.existsSync(troubleshootingDir)) {
-      if (fs.existsSync(alternativeDir)) {
-        targetDir = alternativeDir;
-      } else {
-        return res.status(404).json({
-          success: false,
-          error: 'トラブルシューティングディレクトリが見つかりません',
-        });
-      }
+      return res.status(404).json({
+        success: false,
+        error: 'トラブルシューティングディレクトリが見つかりません',
+      });
     }
 
     const files = fs.readdirSync(targetDir);
@@ -5183,20 +5189,15 @@ apiRouter.get('/knowledge-base', async (req, res) => {
     console.log('📚 ナレッジベース取得リクエスト');
 
     const knowledgeBaseDir = path.join(process.cwd(), 'knowledge-base');
-    const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base');
 
     let targetDir = knowledgeBaseDir;
     if (!fs.existsSync(knowledgeBaseDir)) {
-      if (fs.existsSync(alternativeDir)) {
-        targetDir = alternativeDir;
-      } else {
-        return res.json({
-          success: true,
-          data: [],
-          message: 'ナレッジベースディレクトリが見つかりません',
-          timestamp: new Date().toISOString()
-        });
-      }
+      return res.json({
+        success: true,
+        data: [],
+        message: 'ナレッジベースディレクトリが見つかりません',
+        timestamp: new Date().toISOString()
+      });
     }
 
     const files = fs.readdirSync(targetDir);
@@ -5245,18 +5246,14 @@ apiRouter.get('/knowledge-base/stats', async (req, res) => {
     console.log('📊 ナレッジベース統計情報取得リクエスト');
 
     const knowledgeBaseDir = path.join(process.cwd(), 'knowledge-base');
-    const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base');
 
     let targetDir = knowledgeBaseDir;
     if (!fs.existsSync(knowledgeBaseDir)) {
-      if (fs.existsSync(alternativeDir)) {
-        targetDir = alternativeDir;
-      } else {
-        return res.json({
-          success: true,
-          data: {
-            total: 0,
-            totalSize: 0,
+      return res.json({
+        success: true,
+        data: {
+          total: 0,
+          totalSize: 0,
             categoryCount: {},
             typeStats: {},
             lastMaintenance: undefined,
@@ -5871,15 +5868,10 @@ apiRouter.get('/images/*', (req, res) => {
   try {
     const imagePath = req.params[0];
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
 
     let targetDir = troubleshootingDir;
     if (!fs.existsSync(troubleshootingDir)) {
-      if (fs.existsSync(alternativeDir)) {
-        targetDir = alternativeDir;
-      } else {
-        return res.status(404).json({ error: 'ディレクトリが見つかりません' });
-      }
+      return res.status(404).json({ error: 'ディレクトリが見つかりません' });
     }
 
     const fullPath = path.join(targetDir, imagePath);
@@ -7293,16 +7285,11 @@ apiRouter.post('/files/import', upload.single('file'), async (req, res) => {
 
     // knowledge-baseディレクトリのパス解決
     const knowledgeBaseDir = path.join(process.cwd(), 'knowledge-base');
-    const alternativeDir = path.join(process.cwd(), '..', 'knowledge-base');
 
     let targetDir = knowledgeBaseDir;
     if (!fs.existsSync(knowledgeBaseDir)) {
-      if (fs.existsSync(alternativeDir)) {
-        targetDir = alternativeDir;
-      } else {
-        fs.mkdirSync(knowledgeBaseDir, { recursive: true });
-        targetDir = knowledgeBaseDir;
-      }
+      fs.mkdirSync(knowledgeBaseDir, { recursive: true });
+      targetDir = knowledgeBaseDir;
     }
 
     // documentsディレクトリの確認・作成

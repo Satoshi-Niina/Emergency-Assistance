@@ -47,7 +47,7 @@ export default async function (req, res) {
       // ローカル環境: ローカルファイルシステムから取得
       if (!useAzure) {
         console.log('[knowledge-base] LOCAL: Using local filesystem');
-        const localPath = join(process.cwd(), '..', 'knowledge-base', 'index.json);
+        const localPath = join(process.cwd(), 'knowledge-base', 'index.json');
         
         if (fs.existsSync(localPath)) {
           const raw = fs.readFileSync(localPath, 'utf8');

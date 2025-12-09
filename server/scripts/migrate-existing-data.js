@@ -8,7 +8,7 @@ import { faultHistoryService } from '../services/fault-history-service.js';
 async function migrateExistingData() {
   console.log('📊 既存データの移行開始...');
   
-  const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+  const exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
   
   if (!fs.existsSync(exportsDir)) {
     console.log('❌ エクスポートディレクトリが見つかりません:', exportsDir);

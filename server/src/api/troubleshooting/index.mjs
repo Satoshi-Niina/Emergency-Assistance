@@ -29,7 +29,7 @@ export default async function troubleshootingHandler(req, res) {
       // ローカル環境: ローカルファイルシステムから取得
       if (!useAzure) {
         console.log('[api/troubleshooting/list] LOCAL: Using local filesystem');
-        const localDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+        const localDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
 
         if (fs.existsSync(localDir)) {
           const files = fs.readdirSync(localDir);
@@ -151,7 +151,7 @@ export default async function troubleshootingHandler(req, res) {
       // ローカル環境: ローカルファイルシステムから取得
       if (!useAzure) {
         console.log('[api/troubleshooting/:id] LOCAL: Using local filesystem');
-        const localDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+        const localDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
         const filePath = path.join(localDir, `${id}.json`);
 
         if (!fs.existsSync(filePath)) {
@@ -258,7 +258,7 @@ export default async function troubleshootingHandler(req, res) {
       // ローカル環境: ローカルファイルシステムに保存
       if (!useAzure) {
         console.log('[api/troubleshooting POST] LOCAL: Using local filesystem');
-        const localDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+        const localDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
         const filePath = path.join(localDir, `${flowData.id}.json`);
 
         if (!fs.existsSync(localDir)) {
@@ -340,7 +340,7 @@ export default async function troubleshootingHandler(req, res) {
       // ローカル環境: ローカルファイルシステムで更新
       if (!useAzure) {
         console.log('[api/troubleshooting PUT] LOCAL: Using local filesystem');
-        const localDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+        const localDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
         const filePath = path.join(localDir, `${id}.json`);
 
         if (!fs.existsSync(filePath)) {
@@ -420,7 +420,7 @@ export default async function troubleshootingHandler(req, res) {
       // ローカル環境: ローカルファイルシステムから削除
       if (!useAzure) {
         console.log('[api/troubleshooting DELETE] LOCAL: Using local filesystem');
-        const localDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+        const localDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
         const filePath = path.join(localDir, `${id}.json`);
 
         if (!fs.existsSync(filePath)) {

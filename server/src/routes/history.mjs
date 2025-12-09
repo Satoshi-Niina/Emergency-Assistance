@@ -202,7 +202,7 @@ router.get('/', async (req, res) => {
     // ローカル環境: ローカルファイルシステムから読み込み
     if (!useAzure) {
       console.log('[history] LOCAL: Reading from local filesystem');
-      const localDir = path.resolve(process.cwd(), '..', 'knowledge-base', 'exports');
+      const localDir = path.resolve(process.cwd(), 'knowledge-base', 'exports');
       
       if (fs.existsSync(localDir)) {
         const files = fs.readdirSync(localDir);
@@ -426,7 +426,7 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
       if (!useAzure) {
         console.log('[history/upload-image] LOCAL: Using local filesystem');
         
-        const localDir = path.resolve(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports');
+        const localDir = path.resolve(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
         const localFilePath = path.join(localDir, fileName);
         
         // ディレクトリが存在しない場合は作成
@@ -634,7 +634,7 @@ router.get('/exports/:fileName', async (req, res) => {
     
     // ローカルモード: knowledge-base/exports/ から読み取り
     if (!useAzure) {
-      const filePath = path.join(process.cwd(), '..', 'knowledge-base', 'exports', fileName);
+      const filePath = path.join(process.cwd(), 'knowledge-base', 'exports', fileName);
       
       if (!await fs.promises.access(filePath).then(() => true).catch(() => false)) {
         return res.status(404).json({
@@ -690,7 +690,7 @@ router.get('/export-files', async (req, res) => {
     // ローカルモード: knowledge-base/exports/ から一覧取得
     if (!useAzure) {
       console.log('[history/export-files] ローカルモード: knowledge-base/exports/ から取得');
-      const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+      const exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
       
       try {
         const files = await fs.promises.readdir(exportsDir);
@@ -831,7 +831,7 @@ async function getHistoryDetail(normalizedId) {
   
   // ローカルモード: knowledge-base/exports/ から読み取り
   if (!useAzure) {
-    const baseDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+    const baseDir = path.join(process.cwd(), 'knowledge-base', 'exports');
     const files = await fs.promises.readdir(baseDir);
     
     // ファイル名の正規化して検索
@@ -921,8 +921,8 @@ async function handleUpdateHistory(req, res, rawId) {
     
     // ローカルモード: knowledge-base/exports/ から読み書き
     if (!useAzure) {
-      const baseDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
-      const imagesDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports');
+      const baseDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+      const imagesDir = path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
       
       // 既存ファイルを検索
       const files = await fs.promises.readdir(baseDir);
@@ -1156,8 +1156,8 @@ router.delete('/:id', async (req, res) => {
     
     // ローカルモード: knowledge-base/ から削除
     if (!useAzure) {
-      const baseDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
-      const imagesDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports');
+      const baseDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+      const imagesDir = path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
       
       // ファイルを検索
       const files = await fs.promises.readdir(baseDir);
@@ -1312,8 +1312,8 @@ router.post('/cleanup-orphaned-images', async (req, res) => {
     
     // ローカルモード: knowledge-base/ から孤立画像をクリーンアップ
     if (!useAzure) {
-      const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
-      const imagesDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports');
+      const exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+      const imagesDir = path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
       
       // 1. すべてのJSONファイルから参照されている画像を収集
       const referencedImages = new Set();

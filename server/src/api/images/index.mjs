@@ -156,7 +156,7 @@ export default async function imagesHandler(req, res) {
       
       // ローカル環境: ローカルファイルシステムのみ使用
       console.log('[api/images] LOCAL: Using local filesystem');
-      const localBasePath = path.resolve(process.cwd(), '..', 'knowledge-base', 'images', category);
+      const localBasePath = path.resolve(process.cwd(), 'knowledge-base', 'images', category);
       const localFilePath = path.join(localBasePath, fileName);
       
       console.log('[api/images] LOCAL: Local file path:', localFilePath);

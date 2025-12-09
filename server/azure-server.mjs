@@ -1,3 +1,16 @@
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+import process from 'process';
+
+// サーバーファイルの位置からルートディレクトリに移動
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const rootDir = resolve(__dirname, '..');
+
+// カレントディレクトリをルートに変更（knowledge-base/アクセスのため）
+process.chdir(rootDir);
+console.log('  Working directory set to:', process.cwd());
+
 import { createApp } from './src/app.mjs';
 import { PORT } from './src/config/env.mjs';
 import { initializeDatabase, ensureTables } from './src/infra/db.mjs';
