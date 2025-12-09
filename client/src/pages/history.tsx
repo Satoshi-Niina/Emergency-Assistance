@@ -37,9 +37,14 @@ import { storage } from '../lib/api';
 import ChatExportReport from '../components/report/chat-export-report';
 
 // 画像ユーティリティ関数
-const API_BASE = import.meta.env.DEV
-  ? (import.meta.env.VITE_API_BASE_URL || '')
-  : import.meta.env.VITE_API_BASE_URL || window.location.origin;
+// API_BASEから末尾の/apiを除去（二重パス防止）
+const getCleanApiBase = () => {
+  const base = import.meta.env.DEV
+    ? (import.meta.env.VITE_API_BASE_URL || '')
+    : import.meta.env.VITE_API_BASE_URL || window.location.origin;
+  return base.replace(/\/api\/?$/, '');
+};
+const API_BASE = getCleanApiBase();
 
 async function fetchDetailFile(name: string) {
   // IDベースのエンドポイントを試す
@@ -2331,6 +2336,8 @@ export default function HistoryPage() {
                         }
                         
                         const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+                        // baseUrlから/apiを除去（二重パス防止）
+                        const cleanBaseUrl = baseUrl.replace(/\/api\/?$/, '');
                         
                         // /api/api/ のような重複を削除
                         let cleanUrl = url;
@@ -2344,7 +2351,7 @@ export default function HistoryPage() {
                         
                         // 既に /api/images/ で始まっている場合は絶対URLに変換
                         if (cleanUrl.startsWith('/api/images/')) {
-                          return `${baseUrl}${cleanUrl}`;
+                          return `${cleanBaseUrl}${cleanUrl}`;
                         }
                         
                         // ファイル名のみの場合は /api/images/chat-exports/ を追加
@@ -2354,11 +2361,11 @@ export default function HistoryPage() {
                         
                         // 絶対URLに変換
                         if (cleanUrl.startsWith('/api')) {
-                          return `${baseUrl}${cleanUrl}`;
+                          return `${cleanBaseUrl}${cleanUrl}`;
                         }
                         
                         const finalPath = cleanUrl.startsWith('/') ? `/api${cleanUrl}` : `/api/${cleanUrl}`;
-                        return `${baseUrl}${finalPath}`;
+                        return `${cleanBaseUrl}${finalPath}`;
                       };
 
                       // 🔧 修正: 複数のソースから画像を統合
@@ -2451,9 +2458,25 @@ export default function HistoryPage() {
                                   src={image.url}
                                   alt={image.fileName || '故障画像'}
                                   className="w-full h-auto max-h-48 object-contain rounded-md"
+                                  onLoad={() => {
+                                    console.log(`✅ 画像読み込み成功 (編集画面):`, {
+                                      fileName: image.fileName,
+                                      url: image.url
+                                    });
+                                  }}
                                   onError={(e) => {
-                                    console.error(`🖼️ 画像読み込みエラー (編集画面):`, image.url);
-                                    (e.target as HTMLImageElement).style.display = 'none';
+                                    console.error(`❌ 画像読み込みエラー (編集画面):`, {
+                                      fileName: image.fileName,
+                                      url: image.url,
+                                      error: '画像の取得に失敗しました'
+                                    });
+                                    const imgElement = e.target as HTMLImageElement;
+                                    imgElement.style.display = 'none';
+                                    // エラー表示を追加
+                                    const errorDiv = document.createElement('div');
+                                    errorDiv.className = 'text-red-500 text-xs p-2 border border-red-300 rounded bg-red-50';
+                                    errorDiv.textContent = `画像読み込み失敗: ${image.fileName || 'unknown'}`;
+                                    imgElement.parentElement?.appendChild(errorDiv);
                                   }}
                                 />
                                 <Button

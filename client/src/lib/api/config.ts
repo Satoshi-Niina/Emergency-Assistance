@@ -14,22 +14,27 @@ const isAzureEnvironment =
   window.location.hostname.includes('azure.com');
 
 // API Base URLの設定（統一APIクライアントで処理される）
+// 末尾の/apiを除去（二重パス防止）
 export const API_BASE_URL = (() => {
+  let base = '';
   // 環境変数が設定されている場合は最優先使用
   if (
     import.meta.env.VITE_API_BASE_URL &&
     import.meta.env.VITE_API_BASE_URL.trim() !== ''
   ) {
-    return import.meta.env.VITE_API_BASE_URL;
+    base = import.meta.env.VITE_API_BASE_URL;
   }
-
   // 本番環境では環境変数から取得（フォールバックは相対パス）
-  if (isProduction) {
-    return import.meta.env.VITE_BACKEND_SERVICE_URL || '';
+  else if (isProduction) {
+    base = import.meta.env.VITE_BACKEND_SERVICE_URL || '';
   }
-
   // 開発環境でも絶対URLを使用せず、相対パス（プロキシ経由）を使用
-  return import.meta.env.VITE_API_BASE_URL || '';
+  else {
+    base = import.meta.env.VITE_API_BASE_URL || '';
+  }
+  
+  // 末尾の/apiを除去（二重パス防止）
+  return base.replace(/\/api\/?$/, '');
 })();
 
 console.log('🔧 API設定詳細:', {

@@ -2,7 +2,12 @@
 import React from 'react';
 
 // API設定 - 環境変数から取得、フォールバックは相対パス
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_BACKEND_SERVICE_URL || '';
+// 末尾の/apiを除去（二重パス防止）
+const getCleanApiBaseUrl = () => {
+  const base = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_BACKEND_SERVICE_URL || '';
+  return base.replace(/\/api\/?$/, '');
+};
+const API_BASE_URL = getCleanApiBaseUrl();
 
 export interface ImageData {
     id: string;
