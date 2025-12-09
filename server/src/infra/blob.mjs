@@ -8,12 +8,16 @@ const require = createRequire(import.meta.url);
 export const containerName = AZURE_STORAGE_CONTAINER_NAME;
 
 export const getBlobServiceClient = () => {
-  console.log('[Blob] Initializing BLOB service client...', {
-    hasConnectionString: !!(AZURE_STORAGE_CONNECTION_STRING && AZURE_STORAGE_CONNECTION_STRING.trim()),
-    hasAccountName: !!(AZURE_STORAGE_ACCOUNT_NAME && AZURE_STORAGE_ACCOUNT_NAME.trim()),
-    containerName: AZURE_STORAGE_CONTAINER_NAME,
-    connectionStringPrefix: AZURE_STORAGE_CONNECTION_STRING ? AZURE_STORAGE_CONNECTION_STRING.substring(0, 30) + '...' : 'N/A'
-  });
+  const isLocalMode = process.env.STORAGE_MODE === 'local';
+  
+  if (!isLocalMode) {
+    console.log('[Blob] Initializing BLOB service client...', {
+      hasConnectionString: !!(AZURE_STORAGE_CONNECTION_STRING && AZURE_STORAGE_CONNECTION_STRING.trim()),
+      hasAccountName: !!(AZURE_STORAGE_ACCOUNT_NAME && AZURE_STORAGE_ACCOUNT_NAME.trim()),
+      containerName: AZURE_STORAGE_CONTAINER_NAME,
+      connectionStringPrefix: AZURE_STORAGE_CONNECTION_STRING ? AZURE_STORAGE_CONNECTION_STRING.substring(0, 30) + '...' : 'N/A'
+    });
+  }
 
   if (AZURE_STORAGE_CONNECTION_STRING && AZURE_STORAGE_CONNECTION_STRING.trim()) {
     const connStr = AZURE_STORAGE_CONNECTION_STRING.trim();
@@ -57,12 +61,22 @@ export const getBlobServiceClient = () => {
     }
   }
 
+  // ローカル環境（STORAGE_MODE=local）の場合は警告を出さない
+  const isLocalMode = process.env.STORAGE_MODE === 'local';
+  if (isLocalMode) {
+    console.log('[Blob] ℹ️ Local mode - BLOB client not required');
+    return null;
+  }
+
   console.error('[Blob] ❌ No connection string or account name provided.');
   console.error('[Blob] Please set AZURE_STORAGE_CONNECTION_STRING or AZURE_STORAGE_ACCOUNT_NAME');
   return null;
 };
 
-console.log(`[Blob] Configuration: Container=${containerName}, BlobPrefix='${BLOB_PREFIX}'`);
+// ローカル環境以外で設定ログを出力
+if (process.env.STORAGE_MODE !== 'local') {
+  console.log(`[Blob] Configuration: Container=${containerName}, BlobPrefix='${BLOB_PREFIX}'`);
+}
 
 export const norm = (p) => {
   const path = [BLOB_PREFIX, String(p || '')]
@@ -70,7 +84,12 @@ export const norm = (p) => {
     .join('/')
     .replace(/\\+/g, '/')
     .replace(/\/+/g, '/');
-  console.log(`[Blob] Normalized path: ${p} -> ${path}`);
+  
+  // ローカル環境以外でログ出力
+  if (process.env.STORAGE_MODE !== 'local') {
+    console.log(`[Blob] Normalized path: ${p} -> ${path}`);
+  }
+  
   return path;
 };
 
