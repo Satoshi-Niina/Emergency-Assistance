@@ -73,95 +73,99 @@ export default async function imagesHandler(req, res) {
     });
     
     try {
-      const blobServiceClient = getBlobServiceClient();
-      const isProduction = process.env.NODE_ENV === 'production';
+      // Azure環境かどうかを判定（Azure App Service固有の環境変数で判定）
+      const isAzureEnvironment = 
+        process.env.WEBSITE_INSTANCE_ID !== undefined ||
+        process.env.WEBSITE_SITE_NAME !== undefined;
       
-      // 本番環境: BLOB必須
-      if (isProduction && !blobServiceClient) {
-        console.error('[api/images] PRODUCTION: BLOB service client not available');
-        return res.status(503).json({
-          success: false,
-          error: 'ストレージサービスが利用できません（本番環境）'
-        });
-      }
+      console.log('[api/images] Environment check:', {
+        NODE_ENV: process.env.NODE_ENV,
+        hasWebsiteInstanceId: !!process.env.WEBSITE_INSTANCE_ID,
+        hasWebsiteSiteName: !!process.env.WEBSITE_SITE_NAME,
+        isAzureEnvironment: isAzureEnvironment
+      });
       
-      // BLOBサービスが利用可能な場合: BLOBから取得
-      if (blobServiceClient) {
+      // Azure環境: BLOBストレージのみ使用
+      if (isAzureEnvironment) {
+        console.log('[api/images] AZURE: Using BLOB storage');
+        const blobServiceClient = getBlobServiceClient();
+        
+        if (!blobServiceClient) {
+          console.error('[api/images] AZURE: BLOB service client not available');
+          console.error('[api/images] Please check AZURE_STORAGE_CONNECTION_STRING environment variable');
+          return res.status(503).json({
+            success: false,
+            error: 'ストレージサービスが利用できません（Azure環境）',
+            hint: 'AZURE_STORAGE_CONNECTION_STRING環境変数を確認してください'
+          });
+        }
+        
         try {
           const containerClient = blobServiceClient.getContainerClient(containerName);
           const blobName = `knowledge-base/images/${category}/${fileName}`;
-          console.log('[api/images] Looking for blob:', blobName);
+          console.log('[api/images] AZURE: Looking for blob:', blobName);
           
           const blockBlobClient = containerClient.getBlockBlobClient(blobName);
           const exists = await blockBlobClient.exists();
           
           if (!exists) {
-            console.log('[api/images] BLOB not found:', blobName);
-            // 本番環境ではBLOBに存在しない場合は404
-            if (isProduction) {
-              return res.status(404).json({
-                success: false,
-                error: '画像が見つかりません（本番環境）',
-                fileName: fileName,
-                blobName: blobName
-              });
-            }
-            // 開発環境のみローカルファイルシステムにフォールバック
-          } else {
-            console.log('[api/images] BLOB found:', blobName);
-            const downloadResponse = await blockBlobClient.download();
-            const chunks = [];
-            
-            if (downloadResponse.readableStreamBody) {
-              for await (const chunk of downloadResponse.readableStreamBody) {
-                chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-              }
-              const buffer = Buffer.concat(chunks);
-              setImageHeaders(contentType);
-              return res.status(200).send(buffer);
-            }
-            
-            console.error('[api/images] readableStreamBody is null');
-            if (isProduction) {
-              return res.status(500).json({
-                success: false,
-                error: '画像データの読み込みに失敗しました'
-              });
-            }
-          }
-        } catch (blobError) {
-          console.error('[api/images] BLOB error:', blobError.message);
-          // 本番環境ではBLOBエラーは致命的
-          if (isProduction) {
-            return res.status(500).json({
+            console.log('[api/images] AZURE: BLOB not found:', blobName);
+            return res.status(404).json({
               success: false,
-              error: 'BLOB取得エラー（本番環境）',
-              details: blobError.message
+              error: '画像が見つかりません（Azure環境）',
+              fileName: fileName,
+              blobName: blobName,
+              hint: 'BLOBストレージに画像がアップロードされているか確認してください'
             });
           }
-          // 開発環境のみローカルファイルシステムにフォールバック
+          
+          console.log('[api/images] AZURE: BLOB found:', blobName);
+          const downloadResponse = await blockBlobClient.download();
+          const chunks = [];
+          
+          if (downloadResponse.readableStreamBody) {
+            for await (const chunk of downloadResponse.readableStreamBody) {
+              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            }
+            const buffer = Buffer.concat(chunks);
+            setImageHeaders(contentType);
+            return res.status(200).send(buffer);
+          }
+          
+          console.error('[api/images] AZURE: readableStreamBody is null');
+          return res.status(500).json({
+            success: false,
+            error: '画像データの読み込みに失敗しました'
+          });
+        } catch (blobError) {
+          console.error('[api/images] AZURE: BLOB error:', blobError.message);
+          console.error('[api/images] AZURE: BLOB error stack:', blobError.stack);
+          return res.status(500).json({
+            success: false,
+            error: 'BLOB取得エラー（Azure環境）',
+            details: blobError.message
+          });
         }
       }
       
-      // 開発環境のみ: ローカルファイルシステムからの取得
-      if (!isProduction) {
-        console.log('[api/images] DEV: Trying local filesystem fallback');
-        const localBasePath = path.resolve(process.cwd(), 'knowledge-base', 'images', category);
-        const localFilePath = path.join(localBasePath, fileName);
-        
-        console.log('[api/images] DEV: Local file path:', localFilePath);
-        
-        if (fs.existsSync(localFilePath)) {
-          console.log('[api/images] DEV: Local file found:', localFilePath);
-          const fileBuffer = fs.readFileSync(localFilePath);
-          setImageHeaders(contentType);
-          return res.status(200).send(fileBuffer);
-        }
-        
-        console.log('[api/images] DEV: File not found in local filesystem:', localFilePath);
-        return res.status(404).json({
-          success: false,
-          error: '画像が見つかりません（開発環境）',
+      // ローカル環境: ローカルファイルシステムのみ使用
+      console.log('[api/images] LOCAL: Using local filesystem');
+      const localBasePath = path.resolve(process.cwd(), 'knowledge-base', 'images', category);
+      const localFilePath = path.join(localBasePath, fileName);
+      
+      console.log('[api/images] LOCAL: Local file path:', localFilePath);
+      
+      if (fs.existsSync(localFilePath)) {
+        console.log('[api/images] LOCAL: Local file found:', localFilePath);
+        const fileBuffer = fs.readFileSync(localFilePath);
+        setImageHeaders(contentType);
+        return res.status(200).send(fileBuffer);
+      }
+      
+      console.log('[api/images] LOCAL: File not found in local filesystem:', localFilePath);
+      return res.status(404).json({
+        success: false,
+        error: '画像が見つかりません（ローカル環境）',
           fileName: fileName,
           searchedPaths: {
             blob: blobServiceClient ? `knowledge-base/images/${category}/${fileName}` : 'BLOB not configured',
@@ -170,11 +174,12 @@ export default async function imagesHandler(req, res) {
         });
       }
       
-      // 本番環境でBLOBから取得できなかった場合
+      // Azure環境でBLOBから取得できなかった場合
       return res.status(404).json({
         success: false,
-        error: '画像が見つかりません',
-        fileName: fileName
+        error: '画像が見つかりません（Azure環境）',
+        fileName: fileName,
+        hint: 'BLOBストレージへのアップロードが正常に完了したか確認してください'
       });
       
     } catch (error) {

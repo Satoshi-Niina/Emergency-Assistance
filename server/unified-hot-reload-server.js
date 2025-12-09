@@ -2639,57 +2639,75 @@ apiRouter.post('/history/upload-image', imageUpload.single('image'), async (req,
       .jpeg({ quality: 85 })
       .toBuffer();
 
-    const storageMode = process.env.STORAGE_MODE || 'local';
-    console.log(`💾 画像保存モード: ${storageMode}`);
-
-    // BLOBストレージに保存
-    if (storageMode === 'azure' || storageMode === 'blob') {
-      try {
-        const blobServiceClient = getBlobServiceClient();
-        if (!blobServiceClient) {
-          throw new Error('BLOB service client not initialized');
-        }
-
-        const containerClient = blobServiceClient.getContainerClient(process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge');
-        const blobPath = `${process.env.BLOB_PREFIX || 'knowledge-base/'}images/chat-exports/${fileName}`;
-        const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
-
-        await blockBlobClient.uploadData(resizedBuffer, {
-          blobHTTPHeaders: { blobContentType: 'image/jpeg' }
-        });
-
-        console.log(`✅ BLOBに保存: ${blobPath}`);
-
-        const imageUrl = getImageUrl(fileName, 'chat-exports');
-        return res.json({
-          success: true,
-          imageUrl,
-          fileName,
-          url: imageUrl,
-        });
-      } catch (blobError) {
-        console.error('❌ BLOB保存エラー:', blobError.message);
-        // フォールバックしてローカルに保存
-      }
-    }
-
-    // ローカルファイルシステムに保存
-    const imagesDir = resolveKnowledgeBasePath('images/chat-exports');
-    if (!fs.existsSync(imagesDir)) {
-      fs.mkdirSync(imagesDir, { recursive: true });
-    }
-
-    const filePath = path.join(imagesDir, fileName);
-    fs.writeFileSync(filePath, resizedBuffer);
-    console.log(`✅ ローカルに保存: ${filePath}`);
-
-    const imageUrl = getImageUrl(fileName, 'chat-exports');
-    res.json({
-      success: true,
-      imageUrl,
-      fileName,
-      url: imageUrl,
+    // Azure環境かどうかを判定
+    const isAzureEnvironment = 
+      process.env.WEBSITE_INSTANCE_ID !== undefined ||
+      process.env.WEBSITE_SITE_NAME !== undefined;
+    
+    console.log('[history/upload-image] 環境チェック:', {
+      isAzureEnvironment: isAzureEnvironment
     });
+
+    // ローカル環境: ローカルファイルシステムのみ使用
+    if (!isAzureEnvironment) {
+      console.log('[history/upload-image] LOCAL: Saving to local filesystem');
+      
+      const imagesDir = resolveKnowledgeBasePath('images/chat-exports');
+      if (!fs.existsSync(imagesDir)) {
+        fs.mkdirSync(imagesDir, { recursive: true });
+      }
+
+      const filePath = path.join(imagesDir, fileName);
+      fs.writeFileSync(filePath, resizedBuffer);
+      console.log(`[history/upload-image] LOCAL: ✅ ローカルに保存: ${filePath}`);
+
+      const imageUrl = getImageUrl(fileName, 'chat-exports');
+      return res.json({
+        success: true,
+        imageUrl,
+        fileName,
+        url: imageUrl,
+      });
+    }
+
+    // Azure環境: BLOBストレージのみ使用
+    console.log('[history/upload-image] AZURE: Saving to BLOB storage');
+    const blobServiceClient = getBlobServiceClient();
+    
+    if (!blobServiceClient) {
+      console.error('[history/upload-image] AZURE: BLOB service client not initialized');
+      return res.status(503).json({
+        success: false,
+        error: 'BLOB storage not available (Azure環境)'
+      });
+    }
+
+    try {
+      const containerClient = blobServiceClient.getContainerClient(process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge');
+      const blobPath = `${process.env.BLOB_PREFIX || 'knowledge-base/'}images/chat-exports/${fileName}`;
+      const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
+
+      await blockBlobClient.uploadData(resizedBuffer, {
+        blobHTTPHeaders: { blobContentType: 'image/jpeg' }
+      });
+
+      console.log(`[history/upload-image] AZURE: ✅ BLOBに保存: ${blobPath}`);
+
+      const imageUrl = getImageUrl(fileName, 'chat-exports');
+      return res.json({
+        success: true,
+        imageUrl,
+        fileName,
+        url: imageUrl,
+      });
+    } catch (blobError) {
+      console.error('[history/upload-image] AZURE: ❌ BLOB保存エラー:', blobError.message);
+      return res.status(500).json({
+        success: false,
+        error: 'BLOB保存エラー',
+        details: blobError.message
+      });
+    }
   } catch (error) {
     console.error('❌ 画像アップロードエラー:', error);
     res.status(500).json({
@@ -2856,24 +2874,100 @@ apiRouter.get('/emergency-flow/list', async (req, res) => {
   try {
     console.log('🔍 応急処置フロー一覧取得リクエスト');
 
-    const storageMode = process.env.STORAGE_MODE || 'local';
+    // Azure環境かどうかを判定
+    const isAzureEnvironment = 
+      process.env.WEBSITE_INSTANCE_ID !== undefined ||
+      process.env.WEBSITE_SITE_NAME !== undefined;
+    
+    console.log('[emergency-flow/list] 環境チェック:', {
+      NODE_ENV: process.env.NODE_ENV,
+      hasWebsiteInstanceId: !!process.env.WEBSITE_INSTANCE_ID,
+      hasWebsiteSiteName: !!process.env.WEBSITE_SITE_NAME,
+      isAzureEnvironment: isAzureEnvironment
+    });
+
     let flows = [];
 
-    // BLOBストレージから取得
-    if (storageMode === 'azure' || storageMode === 'blob') {
-      try {
-        const blobServiceClient = getBlobServiceClient();
-        if (!blobServiceClient) {
-          throw new Error('BLOB service client not initialized');
+    // ローカル環境: ローカルファイルシステムから取得
+    if (!isAzureEnvironment) {
+      console.log('[emergency-flow/list] LOCAL: Reading from local filesystem');
+      const localDir = resolveKnowledgeBasePath('troubleshooting');
+      
+      if (fs.existsSync(localDir)) {
+        const files = fs.readdirSync(localDir);
+        console.log(`[emergency-flow/list] LOCAL: Found ${files.length} files`);
+        
+        for (const fileName of files) {
+          if (!fileName.endsWith('.json')) continue;
+          
+          try {
+            const filePath = path.join(localDir, fileName);
+            const stats = fs.statSync(filePath);
+            const fileContent = fs.readFileSync(filePath, 'utf-8');
+            const jsonData = JSON.parse(fileContent);
+
+            // 画像URLをローカルパスに変換
+            if (jsonData.steps && Array.isArray(jsonData.steps)) {
+              jsonData.steps.forEach(step => {
+                if (step.images && Array.isArray(step.images)) {
+                  step.images = step.images.map(img => {
+                    if (img.fileName) {
+                      img.url = `/api/images/emergency-flows/${img.fileName}`;
+                    }
+                    return img;
+                  });
+                }
+              });
+            }
+
+            flows.push({
+              id: jsonData.id || fileName.replace('.json', ''),
+              title: jsonData.title || 'タイトルなし',
+              description: jsonData.description || '',
+              fileName: fileName,
+              lastModified: stats.mtime,
+              size: stats.size,
+              steps: jsonData.steps || []
+            });
+          } catch (parseError) {
+            console.error(`[emergency-flow/list] LOCAL: Error parsing ${fileName}:`, parseError.message);
+          }
         }
+      } else {
+        console.log('[emergency-flow/list] LOCAL: Directory does not exist:', localDir);
+      }
+      
+      console.log(`[emergency-flow/list] LOCAL: Found ${flows.length} flows`);
+      
+      return res.json({
+        success: true,
+        data: flows,
+        total: flows.length,
+        storage: 'local',
+        timestamp: new Date().toISOString()
+      });
+    }
 
-        const containerClient = blobServiceClient.getContainerClient(process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge');
-        const prefix = `${process.env.BLOB_PREFIX || 'knowledge-base/'}troubleshooting/`;
+    // Azure環境: BLOBストレージから取得
+    console.log('[emergency-flow/list] AZURE: Reading from BLOB storage');
+    const blobServiceClient = getBlobServiceClient();
+    
+    if (!blobServiceClient) {
+      console.error('[emergency-flow/list] AZURE: BLOB service client not initialized');
+      return res.status(503).json({
+        success: false,
+        error: 'BLOB storage not available (Azure環境)'
+      });
+    }
 
-        console.log(`📦 BLOB一覧取得: ${prefix}`);
+    try {
+      const containerClient = blobServiceClient.getContainerClient(process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge');
+      const prefix = `${process.env.BLOB_PREFIX || 'knowledge-base/'}troubleshooting/`;
 
-        for await (const blob of containerClient.listBlobsFlat({ prefix })) {
-          if (blob.name.endsWith('.json')) {
+      console.log(`[emergency-flow/list] AZURE: 📦 BLOB一覧取得: ${prefix}`);
+
+      for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+        if (blob.name.endsWith('.json')) {
             try {
               const blockBlobClient = containerClient.getBlockBlobClient(blob.name);
               const downloadResponse = await blockBlobClient.download();
@@ -2910,96 +3004,30 @@ apiRouter.get('/emergency-flow/list', async (req, res) => {
             } catch (error) {
               console.error(`BLOBファイル読み込みエラー: ${blob.name}`, error.message);
             }
-          }
         }
-
-        console.log(`✅ BLOBから${flows.length}件のフローを取得`);
-      } catch (blobError) {
-        console.error('❌ BLOB取得エラー:', blobError.message);
-        // フォールバックしてローカルを試行
-      }
-    }
-
-    // ローカルファイルシステムから取得（フォールバックまたはローカルモード）
-    if (flows.length === 0 || storageMode === 'local' || storageMode === 'hybrid') {
-      const troubleshootingDir = resolveKnowledgeBasePath('troubleshooting');
-
-      if (!fs.existsSync(troubleshootingDir)) {
-        console.error('❌ トラブルシューティングディレクトリが見つかりません:', troubleshootingDir);
-        return res.json({
-          success: true,
-          data: flows,
-          total: flows.length,
-          timestamp: new Date().toISOString()
-        });
       }
 
-      const files = fs.readdirSync(troubleshootingDir);
-      const jsonFiles = files.filter(file => file.endsWith('.json'));
-
-      const localFlows = jsonFiles.map(file => {
-        try {
-          const filePath = path.join(troubleshootingDir, file);
-          const fileContent = fs.readFileSync(filePath, { encoding: 'utf8' });
-          const jsonData = JSON.parse(fileContent);
-
-          // 画像URLを環境変数対応に変換
-          if (jsonData.steps && Array.isArray(jsonData.steps)) {
-            jsonData.steps.forEach(step => {
-              if (step.images && Array.isArray(step.images)) {
-                step.images = step.images.map(img => {
-                  if (img.fileName) {
-                    img.url = getImageUrl(img.fileName, 'emergency-flows');
-                  }
-                  return img;
-                });
-              }
-            });
-          }
-
-          return {
-            id: jsonData.id || file.replace('.json', ''),
-            title: jsonData.title || 'タイトルなし',
-            description: jsonData.description || '',
-            fileName: file,
-            filePath: `knowledge-base/troubleshooting/${file}`,
-            createdAt: jsonData.createdAt || new Date().toISOString(),
-            updatedAt: jsonData.updatedAt || new Date().toISOString(),
-            triggerKeywords: jsonData.triggerKeywords || [],
-            category: jsonData.category || '',
-            steps: jsonData.steps || [],
-            dataSource: 'file'
-          };
-        } catch (error) {
-          console.error(`ファイル読み込みエラー: ${file}`, error);
-          return null;
-        }
-      }).filter(item => item !== null);
-
-      // ローカルフローを結合（重複除去）
-      localFlows.forEach(localFlow => {
-        if (!flows.some(f => f.id === localFlow.id)) {
-          flows.push(localFlow);
-        }
+      console.log(`[emergency-flow/list] AZURE: ✅ BLOBから${flows.length}件のフローを取得`);
+      
+      return res.json({
+        success: true,
+        data: flows,
+        total: flows.length,
+        storage: 'blob',
+        timestamp: new Date().toISOString()
       });
-
-      console.log(`✅ ローカルから${localFlows.length}件のフローを取得`);
+    } catch (blobError) {
+      console.error('[emergency-flow/list] AZURE: ❌ BLOB取得エラー:', blobError.message);
+      return res.status(500).json({
+        success: false,
+        error: 'BLOB取得エラー',
+        details: blobError.message,
+        timestamp: new Date().toISOString()
+      });
     }
-
-    // 作成日時でソート（新しい順）
-    flows.sort((a, b) => {
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-
-    res.json({
-      success: true,
-      data: flows,
-      total: flows.length,
-      timestamp: new Date().toISOString()
-    });
   } catch (error) {
-    console.error('❌ 応急処置フロー一覧取得エラー:', error);
-    res.status(500).json({
+    console.error('[emergency-flow/list] ❌ Error:', error);
+    return res.status(500).json({
       success: false,
       error: '応急処置フロー一覧の取得に失敗しました',
       details: error.message,
@@ -4218,40 +4246,17 @@ ${toneInstruction}${questionFlowGuide}${customInstructionText}
 
     // knowledge-base/troubleshootingフォルダに保存
     try {
-      const storageMode = process.env.STORAGE_MODE || 'local';
+      // Azure環境かどうかを判定
+      const isAzureEnvironment = 
+        process.env.WEBSITE_INSTANCE_ID !== undefined ||
+        process.env.WEBSITE_SITE_NAME !== undefined;
+      
       const fileName = `${flowData.id}.json`;
       const fileContent = JSON.stringify(flowData, null, 2);
 
-      // BLOBストレージに保存
-      if (storageMode === 'azure' || storageMode === 'blob') {
-        try {
-          const blobServiceClient = getBlobServiceClient();
-          if (!blobServiceClient) {
-            throw new Error('BLOB service client not initialized');
-          }
-
-          const containerClient = blobServiceClient.getContainerClient(process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge');
-          const blobPath = `${process.env.BLOB_PREFIX || 'knowledge-base/'}troubleshooting/${fileName}`;
-          const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
-
-          await blockBlobClient.upload(fileContent, fileContent.length, {
-            blobHTTPHeaders: { blobContentType: 'application/json' }
-          });
-
-          console.log('✅ フローをBLOBに保存:', {
-            id: flowData.id,
-            title: flowData.title,
-            stepsCount: flowData.steps.length,
-            blobPath: blobPath,
-          });
-        } catch (blobError) {
-          console.error('❌ BLOB保存エラー:', blobError.message);
-          // フォールバックしてローカルに保存
-        }
-      }
-
-      // ローカルファイルシステムに保存（フォールバックまたはローカルモード）
-      if (storageMode === 'local' || storageMode === 'hybrid') {
+      // ローカル環境: ローカルファイルシステムのみ使用
+      if (!isAzureEnvironment) {
+        console.log('[emergency-flow/generate] LOCAL: Saving to local filesystem');
         const troubleshootingDir = resolveKnowledgeBasePath('troubleshooting');
         
         if (!fs.existsSync(troubleshootingDir)) {
@@ -4261,11 +4266,34 @@ ${toneInstruction}${questionFlowGuide}${customInstructionText}
         const filePath = path.join(troubleshootingDir, fileName);
         fs.writeFileSync(filePath, fileContent, 'utf8');
 
-        console.log('✅ フローをローカルに保存:', {
+        console.log('[emergency-flow/generate] LOCAL: ✅ フローをローカルに保存:', {
           id: flowData.id,
           title: flowData.title,
           stepsCount: flowData.steps.length,
           filePath: filePath,
+        });
+      } else {
+        // Azure環境: BLOBストレージのみ使用
+        console.log('[emergency-flow/generate] AZURE: Saving to BLOB storage');
+        const blobServiceClient = getBlobServiceClient();
+        
+        if (!blobServiceClient) {
+          throw new Error('BLOB service client not initialized');
+        }
+
+        const containerClient = blobServiceClient.getContainerClient(process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge');
+        const blobPath = `${process.env.BLOB_PREFIX || 'knowledge-base/'}troubleshooting/${fileName}`;
+        const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
+
+        await blockBlobClient.upload(fileContent, fileContent.length, {
+          blobHTTPHeaders: { blobContentType: 'application/json' }
+        });
+
+        console.log('[emergency-flow/generate] AZURE: ✅ フローをBLOBに保存:', {
+          id: flowData.id,
+          title: flowData.title,
+          stepsCount: flowData.steps.length,
+          blobPath: blobPath,
         });
       }
     } catch (fileError) {
@@ -4765,44 +4793,27 @@ apiRouter.post('/chats/:chatId/export', async (req, res) => {
       .substring(0, 50);
     const filename = `${titleSlug}_${chatId}_${timestamp}.json`;
 
-    // 環境変数に応じてローカルまたはBLOBストレージに保存
-    const storageMode = process.env.STORAGE_MODE || 'local';
+    // Azure環境かどうかを判定
+    const isAzureEnvironment = 
+      process.env.WEBSITE_INSTANCE_ID !== undefined ||
+      process.env.WEBSITE_SITE_NAME !== undefined;
+    
+    console.log('[chats/export] 環境チェック:', {
+      isAzureEnvironment: isAzureEnvironment
+    });
+
     const jsonContent = JSON.stringify(formattedData, null, 2);
     const jsonBuffer = Buffer.from(jsonContent, 'utf8');
 
     let savedPath = '';
     let blobName = '';
 
-    if (storageMode === 'hybrid' || storageMode === 'blob' || storageMode === 'azure') {
-      // BLOBストレージに保存
-      const blobServiceClient = getBlobServiceClient();
-      if (!blobServiceClient) {
-        throw new Error('BLOBストレージが利用できません。AZURE_STORAGE_CONNECTION_STRINGを設定してください。');
-      }
-
-      const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
-      const containerClient = blobServiceClient.getContainerClient(containerName);
-      blobName = `exports/${filename}`;
-      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-
-      await blockBlobClient.upload(jsonBuffer, jsonBuffer.length, {
-        blobHTTPHeaders: {
-          blobContentType: 'application/json; charset=utf-8'
-        },
-        metadata: {
-          chatId: chatId,
-          title: formattedData.title,
-          exportDate: new Date().toISOString()
-        }
-      });
-
-      savedPath = blobName;
-      console.log(`✅ チャットエクスポート成功 (BLOB): ${blobName}`);
-    } else {
-      // ローカルファイルシステムに保存
+    // ローカル環境: ローカルファイルシステムのみ使用
+    if (!isAzureEnvironment) {
+      console.log('[chats/export] LOCAL: Saving to local filesystem');
+      
       const exportsDir = resolveKnowledgeBasePath('exports');
       console.log(`📁 エクスポート保存先ディレクトリ: ${exportsDir}`);
-      console.log(`📁 ディレクトリ存在確認: ${fs.existsSync(exportsDir)}`);
 
       if (!fs.existsSync(exportsDir)) {
         fs.mkdirSync(exportsDir, { recursive: true });
@@ -4813,26 +4824,66 @@ apiRouter.post('/chats/:chatId/export', async (req, res) => {
       fs.writeFileSync(filePath, jsonContent, { encoding: 'utf8' });
       savedPath = filePath;
       console.log(`✅ チャットエクスポート成功 (LOCAL): ${filePath}`);
+
+      console.log(`📊 保存されたデータ:`, {
+        savedPath: savedPath,
+        fileSize: Buffer.byteLength(jsonContent, 'utf8'),
+        messageCount: formattedData.messages?.length || 0,
+        imageCount: formattedData.savedImages?.length || 0
+      });
+
+      return res.json({
+        success: true,
+        filename: filename,
+        filePath: savedPath,
+        chatId: chatId,
+        timestamp: new Date().toISOString()
+      });
     }
 
+    // Azure環境: BLOBストレージのみ使用
+    console.log('[chats/export] AZURE: Saving to BLOB storage');
+    const blobServiceClient = getBlobServiceClient();
+    
+    if (!blobServiceClient) {
+      console.error('[chats/export] AZURE: BLOB service client not initialized');
+      return res.status(503).json({
+        success: false,
+        error: 'BLOB storage not available (Azure環境)'
+      });
+    }
+
+    const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    blobName = `exports/${filename}`;
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+    await blockBlobClient.upload(jsonBuffer, jsonBuffer.length, {
+      blobHTTPHeaders: {
+        blobContentType: 'application/json; charset=utf-8'
+      },
+      metadata: {
+        chatId: chatId,
+        title: formattedData.title,
+        exportDate: new Date().toISOString()
+      }
+    });
+
+    savedPath = blobName;
+    console.log(`✅ チャットエクスポート成功 (BLOB): ${blobName}`);
+
     console.log(`📊 保存されたデータ:`, {
-      storageMode: storageMode,
       savedPath: savedPath,
       fileSize: Buffer.byteLength(jsonContent, 'utf8'),
       messageCount: formattedData.messages?.length || 0,
-      imageCount: formattedData.savedImages?.length || 0,
-      images: formattedData.savedImages?.map(img => ({
-        fileName: img.fileName,
-        url: img.url
-      })) || []
+      imageCount: formattedData.savedImages?.length || 0
     });
 
     res.json({
       success: true,
       filename: filename,
       filePath: savedPath,
-      blobName: blobName || undefined,
-      storageMode: storageMode,
+      blobName: blobName,
       chatId: chatId,
       timestamp: new Date().toISOString()
     });
@@ -5499,22 +5550,33 @@ apiRouter.get('/admin/dashboard', async (req, res) => {
 apiRouter.get('/images/emergency-flows/:filename', async (req, res) => {
   try {
     const { filename } = req.params;
-    const storageMode = process.env.STORAGE_MODE || 'local';
-    console.log(`🖼️ emergency-flows画像ファイル取得: ${filename} (STORAGE_MODE: ${storageMode})`);
+    
+    // Azure環境かどうかを判定
+    const isAzureEnvironment = 
+      process.env.WEBSITE_INSTANCE_ID !== undefined ||
+      process.env.WEBSITE_SITE_NAME !== undefined;
+    
+    console.log(`[images/emergency-flows] 画像取得: ${filename}, Azure環境: ${isAzureEnvironment}`);
 
-    // BLOBストレージから取得
-    if (storageMode === 'azure' || storageMode === 'blob') {
+    // Azure環境: BLOBストレージのみ使用
+    if (isAzureEnvironment) {
+      console.log('[images/emergency-flows] AZURE: Reading from BLOB storage');
+      const blobServiceClient = getBlobServiceClient();
+      
+      if (!blobServiceClient) {
+        console.error('[images/emergency-flows] AZURE: BLOB service client not initialized');
+        return res.status(503).json({
+          success: false,
+          error: 'BLOB storage not available (Azure環境)'
+        });
+      }
+
       try {
-        const blobServiceClient = getBlobServiceClient();
-        if (!blobServiceClient) {
-          throw new Error('BLOB service client not initialized');
-        }
-
         const containerClient = blobServiceClient.getContainerClient(process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge');
         const blobPath = `${process.env.BLOB_PREFIX || 'knowledge-base/'}images/emergency-flows/${filename}`;
         const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
 
-        console.log(`📦 BLOB取得: ${blobPath}`);
+        console.log(`[images/emergency-flows] AZURE: BLOB取得: ${blobPath}`);
 
         const downloadResponse = await blockBlobClient.download();
         const contentType = downloadResponse.contentType || 'image/jpeg';
@@ -5525,12 +5587,17 @@ apiRouter.get('/images/emergency-flows/:filename', async (req, res) => {
         downloadResponse.readableStreamBody.pipe(res);
         return;
       } catch (blobError) {
-        console.error('❌ BLOB画像取得エラー:', blobError.message);
-        // フォールバックしてローカルを試行
+        console.error('[images/emergency-flows] AZURE: ❌ BLOB画像取得エラー:', blobError.message);
+        return res.status(404).json({
+          success: false,
+          error: '画像が見つかりません (Azure環境)',
+          details: blobError.message
+        });
       }
     }
 
-    // ローカルファイルシステムから取得
+    // ローカル環境: ローカルファイルシステムのみ使用
+    console.log('[images/emergency-flows] LOCAL: Reading from local filesystem');
     const imagesDir = resolveKnowledgeBasePath('images/emergency-flows');
     const imagePath = path.resolve(imagesDir, filename);
 
@@ -5567,22 +5634,33 @@ apiRouter.get('/images/emergency-flows/:filename', async (req, res) => {
 apiRouter.get('/images/chat-exports/:filename', async (req, res) => {
   try {
     const { filename } = req.params;
-    const storageMode = process.env.STORAGE_MODE || 'local';
-    console.log(`🖼️ chat-exports画像ファイル取得: ${filename} (STORAGE_MODE: ${storageMode})`);
+    
+    // Azure環境かどうかを判定
+    const isAzureEnvironment = 
+      process.env.WEBSITE_INSTANCE_ID !== undefined ||
+      process.env.WEBSITE_SITE_NAME !== undefined;
+    
+    console.log(`[images/chat-exports] 画像取得: ${filename}, Azure環境: ${isAzureEnvironment}`);
 
-    // BLOBストレージから取得
-    if (storageMode === 'azure' || storageMode === 'blob') {
+    // Azure環境: BLOBストレージのみ使用
+    if (isAzureEnvironment) {
+      console.log('[images/chat-exports] AZURE: Reading from BLOB storage');
+      const blobServiceClient = getBlobServiceClient();
+      
+      if (!blobServiceClient) {
+        console.error('[images/chat-exports] AZURE: BLOB service client not initialized');
+        return res.status(503).json({
+          success: false,
+          error: 'BLOB storage not available (Azure環境)'
+        });
+      }
+
       try {
-        const blobServiceClient = getBlobServiceClient();
-        if (!blobServiceClient) {
-          throw new Error('BLOB service client not initialized');
-        }
-
         const containerClient = blobServiceClient.getContainerClient(process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge');
         const blobPath = `${process.env.BLOB_PREFIX || 'knowledge-base/'}images/chat-exports/${filename}`;
         const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
 
-        console.log(`📦 BLOB取得: ${blobPath}`);
+        console.log(`[images/chat-exports] AZURE: BLOB取得: ${blobPath}`);
 
         const downloadResponse = await blockBlobClient.download();
         const contentType = downloadResponse.contentType || 'image/jpeg';
@@ -5593,12 +5671,17 @@ apiRouter.get('/images/chat-exports/:filename', async (req, res) => {
         downloadResponse.readableStreamBody.pipe(res);
         return;
       } catch (blobError) {
-        console.error('❌ BLOB画像取得エラー:', blobError.message);
-        // フォールバックしてローカルを試行
+        console.error('[images/chat-exports] AZURE: ❌ BLOB画像取得エラー:', blobError.message);
+        return res.status(404).json({
+          success: false,
+          error: '画像が見つかりません (Azure環境)',
+          details: blobError.message
+        });
       }
     }
 
-    // ローカルファイルシステムから取得
+    // ローカル環境: ローカルファイルシステムのみ使用
+    console.log('[images/chat-exports] LOCAL: Reading from local filesystem');
     const imagesDir = resolveKnowledgeBasePath('images/chat-exports');
     console.log(`🔍 ローカル画像検索:`, { filename, imagesDir, exists: fs.existsSync(imagesDir) });
 

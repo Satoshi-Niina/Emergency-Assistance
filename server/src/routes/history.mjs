@@ -315,23 +315,21 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
       const fileName = `chat_image_${timestamp}${ext}`;
       console.log(`[history/upload-image] Generated fileName: ${fileName}`);
       
-      const blobServiceClient = getBlobServiceClient();
-      const isProduction = process.env.NODE_ENV === 'production';
+      // Azure環境かどうかを判定（Azure App Service固有の環境変数で判定）
+      const isAzureEnvironment = 
+        process.env.WEBSITE_INSTANCE_ID !== undefined ||
+        process.env.WEBSITE_SITE_NAME !== undefined;
+      
+      console.log('[history/upload-image] Environment check:', {
+        NODE_ENV: process.env.NODE_ENV,
+        hasWebsiteInstanceId: !!process.env.WEBSITE_INSTANCE_ID,
+        hasWebsiteSiteName: !!process.env.WEBSITE_SITE_NAME,
+        isAzureEnvironment: isAzureEnvironment
+      });
 
-      // 本番環境: BLOB必須
-      if (!blobServiceClient) {
-        if (isProduction) {
-          console.error('[history/upload-image] PRODUCTION: ❌ BLOB storage not configured');
-          console.error('[history/upload-image] AZURE_STORAGE_CONNECTION_STRING:', AZURE_STORAGE_CONNECTION_STRING ? 'SET' : 'NOT SET');
-          return res.status(503).json({
-            success: false,
-            error: 'BLOB storage not available. Please configure Azure Storage connection string. (本番環境)'
-          });
-        }
-        
-        // 開発環境のみ: ローカルファイルシステムに保存
-        console.warn('[history/upload-image] DEV: ⚠️ BLOB storage not configured, using local filesystem');
-        console.warn('[history/upload-image] AZURE_STORAGE_CONNECTION_STRING:', AZURE_STORAGE_CONNECTION_STRING ? 'SET' : 'NOT SET');
+      // ローカル環境: ローカルファイルシステムのみ使用
+      if (!isAzureEnvironment) {
+        console.log('[history/upload-image] LOCAL: Using local filesystem');
         
         const localDir = path.resolve(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
         const localFilePath = path.join(localDir, fileName);
@@ -339,12 +337,12 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
         // ディレクトリが存在しない場合は作成
         if (!fs.existsSync(localDir)) {
           fs.mkdirSync(localDir, { recursive: true });
-          console.log('[history/upload-image] DEV: Created local directory:', localDir);
+          console.log('[history/upload-image] LOCAL: Created local directory:', localDir);
         }
         
         // ファイルを保存
         fs.writeFileSync(localFilePath, req.file.buffer);
-        console.log('[history/upload-image] DEV: ✅ Saved to local filesystem:', localFilePath);
+        console.log('[history/upload-image] LOCAL: ✅ Saved to local filesystem:', localFilePath);
         
         const imageUrl = `/api/images/chat-exports/${fileName}`;
         
@@ -355,7 +353,21 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
           size: req.file.size,
           storage: 'local',
           verified: true,
-          environment: 'development'
+          environment: 'local'
+        });
+      }
+
+      // Azure環境: BLOBストレージのみ使用
+      console.log('[history/upload-image] AZURE: Using BLOB storage');
+      const blobServiceClient = getBlobServiceClient();
+      
+      if (!blobServiceClient) {
+        console.error('[history/upload-image] AZURE: ❌ BLOB storage not configured');
+        console.error('[history/upload-image] Please verify that AZURE_STORAGE_CONNECTION_STRING is properly set in Azure App Service Configuration');
+        return res.status(503).json({
+          success: false,
+          error: 'BLOB storage not available (Azure環境)',
+          hint: 'Azure App Serviceの構成でAZURE_STORAGE_CONNECTION_STRINGが設定されているか確認してください'
         });
       }
 
@@ -363,13 +375,13 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
       try {
         const containerClient = blobServiceClient.getContainerClient(containerName);
         const exists = await containerClient.exists();
-        console.log('[history/upload-image] BLOB connection test:', {
+        console.log('[history/upload-image] AZURE: BLOB connection test:', {
           containerName,
           exists,
           canConnect: true
         });
       } catch (testError) {
-        console.error('[history/upload-image] ❌ BLOB connection test failed:', testError);
+        console.error('[history/upload-image] AZURE: ❌ BLOB connection test failed:', testError);
         return res.status(503).json({
           success: false,
           error: 'BLOB storage connection failed',

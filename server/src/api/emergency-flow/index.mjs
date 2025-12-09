@@ -40,24 +40,68 @@ export default async function emergencyFlowHandler(req, res) {
   if (pathParts[2] === 'list' && method === 'GET') {
     try {
       console.log('[api/emergency-flow/list] Fetching flows');
-      console.log('[api/emergency-flow/list] 🔍 BLOB接続診断開始');
-      console.log('[api/emergency-flow/list] 環境変数:', {
-        AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING ? '設定済み' : '未設定',
-        BLOB_CONTAINER_NAME: process.env.BLOB_CONTAINER_NAME || 'デフォルト'
+      
+      // Azure環境かどうかを判定
+      const isAzureEnvironment = 
+        process.env.WEBSITE_INSTANCE_ID !== undefined ||
+        process.env.WEBSITE_SITE_NAME !== undefined;
+      
+      console.log('[api/emergency-flow/list] 環境チェック:', {
+        NODE_ENV: process.env.NODE_ENV,
+        hasWebsiteInstanceId: !!process.env.WEBSITE_INSTANCE_ID,
+        hasWebsiteSiteName: !!process.env.WEBSITE_SITE_NAME,
+        isAzureEnvironment: isAzureEnvironment
       });
       
       const flows = [];
-      const blobServiceClient = getBlobServiceClient();
-      console.log('[api/emergency-flow/list] BLOBクライアント:', blobServiceClient ? '取得成功' : '取得失敗');
-
-      if (!blobServiceClient) {
-        console.warn('[api/emergency-flow/list] ❌ BLOB client not available');
+      
+      // ローカル環境: ローカルファイルシステムから取得
+      if (!isAzureEnvironment) {
+        console.log('[api/emergency-flow/list] LOCAL: Reading from local filesystem');
+        const localDir = path.resolve(process.cwd(), 'knowledge-base', 'troubleshooting');
+        
+        if (fs.existsSync(localDir)) {
+          const files = fs.readdirSync(localDir);
+          console.log(`[api/emergency-flow/list] LOCAL: Found ${files.length} files`);
+          
+          for (const fileName of files) {
+            if (!fileName.endsWith('.json')) continue;
+            
+            const filePath = path.join(localDir, fileName);
+            const stats = fs.statSync(filePath);
+            
+            flows.push({
+              id: fileName.replace('.json', ''),
+              name: fileName,
+              fileName,
+              lastModified: stats.mtime,
+              size: stats.size,
+            });
+          }
+        } else {
+          console.log('[api/emergency-flow/list] LOCAL: Directory does not exist:', localDir);
+        }
+        
+        console.log(`[api/emergency-flow/list] LOCAL: Found ${flows.length} flows`);
+        
         return res.json({
           success: true,
           data: flows,
           total: flows.length,
-          message: 'BLOB storage not available',
+          storage: 'local',
           timestamp: new Date().toISOString()
+        });
+      }
+      
+      // Azure環境: BLOBストレージから取得
+      console.log('[api/emergency-flow/list] AZURE: Reading from BLOB storage');
+      const blobServiceClient = getBlobServiceClient();
+      
+      if (!blobServiceClient) {
+        console.error('[api/emergency-flow/list] AZURE: ❌ BLOB client not available');
+        return res.status(503).json({
+          success: false,
+          error: 'BLOB storage not available (Azure環境)'
         });
       }
 
@@ -66,11 +110,12 @@ export default async function emergencyFlowHandler(req, res) {
 
         const containerExists = await containerClient.exists();
         if (!containerExists) {
-          console.error(`[api/emergency-flow/list] Container not found: ${containerName}`);
+          console.error(`[api/emergency-flow/list] AZURE: Container not found: ${containerName}`);
           return res.json({
             success: true,
             data: flows,
             total: flows.length,
+            storage: 'blob',
             message: `Container "${containerName}" not found`,
             timestamp: new Date().toISOString()
           });
@@ -81,7 +126,7 @@ export default async function emergencyFlowHandler(req, res) {
         const seen = new Set();
 
         for (const prefix of prefixes) {
-          console.log(`[api/emergency-flow/list] Listing with prefix: ${prefix}`);
+          console.log(`[api/emergency-flow/list] AZURE: Listing with prefix: ${prefix}`);
           for await (const blob of containerClient.listBlobsFlat({ prefix })) {
             if (!blob.name.endsWith('.json')) continue;
             const fileName = blob.name.split('/').pop();
@@ -100,15 +145,13 @@ export default async function emergencyFlowHandler(req, res) {
           if (flows.length > 0) break; // 何か取れたら終了
         }
         
-        console.log(`[api/emergency-flow/list] Found ${flows.length} flows`);
+        console.log(`[api/emergency-flow/list] AZURE: Found ${flows.length} flows`);
       } catch (blobError) {
-        console.error('[api/emergency-flow/list] BLOB error:', blobError);
-        return res.json({
-          success: true,
-          data: flows,
-          total: flows.length,
-          message: 'BLOB error occurred',
-          error: blobError.message,
+        console.error('[api/emergency-flow/list] AZURE: BLOB error:', blobError);
+        return res.status(500).json({
+          success: false,
+          error: 'BLOB error occurred',
+          details: blobError.message,
           timestamp: new Date().toISOString()
         });
       }
@@ -117,6 +160,7 @@ export default async function emergencyFlowHandler(req, res) {
         success: true,
         data: flows,
         total: flows.length,
+        storage: 'blob',
         timestamp: new Date().toISOString()
       });
     } catch (error) {
@@ -136,28 +180,64 @@ export default async function emergencyFlowHandler(req, res) {
       const flowId = pathParts[3].replace('.json', '');
       const fileName = flowId.endsWith('.json') ? flowId : `${flowId}.json`;
       console.log(`[api/emergency-flow/detail] Fetching detail: ${flowId}`);
-      console.log('[api/emergency-flow/detail] 🔍 BLOB接続診断開始');
-      console.log('[api/emergency-flow/detail] 環境変数:', {
-        AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING ? '設定済み' : '未設定',
-        BLOB_CONTAINER_NAME: process.env.BLOB_CONTAINER_NAME || 'デフォルト'
+      
+      // Azure環境かどうかを判定
+      const isAzureEnvironment = 
+        process.env.WEBSITE_INSTANCE_ID !== undefined ||
+        process.env.WEBSITE_SITE_NAME !== undefined;
+      
+      console.log('[api/emergency-flow/detail] 環境チェック:', {
+        NODE_ENV: process.env.NODE_ENV,
+        isAzureEnvironment: isAzureEnvironment
       });
 
+      // ローカル環境: ローカルファイルシステムから取得
+      if (!isAzureEnvironment) {
+        console.log('[api/emergency-flow/detail] LOCAL: Reading from local filesystem');
+        const localDir = path.resolve(process.cwd(), 'knowledge-base', 'troubleshooting');
+        const localFilePath = path.join(localDir, fileName);
+        
+        if (!fs.existsSync(localFilePath)) {
+          console.warn('[api/emergency-flow/detail] LOCAL: File not found:', localFilePath);
+          return res.status(404).json({ 
+            success: false, 
+            error: 'フローが見つかりません',
+            fileName: fileName,
+            flowId: flowId
+          });
+        }
+        
+        const content = fs.readFileSync(localFilePath, 'utf-8');
+        const jsonData = JSON.parse(content);
+        
+        console.log('[api/emergency-flow/detail] LOCAL: ✅ フロー詳細取得完了');
+        console.log('[api/emergency-flow/detail] LOCAL: steps:', jsonData.steps?.length || 0, '件');
+        
+        return res.json({
+          success: true,
+          data: jsonData,
+          storage: 'local',
+          ...jsonData
+        });
+      }
+
+      // Azure環境: BLOBストレージから取得
+      console.log('[api/emergency-flow/detail] AZURE: Reading from BLOB storage');
       const blobServiceClient = getBlobServiceClient();
-      console.log('[api/emergency-flow/detail] BLOBクライアント:', blobServiceClient ? '取得成功' : '取得失敗');
       
       if (!blobServiceClient) {
         return res.status(503).json({
           success: false,
-          error: 'BLOB storage not available'
+          error: 'BLOB storage not available (Azure環境)'
         });
       }
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
-      console.log('[api/emergency-flow/detail] コンテナ名:', containerName);
+      console.log('[api/emergency-flow/detail] AZURE: コンテナ名:', containerName);
       
       const resolved = await resolveBlobClient(containerClient, fileName);
       if (!resolved) {
-        console.warn('[api/emergency-flow/detail] ❌ Blob not found for', fileName);
+        console.warn('[api/emergency-flow/detail] AZURE: ❌ Blob not found for', fileName);
         return res.status(404).json({ 
           success: false, 
           error: 'フローが見つかりません',
@@ -166,7 +246,7 @@ export default async function emergencyFlowHandler(req, res) {
         });
       }
 
-      console.log(`[api/emergency-flow/detail] ✅ BLOB path: ${resolved.blobName}`);
+      console.log(`[api/emergency-flow/detail] AZURE: ✅ BLOB path: ${resolved.blobName}`);
       const downloadResponse = await resolved.blobClient.download();
       
       // JSONとしてパースして返す
@@ -178,12 +258,13 @@ export default async function emergencyFlowHandler(req, res) {
         const buffer = Buffer.concat(chunks);
         const jsonData = JSON.parse(buffer.toString('utf8'));
         
-        console.log('[api/emergency-flow/detail] ✅ フロー詳細取得完了');
-        console.log('[api/emergency-flow/detail] steps:', jsonData.steps?.length || 0, '件');
+        console.log('[api/emergency-flow/detail] AZURE: ✅ フロー詳細取得完了');
+        console.log('[api/emergency-flow/detail] AZURE: steps:', jsonData.steps?.length || 0, '件');
         
         return res.json({
           success: true,
           data: jsonData,
+          storage: 'blob',
           ...jsonData
         });
       }
@@ -566,79 +647,113 @@ export default async function emergencyFlowHandler(req, res) {
         flowTemplate = createFallbackTemplate(flowId, keyword);
       }
 
-      // 🔧 生成したフローを自動的にBLOBに保存
-      console.log('[api/emergency-flow/generate] 🔍 BLOB保存診断開始');
-      console.log('[api/emergency-flow/generate] 環境変数:', {
-        AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING ? '設定済み' : '未設定',
-        BLOB_CONTAINER_NAME: process.env.BLOB_CONTAINER_NAME || 'デフォルト'
+      // 🔧 生成したフローを保存
+      console.log('[api/emergency-flow/generate] 🔍 保存診断開始');
+      
+      // Azure環境かどうかを判定（Azure App Service固有の環境変数で判定）
+      const isAzureEnvironment = 
+        process.env.WEBSITE_INSTANCE_ID !== undefined ||
+        process.env.WEBSITE_SITE_NAME !== undefined;
+      
+      console.log('[api/emergency-flow/generate] 環境チェック:', {
+        NODE_ENV: process.env.NODE_ENV,
+        hasWebsiteInstanceId: !!process.env.WEBSITE_INSTANCE_ID,
+        hasWebsiteSiteName: !!process.env.WEBSITE_SITE_NAME,
+        isAzureEnvironment: isAzureEnvironment
       });
       
-      const blobServiceClient = getBlobServiceClient();
-      console.log('[api/emergency-flow/generate] BLOBクライアント:', blobServiceClient ? '取得成功' : '取得失敗');
+      const fileName = `${flowId}.json`;
       
-      if (blobServiceClient) {
-        try {
-          const containerClient = blobServiceClient.getContainerClient(containerName);
-          console.log('[api/emergency-flow/generate] コンテナ名:', containerName);
-          
-          // コンテナが存在するか確認し、なければ作成
-          const containerExists = await containerClient.exists();
-          console.log('[api/emergency-flow/generate] コンテナ存在確認:', containerExists ? 'あり' : 'なし');
-          if (!containerExists) {
-            console.log('[api/emergency-flow/generate] Creating container:', containerName);
-            await containerClient.create();
-          }
-          
-          const fileName = `${flowId}.json`;
-          const blobName = norm(`troubleshooting/${fileName}`);
-          
-          console.log('[api/emergency-flow/generate] ✅ Saving generated flow to BLOB');
-          console.log('[api/emergency-flow/generate]   Container:', containerName);
-          console.log('[api/emergency-flow/generate]   BLOB path:', blobName);
-          console.log('[api/emergency-flow/generate]   File name:', fileName);
-          
-          const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-          const content = JSON.stringify(flowTemplate, null, 2);
-          
-          await blockBlobClient.upload(content, content.length, {
-            blobHTTPHeaders: { blobContentType: 'application/json' },
-            metadata: {
-              generatedFrom: 'keyword',
-              keyword: keyword,
-              createdAt: new Date().toISOString()
-            }
-          });
-          
-          console.log('[api/emergency-flow/generate] ✅ Flow saved successfully to BLOB:', blobName);
-          
-          return res.json({
-            success: true,
-            data: flowTemplate,
-            saved: true,
-            blobName: blobName,
-            fileName: fileName,
-            message: `フローを生成してBLOBに保存しました (${blobName})`
-          });
-        } catch (blobError) {
-          console.error('[api/emergency-flow/generate] ❌ BLOB save failed:', blobError);
-          console.error('[api/emergency-flow/generate] Error details:', blobError.stack);
-          // BLOB保存に失敗してもフローデータは返す
-          return res.json({
-            success: true,
-            data: flowTemplate,
-            saved: false,
-            warning: 'フローを生成しましたが、保存に失敗しました',
-            error: blobError.message,
-            errorStack: blobError.stack
-          });
+      // ローカル環境: ローカルファイルシステムのみ使用
+      if (!isAzureEnvironment) {
+        console.log('[api/emergency-flow/generate] LOCAL: Using local filesystem');
+        
+        const localDir = path.resolve(process.cwd(), 'knowledge-base', 'troubleshooting');
+        const localFilePath = path.join(localDir, fileName);
+        
+        // ディレクトリが存在しない場合は作成
+        if (!fs.existsSync(localDir)) {
+          fs.mkdirSync(localDir, { recursive: true });
+          console.log('[api/emergency-flow/generate] LOCAL: Created local directory:', localDir);
         }
-      } else {
-        console.warn('[api/emergency-flow/generate] ⚠️ BLOB client not available');
+        
+        // ファイルを保存
+        const content = JSON.stringify(flowTemplate, null, 2);
+        fs.writeFileSync(localFilePath, content, 'utf-8');
+        console.log('[api/emergency-flow/generate] LOCAL: ✅ Flow saved to local filesystem:', localFilePath);
+        
         return res.json({
           success: true,
           data: flowTemplate,
-          saved: false,
-          warning: 'BLOB storage not available - please check AZURE_STORAGE_CONNECTION_STRING'
+          saved: true,
+          fileName: fileName,
+          storage: 'local',
+          message: `フローを生成してローカルに保存しました (${fileName})`
+        });
+      }
+      
+      // Azure環境: BLOBストレージのみ使用
+      console.log('[api/emergency-flow/generate] AZURE: Using BLOB storage');
+      const blobServiceClient = getBlobServiceClient();
+      
+      if (!blobServiceClient) {
+        console.error('[api/emergency-flow/generate] AZURE: ❌ BLOB service client not available');
+        console.error('[api/emergency-flow/generate] AZURE: AZURE_STORAGE_CONNECTION_STRINGを確認してください');
+        return res.status(503).json({
+          success: false,
+          error: 'BLOB storage not available (Azure環境)'
+        });
+      }
+      
+      try {
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        console.log('[api/emergency-flow/generate] AZURE: コンテナ名:', containerName);
+        
+        // コンテナが存在するか確認し、なければ作成
+        const containerExists = await containerClient.exists();
+        console.log('[api/emergency-flow/generate] AZURE: コンテナ存在確認:', containerExists ? 'あり' : 'なし');
+        if (!containerExists) {
+          console.log('[api/emergency-flow/generate] AZURE: Creating container:', containerName);
+          await containerClient.create();
+        }
+        
+        const blobName = norm(`troubleshooting/${fileName}`);
+        
+        console.log('[api/emergency-flow/generate] AZURE: ✅ Saving generated flow to BLOB');
+        console.log('[api/emergency-flow/generate] AZURE:   Container:', containerName);
+        console.log('[api/emergency-flow/generate] AZURE:   BLOB path:', blobName);
+        console.log('[api/emergency-flow/generate] AZURE:   File name:', fileName);
+        
+        const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+        const content = JSON.stringify(flowTemplate, null, 2);
+        
+        await blockBlobClient.upload(content, content.length, {
+          blobHTTPHeaders: { blobContentType: 'application/json' },
+          metadata: {
+            generatedFrom: 'keyword',
+            keyword: keyword,
+            createdAt: new Date().toISOString()
+          }
+        });
+        
+        console.log('[api/emergency-flow/generate] AZURE: ✅ Flow saved successfully to BLOB:', blobName);
+        
+        return res.json({
+          success: true,
+          data: flowTemplate,
+          saved: true,
+          blobName: blobName,
+          fileName: fileName,
+          storage: 'blob',
+          message: `フローを生成してBLOBに保存しました (${blobName})`
+        });
+      } catch (blobError) {
+        console.error('[api/emergency-flow/generate] AZURE: ❌ BLOB save failed:', blobError);
+        console.error('[api/emergency-flow/generate] AZURE: Error details:', blobError.stack);
+        return res.status(500).json({
+          success: false,
+          error: 'BLOB保存に失敗しました',
+          details: blobError.message
         });
       }
     } catch (error) {
