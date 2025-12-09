@@ -195,7 +195,74 @@ router.get('/', async (req, res) => {
     console.log('[history] Fetching history list');
     const items = [];
     
-    // 1. Blobから取得 (優先)
+    // Azure環境判定
+    const useAzure = isAzureEnvironment();
+    console.log('[history] Environment:', { useAzure, STORAGE_MODE: process.env.STORAGE_MODE });
+    
+    // ローカル環境: ローカルファイルシステムから読み込み
+    if (!useAzure) {
+      console.log('[history] LOCAL: Reading from local filesystem');
+      const localDir = path.resolve(process.cwd(), 'knowledge-base', 'exports');
+      
+      if (fs.existsSync(localDir)) {
+        const files = fs.readdirSync(localDir);
+        console.log(`[history] LOCAL: Found ${files.length} files`);
+        
+        for (const fileName of files) {
+          if (!fileName.endsWith('.json')) continue;
+          
+          const filePath = path.join(localDir, fileName);
+          const id = fileName.replace('.json', '');
+          const stats = fs.statSync(filePath);
+          const defaultTitle = deriveTitleFromFileName(fileName);
+          
+          let meta = {
+            title: defaultTitle,
+            machineType: 'Unknown',
+            machineNumber: 'Unknown',
+            images: [],
+          };
+          
+          try {
+            const content = fs.readFileSync(filePath, 'utf-8');
+            const json = JSON.parse(content);
+            meta = extractMetadataFromJson(json, fileName);
+            
+            if (!meta.title || meta.title === '故障履歴') {
+              meta.title = defaultTitle;
+            }
+          } catch (readError) {
+            console.warn('[history] LOCAL: Metadata read failed for:', fileName, readError.message);
+          }
+          
+          items.push({
+            id,
+            fileName,
+            title: meta.title,
+            machineType: meta.machineType,
+            machineNumber: meta.machineNumber,
+            imageCount: meta.images.length,
+            images: meta.images,
+            createdAt: stats.mtime,
+            lastModified: stats.mtime,
+            source: 'local'
+          });
+        }
+      }
+      
+      console.log(`[history] LOCAL: Found ${items.length} items`);
+      
+      return res.json({
+        success: true,
+        data: items,
+        total: items.length,
+        source: 'local',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Azure環境: Blobから取得
+    console.log('[history] AZURE: Reading from BLOB storage');
     const blobServiceClient = getBlobServiceClient();
     if (blobServiceClient) {
       try {
@@ -562,7 +629,28 @@ router.get('/exports/:fileName', async (req, res) => {
   try {
     const { fileName } = req.params;
     console.log(`[history/exports] Request: ${fileName}`);
-
+    
+    const useAzure = isAzureEnvironment();
+    
+    // ローカルモード: knowledge-base/exports/ から読み取り
+    if (!useAzure) {
+      const filePath = path.join(process.cwd(), 'knowledge-base', 'exports', fileName);
+      
+      if (!await fs.promises.access(filePath).then(() => true).catch(() => false)) {
+        return res.status(404).json({
+          success: false,
+          error: 'ファイルが見つかりません',
+        });
+      }
+      
+      const contentType = fileName.endsWith('.json') ? 'application/json' : 'application/octet-stream';
+      res.setHeader('Content-Type', contentType);
+      const stream = fs.createReadStream(filePath);
+      stream.pipe(res);
+      return;
+    }
+    
+    // Azureモード: BLOBから読み取り
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
       return res.status(503).json({
@@ -595,6 +683,60 @@ router.get('/exports/:fileName', async (req, res) => {
 router.get('/export-files', async (req, res) => {
   try {
     console.log('[history/export-files] Fetching export files');
+    
+    const useAzure = isAzureEnvironment();
+    const items = [];
+    
+    // ローカルモード: knowledge-base/exports/ から一覧取得
+    if (!useAzure) {
+      console.log('[history/export-files] ローカルモード: knowledge-base/exports/ から取得');
+      const exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+      
+      try {
+        const files = await fs.promises.readdir(exportsDir);
+        
+        for (const fileName of files) {
+          if (!fileName.endsWith('.json')) continue;
+          
+          const filePath = path.join(exportsDir, fileName);
+          const stats = await fs.promises.stat(filePath);
+          
+          // ファイル名からタイトルを抽出（UUID部分を除去）
+          let title = fileName.replace('.json', '');
+          const titleMatch = title.match(/^(.+?)_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}_/);
+          if (titleMatch) {
+            title = titleMatch[1];
+          }
+          
+          items.push({
+            id: fileName.replace('.json', ''),
+            fileName: fileName,
+            title: title,
+            blobName: null,
+            createdAt: stats.mtime.toISOString(),
+            lastModified: stats.mtime.toISOString(),
+            exportTimestamp: stats.mtime.toISOString(),
+            size: stats.size
+          });
+        }
+        console.log('[history/export-files] ✅ ローカルファイル取得完了:', items.length, '件');
+      } catch (localError) {
+        console.error('[history/export-files] ❌ ローカルディレクトリエラー:', localError.message);
+      }
+      
+      return res.json({
+        success: true,
+        files: items,
+        count: items.length,
+        source: 'local',
+        diagnostics: {
+          mode: 'local',
+          filesFound: items.length
+        }
+      });
+    }
+    
+    // Azureモード: BLOBから一覧取得
     console.log('[history/export-files] 🔍 BLOB接続診断開始');
     console.log('[history/export-files] 環境変数:', {
       AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING ? '設定済み' : '未設定',
@@ -603,8 +745,6 @@ router.get('/export-files', async (req, res) => {
     
     const blobServiceClient = getBlobServiceClient();
     console.log('[history/export-files] BLOBクライアント:', blobServiceClient ? '取得成功' : '取得失敗');
-    
-    const items = [];
 
     if (blobServiceClient) {
       try {
@@ -669,6 +809,7 @@ router.get('/export-files', async (req, res) => {
       success: true,
       files: items,
       count: items.length,
+      source: 'blob',
       diagnostics: {
         blobClientAvailable: !!blobServiceClient,
         containerName: containerName,
@@ -686,6 +827,43 @@ router.get('/export-files', async (req, res) => {
 
 // Get history detail by id
 async function getHistoryDetail(normalizedId) {
+  const useAzure = isAzureEnvironment();
+  
+  // ローカルモード: knowledge-base/exports/ から読み取り
+  if (!useAzure) {
+    const baseDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+    const files = await fs.promises.readdir(baseDir);
+    
+    // ファイル名の正規化して検索
+    const targetFile = files.find(f => {
+      const nameWithoutExt = f.replace('.json', '');
+      return nameWithoutExt === normalizedId || 
+             nameWithoutExt.includes(`_${normalizedId}_`) ||
+             f === `${normalizedId}.json`;
+    });
+    
+    if (!targetFile) {
+      return { status: 404, error: 'ファイルが見つかりません' };
+    }
+    
+    const filePath = path.join(baseDir, targetFile);
+    const content = await fs.promises.readFile(filePath, 'utf-8');
+    const json = JSON.parse(content);
+    const meta = extractMetadataFromJson(json, targetFile);
+    
+    return {
+      status: 200,
+      data: {
+        id: normalizedId,
+        fileName: targetFile,
+        blobName: null,
+        ...meta,
+        json,
+      },
+    };
+  }
+  
+  // Azureモード: BLOBから読み取り
   const blobServiceClient = getBlobServiceClient();
   if (!blobServiceClient) return { status: 503, error: 'BLOB storage not available' };
 
@@ -739,6 +917,113 @@ router.get(['/detail/:id', '/item/:id', '/:id'], async (req, res, next) => {
 async function handleUpdateHistory(req, res, rawId) {
   try {
     const normalizedId = normalizeId(rawId);
+    const useAzure = isAzureEnvironment();
+    
+    // ローカルモード: knowledge-base/exports/ から読み書き
+    if (!useAzure) {
+      const baseDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+      const imagesDir = path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
+      
+      // 既存ファイルを検索
+      const files = await fs.promises.readdir(baseDir);
+      const targetFile = files.find(f => {
+        const nameWithoutExt = f.replace('.json', '');
+        return nameWithoutExt === normalizedId || 
+               nameWithoutExt.includes(`_${normalizedId}_`) ||
+               f === `${normalizedId}.json`;
+      });
+      
+      const targetFileName = targetFile || `${normalizedId}.json`;
+      const targetFilePath = path.join(baseDir, targetFileName);
+      
+      console.log('[history/update] Local target:', { normalizedId, targetFileName, exists: !!targetFile });
+      
+      // 既存データを読み取り
+      let originalData = {};
+      try {
+        if (targetFile) {
+          const content = await fs.promises.readFile(targetFilePath, 'utf-8');
+          originalData = JSON.parse(content);
+          console.log('[history/update] Original data loaded:', Object.keys(originalData));
+        }
+      } catch (readError) {
+        console.warn('[history/update] Failed to load original data:', readError.message);
+        originalData = {};
+      }
+      
+      const updatePayload = req.body?.updatedData || req.body || {};
+      const merged = mergeData(originalData, {
+        ...updatePayload,
+        lastModified: new Date().toISOString(),
+      });
+      
+      // 画像の処理
+      if (updatePayload.savedImages) {
+        console.log('[history/update] Saving images:', {
+          count: updatePayload.savedImages.length,
+          images: updatePayload.savedImages.map(img => img.fileName || img.url?.substring(0, 50))
+        });
+
+        // 削除された画像の検出と削除
+        const oldImages = originalData.savedImages || originalData.jsonData?.savedImages || [];
+        const newImages = updatePayload.savedImages || [];
+        const newImageNames = new Set(newImages.map(img => img.fileName || img.url?.split('/').pop()));
+        
+        const deletedImages = oldImages.filter(img => {
+          const fileName = img.fileName || img.url?.split('/').pop();
+          return fileName && !newImageNames.has(fileName);
+        });
+
+        if (deletedImages.length > 0) {
+          console.log(`[history/update] Found ${deletedImages.length} images to delete`);
+          for (const img of deletedImages) {
+            const fileName = img.fileName || img.url?.split('/').pop();
+            if (fileName) {
+              try {
+                const imageFilePath = path.join(imagesDir, fileName);
+                if (await fs.promises.access(imageFilePath).then(() => true).catch(() => false)) {
+                  await fs.promises.unlink(imageFilePath);
+                  console.log(`[history/update] 🗑️ Deleted removed image: ${fileName}`);
+                }
+              } catch (delErr) {
+                console.warn(`[history/update] ⚠️ Failed to delete image: ${fileName}`, delErr.message);
+              }
+            }
+          }
+        }
+        
+        merged.savedImages = updatePayload.savedImages;
+        merged.jsonData = mergeData(merged.jsonData || {}, { savedImages: updatePayload.savedImages });
+        
+        if (updatePayload.chatData) {
+          merged.jsonData.chatData = updatePayload.chatData;
+        }
+        
+        delete merged.images;
+        console.log('[history/update] Images unified to jsonData.savedImages');
+      }
+      
+      // 更新履歴を追加
+      merged.updateHistory = Array.isArray(merged.updateHistory) ? merged.updateHistory : [];
+      merged.updateHistory.push({
+        timestamp: new Date().toISOString(),
+        updatedBy: req.body?.updatedBy || 'user',
+        updatedFields: Object.keys(updatePayload || {}).filter(k => updatePayload[k] !== undefined),
+      });
+      
+      // ファイルに書き込み
+      const content = JSON.stringify(merged, null, 2);
+      await fs.promises.writeFile(targetFilePath, content, 'utf-8');
+      
+      return res.json({
+        success: true,
+        message: '保存しました',
+        updatedData: merged,
+        updatedFile: targetFileName
+      });
+    }
+    
+    // Azureモード: BLOBから読み書き
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
       return res.status(503).json({ success: false, error: 'BLOB storage not available' });
@@ -840,7 +1125,7 @@ async function handleUpdateHistory(req, res, rawId) {
     console.error('[history/update] Error:', {
       message: error.message,
       stack: error.stack,
-      normalizedId,
+      normalizedId: rawId,
       updatePayload: req.body?.updatedData || req.body
     });
     return res.status(500).json({ 
@@ -866,7 +1151,84 @@ router.delete('/:id', async (req, res) => {
   try {
     const normalizedId = normalizeId(req.params.id);
     console.log(`[history/delete] Request: ${normalizedId}`);
-
+    
+    const useAzure = isAzureEnvironment();
+    
+    // ローカルモード: knowledge-base/ から削除
+    if (!useAzure) {
+      const baseDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+      const imagesDir = path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
+      
+      // ファイルを検索
+      const files = await fs.promises.readdir(baseDir);
+      const targetFile = files.find(f => {
+        const nameWithoutExt = f.replace('.json', '');
+        return nameWithoutExt === normalizedId || 
+               nameWithoutExt.includes(`_${normalizedId}_`) ||
+               f === `${normalizedId}.json`;
+      });
+      
+      if (!targetFile) {
+        return res.status(404).json({ success: false, error: 'ファイルが見つかりません' });
+      }
+      
+      const filePath = path.join(baseDir, targetFile);
+      
+      // JSONを読み取って画像ファイル名を取得
+      const content = await fs.promises.readFile(filePath, 'utf-8');
+      const jsonData = JSON.parse(content);
+      const metadata = extractMetadataFromJson(jsonData, targetFile);
+      const imagesToDelete = metadata.images || [];
+      
+      console.log(`[history/delete] Found ${imagesToDelete.length} images to delete from JSON`);
+      console.log('[history/delete] Images to delete details:', JSON.stringify(imagesToDelete, null, 2));
+      
+      // 関連する画像をローカルから削除
+      let deletedImagesCount = 0;
+      const deletedImagesList = [];
+      
+      for (const img of imagesToDelete) {
+        try {
+          let fileName = null;
+          if (img.fileName && !img.fileName.startsWith('http')) {
+            fileName = img.fileName.split('/').pop();
+          } else if (img.url && !img.url.startsWith('http')) {
+            fileName = img.url.split('/').pop();
+          } else if (img.path) {
+            fileName = img.path.split('/').pop();
+          }
+          
+          if (fileName) {
+            const imageFilePath = path.join(imagesDir, fileName);
+            if (await fs.promises.access(imageFilePath).then(() => true).catch(() => false)) {
+              await fs.promises.unlink(imageFilePath);
+              deletedImagesCount++;
+              deletedImagesList.push(fileName);
+              console.log(`[history/delete] ✅ Deleted image: ${fileName}`);
+            } else {
+              console.log(`[history/delete] ⚠️ Image not found: ${fileName}`);
+            }
+          }
+        } catch (imgError) {
+          console.warn(`[history/delete] ❌ Failed to delete image:`, imgError.message);
+        }
+      }
+      
+      // JSONファイルを削除
+      await fs.promises.unlink(filePath);
+      console.log(`[history/delete] ✅ Deleted JSON: ${targetFile}`);
+      
+      return res.json({ 
+        success: true, 
+        message: '削除しました', 
+        deletedFile: targetFile,
+        deletedImages: deletedImagesCount,
+        deletedImagesList: deletedImagesList,
+        totalImagesFound: imagesToDelete.length
+      });
+    }
+    
+    // Azureモード: BLOBから削除
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
       return res.status(503).json({ success: false, error: 'BLOB storage not available' });
@@ -946,6 +1308,113 @@ router.post('/cleanup-orphaned-images', async (req, res) => {
   try {
     console.log('[history/cleanup-orphaned-images] Starting cleanup...');
     
+    const useAzure = isAzureEnvironment();
+    
+    // ローカルモード: knowledge-base/ から孤立画像をクリーンアップ
+    if (!useAzure) {
+      const exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+      const imagesDir = path.join(process.cwd(), 'knowledge-base', 'images', 'chat-exports');
+      
+      // 1. すべてのJSONファイルから参照されている画像を収集
+      const referencedImages = new Set();
+      
+      console.log('[cleanup] Step 1: Collecting referenced images from JSON files...');
+      const jsonFiles = await fs.promises.readdir(exportsDir);
+      
+      for (const fileName of jsonFiles) {
+        if (!fileName.endsWith('.json')) continue;
+        
+        try {
+          const filePath = path.join(exportsDir, fileName);
+          const content = await fs.promises.readFile(filePath, 'utf-8');
+          const jsonData = JSON.parse(content);
+          const metadata = extractMetadataFromJson(jsonData, fileName);
+          const images = metadata.images || [];
+          
+          images.forEach(img => {
+            const imgFileName = img.fileName || img.url?.split('/').pop();
+            if (imgFileName && !imgFileName.startsWith('http')) {
+              referencedImages.add(imgFileName);
+            }
+          });
+        } catch (err) {
+          console.warn(`[cleanup] Failed to parse JSON: ${fileName}`, err.message);
+        }
+      }
+      
+      console.log(`[cleanup] Found ${referencedImages.size} referenced images`);
+      
+      // 2. chat-exports内のすべての画像ファイルを取得
+      const allImages = [];
+      
+      console.log('[cleanup] Step 2: Listing all images in chat-exports...');
+      const imageFiles = await fs.promises.readdir(imagesDir);
+      
+      for (const fileName of imageFiles) {
+        const filePath = path.join(imagesDir, fileName);
+        const stats = await fs.promises.stat(filePath);
+        
+        if (stats.isFile()) {
+          allImages.push({
+            fileName,
+            filePath,
+            size: stats.size,
+            lastModified: stats.mtime
+          });
+        }
+      }
+      
+      console.log(`[cleanup] Found ${allImages.length} total images`);
+      
+      // 3. 孤立画像（参照されていない画像）を特定
+      const orphanedImages = allImages.filter(img => !referencedImages.has(img.fileName));
+      
+      console.log(`[cleanup] Found ${orphanedImages.length} orphaned images`);
+      
+      // 4. 孤立画像を削除（dryRun モードに対応）
+      const dryRun = req.body?.dryRun === true;
+      let deletedCount = 0;
+      let deletedSize = 0;
+      const deletedList = [];
+      
+      if (!dryRun) {
+        console.log('[cleanup] Step 3: Deleting orphaned images...');
+        for (const img of orphanedImages) {
+          try {
+            await fs.promises.unlink(img.filePath);
+            deletedCount++;
+            deletedSize += img.size;
+            deletedList.push(img.fileName);
+            console.log(`[cleanup] Deleted: ${img.fileName} (${img.size} bytes)`);
+          } catch (delErr) {
+            console.error(`[cleanup] Failed to delete: ${img.fileName}`, delErr.message);
+          }
+        }
+      }
+      
+      return res.json({
+        success: true,
+        message: dryRun ? '孤立画像の検出が完了しました' : '孤立画像のクリーンアップが完了しました',
+        dryRun,
+        source: 'local',
+        stats: {
+          totalImages: allImages.length,
+          referencedImages: referencedImages.size,
+          orphanedImages: orphanedImages.length,
+          deletedCount: dryRun ? 0 : deletedCount,
+          deletedSize: dryRun ? 0 : deletedSize,
+          deletedSizeMB: dryRun ? 0 : (deletedSize / 1024 / 1024).toFixed(2)
+        },
+        orphanedList: orphanedImages.map(img => ({
+          fileName: img.fileName,
+          size: img.size,
+          lastModified: img.lastModified?.toISOString()
+        })),
+        deletedList: dryRun ? [] : deletedList
+      });
+    }
+    
+    // Azureモード: BLOBから孤立画像をクリーンアップ
     const blobServiceClient = getBlobServiceClient();
     if (!blobServiceClient) {
       return res.status(503).json({ success: false, error: 'BLOB storage not available' });
@@ -1029,6 +1498,7 @@ router.post('/cleanup-orphaned-images', async (req, res) => {
       success: true,
       message: dryRun ? '孤立画像の検出が完了しました' : '孤立画像のクリーンアップが完了しました',
       dryRun,
+      source: 'blob',
       stats: {
         totalImages: allImages.length,
         referencedImages: referencedImages.size,

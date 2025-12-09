@@ -1,54 +1,76 @@
 import { getBlobServiceClient, containerName } from '../../infra/blob.mjs';
-import { AUTO_INGEST_CHAT_EXPORTS } from '../../config/env.mjs';
+import { AUTO_INGEST_CHAT_EXPORTS, isAzureEnvironment } from '../../config/env.mjs';
 
 const EXPORT_SUBDIR = 'exports';
 
 async function saveJsonFile(fileName, content) {
-  const isProduction = process.env.NODE_ENV === 'production';
-  const blobServiceClient = getBlobServiceClient();
+  const useAzure = isAzureEnvironment();
+  const fs = await import('fs');
+  const path = await import('path');
 
-  // 本番環境ではBLOBが必須
-  if (isProduction && !blobServiceClient) {
+  // ローカルモード: knowledge-base/exports/ へ保存
+  if (!useAzure) {
+    console.log('[saveJsonFile] LOCAL: Using local filesystem:', fileName);
+    const localDir = path.join(process.cwd(), 'knowledge-base', EXPORT_SUBDIR);
+    await fs.promises.mkdir(localDir, { recursive: true });
+    const localPath = path.join(localDir, fileName);
+    await fs.promises.writeFile(localPath, content, 'utf8');
+    console.log(`[saveJsonFile] LOCAL: Successfully saved to: ${localPath}`);
+    return { storage: 'local', path: localPath };
+  }
+
+  // Azureモード: BLOBストレージへ保存
+  console.log('[saveJsonFile] AZURE: Using BLOB storage:', fileName);
+  const blobServiceClient = getBlobServiceClient();
+  
+  if (!blobServiceClient) {
     throw new Error('BLOB storage is not configured in production. Please check AZURE_STORAGE_CONNECTION_STRING environment variable.');
   }
 
-  // BLOBが利用可能な場合は使用
-  if (blobServiceClient) {
-    try {
-      const containerClient = blobServiceClient.getContainerClient(containerName);
-      await containerClient.createIfNotExists();
-      const blobName = `knowledge-base/${EXPORT_SUBDIR}/${fileName}`;
-      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-      await blockBlobClient.upload(content, Buffer.byteLength(content), {
-        blobHTTPHeaders: { blobContentType: 'application/json' },
-      });
-      console.log(`[saveJsonFile] Successfully saved to BLOB: ${blobName}`);
-      return { storage: 'blob', blobName };
-    } catch (error) {
-      console.error('[saveJsonFile] BLOB upload failed:', error);
-      if (isProduction) {
-        throw error; // 本番ではエラーを投げる
-      }
-      // 開発環境ではローカルにフォールバック
-    }
-  }
-
-  // 開発環境: ローカルファイルシステムにフォールバック
-  console.log('[saveJsonFile] Using local filesystem fallback:', fileName);
-  const fs = await import('fs');
-  const path = await import('path');
-  const localDir = path.join(process.cwd(), 'knowledge-base', EXPORT_SUBDIR);
-  await fs.promises.mkdir(localDir, { recursive: true });
-  const localPath = path.join(localDir, fileName);
-  await fs.promises.writeFile(localPath, content, 'utf8');
-  console.log(`[saveJsonFile] Successfully saved to local: ${localPath}`);
-  return { storage: 'local', path: localPath };
+  const containerClient = blobServiceClient.getContainerClient(containerName);
+  await containerClient.createIfNotExists();
+  const blobName = `knowledge-base/${EXPORT_SUBDIR}/${fileName}`;
+  const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+  await blockBlobClient.upload(content, Buffer.byteLength(content), {
+    blobHTTPHeaders: { blobContentType: 'application/json' },
+  });
+  console.log(`[saveJsonFile] AZURE: Successfully saved to BLOB: ${blobName}`);
+  return { storage: 'blob', blobName };
 }
 
 async function getLatestExport(chatId) {
   let latest = null;
-  const blobServiceClient = getBlobServiceClient();
+  const useAzure = isAzureEnvironment();
+  const fs = await import('fs');
+  const path = await import('path');
 
+  // ローカルモード: knowledge-base/exports/ から最新ファイルを検索
+  if (!useAzure) {
+    const localDir = path.join(process.cwd(), 'knowledge-base', EXPORT_SUBDIR);
+    try {
+      const files = await fs.promises.readdir(localDir);
+      for (const fileName of files) {
+        if (!fileName.endsWith('.json')) continue;
+        if (!chatId || fileName.includes(chatId)) {
+          const filePath = path.join(localDir, fileName);
+          const stats = await fs.promises.stat(filePath);
+          if (!latest || stats.mtime > latest.lastModified) {
+            latest = {
+              source: 'local',
+              name: fileName,
+              lastModified: stats.mtime,
+            };
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('[api/chats] LOCAL: Error reading exports:', error.message);
+    }
+    return latest;
+  }
+
+  // Azureモード: BLOBから最新ファイルを検索
+  const blobServiceClient = getBlobServiceClient();
   if (!blobServiceClient) {
     console.warn('[api/chats] BLOB storage not configured');
     return null;
@@ -73,8 +95,26 @@ async function getLatestExport(chatId) {
 }
 
 async function downloadExport(fileName) {
+  const useAzure = isAzureEnvironment();
+  const fs = await import('fs');
+  const path = await import('path');
+
+  // ローカルモード: knowledge-base/exports/ から読み取り
+  if (!useAzure) {
+    const localPath = path.join(process.cwd(), 'knowledge-base', EXPORT_SUBDIR, fileName);
+    console.log('[api/chats] LOCAL: Downloading from local:', localPath);
+    try {
+      if (await fs.promises.access(localPath).then(() => true).catch(() => false)) {
+        return await fs.promises.readFile(localPath);
+      }
+    } catch (error) {
+      console.warn('[api/chats] LOCAL: Error reading file:', error.message);
+    }
+    return null;
+  }
+
+  // Azureモード: BLOBから読み取り
   const blobServiceClient = getBlobServiceClient();
-  
   if (!blobServiceClient) {
     console.warn('[api/chats] BLOB storage not configured');
     return null;
@@ -82,7 +122,7 @@ async function downloadExport(fileName) {
 
   const containerClient = blobServiceClient.getContainerClient(containerName);
   const blobName = `knowledge-base/${EXPORT_SUBDIR}/${fileName}`;
-  console.log('[api/chats] Downloading from Blob:', blobName);
+  console.log('[api/chats] AZURE: Downloading from Blob:', blobName);
   const blobClient = containerClient.getBlobClient(blobName);
   
   if (await blobClient.exists()) {
