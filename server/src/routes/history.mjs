@@ -2,7 +2,7 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { getBlobServiceClient, containerName, norm, upload, streamToBuffer } from '../infra/blob.mjs';
-import { AZURE_STORAGE_CONNECTION_STRING } from '../config/env.mjs';
+import { AZURE_STORAGE_CONNECTION_STRING, isAzureEnvironment } from '../config/env.mjs';
 import { dbQuery } from '../infra/db.mjs';
 
 const router = express.Router();
@@ -315,20 +315,18 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
       const fileName = `chat_image_${timestamp}${ext}`;
       console.log(`[history/upload-image] Generated fileName: ${fileName}`);
       
-      // Azure環境かどうかを判定（Azure App Service固有の環境変数で判定）
-      const isAzureEnvironment = 
-        process.env.WEBSITE_INSTANCE_ID !== undefined ||
-        process.env.WEBSITE_SITE_NAME !== undefined;
+      // Azure環境かどうかを判定
+      const useAzure = isAzureEnvironment();
       
       console.log('[history/upload-image] Environment check:', {
         NODE_ENV: process.env.NODE_ENV,
-        hasWebsiteInstanceId: !!process.env.WEBSITE_INSTANCE_ID,
-        hasWebsiteSiteName: !!process.env.WEBSITE_SITE_NAME,
-        isAzureEnvironment: isAzureEnvironment
+        STORAGE_MODE: process.env.STORAGE_MODE,
+        hasStorageConnectionString: !!process.env.AZURE_STORAGE_CONNECTION_STRING,
+        isAzureEnvironment: useAzure
       });
 
       // ローカル環境: ローカルファイルシステムのみ使用
-      if (!isAzureEnvironment) {
+      if (!useAzure) {
         console.log('[history/upload-image] LOCAL: Using local filesystem');
         
         const localDir = path.resolve(process.cwd(), 'knowledge-base', 'images', 'chat-exports');

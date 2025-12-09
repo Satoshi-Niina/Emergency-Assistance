@@ -71,3 +71,30 @@ export const SESSION_SECRET = process.env.SESSION_SECRET || 'azure-production-se
 // チャットエクスポートを自動でナレッジに取り込むか（デフォルト: false）
 export const AUTO_INGEST_CHAT_EXPORTS =
   (process.env.AUTO_INGEST_CHAT_EXPORTS || '').toLowerCase() === 'true';
+
+// ストレージモード判定
+export const STORAGE_MODE = process.env.STORAGE_MODE || 'auto';
+
+// Azure環境かどうかを判定する統一関数
+export function isAzureEnvironment() {
+  // 1. STORAGE_MODEが明示的に設定されている場合
+  if (STORAGE_MODE === 'azure' || STORAGE_MODE === 'blob') {
+    return true;
+  }
+  if (STORAGE_MODE === 'local') {
+    return false;
+  }
+  
+  // 2. Azure App Service固有の環境変数
+  if (process.env.WEBSITE_INSTANCE_ID || process.env.WEBSITE_SITE_NAME) {
+    return true;
+  }
+  
+  // 3. AZURE_STORAGE_CONNECTION_STRINGが設定されていればAzure環境
+  if (AZURE_STORAGE_CONNECTION_STRING && AZURE_STORAGE_CONNECTION_STRING.trim()) {
+    return true;
+  }
+  
+  // 4. デフォルト: 本番環境はAzure
+  return NODE_ENV === 'production';
+}

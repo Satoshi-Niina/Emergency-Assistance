@@ -4,6 +4,7 @@
 import fs from 'fs';
 import { getBlobServiceClient, containerName, norm, upload } from '../../infra/blob.mjs';
 import { getOpenAIClient, isOpenAIAvailable } from '../../infra/openai.mjs';
+import { isAzureEnvironment } from '../../config/env.mjs';
 import path from 'path';
 
 // 複数パスを試して既存データのプレフィックス違いに対応
@@ -42,21 +43,19 @@ export default async function emergencyFlowHandler(req, res) {
       console.log('[api/emergency-flow/list] Fetching flows');
       
       // Azure環境かどうかを判定
-      const isAzureEnvironment = 
-        process.env.WEBSITE_INSTANCE_ID !== undefined ||
-        process.env.WEBSITE_SITE_NAME !== undefined;
+      const useAzure = isAzureEnvironment();
       
       console.log('[api/emergency-flow/list] 環境チェック:', {
         NODE_ENV: process.env.NODE_ENV,
-        hasWebsiteInstanceId: !!process.env.WEBSITE_INSTANCE_ID,
-        hasWebsiteSiteName: !!process.env.WEBSITE_SITE_NAME,
-        isAzureEnvironment: isAzureEnvironment
+        STORAGE_MODE: process.env.STORAGE_MODE,
+        hasStorageConnectionString: !!process.env.AZURE_STORAGE_CONNECTION_STRING,
+        isAzureEnvironment: useAzure
       });
       
       const flows = [];
       
       // ローカル環境: ローカルファイルシステムから取得
-      if (!isAzureEnvironment) {
+      if (!useAzure) {
         console.log('[api/emergency-flow/list] LOCAL: Reading from local filesystem');
         const localDir = path.resolve(process.cwd(), 'knowledge-base', 'troubleshooting');
         
@@ -182,17 +181,17 @@ export default async function emergencyFlowHandler(req, res) {
       console.log(`[api/emergency-flow/detail] Fetching detail: ${flowId}`);
       
       // Azure環境かどうかを判定
-      const isAzureEnvironment = 
-        process.env.WEBSITE_INSTANCE_ID !== undefined ||
-        process.env.WEBSITE_SITE_NAME !== undefined;
+      const useAzure = isAzureEnvironment();
       
       console.log('[api/emergency-flow/detail] 環境チェック:', {
         NODE_ENV: process.env.NODE_ENV,
-        isAzureEnvironment: isAzureEnvironment
+        STORAGE_MODE: process.env.STORAGE_MODE,
+        hasStorageConnectionString: !!process.env.AZURE_STORAGE_CONNECTION_STRING,
+        isAzureEnvironment: useAzure
       });
 
       // ローカル環境: ローカルファイルシステムから取得
-      if (!isAzureEnvironment) {
+      if (!useAzure) {
         console.log('[api/emergency-flow/detail] LOCAL: Reading from local filesystem');
         const localDir = path.resolve(process.cwd(), 'knowledge-base', 'troubleshooting');
         const localFilePath = path.join(localDir, fileName);
@@ -650,22 +649,20 @@ export default async function emergencyFlowHandler(req, res) {
       // 🔧 生成したフローを保存
       console.log('[api/emergency-flow/generate] 🔍 保存診断開始');
       
-      // Azure環境かどうかを判定（Azure App Service固有の環境変数で判定）
-      const isAzureEnvironment = 
-        process.env.WEBSITE_INSTANCE_ID !== undefined ||
-        process.env.WEBSITE_SITE_NAME !== undefined;
+      // Azure環境かどうかを判定
+      const useAzure = isAzureEnvironment();
       
       console.log('[api/emergency-flow/generate] 環境チェック:', {
         NODE_ENV: process.env.NODE_ENV,
-        hasWebsiteInstanceId: !!process.env.WEBSITE_INSTANCE_ID,
-        hasWebsiteSiteName: !!process.env.WEBSITE_SITE_NAME,
-        isAzureEnvironment: isAzureEnvironment
+        STORAGE_MODE: process.env.STORAGE_MODE,
+        hasStorageConnectionString: !!process.env.AZURE_STORAGE_CONNECTION_STRING,
+        isAzureEnvironment: useAzure
       });
       
       const fileName = `${flowId}.json`;
       
       // ローカル環境: ローカルファイルシステムのみ使用
-      if (!isAzureEnvironment) {
+      if (!useAzure) {
         console.log('[api/emergency-flow/generate] LOCAL: Using local filesystem');
         
         const localDir = path.resolve(process.cwd(), 'knowledge-base', 'troubleshooting');
