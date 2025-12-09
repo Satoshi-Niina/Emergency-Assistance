@@ -129,22 +129,54 @@ router.get('/blob-detailed', async (req, res) => {
       };
     }
 
-    // Test 5: List blobs (sample)
-    let blobCount = 0;
-    const sampleBlobs = [];
-    for await (const blob of containerClient.listBlobsFlat({ prefix: 'knowledge-base/images/' })) {
-      if (blobCount < 5) {
-        sampleBlobs.push({
+    // Test 5: List blobs (sample images)
+    let imageBlobCount = 0;
+    const sampleImageBlobs = [];
+    for await (const blob of containerClient.listBlobsFlat({ prefix: 'knowledge-base/images/chat-exports/' })) {
+      if (imageBlobCount < 5) {
+        sampleImageBlobs.push({
           name: blob.name,
           size: blob.properties.contentLength,
           contentType: blob.properties.contentType,
           lastModified: blob.properties.lastModified?.toISOString()
         });
       }
-      blobCount++;
+      imageBlobCount++;
     }
-    diagnostics.tests.listBlobs = `✅ Found ${blobCount} image blobs`;
-    diagnostics.sampleBlobs = sampleBlobs;
+    diagnostics.tests.listImages = `✅ Found ${imageBlobCount} chat-export image blobs`;
+    diagnostics.sampleImageBlobs = sampleImageBlobs;
+
+    // Test 6: List troubleshooting flows
+    let flowBlobCount = 0;
+    const sampleFlowBlobs = [];
+    for await (const blob of containerClient.listBlobsFlat({ prefix: 'knowledge-base/troubleshooting/' })) {
+      if (flowBlobCount < 5) {
+        sampleFlowBlobs.push({
+          name: blob.name,
+          size: blob.properties.contentLength,
+          lastModified: blob.properties.lastModified?.toISOString()
+        });
+      }
+      flowBlobCount++;
+    }
+    diagnostics.tests.listFlows = `✅ Found ${flowBlobCount} troubleshooting flow blobs`;
+    diagnostics.sampleFlowBlobs = sampleFlowBlobs;
+
+    // Test 7: Image read test (if any images exist)
+    if (imageBlobCount > 0 && sampleImageBlobs[0]) {
+      try {
+        const imageBlobName = sampleImageBlobs[0].name;
+        const imageBlobClient = containerClient.getBlobClient(imageBlobName);
+        const imageExists = await imageBlobClient.exists();
+        diagnostics.tests.imageReadTest = imageExists ? '✅ Can read image blob' : '❌ Cannot read image blob';
+        diagnostics.imageTestBlob = imageBlobName;
+      } catch (imageError) {
+        diagnostics.tests.imageReadTest = '❌ Image read failed';
+        diagnostics.imageReadError = imageError.message;
+      }
+    } else {
+      diagnostics.tests.imageReadTest = '⚠️ No images to test';
+    }
 
     // Test 5: Upload test
     const testBlobName = `knowledge-base/images/chat-exports/_test_${Date.now()}.txt`;
