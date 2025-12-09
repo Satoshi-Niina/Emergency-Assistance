@@ -1243,7 +1243,7 @@ export default async function emergencyFlowHandler(req, res) {
         console.log(`[api/emergency-flow/delete] AZURE: Deleting ${imagesToDelete.length} related images`);
         for (const imageFileName of imagesToDelete) {
           try {
-            const imageBlobName = `knowledge-base/images/emergency-flows/${imageFileName}`;
+            const imageBlobName = norm(`images/emergency-flows/${imageFileName}`);
             const imageBlob = containerClient.getBlockBlobClient(imageBlobName);
             const exists = await imageBlob.exists();
             if (exists) {
