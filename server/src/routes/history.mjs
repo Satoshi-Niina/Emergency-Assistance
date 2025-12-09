@@ -629,7 +629,7 @@ router.get('/export-files', async (req, res) => {
           });
         }
         
-        const prefix = 'knowledge-base/exports/';
+        const prefix = norm('exports/');
         console.log('[history/export-files] 検索プレフィックス:', prefix);
         
         for await (const blob of containerClient.listBlobsFlat({ prefix })) {
