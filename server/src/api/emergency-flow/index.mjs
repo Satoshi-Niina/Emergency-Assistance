@@ -285,8 +285,10 @@ export default async function emergencyFlowHandler(req, res) {
   if (pathParts[2] && !pathParts[2].includes('list') && !pathParts[2].includes('detail') && !pathParts[2].includes('image') && !pathParts[2].includes('save') && !pathParts[2].includes('generate') && method === 'GET') {
     try {
       // URLエンコードされたパスをデコード（日本語ファイル名対応）
-      const fileName = decodeURIComponent(pathParts[2]);
-      console.log(`[api/emergency-flow] Fetching: ${fileName}`);
+      const decodedPath = decodeURIComponent(pathParts[2]);
+      // .json拡張子を確実に付ける
+      const fileName = decodedPath.endsWith('.json') ? decodedPath : `${decodedPath}.json`;
+      console.log(`[api/emergency-flow] Fetching:`, { pathParts2: pathParts[2], decoded: decodedPath, fileName });
 
       // Azure環境かどうかを判定
       const useAzure = isAzureEnvironment();
@@ -505,6 +507,7 @@ export default async function emergencyFlowHandler(req, res) {
             success: true,
             imageUrl: imageUrl,
             fileName: fileName,
+            imageFileName: fileName,  // クライアントとの互換性のため
             size: req.file.size,
             storage: 'local'
           });
@@ -541,7 +544,7 @@ export default async function emergencyFlowHandler(req, res) {
           }
         });
 
-        console.log(`[api/emergency-flow/upload-image] Uploaded: ${blobName}`);
+        console.log(`[api/emergency-flow/upload-image] AZURE: ✅ アップロード完了: ${blobName}`);
 
         const imageUrl = `/api/images/emergency-flows/${fileName}`;
 
@@ -549,6 +552,7 @@ export default async function emergencyFlowHandler(req, res) {
           success: true,
           imageUrl: imageUrl,
           fileName: fileName,
+          imageFileName: fileName,  // クライアントとの互換性のため
           blobName: blobName,
           size: req.file.size,
           storage: 'blob'
