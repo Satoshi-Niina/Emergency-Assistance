@@ -284,7 +284,8 @@ export default async function emergencyFlowHandler(req, res) {
   // /api/emergency-flow/:fileName - GET個別取得（生データ）
   if (pathParts[2] && !pathParts[2].includes('list') && !pathParts[2].includes('detail') && !pathParts[2].includes('image') && !pathParts[2].includes('save') && !pathParts[2].includes('generate') && method === 'GET') {
     try {
-      const fileName = pathParts[2];
+      // URLエンコードされたパスをデコード（日本語ファイル名対応）
+      const fileName = decodeURIComponent(pathParts[2]);
       console.log(`[api/emergency-flow] Fetching: ${fileName}`);
 
       // Azure環境かどうかを判定
@@ -928,12 +929,15 @@ export default async function emergencyFlowHandler(req, res) {
   // /api/emergency-flow/:id - PUT更新（編集後の差分上書き）
   if (pathParts[2] && method === 'PUT') {
     try {
-      const flowId = pathParts[2].replace('.json', '');
+      // URLエンコードされたパスをデコード（日本語ファイル名対応）
+      const decodedId = decodeURIComponent(pathParts[2]);
+      const flowId = decodedId.replace('.json', '');
       const fileName = flowId.endsWith('.json') ? flowId : `${flowId}.json`;
       const flowData = req.body;
 
       console.log('[api/emergency-flow/PUT] 🔍 PUT診断:');
       console.log('[api/emergency-flow/PUT]   受信したpathParts[2]:', pathParts[2]);
+      console.log('[api/emergency-flow/PUT]   デコード後:', decodedId);
       console.log('[api/emergency-flow/PUT]   生成したflowId:', flowId);
       console.log('[api/emergency-flow/PUT]   生成したfileName:', fileName);
       console.log('[api/emergency-flow/PUT] Updating flow:', flowId);
@@ -1171,10 +1175,12 @@ export default async function emergencyFlowHandler(req, res) {
   // /api/emergency-flow/:id - DELETE削除
   if (pathParts[2] && method === 'DELETE') {
     try {
-      const flowId = pathParts[2];
+      // URLエンコードされたパスをデコード（日本語ファイル名対応）
+      const decodedId = decodeURIComponent(pathParts[2]);
+      const flowId = decodedId.replace('.json', '');
       // .json拡張子を確実に付ける
       const fileName = flowId.endsWith('.json') ? flowId : `${flowId}.json`;
-      console.log('[api/emergency-flow/delete] Deleting:', { flowId, fileName });
+      console.log('[api/emergency-flow/delete] Deleting:', { pathParts2: pathParts[2], decodedId, flowId, fileName });
 
       const useAzure = isAzureEnvironment();
 
