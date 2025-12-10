@@ -61,7 +61,7 @@ export default function SystemDiagnosticPage() {
     setDbCheckResult(null);
 
     try {
-      const response = await fetch(buildApiPath('/system-check/db-check'));
+      const response = await fetch(buildApiPath('/db-check'));
       const result = await response.json();
 
       // サーバーのレスポンス形式に合わせて変換
@@ -113,7 +113,7 @@ export default function SystemDiagnosticPage() {
     setGptCheckResult(null);
 
     try {
-      const response = await fetch(buildApiPath('/system-check/gpt-check'), {
+      const response = await fetch(buildApiPath('/gpt-check'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

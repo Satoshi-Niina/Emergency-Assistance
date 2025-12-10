@@ -1,6 +1,8 @@
+import { dbPool } from '../../infra/db.mjs';
+
 export default async function (req, res) {
   try {
-    console.log('DB Check API processed a request.');
+    console.log('[db-check] Database connection check request');
 
     // OPTIONSリクエストの処理
     if (req.method === 'OPTIONS') {
@@ -13,49 +15,45 @@ export default async function (req, res) {
       return res.status(200).send('');
     }
 
-    // データベース接続チェックのモック
-    const dbCheckResult = {
-      success: true,
-      message: 'データベース接続は正常です',
-      checks: [
-        {
-          name: 'Connection Test',
-          status: 'passed',
-          message: 'データベースへの接続が成功しました',
-          responseTime: Math.random() * 100,
-        },
-        {
-          name: 'Query Test',
-          status: 'passed',
-          message: 'クエリの実行が成功しました',
-          responseTime: Math.random() * 50,
-        },
-        {
-          name: 'Schema Validation',
-          status: 'passed',
-          message: 'スキーマの検証が完了しました',
-          responseTime: Math.random() * 30,
-        },
-      ],
-      overallStatus: 'healthy',
-      timestamp: new Date().toISOString(),
-      database: {
-        type: 'PostgreSQL',
-        version: '14.0',
-        host: 'localhost',
-        port: 5432,
-        database: 'webappdb',
-      }
-    };
+    // データベースプールの確認
+    if (!dbPool) {
+      console.warn('[db-check] Database pool not initialized');
+      return res.status(200).json({
+        success: false,
+        status: 'ERROR',
+        message: 'データベース接続プールが初期化されていません',
+        timestamp: new Date().toISOString()
+      });
+    }
 
-    return res.status(200).json(dbCheckResult);
+    // 実際のデータベース接続テスト
+    const timeout = 15000;
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Database connection timeout')), timeout);
+    });
+
+    const queryPromise = dbPool.query('SELECT NOW() as current_time, version() as version');
+
+    const result = await Promise.race([queryPromise, timeoutPromise]);
+    console.log('[db-check] Database connection successful');
+
+    return res.status(200).json({
+      success: true,
+      status: 'OK',
+      message: 'データベース接続は正常です',
+      db_time: result.rows[0].current_time,
+      version: result.rows[0].version,
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
-    console.error('Error in db check function:', error);
-    return res.status(500).json({
+    console.error('[db-check] Error:', error.message);
+    return res.status(200).json({
       success: false,
-      error: 'Internal server error',
-      message: error.message
+      status: 'ERROR',
+      message: 'データベース接続に失敗しました',
+      error: error.message,
+      timestamp: new Date().toISOString()
     });
   }
 }
