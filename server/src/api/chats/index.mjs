@@ -30,7 +30,8 @@ async function saveJsonFile(fileName, content) {
   const containerClient = blobServiceClient.getContainerClient(containerName);
   await containerClient.createIfNotExists();
   const { norm } = await import('../../infra/blob.mjs');
-  const blobName = norm(`knowledge-base/${EXPORT_SUBDIR}/${fileName}`);
+  // norm()を使用してBLOB_PREFIXを自動適用（knowledge-base/は重複するので除外）
+  const blobName = norm(`${EXPORT_SUBDIR}/${fileName}`);
   const blockBlobClient = containerClient.getBlockBlobClient(blobName);
   await blockBlobClient.upload(content, Buffer.byteLength(content), {
     blobHTTPHeaders: { blobContentType: 'application/json' },
@@ -79,7 +80,8 @@ async function getLatestExport(chatId) {
 
   const containerClient = blobServiceClient.getContainerClient(containerName);
   const { norm } = await import('../../infra/blob.mjs');
-  const prefix = norm(`knowledge-base/${EXPORT_SUBDIR}/`);
+  // norm()を使用してBLOB_PREFIXを自動適用（knowledge-base/は重複するので除外）
+  const prefix = norm(`${EXPORT_SUBDIR}/`);
   for await (const blob of containerClient.listBlobsFlat({ prefix })) {
     if (!blob.name.endsWith('.json')) continue;
     if (!chatId || blob.name.includes(chatId)) {
@@ -124,7 +126,8 @@ async function downloadExport(fileName) {
 
   const containerClient = blobServiceClient.getContainerClient(containerName);
   const { norm } = await import('../../infra/blob.mjs');
-  const blobName = norm(`knowledge-base/${EXPORT_SUBDIR}/${fileName}`);
+  // norm()を使用してBLOB_PREFIXを自動適用（knowledge-base/は重複するので除外）
+  const blobName = norm(`${EXPORT_SUBDIR}/${fileName}`);
   console.log('[api/chats] AZURE: Downloading from Blob:', blobName);
   const blobClient = containerClient.getBlobClient(blobName);
   

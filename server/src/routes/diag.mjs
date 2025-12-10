@@ -180,7 +180,8 @@ router.get('/blob-detailed', async (req, res) => {
     }
 
     // Test 5: Upload test
-    const testBlobName = `knowledge-base/images/chat-exports/_test_${Date.now()}.txt`;
+    // norm()を使用してBLOB_PREFIXを自動適用（knowledge-base/は重複するので除外）
+    const testBlobName = norm(`images/chat-exports/_test_${Date.now()}.txt`);
     const testContent = 'Upload test - ' + new Date().toISOString();
     const testBlockBlobClient = containerClient.getBlockBlobClient(testBlobName);
     

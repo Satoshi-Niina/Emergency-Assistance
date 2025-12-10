@@ -515,7 +515,8 @@ export default async function emergencyFlowHandler(req, res) {
         }
 
         const containerClient = blobServiceClient.getContainerClient(containerName);
-        const blobName = `knowledge-base/images/emergency-flows/${fileName}`;
+        // norm()を使用してBLOB_PREFIXを自動適用
+        const blobName = norm(`images/emergency-flows/${fileName}`);
         console.log('[api/emergency-flow/upload-image] AZURE: Uploading to Blob:', blobName);
         const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
@@ -607,7 +608,9 @@ export default async function emergencyFlowHandler(req, res) {
       }
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
-      const blobName = `knowledge-base/images/emergency-flows/${fileName}`;
+      // norm()を使用してBLOB_PREFIXを自動適用
+      const blobName = norm(`images/emergency-flows/${fileName}`);
+      console.log('[api/emergency-flow/delete-image] AZURE: 削除試行パス:', blobName);
       const blobClient = containerClient.getBlobClient(blobName);
 
       const exists = await blobClient.exists();
@@ -1101,7 +1104,9 @@ export default async function emergencyFlowHandler(req, res) {
         let deletedCount = 0;
         for (const imageFileName of imagesToDelete) {
           try {
-            const imageBlobName = `knowledge-base/images/emergency-flows/${imageFileName}`;
+            // norm()を使用してBLOB_PREFIXを自動適用
+            const imageBlobName = norm(`images/emergency-flows/${imageFileName}`);
+            console.log(`[api/emergency-flow/PUT] 🗑️ 削除試行: ${imageBlobName}`);
             const imageBlob = containerClient.getBlockBlobClient(imageBlobName);
             const exists = await imageBlob.exists();
             if (exists) {
@@ -1109,7 +1114,7 @@ export default async function emergencyFlowHandler(req, res) {
               deletedCount++;
               console.log(`[api/emergency-flow/PUT] ✅ 画像削除成功: ${imageFileName}`);
             } else {
-              console.log(`[api/emergency-flow/PUT] ⚠️ 画像が既に存在しません: ${imageFileName}`);
+              console.log(`[api/emergency-flow/PUT] ⚠️ 画像が既に存在しません: ${imageFileName} (試行パス: ${imageBlobName})`);
             }
           } catch (imgError) {
             console.warn(`[api/emergency-flow/PUT] ❌ 画像削除失敗 ${imageFileName}:`, imgError.message);

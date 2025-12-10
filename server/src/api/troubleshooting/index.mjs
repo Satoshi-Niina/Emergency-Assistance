@@ -83,7 +83,8 @@ export default async function troubleshootingHandler(req, res) {
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
       const listOptions = {
-        prefix: norm('knowledge-base/troubleshooting/')
+        // norm()を使用してBLOB_PREFIXを自動適用（knowledge-base/は重複するので除外）
+        prefix: norm('troubleshooting/')
       };
 
       for await (const blob of containerClient.listBlobsFlat(listOptions)) {
@@ -185,7 +186,8 @@ export default async function troubleshootingHandler(req, res) {
       }
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
-      const blobName = norm(`knowledge-base/troubleshooting/${id}.json`);
+      // norm()を使用してBLOB_PREFIXを自動適用（knowledge-base/は重複するので除外）
+      const blobName = norm(`troubleshooting/${id}.json`);
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
       const exists = await blockBlobClient.exists();
@@ -288,7 +290,8 @@ export default async function troubleshootingHandler(req, res) {
       }
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
-      const blobName = norm(`knowledge-base/troubleshooting/${flowData.id}.json`);
+      // norm()を使用してBLOB_PREFIXを自動適用（knowledge-base/は重複するので除外）
+      const blobName = norm(`troubleshooting/${flowData.id}.json`);
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
       const buffer = Buffer.from(jsonContent, 'utf-8');
@@ -373,7 +376,8 @@ export default async function troubleshootingHandler(req, res) {
       }
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
-      const blobName = norm(`knowledge-base/troubleshooting/${id}.json`);
+      // norm()を使用してBLOB_PREFIXを自動適用（knowledge-base/は重複するので除外）
+      const blobName = norm(`troubleshooting/${id}.json`);
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
       const buffer = Buffer.from(jsonContent, 'utf-8');
@@ -453,7 +457,8 @@ export default async function troubleshootingHandler(req, res) {
       }
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
-      const blobName = norm(`knowledge-base/troubleshooting/${id}.json`);
+      // norm()を使用してBLOB_PREFIXを自動適用（knowledge-base/は重複するので除外）
+      const blobName = norm(`troubleshooting/${id}.json`);
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
       const exists = await blockBlobClient.exists();

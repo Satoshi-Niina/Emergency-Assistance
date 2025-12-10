@@ -769,7 +769,8 @@ router.get('/export-files', async (req, res) => {
           });
         }
         
-        const prefix = norm('knowledge-base/exports/');
+        // norm()を使用してBLOB_PREFIXを自動適用（knowledge-base/は重複するので除外）
+        const prefix = norm('exports/');
         console.log('[history/export-files] 検索プレフィックス:', prefix);
         
         for await (const blob of containerClient.listBlobsFlat({ prefix })) {
