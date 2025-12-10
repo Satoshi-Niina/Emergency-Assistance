@@ -16,12 +16,18 @@ function buildCandidatePaths(fileName) {
 
 async function resolveBlobClient(containerClient, fileName) {
   const candidates = buildCandidatePaths(fileName);
+  console.log('[resolveBlobClient] Searching for:', fileName, 'candidates:', candidates);
+  
   for (const blobName of candidates) {
     const blobClient = containerClient.getBlobClient(blobName);
-    if (await blobClient.exists()) {
+    const exists = await blobClient.exists();
+    console.log('[resolveBlobClient] Checking:', blobName, 'exists:', exists);
+    if (exists) {
+      console.log('[resolveBlobClient] ✅ Found:', blobName);
       return { blobClient, blobName };
     }
   }
+  console.log('[resolveBlobClient] ❌ Not found in any candidate path');
   return null;
 }
 
@@ -1159,8 +1165,10 @@ export default async function emergencyFlowHandler(req, res) {
   // /api/emergency-flow/:id - DELETE削除
   if (pathParts[2] && method === 'DELETE') {
     try {
-      const fileName = pathParts[2];
-      console.log('[api/emergency-flow/delete] Deleting:', fileName);
+      const flowId = pathParts[2];
+      // .json拡張子を確実に付ける
+      const fileName = flowId.endsWith('.json') ? flowId : `${flowId}.json`;
+      console.log('[api/emergency-flow/delete] Deleting:', { flowId, fileName });
 
       const useAzure = isAzureEnvironment();
 
@@ -1231,8 +1239,10 @@ export default async function emergencyFlowHandler(req, res) {
       }
 
       // Azureモード: BLOBから削除
+      console.log('[api/emergency-flow/delete] AZURE: Using BLOB storage');
       const blobServiceClient = getBlobServiceClient();
       if (!blobServiceClient) {
+        console.error('[api/emergency-flow/delete] AZURE: BLOB service client not available');
         return res.status(503).json({
           success: false,
           error: 'BLOB storage not available'
@@ -1240,14 +1250,20 @@ export default async function emergencyFlowHandler(req, res) {
       }
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
+      console.log('[api/emergency-flow/delete] AZURE: Container:', containerName, 'FileName:', fileName);
+      
       const resolved = await resolveBlobClient(containerClient, fileName);
 
       if (!resolved) {
+        console.error('[api/emergency-flow/delete] AZURE: ❌ Flow not found:', fileName);
         return res.status(404).json({
           success: false,
-          error: 'フローが見つかりません'
+          error: 'フローが見つかりません',
+          details: `ファイル ${fileName} が見つかりませんでした`
         });
       }
+      
+      console.log('[api/emergency-flow/delete] AZURE: ✅ Found blob:', resolved.blobName);
 
       // JSONをダウンロードして画像ファイル名を取得
       let imagesToDelete = [];
