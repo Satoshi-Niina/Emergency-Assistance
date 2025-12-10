@@ -618,17 +618,29 @@ const EmergencyGuideEdit: React.FC = () => {
       });
 
       const { buildApiUrl } = await import('../../lib/api');
-      const response = await fetch(
-        buildApiUrl(`/emergency-flow/${updatedFlowData.id}`),
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updatedFlowData),
-        }
-      );
+      const putUrl = buildApiUrl(`/emergency-flow/${updatedFlowData.id}`);
+      
+      console.log('🔍 PUT診断:', {
+        flowId: updatedFlowData.id,
+        flowTitle: updatedFlowData.title,
+        putUrl: putUrl,
+        stepsCount: updatedFlowData.steps?.length || 0,
+        imagesCount: updatedFlowData.steps?.reduce((sum: number, step: any) => 
+          sum + (step.images?.length || 0), 0
+        )
+      });
+      
+      const response = await fetch(putUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedFlowData),
+      });
+
+      console.log('📡 PUT レスポンス:', response.status, response.statusText);
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('❌ PUT エラー詳細:', errorData);
         throw new Error(errorData.error || '保存に失敗しました');
       }
 

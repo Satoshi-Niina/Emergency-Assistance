@@ -944,6 +944,22 @@ export default async function emergencyFlowHandler(req, res) {
       console.log('[api/emergency-flow/PUT]   デコード後:', decodedId);
       console.log('[api/emergency-flow/PUT]   生成したflowId:', flowId);
       console.log('[api/emergency-flow/PUT]   生成したfileName:', fileName);
+      console.log('[api/emergency-flow/PUT]   flowData.id:', flowData?.id);
+      console.log('[api/emergency-flow/PUT]   flowData.title:', flowData?.title);
+      console.log('[api/emergency-flow/PUT]   flowData.steps:', flowData?.steps?.length || 0, '件');
+      
+      // 画像情報をログ出力
+      let totalImages = 0;
+      if (Array.isArray(flowData?.steps)) {
+        flowData.steps.forEach((step, idx) => {
+          if (step.images && Array.isArray(step.images)) {
+            totalImages += step.images.length;
+            console.log(`[api/emergency-flow/PUT]   Step ${idx + 1} 画像:`, step.images.length, '枚', 
+              step.images.map(img => img.fileName || 'unknown'));
+          }
+        });
+      }
+      console.log('[api/emergency-flow/PUT]   合計画像数:', totalImages);
       console.log('[api/emergency-flow/PUT] Updating flow:', flowId);
 
       const useAzure = isAzureEnvironment();
