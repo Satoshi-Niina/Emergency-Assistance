@@ -386,11 +386,14 @@ export default function BaseDataPage() {
       const rawPayload = await response.json();
       console.log('📋 APIレスポンス（生データ）:', rawPayload);
 
+      // APIレスポンスの形式: { success: true, files: [...], count: N }
       const items = Array.isArray(rawPayload)
         ? rawPayload
-        : Array.isArray(rawPayload?.data)
-          ? rawPayload.data
-          : [];
+        : Array.isArray(rawPayload?.files)
+          ? rawPayload.files
+          : Array.isArray(rawPayload?.data)
+            ? rawPayload.data
+            : [];
 
       if (!Array.isArray(items) || items.length === 0) {
         if (!Array.isArray(items)) {

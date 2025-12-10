@@ -682,11 +682,18 @@ const EmergencyGuideEdit: React.FC = () => {
         description: 'フローが正常に削除されました。',
       });
 
-      // 削除後、リストを強制的に再読み込みして最新の状態を反映
-      await fetchFlowList(true);
+      // 削除後、即座にリストから該当フローを除外
+      setFlowList(prevList => prevList.filter(f => f.id !== flowId));
+      
+      // 削除されたフローが選択中だった場合は選択解除
+      if (selectedFlow?.id === flowId) {
+        setSelectedFlow(null);
+      }
 
-      // 削除されたフローデータを特定して再選択
-      setSelectedFlow(null);
+      // バックグラウンドでリストを再読み込み（サーバーと同期）
+      fetchFlowList(true).catch(err => {
+        console.warn('フロー一覧の再読み込みに失敗:', err);
+      });
     } catch (error) {
       console.error('❌フローの削除に失敗しました:', error);
       toast({
