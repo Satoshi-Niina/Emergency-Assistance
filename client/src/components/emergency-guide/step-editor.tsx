@@ -438,6 +438,8 @@ const Stepditor: React.FC<StepditorProps> = ({
     if (file) {
       handleImageUpload(stepId, file);
     }
+    // 同じファイルを再度選択できるようにinputをリセット
+    event.target.value = '';
   };
 
   const handleDragOver = (e: React.Dragvent) => {

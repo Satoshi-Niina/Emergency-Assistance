@@ -393,6 +393,17 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
         mimetype: req.file.mimetype
       });
 
+      // 画像形式のバリデーション（JPG/PNG/BMPのみ）
+      const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/bmp'];
+      if (!allowedMimeTypes.includes(req.file.mimetype)) {
+        console.error('[history/upload-image] Invalid file type:', req.file.mimetype);
+        return res.status(400).json({
+          success: false,
+          error: `サポートされていないファイル形式です。JPG、PNG、BMPのみアップロード可能です。`,
+          details: `受信したファイル形式: ${req.file.mimetype}`
+        });
+      }
+
       const timestamp = Date.now();
       let ext = path.extname(req.file.originalname);
       
@@ -402,8 +413,7 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
           'image/jpeg': '.jpg',
           'image/jpg': '.jpg',
           'image/png': '.png',
-          'image/gif': '.gif',
-          'image/webp': '.webp'
+          'image/bmp': '.bmp'
         };
         ext = mimeToExt[req.file.mimetype] || '.jpg'; // デフォルトは.jpg
         console.log(`[history/upload-image] No extension found, using mimetype: ${req.file.mimetype} -> ${ext}`);

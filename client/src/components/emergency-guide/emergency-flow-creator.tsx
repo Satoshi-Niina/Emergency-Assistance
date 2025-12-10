@@ -1252,6 +1252,8 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
                 if (file) {
                   handleImageUpload(slide.id, file);
                 }
+                // 同じファイルを再度選択できるようにinputをリセット
+                e.target.value = '';
               }}
             />
             <Button

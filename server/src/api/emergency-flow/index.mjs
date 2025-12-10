@@ -518,6 +518,17 @@ export default async function emergencyFlowHandler(req, res) {
           mimetype: req.file.mimetype
         });
 
+        // 画像形式のバリデーション（JPG/PNG/BMPのみ）
+        const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/bmp'];
+        if (!allowedMimeTypes.includes(req.file.mimetype)) {
+          console.error('[api/emergency-flow/upload-image] Invalid file type:', req.file.mimetype);
+          return res.status(400).json({
+            success: false,
+            error: `サポートされていないファイル形式です。JPG、PNG、BMPのみアップロード可能です。`,
+            details: `受信したファイル形式: ${req.file.mimetype}`
+          });
+        }
+
         const timestamp = Date.now();
         const ext = path.extname(req.file.originalname);
         const fileName = `emergency_flow_${timestamp}${ext}`;
