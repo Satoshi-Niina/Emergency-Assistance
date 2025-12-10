@@ -119,17 +119,26 @@ export default async function emergencyFlowHandler(req, res) {
         }
 
         // norm()でBLOB_PREFIXを自動適用
-        const prefixes = [norm('troubleshooting/')];
+        // 複数のパターンを試す（過去の保存形式との互換性のため）
+        const prefixes = [
+          norm('troubleshooting/'),    // 新しい標準パス
+          norm(''),                      // ルート（BLOB_PREFIXのみ）
+          'troubleshooting/',            // プレフィックスなし
+          ''                             // 完全なルート
+        ];
         const seen = new Set();
 
         for (const prefix of prefixes) {
-          console.log(`[api/emergency-flow/list] AZURE: Listing with prefix: ${prefix}`);
+          console.log(`[api/emergency-flow/list] AZURE: Listing with prefix: "${prefix}"`);
+          let countInPrefix = 0;
           for await (const blob of containerClient.listBlobsFlat({ prefix })) {
             if (!blob.name.endsWith('.json')) continue;
             const fileName = blob.name.split('/').pop();
             if (!fileName) continue;
             if (seen.has(fileName)) continue;
             seen.add(fileName);
+            countInPrefix++;
+            console.log(`[api/emergency-flow/list] AZURE: Found blob: ${blob.name} -> fileName: ${fileName}`);
             flows.push({
               id: fileName.replace('.json', ''),
               name: fileName,
@@ -139,10 +148,13 @@ export default async function emergencyFlowHandler(req, res) {
               size: blob.properties.contentLength,
             });
           }
-          if (flows.length > 0) break; // 何か取れたら終了
+          console.log(`[api/emergency-flow/list] AZURE: Found ${countInPrefix} files in prefix: "${prefix}"`);
         }
         
         console.log(`[api/emergency-flow/list] AZURE: Found ${flows.length} flows`);
+        flows.forEach((flow, idx) => {
+          console.log(`[api/emergency-flow/list] AZURE: Flow ${idx + 1}: id=${flow.id}, blobName=${flow.blobName}`);
+        });
       } catch (blobError) {
         console.error('[api/emergency-flow/list] AZURE: BLOB error:', blobError);
         return res.status(500).json({
@@ -234,8 +246,28 @@ export default async function emergencyFlowHandler(req, res) {
       const containerClient = blobServiceClient.getContainerClient(containerName);
       console.log('[api/emergency-flow/detail] AZURE: コンテナ名:', containerName);
       
-      const resolved = await resolveBlobClient(containerClient, fileName);
-      if (!resolved) {
+      // 複数のパスパターンで探す
+      const candidatePaths = [
+        norm(`troubleshooting/${fileName}`),
+        norm(`${fileName}`),
+        `troubleshooting/${fileName}`,
+        fileName
+      ];
+      
+      let blobClient = null;
+      let blobName = null;
+      
+      for (const candidatePath of candidatePaths) {
+        const testClient = containerClient.getBlockBlobClient(candidatePath);
+        const exists = await testClient.exists();
+        if (exists) {
+          blobClient = testClient;
+          blobName = candidatePath;
+          break;
+        }
+      }
+      
+      if (!blobClient) {
         console.warn('[api/emergency-flow/detail] AZURE: ❌ Blob not found for', fileName);
         return res.status(404).json({ 
           success: false, 
@@ -245,8 +277,8 @@ export default async function emergencyFlowHandler(req, res) {
         });
       }
 
-      console.log(`[api/emergency-flow/detail] AZURE: ✅ BLOB path: ${resolved.blobName}`);
-      const downloadResponse = await resolved.blobClient.download();
+      console.log(`[api/emergency-flow/detail] AZURE: ✅ BLOB path: ${blobName}`);
+      const downloadResponse = await blobClient.download();
       
       // JSONとしてパースして返す
       const chunks = [];
@@ -327,14 +359,35 @@ export default async function emergencyFlowHandler(req, res) {
       }
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
-      const resolved = await resolveBlobClient(containerClient, fileName);
-      if (!resolved) {
+      
+      // 複数のパスパターンで探す
+      const candidatePaths = [
+        norm(`troubleshooting/${fileName}`),
+        norm(`${fileName}`),
+        `troubleshooting/${fileName}`,
+        fileName
+      ];
+      
+      let blobClient = null;
+      let blobName = null;
+      
+      for (const candidatePath of candidatePaths) {
+        const testClient = containerClient.getBlockBlobClient(candidatePath);
+        const exists = await testClient.exists();
+        if (exists) {
+          blobClient = testClient;
+          blobName = candidatePath;
+          break;
+        }
+      }
+      
+      if (!blobClient) {
         console.warn('[api/emergency-flow] AZURE: Blob not found for', fileName);
         return res.status(404).json({ success: false, error: 'フローが見つかりません' });
       }
 
-      console.log(`[api/emergency-flow] AZURE: ✅ BLOB path: ${resolved.blobName}`);
-      const downloadResponse = await resolved.blobClient.download();
+      console.log(`[api/emergency-flow] AZURE: ✅ BLOB path: ${blobName}`);
+      const downloadResponse = await blobClient.download();
       const contentType = downloadResponse.contentType || 'application/json';
 
       res.setHeader('Content-Type', contentType);
@@ -933,6 +986,10 @@ export default async function emergencyFlowHandler(req, res) {
       const fileName = flowId.endsWith('.json') ? flowId : `${flowId}.json`;
       const flowData = req.body;
 
+      console.log('[api/emergency-flow/PUT] 🔍 PUT診断:');
+      console.log('[api/emergency-flow/PUT]   受信したpathParts[2]:', pathParts[2]);
+      console.log('[api/emergency-flow/PUT]   生成したflowId:', flowId);
+      console.log('[api/emergency-flow/PUT]   生成したfileName:', fileName);
       console.log('[api/emergency-flow/PUT] Updating flow:', flowId);
 
       const useAzure = isAzureEnvironment();
@@ -1052,19 +1109,39 @@ export default async function emergencyFlowHandler(req, res) {
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
       
-      // 既存のBLOBを直接取得（norm()でBLOB_PREFIXを自動適用）
-      const blobName = norm(`troubleshooting/${fileName}`);
-      const blobClient = containerClient.getBlockBlobClient(blobName);
+      // 既存のBLOBを複数のパスパターンで探す（過去の保存形式との互換性のため）
+      const candidatePaths = [
+        norm(`troubleshooting/${fileName}`),  // 新しい標準パス
+        norm(`${fileName}`),                   // BLOB_PREFIXのみ適用
+        `troubleshooting/${fileName}`,         // プレフィックスなし
+        fileName                               // 完全なルート
+      ];
       
-      console.log('[api/emergency-flow/PUT] AZURE: チェック中のBLOBパス:', blobName);
+      console.log('[api/emergency-flow/PUT] AZURE: 🔍 BLOBを複数パスで検索中...');
+      candidatePaths.forEach((path, idx) => {
+        console.log(`[api/emergency-flow/PUT] AZURE:   候補${idx + 1}: ${path}`);
+      });
       
-      const exists = await blobClient.exists();
-      if (!exists) {
-        console.error('[api/emergency-flow/PUT] AZURE: ❌ BLOBが見つかりません:', blobName);
+      let blobClient = null;
+      let blobName = null;
+      
+      for (const candidatePath of candidatePaths) {
+        const testClient = containerClient.getBlockBlobClient(candidatePath);
+        const exists = await testClient.exists();
+        console.log(`[api/emergency-flow/PUT] AZURE: チェック "${candidatePath}": ${exists ? '✅ 存在' : '❌ なし'}`);
+        if (exists) {
+          blobClient = testClient;
+          blobName = candidatePath;
+          break;
+        }
+      }
+      
+      if (!blobClient || !blobName) {
+        console.error('[api/emergency-flow/PUT] AZURE: ❌ どのパスでもBLOBが見つかりませんでした');
         return res.status(404).json({
           success: false,
           error: 'フローが見つかりません',
-          blobPath: blobName
+          searchedPaths: candidatePaths
         });
       }
 
@@ -1259,23 +1336,46 @@ export default async function emergencyFlowHandler(req, res) {
       const containerClient = blobServiceClient.getContainerClient(containerName);
       console.log('[api/emergency-flow/delete] AZURE: Container:', containerName, 'FileName:', fileName);
       
-      const resolved = await resolveBlobClient(containerClient, fileName);
+      // 複数のパスパターンで探す
+      const candidatePaths = [
+        norm(`troubleshooting/${fileName}`),
+        norm(`${fileName}`),
+        `troubleshooting/${fileName}`,
+        fileName
+      ];
+      
+      console.log('[api/emergency-flow/delete] AZURE: 🔍 BLOBを複数パスで検索中...');
+      
+      let blobClient = null;
+      let blobName = null;
+      
+      for (const candidatePath of candidatePaths) {
+        const testClient = containerClient.getBlockBlobClient(candidatePath);
+        const exists = await testClient.exists();
+        console.log(`[api/emergency-flow/delete] AZURE: チェック "${candidatePath}": ${exists ? '✅ 存在' : '❌ なし'}`);
+        if (exists) {
+          blobClient = testClient;
+          blobName = candidatePath;
+          break;
+        }
+      }
 
-      if (!resolved) {
+      if (!blobClient || !blobName) {
         console.error('[api/emergency-flow/delete] AZURE: ❌ Flow not found:', fileName);
         return res.status(404).json({
           success: false,
           error: 'フローが見つかりません',
-          details: `ファイル ${fileName} が見つかりませんでした`
+          details: `ファイル ${fileName} が見つかりませんでした`,
+          searchedPaths: candidatePaths
         });
       }
       
-      console.log('[api/emergency-flow/delete] AZURE: ✅ Found blob:', resolved.blobName);
+      console.log('[api/emergency-flow/delete] AZURE: ✅ Found blob:', blobName);
 
       // JSONをダウンロードして画像ファイル名を取得
       let imagesToDelete = [];
       try {
-        const downloadResponse = await resolved.blobClient.download();
+        const downloadResponse = await blobClient.download();
         if (downloadResponse.readableStreamBody) {
           const chunks = [];
           for await (const chunk of downloadResponse.readableStreamBody) {
@@ -1320,8 +1420,8 @@ export default async function emergencyFlowHandler(req, res) {
       }
 
       // JSONファイルを削除
-      await resolved.blobClient.delete();
-      console.log(`[api/emergency-flow/delete] AZURE: Deleted JSON: ${resolved.blobName}`);
+      await blobClient.delete();
+      console.log(`[api/emergency-flow/delete] AZURE: Deleted JSON: ${blobName}`);
 
       return res.json({
         success: true,
