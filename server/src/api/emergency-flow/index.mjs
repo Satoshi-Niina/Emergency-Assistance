@@ -512,10 +512,13 @@ export default async function emergencyFlowHandler(req, res) {
           });
         }
 
-        console.log('[api/emergency-flow/upload-image] Uploading:', {
+        console.log('[api/emergency-flow/upload-image] 📤 Request details:', {
           fileName: req.file.originalname,
           size: req.file.size,
-          mimetype: req.file.mimetype
+          mimetype: req.file.mimetype,
+          stepId: req.body.stepId,
+          flowId: req.body.flowId || 'not provided',
+          bodyKeys: Object.keys(req.body)
         });
 
         // 画像形式のバリデーション（JPG/PNG/BMPのみ）
@@ -612,7 +615,13 @@ export default async function emergencyFlowHandler(req, res) {
           storage: 'blob'
         });
       } catch (error) {
-        console.error('[api/emergency-flow/upload-image] Error:', error);
+        console.error('[api/emergency-flow/upload-image] ❌ Error:', {
+          message: error.message,
+          stack: error.stack,
+          fileName: req.file?.originalname,
+          stepId: req.body.stepId,
+          flowId: req.body.flowId
+        });
         return res.status(500).json({
           success: false,
           error: '画像のアップロードに失敗しました',
