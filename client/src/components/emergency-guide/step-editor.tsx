@@ -332,9 +332,14 @@ const Stepditor: React.FC<StepditorProps> = ({
           status: response.status,
           statusText: response.statusText,
           errorData: errorData,
-          uploadUrl: uploadUrl
+          uploadUrl: uploadUrl,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          flowId: flowId
         });
-        throw new Error(errorData.error || errorData.details || '画像のアップロードに失敗しました');
+        const errorMsg = errorData.details || errorData.error || `アップロード失敗 ${response.status}`;
+        throw new Error(errorMsg);
       }
 
       const result = await response.json();

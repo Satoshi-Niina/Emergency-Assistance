@@ -496,11 +496,18 @@ export default async function emergencyFlowHandler(req, res) {
     // multerミドルウェアを手動で適用
     return upload.single('image')(req, res, async (err) => {
       if (err) {
-        console.error('[api/emergency-flow/upload-image] Upload error:', err);
+        console.error('[api/emergency-flow/upload-image] ❌ Multer error:', {
+          message: err.message,
+          code: err.code,
+          field: err.field,
+          stack: err.stack,
+          name: err.name
+        });
         return res.status(500).json({
           success: false,
           error: 'ファイルのアップロードに失敗しました',
-          details: err.message
+          details: err.message,
+          code: err.code
         });
       }
 

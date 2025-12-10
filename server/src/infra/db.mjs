@@ -5,6 +5,10 @@ import { DATABASE_URL, PG_SSL } from '../config/env.mjs';
 
 export let dbPool = null;
 
+export function getDbPool() {
+  return dbPool;
+}
+
 export function initializeDatabase() {
   if (!DATABASE_URL) {
     console.warn('[DB] No DATABASE_URL provided. Running without database.');
