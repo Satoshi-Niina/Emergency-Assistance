@@ -203,6 +203,12 @@ const Stepditor: React.FC<StepditorProps> = ({
     setExpandedSteps(allExpanded);
   }, [steps]);
 
+  // flowIdが変更されたときにアップロード状態をリセット
+  useEffect(() => {
+    console.log('🔄 flowId変更検知、アップロード状態をリセット:', flowId);
+    setUploadingImages({});
+  }, [flowId]);
+
   // カスタムスクロールバーのスタイルを適用
   useEffect(() => {
     const styleElement = document.createElement('style');
@@ -269,7 +275,13 @@ const Stepditor: React.FC<StepditorProps> = ({
     setUploadingImages(prev => ({ ...prev, [stepId]: true }));
 
     try {
-      console.log('🖼️ 画像アップロード開始', { stepId, fileName: file.name, fileSize: file.size });
+      console.log('🖼️ 画像アップロード開始', { 
+        stepId, 
+        fileName: file.name, 
+        fileSize: file.size,
+        fileType: file.type,
+        flowId: flowId || 'undefined'
+      });
 
       // 重複チェック: 同じファイル名の画像が既に存在するかチェック
       const stepToUpdate = steps.find(step => step.id === stepId);
@@ -316,7 +328,13 @@ const Stepditor: React.FC<StepditorProps> = ({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || '画像のアップロードに失敗しました');
+        console.error('❌ 画像アップロードエラー:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData: errorData,
+          uploadUrl: uploadUrl
+        });
+        throw new Error(errorData.error || errorData.details || '画像のアップロードに失敗しました');
       }
 
       const result = await response.json();
@@ -376,6 +394,10 @@ const Stepditor: React.FC<StepditorProps> = ({
       );
     } finally {
       setUploadingImages(prev => ({ ...prev, [stepId]: false }));
+      // ファイル入力を確実にリセット（エラー時も含む）
+      if (fileInputRefs.current[stepId]) {
+        fileInputRefs.current[stepId]!.value = '';
+      }
     }
   };
 
@@ -419,6 +441,11 @@ const Stepditor: React.FC<StepditorProps> = ({
             onStepUpdate(stepId, { images: newImages });
             console.log('✅ 画像削除完了', imageToRemove.fileName);
             alert(`画像"${imageToRemove.fileName}" を削除しました。`);
+            
+            // ファイル入力をリセット
+            if (fileInputRefs.current[stepId]) {
+              fileInputRefs.current[stepId]!.value = '';
+            }
           } catch (error) {
             console.error('❌ 画像削除エラー:', error);
             alert(
