@@ -5501,7 +5501,7 @@ const HistoryPage: React.FC = () => {
                       敁Eー個所の画僁E                    </h3>
                     <input
                       type='file'
-                      accept='image/*'
+                      accept='image/jpeg,image/png,image/bmp'
                       multiple
                       className='hidden'
                       id='image-upload-input'

@@ -62,8 +62,7 @@ export default async function imagesHandler(req, res) {
       '.jpg': 'image/jpeg',
       '.jpeg': 'image/jpeg',
       '.png': 'image/png',
-      '.gif': 'image/gif',
-      '.webp': 'image/webp'
+      '.bmp': 'image/bmp'
     };
     const contentType = mimeTypes[extension] || 'image/jpeg'; // デフォルトをimage/jpegに変更
     

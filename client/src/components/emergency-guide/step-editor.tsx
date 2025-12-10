@@ -717,11 +717,14 @@ const Stepditor: React.FC<StepditorProps> = ({
                     <p className='text-xs text-gray-400 mt-1'>
                       ドラッグ&ドロップ対応
                     </p>
+                    <p className='text-xs text-gray-400 mt-1'>
+                      対応形式: JPG, PNG, BMP
+                    </p>
                   </div>
                   <input
                     ref={el => (fileInputRefs.current[step.id] = el)}
                     type='file'
-                    accept='image/*'
+                    accept='image/jpeg,image/png,image/bmp'
                     onChange={e => handleFileSelect(step.id, e)}
                     className='hidden'
                   />

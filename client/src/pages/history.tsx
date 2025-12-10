@@ -2225,10 +2225,11 @@ export default function HistoryPage() {
                     <h3 className="text-lg font-semibold flex items-center gap-2">
                       <ImageIcon className="h-5 w-5" />
                       故障個所の画像
+                      <span className="text-xs text-gray-500 font-normal ml-2">(JPG/PNG/BMP対応)</span>
                     </h3>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/bmp"
                       multiple
                       className="hidden"
                       id="image-upload-input"

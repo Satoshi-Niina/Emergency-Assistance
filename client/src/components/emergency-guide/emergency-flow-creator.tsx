@@ -1246,7 +1246,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
               type='file'
               id={`image-upload-${slide.id}`}
               className='hidden'
-              accept='image/*'
+              accept='image/jpeg,image/png,image/bmp'
               onChange={e => {
                 const file = e.target.files?.[0];
                 if (file) {
@@ -1261,7 +1261,7 @@ const mergencyFlowCreator: React.FC<mergencyFlowCreatorProps> = ({
                 document.getElementById(`image-upload-${slide.id}`)?.click()
               }
               className='text-base-2x h-12 px-4 bg-blue-50 hover:bg-blue-100 border-blue-300'
-              title='このステップに画像を追加（最大3枚）'
+              title='このステップに画像を追加（最大3枚）JPG/PNG/BMP対応'
             >
               <Upload className='w-6 h-6 mr-2' />
               画像を追加
