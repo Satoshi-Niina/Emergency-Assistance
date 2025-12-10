@@ -965,28 +965,39 @@ async function handleUpdateHistory(req, res, rawId) {
         });
 
         // 削除された画像の検出と削除
-        const oldImages = originalData.savedImages || originalData.jsonData?.savedImages || [];
-        const newImages = updatePayload.savedImages || [];
-        const newImageNames = new Set(newImages.map(img => img.fileName || img.url?.split('/').pop()));
+        // クライアントから明示的に送信されたdeletedImages配列を優先使用
+        let imagesToDelete = [];
         
-        const deletedImages = oldImages.filter(img => {
-          const fileName = img.fileName || img.url?.split('/').pop();
-          return fileName && !newImageNames.has(fileName);
-        });
-
-        if (deletedImages.length > 0) {
-          console.log(`[history/update] Found ${deletedImages.length} images to delete`);
-          for (const img of deletedImages) {
+        if (req.body.deletedImages && Array.isArray(req.body.deletedImages)) {
+          console.log(`[history/update] Using explicit deletedImages from client:`, req.body.deletedImages);
+          imagesToDelete = req.body.deletedImages;
+        } else {
+          // フォールバック: 差分から自動検出
+          const oldImages = originalData.savedImages || originalData.jsonData?.savedImages || [];
+          const newImages = updatePayload.savedImages || [];
+          const newImageNames = new Set(newImages.map(img => img.fileName || img.url?.split('/').pop()));
+          
+          const deletedImages = oldImages.filter(img => {
             const fileName = img.fileName || img.url?.split('/').pop();
+            return fileName && !newImageNames.has(fileName);
+          });
+          imagesToDelete = deletedImages.map(img => img.fileName || img.url?.split('/').pop()).filter(Boolean);
+        }
+
+        if (imagesToDelete.length > 0) {
+          console.log(`[history/update] LOCAL: Deleting ${imagesToDelete.length} images:`, imagesToDelete);
+          for (const fileName of imagesToDelete) {
             if (fileName) {
               try {
                 const imageFilePath = path.join(imagesDir, fileName);
                 if (await fs.promises.access(imageFilePath).then(() => true).catch(() => false)) {
                   await fs.promises.unlink(imageFilePath);
-                  console.log(`[history/update] 🗑️ Deleted removed image: ${fileName}`);
+                  console.log(`[history/update] LOCAL 🗑️ Deleted image: ${fileName}`);
+                } else {
+                  console.log(`[history/update] LOCAL ⚠️ Image not found (already deleted?): ${fileName}`);
                 }
               } catch (delErr) {
-                console.warn(`[history/update] ⚠️ Failed to delete image: ${fileName}`, delErr.message);
+                console.warn(`[history/update] LOCAL ❌ Failed to delete image: ${fileName}`, delErr.message);
               }
             }
           }
@@ -1060,29 +1071,40 @@ async function handleUpdateHistory(req, res, rawId) {
       });
 
       // 削除された画像の検出と削除
-      const oldImages = originalData.savedImages || originalData.jsonData?.savedImages || [];
-      const newImages = updatePayload.savedImages || [];
-      const newImageNames = new Set(newImages.map(img => img.fileName || img.url?.split('/').pop()));
+      // クライアントから明示的に送信されたdeletedImages配列を優先使用
+      let imagesToDelete = [];
       
-      const deletedImages = oldImages.filter(img => {
-        const fileName = img.fileName || img.url?.split('/').pop();
-        return fileName && !newImageNames.has(fileName);
-      });
-
-      if (deletedImages.length > 0) {
-        console.log(`[history/update] Found ${deletedImages.length} images to delete`);
-        for (const img of deletedImages) {
+      if (req.body.deletedImages && Array.isArray(req.body.deletedImages)) {
+        console.log(`[history/update] Using explicit deletedImages from client:`, req.body.deletedImages);
+        imagesToDelete = req.body.deletedImages;
+      } else {
+        // フォールバック: 差分から自動検出
+        const oldImages = originalData.savedImages || originalData.jsonData?.savedImages || [];
+        const newImages = updatePayload.savedImages || [];
+        const newImageNames = new Set(newImages.map(img => img.fileName || img.url?.split('/').pop()));
+        
+        const deletedImages = oldImages.filter(img => {
           const fileName = img.fileName || img.url?.split('/').pop();
+          return fileName && !newImageNames.has(fileName);
+        });
+        imagesToDelete = deletedImages.map(img => img.fileName || img.url?.split('/').pop()).filter(Boolean);
+      }
+
+      if (imagesToDelete.length > 0) {
+        console.log(`[history/update] AZURE: Deleting ${imagesToDelete.length} images:`, imagesToDelete);
+        for (const fileName of imagesToDelete) {
           if (fileName) {
             try {
               const imageBlobName = norm(`images/chat-exports/${fileName}`);
               const imageBlob = containerClient.getBlobClient(imageBlobName);
               if (await imageBlob.exists()) {
                 await imageBlob.delete();
-                console.log(`[history/update] 🗑️ Deleted removed image: ${fileName}`);
+                console.log(`[history/update] AZURE 🗑️ Deleted image: ${fileName}`);
+              } else {
+                console.log(`[history/update] AZURE ⚠️ Image not found (already deleted?): ${fileName}`);
               }
             } catch (delErr) {
-              console.warn(`[history/update] ⚠️ Failed to delete image: ${fileName}`, delErr.message);
+              console.warn(`[history/update] AZURE ❌ Failed to delete image: ${fileName}`, delErr.message);
             }
           }
         }
