@@ -21,7 +21,8 @@ async function resolveBlobClient(containerClient, fileName) {
   console.log('[resolveBlobClient] Searching for:', fileName, 'candidates:', candidates);
   
   for (const blobName of candidates) {
-    const blobClient = containerClient.getBlobClient(blobName);
+    // BlockBlobClientを使用（読み書き両方可能）
+    const blobClient = containerClient.getBlockBlobClient(blobName);
     const exists = await blobClient.exists();
     console.log('[resolveBlobClient] Checking:', blobName, 'exists:', exists);
     if (exists) {
@@ -69,10 +70,24 @@ export default async function emergencyFlowHandler(req, res) {
             const filePath = path.join(localDir, fileName);
             const stats = fs.statSync(filePath);
             
+            // JSONファイルの内容を読み取ってtitleとdescriptionを取得
+            let title = fileName;
+            let description = '';
+            try {
+              const content = fs.readFileSync(filePath, 'utf-8');
+              const jsonData = JSON.parse(content);
+              title = jsonData.title || fileName;
+              description = jsonData.description || '';
+            } catch (readError) {
+              console.warn(`[api/emergency-flow/list] LOCAL: Could not read ${fileName}:`, readError.message);
+            }
+            
             flows.push({
               id: fileName.replace('.json', ''),
               name: fileName,
               fileName,
+              title,
+              description,
               lastModified: stats.mtime,
               size: stats.size,
             });
@@ -131,17 +146,45 @@ export default async function emergencyFlowHandler(req, res) {
           if (!fileName) continue;
           if (seen.has(fileName)) continue;
           seen.add(fileName);
-          flows.push({
+          
+          // JSONファイルの内容を読み取ってtitleとdescriptionを取得
+          let title = fileName;
+          let description = '';
+          try {
+            const blobClient = containerClient.getBlobClient(blob.name);
+            const downloadResponse = await blobClient.download();
+            if (downloadResponse.readableStreamBody) {
+              const chunks = [];
+              for await (const chunk of downloadResponse.readableStreamBody) {
+                chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+              }
+              const buffer = Buffer.concat(chunks);
+              const jsonData = JSON.parse(buffer.toString('utf-8'));
+              title = jsonData.title || fileName;
+              description = jsonData.description || '';
+            }
+          } catch (readError) {
+            console.warn(`[api/emergency-flow/list] AZURE: Could not read ${fileName}:`, readError.message);
+          }
+          
+          const flowData = {
             id: fileName.replace('.json', ''),
             name: fileName,
             fileName,
             blobName: blob.name,
+            title,
+            description,
             lastModified: blob.properties.lastModified,
             size: blob.properties.contentLength,
-          });
+          };
+          flows.push(flowData);
+          console.log(`[api/emergency-flow/list] AZURE: ✅ Flow: ${flowData.id} - ${title}`);
         }
         
         console.log(`[api/emergency-flow/list] AZURE: Found ${flows.length} flows`);
+        if (flows.length > 0) {
+          console.log('[api/emergency-flow/list] AZURE: フロー一覧:', flows.map(f => f.id));
+        }
       } catch (blobError) {
         console.error('[api/emergency-flow/list] AZURE: BLOB error:', blobError);
         return res.status(500).json({
