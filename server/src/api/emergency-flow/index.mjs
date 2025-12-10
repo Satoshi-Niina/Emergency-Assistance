@@ -1052,20 +1052,28 @@ export default async function emergencyFlowHandler(req, res) {
 
       const containerClient = blobServiceClient.getContainerClient(containerName);
       
-      // 既存のBLOBを探す
-      const resolved = await resolveBlobClient(containerClient, fileName);
+      // 既存のBLOBを直接取得（norm()でBLOB_PREFIXを自動適用）
+      const blobName = norm(`troubleshooting/${fileName}`);
+      const blobClient = containerClient.getBlockBlobClient(blobName);
       
-      if (!resolved) {
+      console.log('[api/emergency-flow/PUT] AZURE: チェック中のBLOBパス:', blobName);
+      
+      const exists = await blobClient.exists();
+      if (!exists) {
+        console.error('[api/emergency-flow/PUT] AZURE: ❌ BLOBが見つかりません:', blobName);
         return res.status(404).json({
           success: false,
-          error: 'フローが見つかりません'
+          error: 'フローが見つかりません',
+          blobPath: blobName
         });
       }
+
+      console.log('[api/emergency-flow/PUT] AZURE: ✅ BLOB発見:', blobName);
 
       // 🔍 既存のフローデータを取得して画像の差分を確認
       let oldImageFileNames = new Set();
       try {
-        const downloadResponse = await resolved.blobClient.download();
+        const downloadResponse = await blobClient.download();
         if (downloadResponse.readableStreamBody) {
           const chunks = [];
           for await (const chunk of downloadResponse.readableStreamBody) {
@@ -1134,8 +1142,7 @@ export default async function emergencyFlowHandler(req, res) {
       const content = JSON.stringify(updatedFlowData, null, 2);
 
       // 差分で上書き保存（既存データを完全に置き換え）
-      const blockBlobClient = containerClient.getBlockBlobClient(resolved.blobName);
-      await blockBlobClient.upload(content, content.length, {
+      await blobClient.upload(content, content.length, {
         blobHTTPHeaders: { blobContentType: 'application/json' },
         metadata: {
           lastModified: new Date().toISOString(),
@@ -1143,13 +1150,13 @@ export default async function emergencyFlowHandler(req, res) {
         }
       });
 
-      console.log(`[api/emergency-flow/PUT] ✅ Updated successfully: ${resolved.blobName}`);
+      console.log(`[api/emergency-flow/PUT] ✅ Updated successfully: ${blobName}`);
 
       return res.json({
         success: true,
         message: 'フローを更新しました',
         data: updatedFlowData,
-        blobName: resolved.blobName,
+        blobName: blobName,
         imageCount: imageCount,
         deletedImages: imagesToDelete.length
       });
