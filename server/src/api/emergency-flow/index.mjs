@@ -1206,13 +1206,15 @@ export default async function emergencyFlowHandler(req, res) {
       }
 
       const content = JSON.stringify(updatedFlowData, null, 2);
+      const buffer = Buffer.from(content, 'utf-8');
 
       // 差分で上書き保存（既存データを完全に置き換え）
-      await blobClient.upload(content, content.length, {
-        blobHTTPHeaders: { blobContentType: 'application/json' },
+      await blobClient.upload(buffer, buffer.length, {
+        blobHTTPHeaders: { 
+          blobContentType: 'application/json; charset=utf-8'
+        },
         metadata: {
-          lastModified: new Date().toISOString(),
-          flowId: flowId
+          lastModified: new Date().toISOString()
         }
       });
 
