@@ -1,6 +1,10 @@
+import { getOpenAIClient } from '../../infra/openai.mjs';
+
 export default async function (req, res) {
   try {
-    console.log('GPT Check API processed a request.');
+    console.log('[gpt-check] GPT接続チェック開始');
+    console.log('[gpt-check] Environment:', process.env.NODE_ENV);
+    console.log('[gpt-check] OPENAI_API_KEY set:', !!process.env.OPENAI_API_KEY);
 
     // OPTIONSリクエストの処理
     if (req.method === 'OPTIONS') {
@@ -13,48 +17,82 @@ export default async function (req, res) {
       return res.status(200).send('');
     }
 
-    // GPT API接続チェックのモック
-    const gptCheckResult = {
-      success: true,
-      message: 'GPT API接続は正常です',
-      checks: [
-        {
-          name: 'API Key Validation',
-          status: 'passed',
-          message: 'APIキーが有効です',
-          responseTime: Math.random() * 50,
-        },
-        {
-          name: 'Model Availability',
-          status: 'passed',
-          message: 'モデルが利用可能です',
-          responseTime: Math.random() * 100,
-        },
-        {
-          name: 'Rate Limit Check',
-          status: 'passed',
-          message: 'レート制限内です',
-          responseTime: Math.random() * 30,
-        },
-      ],
-      overallStatus: 'healthy',
-      timestamp: new Date().toISOString(),
-      api: {
-        provider: 'OpenAI',
-        model: 'gpt-3.5-turbo',
-        version: '3.5',
-        endpoint: 'https://api.openai.com/v1/chat/completions',
-      },
-    };
+    // OpenAI APIキーの設定を確認
+    const isOpenAIConfigured = process.env.OPENAI_API_KEY &&
+      process.env.OPENAI_API_KEY !== 'dev-mock-key' &&
+      process.env.OPENAI_API_KEY.startsWith('sk-');
 
-    return res.status(200).json(gptCheckResult);
+    const openai = getOpenAIClient();
+    
+    if (!isOpenAIConfigured || !openai) {
+      console.warn('[gpt-check] OpenAI APIキーが設定されていません');
+      return res.status(200).json({
+        success: false,
+        status: 'ERROR',
+        message: 'OpenAI APIキーが設定されていません',
+        error: 'APIキーが未設定または無効です',
+        details: {
+          environment: process.env.NODE_ENV || 'development',
+          apiKey: 'not_configured',
+          model: 'not_available',
+          client_initialized: !!openai
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // 実際にOpenAI APIに接続テスト（タイムアウト付き）
+    console.log('[gpt-check] OpenAI APIリクエスト開始');
+    
+    const timeout = 30000; // 30秒
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('OpenAI API connection timeout')), timeout);
+    });
+
+    const apiPromise = openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: 'test' }],
+      max_tokens: 5
+    });
+
+    const response = await Promise.race([apiPromise, timeoutPromise]);
+    console.log('[gpt-check] OpenAI APIリクエスト成功');
+
+    return res.status(200).json({
+      success: true,
+      status: 'OK',
+      message: 'OpenAI API接続成功',
+      details: {
+        environment: process.env.NODE_ENV || 'development',
+        apiKey: 'configured',
+        model: response.model,
+        client_initialized: !!openai
+      },
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
-    console.error('Error in gpt check function:', error);
-    return res.status(500).json({
+    console.error('[gpt-check] エラー発生:', {
+      message: error.message,
+      code: error.code,
+      status: error.status,
+      type: error.type,
+      name: error.name
+    });
+    
+    return res.status(200).json({
       success: false,
-      error: 'Internal server error',
-      message: error.message
+      status: 'ERROR',
+      message: 'OpenAI API接続失敗',
+      error: error.message,
+      details: {
+        environment: process.env.NODE_ENV || 'development',
+        apiKey: 'configured_but_failed',
+        error_type: error.constructor.name,
+        error_code: error.code,
+        error_status: error.status
+      },
+      timestamp: new Date().toISOString()
     });
   }
 }

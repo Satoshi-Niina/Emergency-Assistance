@@ -221,6 +221,17 @@ router.get('/blob-detailed', async (req, res) => {
 export default function registerDiagRoutes(app) {
   app.use('/api/_diag', router);
   
+  // System check endpoints (redirect to actual API endpoints)
+  app.get('/api/system-check/db-check', async (req, res, next) => {
+    req.url = '/api/db-check';
+    return app._router.handle(req, res, next);
+  });
+  
+  app.post('/api/system-check/gpt-check', async (req, res, next) => {
+    req.url = '/api/gpt-check';
+    return app._router.handle(req, res, next);
+  });
+  
   // Version info
   app.get('/api/version', (req, res) => {
     let deploymentInfo = {};
