@@ -86,7 +86,7 @@ export default function BaseDataPage() {
       removeSpecialChars: false,
     },
   });
-  
+
   // AI支援カスタマイズ設定
   const [aiAssistSettings, setAiAssistSettings] = useState({
     initialPrompt: '何か問題がありましたか？お困りの事象を教えてください！',
@@ -150,7 +150,7 @@ export default function BaseDataPage() {
         formData.append('saveOriginalFile', saveOriginalFile ? 'true' : 'false');
 
         try {
-          const response = await fetch('/api/files/import', {
+          const response = await fetch(buildApiUrl('/files/import'), {
             method: 'POST',
             body: formData,
             credentials: 'include',
@@ -162,10 +162,10 @@ export default function BaseDataPage() {
               prev.map((status, index) =>
                 index === i
                   ? {
-                      ...status,
-                      status: 'success' as const,
-                      message: result.message || 'インポート完了',
-                    }
+                    ...status,
+                    status: 'success' as const,
+                    message: result.message || 'インポート完了',
+                  }
                   : status
               )
             );
@@ -175,10 +175,10 @@ export default function BaseDataPage() {
               prev.map((status, index) =>
                 index === i
                   ? {
-                      ...status,
-                      status: 'error' as const,
-                      message: error.message || 'インポートエラー',
-                    }
+                    ...status,
+                    status: 'error' as const,
+                    message: error.message || 'インポートエラー',
+                  }
                   : status
               )
             );
@@ -188,10 +188,10 @@ export default function BaseDataPage() {
             prev.map((status, index) =>
               index === i
                 ? {
-                    ...status,
-                    status: 'error' as const,
-                    message: 'ネットワークエラー',
-                  }
+                  ...status,
+                  status: 'error' as const,
+                  message: 'ネットワークエラー',
+                }
                 : status
             )
           );
@@ -224,7 +224,7 @@ export default function BaseDataPage() {
   // RAG設定の保存
   const saveRagSettings = async () => {
     try {
-      const response = await fetch('/api/settings/rag', {
+      const response = await fetch(buildApiUrl('/settings/rag'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -247,7 +247,7 @@ export default function BaseDataPage() {
   // RAG設定の読み込み
   const loadRagSettings = async () => {
     try {
-      const response = await fetch('/api/settings/rag', {
+      const response = await fetch(buildApiUrl('/settings/rag'), {
         credentials: 'include',
       });
 
@@ -275,7 +275,7 @@ export default function BaseDataPage() {
   // AI支援設定の保存
   const saveAiAssistSettings = async () => {
     try {
-      const response = await fetch('/api/ai-assist/settings', {
+      const response = await fetch(buildApiUrl('/ai-assist/settings'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -304,7 +304,7 @@ export default function BaseDataPage() {
   // AI支援設定の読み込み
   const loadAiAssistSettings = async () => {
     try {
-      const response = await fetch('/api/ai-assist/settings', {
+      const response = await fetch(buildApiUrl('/ai-assist/settings'), {
         credentials: 'include',
       });
 
@@ -359,14 +359,14 @@ export default function BaseDataPage() {
       const response = await fetch(exportsUrl, {
         credentials: 'include',
       });
-      
+
       console.log('📡 APIレスポンス:', {
         ok: response.ok,
         status: response.status,
         statusText: response.statusText,
         contentType: response.headers.get('content-type'),
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ エクスポートファイル一覧取得エラー:', {
@@ -416,7 +416,7 @@ export default function BaseDataPage() {
           exportTimestamp: file.exportTimestamp || file.createdAt || null,
         };
       });
-      
+
       console.log('📦 フォーマット済みファイル:', formattedFiles);
       console.log('📋 ファイル名一覧:', formattedFiles.map(f => f.fileName));
       setExportFiles(formattedFiles);
@@ -440,7 +440,7 @@ export default function BaseDataPage() {
     setExportImportStatus({ status: 'idle' });
 
     try {
-      const response = await fetch('/api/history/import-export', {
+      const response = await fetch(buildApiUrl('/history/import-export'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -514,964 +514,963 @@ export default function BaseDataPage() {
         {/* インポートタブ */}
         <TabsContent value='import' className='space-y-6'>
           <div className='p-6 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl shadow-sm'>
-          {/* 故障情報からのインポート */}
-          <Card className='border-indigo-300 shadow-md'>
-            <CardHeader className='bg-gradient-to-r from-indigo-100 to-purple-100 border-b border-indigo-200'>
-              <CardTitle className='flex items-center gap-2 text-indigo-800'>
-                <FolderOpen className='h-5 w-5 text-indigo-600' />
-                機械故障情報インポート
-              </CardTitle>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-              <div>
-                <div className='mt-2'>
-                  {exportFiles.length === 0 ? (
-                    <div className='p-3 bg-yellow-50 border border-yellow-200 rounded-md'>
-                      <p className='text-sm text-yellow-800'>
-                        ファイルが見つかりません。knowledge-base/exportsフォルダにJSONファイルがあるか確認してください。
-                      </p>
-                      <Button
-                        variant='outline'
-                        size='sm'
-                        onClick={fetchExportFiles}
-                        className='mt-2'
-                      >
-                        <RefreshCw className='h-3 w-3 mr-1' />
-                        再読み込み
-                      </Button>
+            {/* 故障情報からのインポート */}
+            <Card className='border-indigo-300 shadow-md'>
+              <CardHeader className='bg-gradient-to-r from-indigo-100 to-purple-100 border-b border-indigo-200'>
+                <CardTitle className='flex items-center gap-2 text-indigo-800'>
+                  <FolderOpen className='h-5 w-5 text-indigo-600' />
+                  機械故障情報インポート
+                </CardTitle>
+              </CardHeader>
+              <CardContent className='space-y-4'>
+                <div>
+                  <div className='mt-2'>
+                    {exportFiles.length === 0 ? (
+                      <div className='p-3 bg-yellow-50 border border-yellow-200 rounded-md'>
+                        <p className='text-sm text-yellow-800'>
+                          ファイルが見つかりません。knowledge-base/exportsフォルダにJSONファイルがあるか確認してください。
+                        </p>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={fetchExportFiles}
+                          className='mt-2'
+                        >
+                          <RefreshCw className='h-3 w-3 mr-1' />
+                          再読み込み
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <FileSelector
+                          files={exportFiles.map(file => ({
+                            fileName: file.fileName,
+                            exportTimestamp: file.exportTimestamp || file.createdAt || null,
+                          }))}
+                          value={selectedExportFile}
+                          onChange={setSelectedExportFile}
+                        />
+                        <p className='text-xs text-gray-500 mt-1'>
+                          {exportFiles.length}件のファイルが見つかりました
+                        </p>
+                      </>
+                    )}
+                  </div>
+                  <p className='text-xs text-gray-500 mt-1'>
+                    チャットからエクスポートしたJSONファイルと、そのJSONからリンクされた画像を一緒にインポートします
+                  </p>
+                </div>
+
+                {exportImportStatus.status !== 'idle' && (
+                  <div
+                    className={`p-3 rounded ${exportImportStatus.status === 'success'
+                        ? 'bg-green-50 text-green-800 border border-green-200'
+                        : 'bg-red-50 text-red-800 border border-red-200'
+                      }`}
+                  >
+                    <div className='flex items-center gap-2'>
+                      {exportImportStatus.status === 'success' ? (
+                        <CheckCircle className='h-4 w-4' />
+                      ) : (
+                        <AlertTriangle className='h-4 w-4' />
+                      )}
+                      <span className='text-sm'>{exportImportStatus.message}</span>
                     </div>
+                  </div>
+                )}
+
+                <Button
+                  onClick={handleImportExport}
+                  disabled={!selectedExportFile || isImportingExport}
+                  className='w-full'
+                >
+                  {isImportingExport ? (
+                    <>
+                      <RefreshCw className='mr-2 h-4 w-4 animate-spin' />
+                      インポート中...
+                    </>
                   ) : (
                     <>
-                      <FileSelector
-                        files={exportFiles.map(file => ({
-                          fileName: file.fileName,
-                          exportTimestamp: file.exportTimestamp || file.createdAt || null,
-                        }))}
-                        value={selectedExportFile}
-                        onChange={setSelectedExportFile}
-                      />
-                      <p className='text-xs text-gray-500 mt-1'>
-                        {exportFiles.length}件のファイルが見つかりました
-                      </p>
+                      <Upload className='mr-2 h-4 w-4' />
+                      機械故障報告をインポート
                     </>
                   )}
+                </Button>
+
+                <div className='text-xs text-gray-600 space-y-1'>
+                  <p>• 選択したJSONファイルとリンクされた画像が knowledge-base/documents に保存されます</p>
+                  <p>• 元データはそのまま保持されます</p>
+                  <p>• 画像は documents/images フォルダに保存されます</p>
                 </div>
-                <p className='text-xs text-gray-500 mt-1'>
-                  チャットからエクスポートしたJSONファイルと、そのJSONからリンクされた画像を一緒にインポートします
-                </p>
-              </div>
+              </CardContent>
+            </Card>
 
-              {exportImportStatus.status !== 'idle' && (
-                <div
-                  className={`p-3 rounded ${
-                    exportImportStatus.status === 'success'
-                      ? 'bg-green-50 text-green-800 border border-green-200'
-                      : 'bg-red-50 text-red-800 border border-red-200'
-                  }`}
-                >
-                  <div className='flex items-center gap-2'>
-                    {exportImportStatus.status === 'success' ? (
-                      <CheckCircle className='h-4 w-4' />
-                    ) : (
-                      <AlertTriangle className='h-4 w-4' />
-                    )}
-                    <span className='text-sm'>{exportImportStatus.message}</span>
-                  </div>
+            {/* ファイルインポート */}
+            <Card className='border-indigo-300 shadow-md'>
+              <CardHeader className='bg-gradient-to-r from-indigo-100 to-purple-100 border-b border-indigo-200'>
+                <CardTitle className='flex items-center gap-2 text-indigo-800'>
+                  <FileText className='h-5 w-5 text-indigo-600' />
+                  ファイルインポート
+                </CardTitle>
+              </CardHeader>
+              <CardContent className='space-y-4'>
+                <div>
+                  <Label htmlFor='file-upload'>
+                    ファイルを選択 (TXT, PDF, XLSX, PPTX)
+                  </Label>
+                  <Input
+                    id='file-upload'
+                    type='file'
+                    multiple
+                    accept='.txt,.pdf,.xlsx,.pptx'
+                    onChange={handleFileSelect}
+                    className='mt-1'
+                  />
                 </div>
-              )}
 
-              <Button
-                onClick={handleImportExport}
-                disabled={!selectedExportFile || isImportingExport}
-                className='w-full'
-              >
-                {isImportingExport ? (
-                  <>
-                    <RefreshCw className='mr-2 h-4 w-4 animate-spin' />
-                    インポート中...
-                  </>
-                ) : (
-                  <>
-                    <Upload className='mr-2 h-4 w-4' />
-                    機械故障報告をインポート
-                  </>
-                )}
-              </Button>
-
-              <div className='text-xs text-gray-600 space-y-1'>
-                <p>• 選択したJSONファイルとリンクされた画像が knowledge-base/documents に保存されます</p>
-                <p>• 元データはそのまま保持されます</p>
-                <p>• 画像は documents/images フォルダに保存されます</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* ファイルインポート */}
-          <Card className='border-indigo-300 shadow-md'>
-            <CardHeader className='bg-gradient-to-r from-indigo-100 to-purple-100 border-b border-indigo-200'>
-              <CardTitle className='flex items-center gap-2 text-indigo-800'>
-                <FileText className='h-5 w-5 text-indigo-600' />
-                ファイルインポート
-              </CardTitle>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-              <div>
-                <Label htmlFor='file-upload'>
-                  ファイルを選択 (TXT, PDF, XLSX, PPTX)
-                </Label>
-                <Input
-                  id='file-upload'
-                  type='file'
-                  multiple
-                  accept='.txt,.pdf,.xlsx,.pptx'
-                  onChange={handleFileSelect}
-                  className='mt-1'
-                />
-              </div>
-
-              {selectedFiles && (
-                <div className='space-y-2'>
-                  <h4 className='font-medium'>選択されたファイル:</h4>
+                {selectedFiles && (
                   <div className='space-y-2'>
-                    {importStatus.map((status, index) => (
-                      <div
-                        key={index}
-                        className='flex items-center justify-between p-2 bg-gray-50 rounded'
-                      >
-                        <div className='flex items-center gap-2'>
-                          <FileText className='h-4 w-4' />
-                          <span className='text-sm'>{status.fileName}</span>
+                    <h4 className='font-medium'>選択されたファイル:</h4>
+                    <div className='space-y-2'>
+                      {importStatus.map((status, index) => (
+                        <div
+                          key={index}
+                          className='flex items-center justify-between p-2 bg-gray-50 rounded'
+                        >
+                          <div className='flex items-center gap-2'>
+                            <FileText className='h-4 w-4' />
+                            <span className='text-sm'>{status.fileName}</span>
+                          </div>
+                          <div className='flex items-center gap-2'>
+                            {getStatusBadge(status.status)}
+                            {status.message && (
+                              <span className='text-xs text-gray-500'>
+                                {status.message}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <div className='flex items-center gap-2'>
-                          {getStatusBadge(status.status)}
-                          {status.message && (
-                            <span className='text-xs text-gray-500'>
-                              {status.message}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-
-              {/* 元ファイル保存オプション */}
-              <div className='flex items-center space-x-2 p-3 bg-gray-50 rounded border'>
-                <Checkbox
-                  id='save-original-file'
-                  checked={saveOriginalFile}
-                  onCheckedChange={(checked) =>
-                    setSaveOriginalFile(checked === true)
-                  }
-                />
-                <Label
-                  htmlFor='save-original-file'
-                  className='text-sm font-normal cursor-pointer flex-1'
-                >
-                  元のファイルも保存する
-                  <span className='text-xs text-gray-500 block mt-1'>
-                    （チャンク処理は必須ですが、元ファイルは保存を選択できます）
-                  </span>
-                </Label>
-              </div>
-
-              <Button
-                onClick={handleImport}
-                disabled={!selectedFiles || isProcessing}
-                className='w-full'
-              >
-                {isProcessing ? (
-                  <>
-                    <AlertTriangle className='mr-2 h-4 w-4' />
-                    処理中...
-                  </>
-                ) : (
-                  <>
-                    <Upload className='mr-2 h-4 w-4' />
-                    インポート実行
-                  </>
                 )}
-              </Button>
-            </CardContent>
-          </Card>
 
-          {/* ナレッジデータ管理カード */}
-          <Card>
-            <CardHeader>
-              <CardTitle className='flex items-center gap-2'>
-                <Brain className='h-5 w-5 text-purple-600' />
-                ナレッジデータ管理（ライフサイクル）
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <KnowledgeLifecycleManagement />
-            </CardContent>
-          </Card>
+                {/* 元ファイル保存オプション */}
+                <div className='flex items-center space-x-2 p-3 bg-gray-50 rounded border'>
+                  <Checkbox
+                    id='save-original-file'
+                    checked={saveOriginalFile}
+                    onCheckedChange={(checked) =>
+                      setSaveOriginalFile(checked === true)
+                    }
+                  />
+                  <Label
+                    htmlFor='save-original-file'
+                    className='text-sm font-normal cursor-pointer flex-1'
+                  >
+                    元のファイルも保存する
+                    <span className='text-xs text-gray-500 block mt-1'>
+                      （チャンク処理は必須ですが、元ファイルは保存を選択できます）
+                    </span>
+                  </Label>
+                </div>
+
+                <Button
+                  onClick={handleImport}
+                  disabled={!selectedFiles || isProcessing}
+                  className='w-full'
+                >
+                  {isProcessing ? (
+                    <>
+                      <AlertTriangle className='mr-2 h-4 w-4' />
+                      処理中...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className='mr-2 h-4 w-4' />
+                      インポート実行
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* ナレッジデータ管理カード */}
+            <Card>
+              <CardHeader>
+                <CardTitle className='flex items-center gap-2'>
+                  <Brain className='h-5 w-5 text-purple-600' />
+                  ナレッジデータ管理（ライフサイクル）
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <KnowledgeLifecycleManagement />
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
         {/* 手動入力タブ */}
         <TabsContent value='manual' className='space-y-6'>
           <div className='p-6 bg-gradient-to-br from-teal-50 to-cyan-50 border border-teal-200 rounded-xl shadow-sm'>
-          <Card className='border-teal-300 shadow-md'>
-            <CardHeader className='bg-gradient-to-r from-teal-100 to-cyan-100 border-b border-teal-200'>
-              <CardTitle className='flex items-center gap-2 text-teal-800'>
-                <Wrench className='h-5 w-5 text-teal-600' />
-                機械故情報入力
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <VehicleMaintenanceForm />
-            </CardContent>
-          </Card>
+            <Card className='border-teal-300 shadow-md'>
+              <CardHeader className='bg-gradient-to-r from-teal-100 to-cyan-100 border-b border-teal-200'>
+                <CardTitle className='flex items-center gap-2 text-teal-800'>
+                  <Wrench className='h-5 w-5 text-teal-600' />
+                  機械故情報入力
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <VehicleMaintenanceForm />
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
         {/* 設定タブ */}
         <TabsContent value='settings' className='space-y-6'>
           <div className='p-6 bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-xl shadow-sm space-y-6'>
-          {/* 基本設定 */}
-          <Card className='border-purple-300 shadow-md'>
-            <CardHeader className='bg-gradient-to-r from-purple-100 to-pink-100 border-b border-purple-200'>
-              <CardTitle className='flex items-center gap-2 text-purple-800'>
-                <Settings className='h-5 w-5 text-purple-600' />
-                基本システム設定
-              </CardTitle>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                <div className='space-y-2'>
-                  <Label>データディレクトリ</Label>
-                  <div className='flex items-center gap-2 p-3 bg-gray-50 rounded'>
-                    <FolderOpen className='h-4 w-4 text-gray-500' />
-                    <span className='text-sm text-gray-700'>
-                      /knowledge-base/vehicle-maintenance
-                    </span>
-                  </div>
-                </div>
-
-                <div className='space-y-2'>
-                  <Label>許可ファイル形式</Label>
-                  <div className='flex gap-2'>
-                    <Badge variant='outline'>TXT</Badge>
-                    <Badge variant='outline'>PDF</Badge>
-                    <Badge variant='outline'>XLSX</Badge>
-                    <Badge variant='outline'>PPTX</Badge>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* AI支援カスタマイズ設定 */}
-          <Card className='border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100'>
-            <CardHeader className='bg-gradient-to-r from-purple-100 to-purple-200 border-b border-purple-300'>
-              <CardTitle className='flex items-center gap-2 text-purple-800'>
-                <MessageCircle className='h-5 w-5 text-purple-700' />
-                AI支援カスタマイズ設定
-              </CardTitle>
-              <p className='text-sm text-purple-700'>
-                チャットUIのAI支援機能をカスタマイズします
-              </p>
-            </CardHeader>
-            <CardContent className='space-y-6 bg-white'>
-              {/* 初期プロンプト設定 */}
-              <div className='space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-lg'>
-                <h4 className='font-medium flex items-center gap-2 text-blue-800'>
-                  <Bot className='h-4 w-4 text-blue-600' />
-                  初期対話設定
-                </h4>
-                <div className='space-y-3'>
+            {/* 基本設定 */}
+            <Card className='border-purple-300 shadow-md'>
+              <CardHeader className='bg-gradient-to-r from-purple-100 to-pink-100 border-b border-purple-200'>
+                <CardTitle className='flex items-center gap-2 text-purple-800'>
+                  <Settings className='h-5 w-5 text-purple-600' />
+                  基本システム設定
+                </CardTitle>
+              </CardHeader>
+              <CardContent className='space-y-4'>
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                   <div className='space-y-2'>
-                    <Label htmlFor='initialPrompt'>初期メッセージ</Label>
-                    <Textarea
-                      id='initialPrompt'
-                      value={aiAssistSettings.initialPrompt}
-                      onChange={e =>
-                        setAiAssistSettings(prev => ({
-                          ...prev,
-                          initialPrompt: e.target.value,
-                        }))
-                      }
-                      placeholder='AI支援開始時の最初の問いかけ...'
-                      rows={2}
-                    />
-                    <p className='text-xs text-gray-500'>
-                      AI支援が開始されたときの最初のメッセージ
-                    </p>
+                    <Label>データディレクトリ</Label>
+                    <div className='flex items-center gap-2 p-3 bg-gray-50 rounded'>
+                      <FolderOpen className='h-4 w-4 text-gray-500' />
+                      <span className='text-sm text-gray-700'>
+                        /knowledge-base/vehicle-maintenance
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className='space-y-2'>
+                    <Label>許可ファイル形式</Label>
+                    <div className='flex gap-2'>
+                      <Badge variant='outline'>TXT</Badge>
+                      <Badge variant='outline'>PDF</Badge>
+                      <Badge variant='outline'>XLSX</Badge>
+                      <Badge variant='outline'>PPTX</Badge>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </CardContent>
+            </Card>
 
-              {/* 会話スタイル設定 */}
-              <div className='space-y-4 p-4 bg-green-50 border border-green-200 rounded-lg'>
-                <h4 className='font-medium flex items-center gap-2 text-green-800'>
-                  <Users className='h-4 w-4 text-green-600' />
-                  会話スタイル
-                </h4>
-                <div className='space-y-3'>
+            {/* AI支援カスタマイズ設定 */}
+            <Card className='border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100'>
+              <CardHeader className='bg-gradient-to-r from-purple-100 to-purple-200 border-b border-purple-300'>
+                <CardTitle className='flex items-center gap-2 text-purple-800'>
+                  <MessageCircle className='h-5 w-5 text-purple-700' />
+                  AI支援カスタマイズ設定
+                </CardTitle>
+                <p className='text-sm text-purple-700'>
+                  チャットUIのAI支援機能をカスタマイズします
+                </p>
+              </CardHeader>
+              <CardContent className='space-y-6 bg-white'>
+                {/* 初期プロンプト設定 */}
+                <div className='space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-lg'>
+                  <h4 className='font-medium flex items-center gap-2 text-blue-800'>
+                    <Bot className='h-4 w-4 text-blue-600' />
+                    初期対話設定
+                  </h4>
+                  <div className='space-y-3'>
+                    <div className='space-y-2'>
+                      <Label htmlFor='initialPrompt'>初期メッセージ</Label>
+                      <Textarea
+                        id='initialPrompt'
+                        value={aiAssistSettings.initialPrompt}
+                        onChange={e =>
+                          setAiAssistSettings(prev => ({
+                            ...prev,
+                            initialPrompt: e.target.value,
+                          }))
+                        }
+                        placeholder='AI支援開始時の最初の問いかけ...'
+                        rows={2}
+                      />
+                      <p className='text-xs text-gray-500'>
+                        AI支援が開始されたときの最初のメッセージ
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 会話スタイル設定 */}
+                <div className='space-y-4 p-4 bg-green-50 border border-green-200 rounded-lg'>
+                  <h4 className='font-medium flex items-center gap-2 text-green-800'>
+                    <Users className='h-4 w-4 text-green-600' />
+                    会話スタイル
+                  </h4>
+                  <div className='space-y-3'>
+                    <div className='space-y-2'>
+                      <Label>話し方・トーン</Label>
+                      <div className='grid grid-cols-3 gap-2'>
+                        <label className='flex items-center space-x-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50'>
+                          <input
+                            type='radio'
+                            name='conversationStyle'
+                            value='frank'
+                            checked={aiAssistSettings.conversationStyle === 'frank'}
+                            onChange={e =>
+                              setAiAssistSettings(prev => ({
+                                ...prev,
+                                conversationStyle: e.target.value,
+                              }))
+                            }
+                            className='rounded'
+                          />
+                          <div className='text-sm'>
+                            <div className='font-medium'>フランク</div>
+                            <div className='text-gray-500'>親しみやすい</div>
+                          </div>
+                        </label>
+                        <label className='flex items-center space-x-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50'>
+                          <input
+                            type='radio'
+                            name='conversationStyle'
+                            value='business'
+                            checked={aiAssistSettings.conversationStyle === 'business'}
+                            onChange={e =>
+                              setAiAssistSettings(prev => ({
+                                ...prev,
+                                conversationStyle: e.target.value,
+                              }))
+                            }
+                            className='rounded'
+                          />
+                          <div className='text-sm'>
+                            <div className='font-medium'>ビジネス</div>
+                            <div className='text-gray-500'>丁寧・正式</div>
+                          </div>
+                        </label>
+                        <label className='flex items-center space-x-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50'>
+                          <input
+                            type='radio'
+                            name='conversationStyle'
+                            value='technical'
+                            checked={aiAssistSettings.conversationStyle === 'technical'}
+                            onChange={e =>
+                              setAiAssistSettings(prev => ({
+                                ...prev,
+                                conversationStyle: e.target.value,
+                              }))
+                            }
+                            className='rounded'
+                          />
+                          <div className='text-sm'>
+                            <div className='font-medium'>技術的</div>
+                            <div className='text-gray-500'>専門用語中心</div>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 質問フロー設定 */}
+                <div className='space-y-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg'>
+                  <h4 className='font-medium flex items-center gap-2 text-yellow-800'>
+                    <Lightbulb className='h-4 w-4 text-yellow-600' />
+                    質問の流れ設定
+                  </h4>
+                  <div className='space-y-3'>
+                    <div className='space-y-2'>
+                      <Label htmlFor='step1'>ステップ1：症状確認</Label>
+                      <Input
+                        id='step1'
+                        value={aiAssistSettings.questionFlow.step1}
+                        onChange={e =>
+                          setAiAssistSettings(prev => ({
+                            ...prev,
+                            questionFlow: {
+                              ...prev.questionFlow,
+                              step1: e.target.value,
+                            },
+                          }))
+                        }
+                        placeholder='具体的な症状を聞く質問...'
+                      />
+                    </div>
+                    <div className='space-y-2'>
+                      <Label htmlFor='step2'>ステップ2：発生時期</Label>
+                      <Input
+                        id='step2'
+                        value={aiAssistSettings.questionFlow.step2}
+                        onChange={e =>
+                          setAiAssistSettings(prev => ({
+                            ...prev,
+                            questionFlow: {
+                              ...prev.questionFlow,
+                              step2: e.target.value,
+                            },
+                          }))
+                        }
+                        placeholder='いつから発生しているかを聞く質問...'
+                      />
+                    </div>
+                    <div className='space-y-2'>
+                      <Label htmlFor='step3'>ステップ3：環境確認</Label>
+                      <Input
+                        id='step3'
+                        value={aiAssistSettings.questionFlow.step3}
+                        onChange={e =>
+                          setAiAssistSettings(prev => ({
+                            ...prev,
+                            questionFlow: {
+                              ...prev.questionFlow,
+                              step3: e.target.value,
+                            },
+                          }))
+                        }
+                        placeholder='作業環境や状況を聞く質問...'
+                      />
+                    </div>
+                    <div className='space-y-2'>
+                      <Label htmlFor='step4'>ステップ4：追加情報</Label>
+                      <Input
+                        id='step4'
+                        value={aiAssistSettings.questionFlow.step4}
+                        onChange={e =>
+                          setAiAssistSettings(prev => ({
+                            ...prev,
+                            questionFlow: {
+                              ...prev.questionFlow,
+                              step4: e.target.value,
+                            },
+                          }))
+                        }
+                        placeholder='他に気になることを聞く質問...'
+                      />
+                    </div>
+                    <div className='space-y-2'>
+                      <Label htmlFor='step5'>ステップ5：緊急度確認</Label>
+                      <Input
+                        id='step5'
+                        value={aiAssistSettings.questionFlow.step5}
+                        onChange={e =>
+                          setAiAssistSettings(prev => ({
+                            ...prev,
+                            questionFlow: {
+                              ...prev.questionFlow,
+                              step5: e.target.value,
+                            },
+                          }))
+                        }
+                        placeholder='緊急度を確認する質問...'
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 分岐条件設定 */}
+                <div className='space-y-4 p-4 bg-orange-50 border border-orange-200 rounded-lg'>
+                  <h4 className='font-medium flex items-center gap-2 text-orange-800'>
+                    <Target className='h-4 w-4 text-orange-600' />
+                    分岐条件設定
+                  </h4>
                   <div className='space-y-2'>
-                    <Label>話し方・トーン</Label>
-                    <div className='grid grid-cols-3 gap-2'>
+                    <label className='flex items-center space-x-2'>
+                      <input
+                        type='checkbox'
+                        checked={aiAssistSettings.branchingConditions.timeCheck}
+                        onChange={e =>
+                          setAiAssistSettings(prev => ({
+                            ...prev,
+                            branchingConditions: {
+                              ...prev.branchingConditions,
+                              timeCheck: e.target.checked,
+                            },
+                          }))
+                        }
+                        className='rounded'
+                      />
+                      <span className='text-sm'>時間経過での分岐（「時間はありますか？」）</span>
+                    </label>
+                    <label className='flex items-center space-x-2'>
+                      <input
+                        type='checkbox'
+                        checked={aiAssistSettings.branchingConditions.detailsCheck}
+                        onChange={e =>
+                          setAiAssistSettings(prev => ({
+                            ...prev,
+                            branchingConditions: {
+                              ...prev.branchingConditions,
+                              detailsCheck: e.target.checked,
+                            },
+                          }))
+                        }
+                        className='rounded'
+                      />
+                      <span className='text-sm'>詳細確認での分岐（「詳細を教えていただけますか？」）</span>
+                    </label>
+                    <label className='flex items-center space-x-2'>
+                      <input
+                        type='checkbox'
+                        checked={aiAssistSettings.branchingConditions.toolsCheck}
+                        onChange={e =>
+                          setAiAssistSettings(prev => ({
+                            ...prev,
+                            branchingConditions: {
+                              ...prev.branchingConditions,
+                              toolsCheck: e.target.checked,
+                            },
+                          }))
+                        }
+                        className='rounded'
+                      />
+                      <span className='text-sm'>工具確認での分岐（「必要な工具はありますか？」）</span>
+                    </label>
+                    <label className='flex items-center space-x-2'>
+                      <input
+                        type='checkbox'
+                        checked={aiAssistSettings.branchingConditions.safetyCheck}
+                        onChange={e =>
+                          setAiAssistSettings(prev => ({
+                            ...prev,
+                            branchingConditions: {
+                              ...prev.branchingConditions,
+                              safetyCheck: e.target.checked,
+                            },
+                          }))
+                        }
+                        className='rounded'
+                      />
+                      <span className='text-sm'>安全確認での分岐（「安全に作業できる状況ですか？」）</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* 応答パターン設定 */}
+                <div className='space-y-4 p-4 bg-cyan-50 border border-cyan-200 rounded-lg'>
+                  <h4 className='font-medium flex items-center gap-2 text-cyan-800'>
+                    <Activity className='h-4 w-4 text-cyan-600' />
+                    応答パターン
+                  </h4>
+                  <div className='space-y-2'>
+                    <Label>情報提供の方法</Label>
+                    <div className='grid grid-cols-1 gap-2'>
                       <label className='flex items-center space-x-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50'>
                         <input
                           type='radio'
-                          name='conversationStyle'
-                          value='frank'
-                          checked={aiAssistSettings.conversationStyle === 'frank'}
+                          name='responsePattern'
+                          value='step_by_step'
+                          checked={aiAssistSettings.responsePattern === 'step_by_step'}
                           onChange={e =>
                             setAiAssistSettings(prev => ({
                               ...prev,
-                              conversationStyle: e.target.value,
+                              responsePattern: e.target.value,
                             }))
                           }
                           className='rounded'
                         />
                         <div className='text-sm'>
-                          <div className='font-medium'>フランク</div>
-                          <div className='text-gray-500'>親しみやすい</div>
+                          <div className='font-medium'>段階的表示（推奨）</div>
+                          <div className='text-gray-500'>1つずつ質問し、1つずつ対策を表示</div>
                         </div>
                       </label>
                       <label className='flex items-center space-x-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50'>
                         <input
                           type='radio'
-                          name='conversationStyle'
-                          value='business'
-                          checked={aiAssistSettings.conversationStyle === 'business'}
+                          name='responsePattern'
+                          value='comprehensive'
+                          checked={aiAssistSettings.responsePattern === 'comprehensive'}
                           onChange={e =>
                             setAiAssistSettings(prev => ({
                               ...prev,
-                              conversationStyle: e.target.value,
+                              responsePattern: e.target.value,
                             }))
                           }
                           className='rounded'
                         />
                         <div className='text-sm'>
-                          <div className='font-medium'>ビジネス</div>
-                          <div className='text-gray-500'>丁寧・正式</div>
+                          <div className='font-medium'>包括的表示</div>
+                          <div className='text-gray-500'>まとめて複数の対策を表示</div>
                         </div>
                       </label>
                       <label className='flex items-center space-x-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50'>
                         <input
                           type='radio'
-                          name='conversationStyle'
-                          value='technical'
-                          checked={aiAssistSettings.conversationStyle === 'technical'}
+                          name='responsePattern'
+                          value='minimal'
+                          checked={aiAssistSettings.responsePattern === 'minimal'}
                           onChange={e =>
                             setAiAssistSettings(prev => ({
                               ...prev,
-                              conversationStyle: e.target.value,
+                              responsePattern: e.target.value,
                             }))
                           }
                           className='rounded'
                         />
                         <div className='text-sm'>
-                          <div className='font-medium'>技術的</div>
-                          <div className='text-gray-500'>専門用語中心</div>
+                          <div className='font-medium'>最小限表示</div>
+                          <div className='text-gray-500'>要点のみ簡潔に表示</div>
                         </div>
                       </label>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* 質問フロー設定 */}
-              <div className='space-y-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg'>
-                <h4 className='font-medium flex items-center gap-2 text-yellow-800'>
-                  <Lightbulb className='h-4 w-4 text-yellow-600' />
-                  質問の流れ設定
-                </h4>
-                <div className='space-y-3'>
-                  <div className='space-y-2'>
-                    <Label htmlFor='step1'>ステップ1：症状確認</Label>
-                    <Input
-                      id='step1'
-                      value={aiAssistSettings.questionFlow.step1}
-                      onChange={e =>
-                        setAiAssistSettings(prev => ({
-                          ...prev,
-                          questionFlow: {
-                            ...prev.questionFlow,
-                            step1: e.target.value,
-                          },
-                        }))
-                      }
-                      placeholder='具体的な症状を聞く質問...'
-                    />
-                  </div>
-                  <div className='space-y-2'>
-                    <Label htmlFor='step2'>ステップ2：発生時期</Label>
-                    <Input
-                      id='step2'
-                      value={aiAssistSettings.questionFlow.step2}
-                      onChange={e =>
-                        setAiAssistSettings(prev => ({
-                          ...prev,
-                          questionFlow: {
-                            ...prev.questionFlow,
-                            step2: e.target.value,
-                          },
-                        }))
-                      }
-                      placeholder='いつから発生しているかを聞く質問...'
-                    />
-                  </div>
-                  <div className='space-y-2'>
-                    <Label htmlFor='step3'>ステップ3：環境確認</Label>
-                    <Input
-                      id='step3'
-                      value={aiAssistSettings.questionFlow.step3}
-                      onChange={e =>
-                        setAiAssistSettings(prev => ({
-                          ...prev,
-                          questionFlow: {
-                            ...prev.questionFlow,
-                            step3: e.target.value,
-                          },
-                        }))
-                      }
-                      placeholder='作業環境や状況を聞く質問...'
-                    />
-                  </div>
-                  <div className='space-y-2'>
-                    <Label htmlFor='step4'>ステップ4：追加情報</Label>
-                    <Input
-                      id='step4'
-                      value={aiAssistSettings.questionFlow.step4}
-                      onChange={e =>
-                        setAiAssistSettings(prev => ({
-                          ...prev,
-                          questionFlow: {
-                            ...prev.questionFlow,
-                            step4: e.target.value,
-                          },
-                        }))
-                      }
-                      placeholder='他に気になることを聞く質問...'
-                    />
-                  </div>
-                  <div className='space-y-2'>
-                    <Label htmlFor='step5'>ステップ5：緊急度確認</Label>
-                    <Input
-                      id='step5'
-                      value={aiAssistSettings.questionFlow.step5}
-                      onChange={e =>
-                        setAiAssistSettings(prev => ({
-                          ...prev,
-                          questionFlow: {
-                            ...prev.questionFlow,
-                            step5: e.target.value,
-                          },
-                        }))
-                      }
-                      placeholder='緊急度を確認する質問...'
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* 分岐条件設定 */}
-              <div className='space-y-4 p-4 bg-orange-50 border border-orange-200 rounded-lg'>
-                <h4 className='font-medium flex items-center gap-2 text-orange-800'>
-                  <Target className='h-4 w-4 text-orange-600' />
-                  分岐条件設定
-                </h4>
-                <div className='space-y-2'>
-                  <label className='flex items-center space-x-2'>
-                    <input
-                      type='checkbox'
-                      checked={aiAssistSettings.branchingConditions.timeCheck}
-                      onChange={e =>
-                        setAiAssistSettings(prev => ({
-                          ...prev,
-                          branchingConditions: {
-                            ...prev.branchingConditions,
-                            timeCheck: e.target.checked,
-                          },
-                        }))
-                      }
-                      className='rounded'
-                    />
-                    <span className='text-sm'>時間経過での分岐（「時間はありますか？」）</span>
-                  </label>
-                  <label className='flex items-center space-x-2'>
-                    <input
-                      type='checkbox'
-                      checked={aiAssistSettings.branchingConditions.detailsCheck}
-                      onChange={e =>
-                        setAiAssistSettings(prev => ({
-                          ...prev,
-                          branchingConditions: {
-                            ...prev.branchingConditions,
-                            detailsCheck: e.target.checked,
-                          },
-                        }))
-                      }
-                      className='rounded'
-                    />
-                    <span className='text-sm'>詳細確認での分岐（「詳細を教えていただけますか？」）</span>
-                  </label>
-                  <label className='flex items-center space-x-2'>
-                    <input
-                      type='checkbox'
-                      checked={aiAssistSettings.branchingConditions.toolsCheck}
-                      onChange={e =>
-                        setAiAssistSettings(prev => ({
-                          ...prev,
-                          branchingConditions: {
-                            ...prev.branchingConditions,
-                            toolsCheck: e.target.checked,
-                          },
-                        }))
-                      }
-                      className='rounded'
-                    />
-                    <span className='text-sm'>工具確認での分岐（「必要な工具はありますか？」）</span>
-                  </label>
-                  <label className='flex items-center space-x-2'>
-                    <input
-                      type='checkbox'
-                      checked={aiAssistSettings.branchingConditions.safetyCheck}
-                      onChange={e =>
-                        setAiAssistSettings(prev => ({
-                          ...prev,
-                          branchingConditions: {
-                            ...prev.branchingConditions,
-                            safetyCheck: e.target.checked,
-                          },
-                        }))
-                      }
-                      className='rounded'
-                    />
-                    <span className='text-sm'>安全確認での分岐（「安全に作業できる状況ですか？」）</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* 応答パターン設定 */}
-              <div className='space-y-4 p-4 bg-cyan-50 border border-cyan-200 rounded-lg'>
-                <h4 className='font-medium flex items-center gap-2 text-cyan-800'>
-                  <Activity className='h-4 w-4 text-cyan-600' />
-                  応答パターン
-                </h4>
-                <div className='space-y-2'>
-                  <Label>情報提供の方法</Label>
-                  <div className='grid grid-cols-1 gap-2'>
-                    <label className='flex items-center space-x-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50'>
-                      <input
-                        type='radio'
-                        name='responsePattern'
-                        value='step_by_step'
-                        checked={aiAssistSettings.responsePattern === 'step_by_step'}
-                        onChange={e =>
+                {/* エスカレーション設定 */}
+                <div className='space-y-4 p-4 bg-red-50 border border-red-200 rounded-lg'>
+                  <h4 className='font-medium flex items-center gap-2 text-red-800'>
+                    <AlertTriangle className='h-4 w-4 text-red-600' />
+                    エスカレーション設定
+                  </h4>
+                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                    <div className='space-y-2'>
+                      <Label htmlFor='escalationTime'>
+                        救援要請タイムアウト: {aiAssistSettings.escalationTime}分
+                      </Label>
+                      <Slider
+                        id='escalationTime'
+                        min={10}
+                        max={60}
+                        step={5}
+                        value={[aiAssistSettings.escalationTime]}
+                        onValueChange={value =>
                           setAiAssistSettings(prev => ({
                             ...prev,
-                            responsePattern: e.target.value,
+                            escalationTime: value[0],
+                          }))
+                        }
+                        className='w-full'
+                      />
+                      <p className='text-xs text-gray-500'>
+                        この時間経過後に専門家への連絡を推奨
+                      </p>
+                    </div>
+                    <div className='space-y-2'>
+                      <label className='flex items-center space-x-2'>
+                        <input
+                          type='checkbox'
+                          checked={aiAssistSettings.enableEmergencyContact}
+                          onChange={e =>
+                            setAiAssistSettings(prev => ({
+                              ...prev,
+                              enableEmergencyContact: e.target.checked,
+                            }))
+                          }
+                          className='rounded'
+                        />
+                        <span className='text-sm'>緊急連絡機能を有効化</span>
+                      </label>
+                      <p className='text-xs text-gray-500'>
+                        自動で救援要請や支援者への連絡オプションを表示
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* カスタム指示 */}
+                <div className='space-y-2 p-4 bg-gray-50 border border-gray-200 rounded-lg'>
+                  <Label htmlFor='customInstructions' className='text-gray-800 font-medium'>追加のカスタム指示</Label>
+                  <Textarea
+                    id='customInstructions'
+                    value={aiAssistSettings.customInstructions}
+                    onChange={e =>
+                      setAiAssistSettings(prev => ({
+                        ...prev,
+                        customInstructions: e.target.value,
+                      }))
+                    }
+                    placeholder='GPTに対する追加の指示や制約条件を入力...'
+                    rows={3}
+                  />
+                  <p className='text-xs text-gray-500'>
+                    AI支援の動作をさらに細かくカスタマイズするための指示
+                  </p>
+                </div>
+
+                {/* 設定保存ボタン */}
+                <div className='flex gap-2 pt-4 border-t border-purple-200 bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg'>
+                  <Button
+                    onClick={saveAiAssistSettings}
+                    className='flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white'
+                  >
+                    <Save className='h-4 w-4' />
+                    AI支援設定を保存
+                  </Button>
+                  <Button
+                    variant='outline'
+                    onClick={() => navigate('/chat')}
+                    className='flex items-center gap-2 border-purple-300 text-purple-700 hover:bg-purple-100'
+                  >
+                    <MessageCircle className='h-4 w-4' />
+                    AI支援を試す
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* RAG設定 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className='flex items-center gap-2'>
+                  <Brain className='h-5 w-5' />
+                  RAG (Retrieval-Augmented Generation) 設定
+                </CardTitle>
+                <p className='text-sm text-gray-600'>
+                  GPTレスポンスの精度向上のための事前処理パラメーター
+                </p>
+              </CardHeader>
+              <CardContent className='space-y-6'>
+                {/* チャンク設定 */}
+                <div className='space-y-4'>
+                  <h4 className='font-medium flex items-center gap-2'>
+                    <FileSearch className='h-4 w-4' />
+                    テキスト分割設定
+                  </h4>
+                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                    <div className='space-y-2'>
+                      <Label htmlFor='chunkSize'>
+                        チャンクサイズ: {ragSettings.chunkSize}文字
+                      </Label>
+                      <Slider
+                        id='chunkSize'
+                        min={200}
+                        max={2000}
+                        step={100}
+                        value={[ragSettings.chunkSize]}
+                        onValueChange={value =>
+                          setRagSettings(prev => ({
+                            ...prev,
+                            chunkSize: value[0],
+                          }))
+                        }
+                        className='w-full'
+                      />
+                      <p className='text-xs text-gray-500'>
+                        テキストを分割する際の1チャンクあたりの文字数
+                      </p>
+                    </div>
+
+                    <div className='space-y-2'>
+                      <Label htmlFor='chunkOverlap'>
+                        オーバーラップ: {ragSettings.chunkOverlap}文字
+                      </Label>
+                      <Slider
+                        id='chunkOverlap'
+                        min={0}
+                        max={500}
+                        step={50}
+                        value={[ragSettings.chunkOverlap]}
+                        onValueChange={value =>
+                          setRagSettings(prev => ({
+                            ...prev,
+                            chunkOverlap: value[0],
+                          }))
+                        }
+                        className='w-full'
+                      />
+                      <p className='text-xs text-gray-500'>
+                        チャンク間で重複させる文字数
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 検索設定 */}
+                <div className='space-y-4'>
+                  <h4 className='font-medium flex items-center gap-2'>
+                    <Sliders className='h-4 w-4' />
+                    検索精度設定
+                  </h4>
+                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                    <div className='space-y-2'>
+                      <Label htmlFor='similarityThreshold'>
+                        類似度閾値: {ragSettings.similarityThreshold}
+                      </Label>
+                      <Slider
+                        id='similarityThreshold'
+                        min={0.1}
+                        max={1.0}
+                        step={0.1}
+                        value={[ragSettings.similarityThreshold]}
+                        onValueChange={value =>
+                          setRagSettings(prev => ({
+                            ...prev,
+                            similarityThreshold: value[0],
+                          }))
+                        }
+                        className='w-full'
+                      />
+                      <p className='text-xs text-gray-500'>
+                        検索結果として採用する最小類似度
+                      </p>
+                    </div>
+
+                    <div className='space-y-2'>
+                      <Label htmlFor='maxResults'>
+                        最大取得件数: {ragSettings.maxResults}件
+                      </Label>
+                      <Slider
+                        id='maxResults'
+                        min={1}
+                        max={20}
+                        step={1}
+                        value={[ragSettings.maxResults]}
+                        onValueChange={value =>
+                          setRagSettings(prev => ({
+                            ...prev,
+                            maxResults: value[0],
+                          }))
+                        }
+                        className='w-full'
+                      />
+                      <p className='text-xs text-gray-500'>
+                        1回の検索で取得する最大結果数
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 検索手法 */}
+                <div className='space-y-4'>
+                  <h4 className='font-medium flex items-center gap-2'>
+                    <Zap className='h-4 w-4' />
+                    検索手法
+                  </h4>
+                  <div className='flex gap-4'>
+                    <label className='flex items-center space-x-2'>
+                      <input
+                        type='checkbox'
+                        checked={ragSettings.enableSemantic}
+                        onChange={e =>
+                          setRagSettings(prev => ({
+                            ...prev,
+                            enableSemantic: e.target.checked,
                           }))
                         }
                         className='rounded'
                       />
-                      <div className='text-sm'>
-                        <div className='font-medium'>段階的表示（推奨）</div>
-                        <div className='text-gray-500'>1つずつ質問し、1つずつ対策を表示</div>
-                      </div>
+                      <span className='text-sm'>セマンティック検索</span>
                     </label>
-                    <label className='flex items-center space-x-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50'>
+                    <label className='flex items-center space-x-2'>
                       <input
-                        type='radio'
-                        name='responsePattern'
-                        value='comprehensive'
-                        checked={aiAssistSettings.responsePattern === 'comprehensive'}
+                        type='checkbox'
+                        checked={ragSettings.enableKeyword}
                         onChange={e =>
-                          setAiAssistSettings(prev => ({
+                          setRagSettings(prev => ({
                             ...prev,
-                            responsePattern: e.target.value,
+                            enableKeyword: e.target.checked,
                           }))
                         }
                         className='rounded'
                       />
-                      <div className='text-sm'>
-                        <div className='font-medium'>包括的表示</div>
-                        <div className='text-gray-500'>まとめて複数の対策を表示</div>
-                      </div>
-                    </label>
-                    <label className='flex items-center space-x-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50'>
-                      <input
-                        type='radio'
-                        name='responsePattern'
-                        value='minimal'
-                        checked={aiAssistSettings.responsePattern === 'minimal'}
-                        onChange={e =>
-                          setAiAssistSettings(prev => ({
-                            ...prev,
-                            responsePattern: e.target.value,
-                          }))
-                        }
-                        className='rounded'
-                      />
-                      <div className='text-sm'>
-                        <div className='font-medium'>最小限表示</div>
-                        <div className='text-gray-500'>要点のみ簡潔に表示</div>
-                      </div>
+                      <span className='text-sm'>キーワード検索</span>
                     </label>
                   </div>
                 </div>
-              </div>
 
-              {/* エスカレーション設定 */}
-              <div className='space-y-4 p-4 bg-red-50 border border-red-200 rounded-lg'>
-                <h4 className='font-medium flex items-center gap-2 text-red-800'>
-                  <AlertTriangle className='h-4 w-4 text-red-600' />
-                  エスカレーション設定
-                </h4>
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                  <div className='space-y-2'>
-                    <Label htmlFor='escalationTime'>
-                      救援要請タイムアウト: {aiAssistSettings.escalationTime}分
-                    </Label>
-                    <Slider
-                      id='escalationTime'
-                      min={10}
-                      max={60}
-                      step={5}
-                      value={[aiAssistSettings.escalationTime]}
-                      onValueChange={value =>
-                        setAiAssistSettings(prev => ({
-                          ...prev,
-                          escalationTime: value[0],
-                        }))
-                      }
-                      className='w-full'
-                    />
-                    <p className='text-xs text-gray-500'>
-                      この時間経過後に専門家への連絡を推奨
-                    </p>
-                  </div>
+                {/* 前処理設定 */}
+                <div className='space-y-4'>
+                  <h4 className='font-medium'>テキスト前処理</h4>
                   <div className='space-y-2'>
                     <label className='flex items-center space-x-2'>
                       <input
                         type='checkbox'
-                        checked={aiAssistSettings.enableEmergencyContact}
+                        checked={ragSettings.preprocessing.removeStopWords}
                         onChange={e =>
-                          setAiAssistSettings(prev => ({
+                          setRagSettings(prev => ({
                             ...prev,
-                            enableEmergencyContact: e.target.checked,
+                            preprocessing: {
+                              ...prev.preprocessing,
+                              removeStopWords: e.target.checked,
+                            },
                           }))
                         }
                         className='rounded'
                       />
-                      <span className='text-sm'>緊急連絡機能を有効化</span>
+                      <span className='text-sm'>ストップワード除去</span>
                     </label>
-                    <p className='text-xs text-gray-500'>
-                      自動で救援要請や支援者への連絡オプションを表示
-                    </p>
+                    <label className='flex items-center space-x-2'>
+                      <input
+                        type='checkbox'
+                        checked={ragSettings.preprocessing.normalizeCasing}
+                        onChange={e =>
+                          setRagSettings(prev => ({
+                            ...prev,
+                            preprocessing: {
+                              ...prev.preprocessing,
+                              normalizeCasing: e.target.checked,
+                            },
+                          }))
+                        }
+                        className='rounded'
+                      />
+                      <span className='text-sm'>大文字小文字正規化</span>
+                    </label>
+                    <label className='flex items-center space-x-2'>
+                      <input
+                        type='checkbox'
+                        checked={ragSettings.preprocessing.removeSpecialChars}
+                        onChange={e =>
+                          setRagSettings(prev => ({
+                            ...prev,
+                            preprocessing: {
+                              ...prev.preprocessing,
+                              removeSpecialChars: e.target.checked,
+                            },
+                          }))
+                        }
+                        className='rounded'
+                      />
+                      <span className='text-sm'>特殊文字除去</span>
+                    </label>
                   </div>
                 </div>
-              </div>
 
-              {/* カスタム指示 */}
-              <div className='space-y-2 p-4 bg-gray-50 border border-gray-200 rounded-lg'>
-                <Label htmlFor='customInstructions' className='text-gray-800 font-medium'>追加のカスタム指示</Label>
-                <Textarea
-                  id='customInstructions'
-                  value={aiAssistSettings.customInstructions}
-                  onChange={e =>
-                    setAiAssistSettings(prev => ({
-                      ...prev,
-                      customInstructions: e.target.value,
-                    }))
-                  }
-                  placeholder='GPTに対する追加の指示や制約条件を入力...'
-                  rows={3}
-                />
-                <p className='text-xs text-gray-500'>
-                  AI支援の動作をさらに細かくカスタマイズするための指示
-                </p>
-              </div>
-
-              {/* 設定保存ボタン */}
-              <div className='flex gap-2 pt-4 border-t border-purple-200 bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg'>
-                <Button
-                  onClick={saveAiAssistSettings}
-                  className='flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white'
-                >
-                  <Save className='h-4 w-4' />
-                  AI支援設定を保存
-                </Button>
-                <Button
-                  variant='outline'
-                  onClick={() => navigate('/chat')}
-                  className='flex items-center gap-2 border-purple-300 text-purple-700 hover:bg-purple-100'
-                >
-                  <MessageCircle className='h-4 w-4' />
-                  AI支援を試す
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* RAG設定 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className='flex items-center gap-2'>
-                <Brain className='h-5 w-5' />
-                RAG (Retrieval-Augmented Generation) 設定
-              </CardTitle>
-              <p className='text-sm text-gray-600'>
-                GPTレスポンスの精度向上のための事前処理パラメーター
-              </p>
-            </CardHeader>
-            <CardContent className='space-y-6'>
-              {/* チャンク設定 */}
-              <div className='space-y-4'>
-                <h4 className='font-medium flex items-center gap-2'>
-                  <FileSearch className='h-4 w-4' />
-                  テキスト分割設定
-                </h4>
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                  <div className='space-y-2'>
-                    <Label htmlFor='chunkSize'>
-                      チャンクサイズ: {ragSettings.chunkSize}文字
-                    </Label>
-                    <Slider
-                      id='chunkSize'
-                      min={200}
-                      max={2000}
-                      step={100}
-                      value={[ragSettings.chunkSize]}
-                      onValueChange={value =>
-                        setRagSettings(prev => ({
-                          ...prev,
-                          chunkSize: value[0],
-                        }))
-                      }
-                      className='w-full'
-                    />
-                    <p className='text-xs text-gray-500'>
-                      テキストを分割する際の1チャンクあたりの文字数
-                    </p>
-                  </div>
-
-                  <div className='space-y-2'>
-                    <Label htmlFor='chunkOverlap'>
-                      オーバーラップ: {ragSettings.chunkOverlap}文字
-                    </Label>
-                    <Slider
-                      id='chunkOverlap'
-                      min={0}
-                      max={500}
-                      step={50}
-                      value={[ragSettings.chunkOverlap]}
-                      onValueChange={value =>
-                        setRagSettings(prev => ({
-                          ...prev,
-                          chunkOverlap: value[0],
-                        }))
-                      }
-                      className='w-full'
-                    />
-                    <p className='text-xs text-gray-500'>
-                      チャンク間で重複させる文字数
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 検索設定 */}
-              <div className='space-y-4'>
-                <h4 className='font-medium flex items-center gap-2'>
-                  <Sliders className='h-4 w-4' />
-                  検索精度設定
-                </h4>
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                  <div className='space-y-2'>
-                    <Label htmlFor='similarityThreshold'>
-                      類似度閾値: {ragSettings.similarityThreshold}
-                    </Label>
-                    <Slider
-                      id='similarityThreshold'
-                      min={0.1}
-                      max={1.0}
-                      step={0.1}
-                      value={[ragSettings.similarityThreshold]}
-                      onValueChange={value =>
-                        setRagSettings(prev => ({
-                          ...prev,
-                          similarityThreshold: value[0],
-                        }))
-                      }
-                      className='w-full'
-                    />
-                    <p className='text-xs text-gray-500'>
-                      検索結果として採用する最小類似度
-                    </p>
-                  </div>
-
-                  <div className='space-y-2'>
-                    <Label htmlFor='maxResults'>
-                      最大取得件数: {ragSettings.maxResults}件
-                    </Label>
-                    <Slider
-                      id='maxResults'
-                      min={1}
-                      max={20}
-                      step={1}
-                      value={[ragSettings.maxResults]}
-                      onValueChange={value =>
-                        setRagSettings(prev => ({
-                          ...prev,
-                          maxResults: value[0],
-                        }))
-                      }
-                      className='w-full'
-                    />
-                    <p className='text-xs text-gray-500'>
-                      1回の検索で取得する最大結果数
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 検索手法 */}
-              <div className='space-y-4'>
-                <h4 className='font-medium flex items-center gap-2'>
-                  <Zap className='h-4 w-4' />
-                  検索手法
-                </h4>
-                <div className='flex gap-4'>
-                  <label className='flex items-center space-x-2'>
-                    <input
-                      type='checkbox'
-                      checked={ragSettings.enableSemantic}
-                      onChange={e =>
-                        setRagSettings(prev => ({
-                          ...prev,
-                          enableSemantic: e.target.checked,
-                        }))
-                      }
-                      className='rounded'
-                    />
-                    <span className='text-sm'>セマンティック検索</span>
-                  </label>
-                  <label className='flex items-center space-x-2'>
-                    <input
-                      type='checkbox'
-                      checked={ragSettings.enableKeyword}
-                      onChange={e =>
-                        setRagSettings(prev => ({
-                          ...prev,
-                          enableKeyword: e.target.checked,
-                        }))
-                      }
-                      className='rounded'
-                    />
-                    <span className='text-sm'>キーワード検索</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* 前処理設定 */}
-              <div className='space-y-4'>
-                <h4 className='font-medium'>テキスト前処理</h4>
+                {/* カスタムプロンプト */}
                 <div className='space-y-2'>
-                  <label className='flex items-center space-x-2'>
-                    <input
-                      type='checkbox'
-                      checked={ragSettings.preprocessing.removeStopWords}
-                      onChange={e =>
-                        setRagSettings(prev => ({
-                          ...prev,
-                          preprocessing: {
-                            ...prev.preprocessing,
-                            removeStopWords: e.target.checked,
-                          },
-                        }))
-                      }
-                      className='rounded'
-                    />
-                    <span className='text-sm'>ストップワード除去</span>
-                  </label>
-                  <label className='flex items-center space-x-2'>
-                    <input
-                      type='checkbox'
-                      checked={ragSettings.preprocessing.normalizeCasing}
-                      onChange={e =>
-                        setRagSettings(prev => ({
-                          ...prev,
-                          preprocessing: {
-                            ...prev.preprocessing,
-                            normalizeCasing: e.target.checked,
-                          },
-                        }))
-                      }
-                      className='rounded'
-                    />
-                    <span className='text-sm'>大文字小文字正規化</span>
-                  </label>
-                  <label className='flex items-center space-x-2'>
-                    <input
-                      type='checkbox'
-                      checked={ragSettings.preprocessing.removeSpecialChars}
-                      onChange={e =>
-                        setRagSettings(prev => ({
-                          ...prev,
-                          preprocessing: {
-                            ...prev.preprocessing,
-                            removeSpecialChars: e.target.checked,
-                          },
-                        }))
-                      }
-                      className='rounded'
-                    />
-                    <span className='text-sm'>特殊文字除去</span>
-                  </label>
+                  <Label htmlFor='customPrompt'>カスタムプロンプト</Label>
+                  <Textarea
+                    id='customPrompt'
+                    value={ragSettings.customPrompt}
+                    onChange={e =>
+                      setRagSettings(prev => ({
+                        ...prev,
+                        customPrompt: e.target.value,
+                      }))
+                    }
+                    placeholder='RAG検索結果を活用する際の追加指示を入力...'
+                    rows={3}
+                  />
+                  <p className='text-xs text-gray-500'>
+                    検索結果をGPTに渡す際の追加指示
+                  </p>
                 </div>
-              </div>
 
-              {/* カスタムプロンプト */}
-              <div className='space-y-2'>
-                <Label htmlFor='customPrompt'>カスタムプロンプト</Label>
-                <Textarea
-                  id='customPrompt'
-                  value={ragSettings.customPrompt}
-                  onChange={e =>
-                    setRagSettings(prev => ({
-                      ...prev,
-                      customPrompt: e.target.value,
-                    }))
-                  }
-                  placeholder='RAG検索結果を活用する際の追加指示を入力...'
-                  rows={3}
-                />
-                <p className='text-xs text-gray-500'>
-                  検索結果をGPTに渡す際の追加指示
-                </p>
-              </div>
+                {/* 設定保存ボタン */}
+                <div className='flex gap-2 pt-4 border-t'>
+                  <Button
+                    onClick={saveRagSettings}
+                    className='flex items-center gap-2'
+                  >
+                    <Settings className='h-4 w-4' />
+                    RAG設定を保存
+                  </Button>
+                  <Button
+                    variant='outline'
+                    onClick={() => navigate('/chat')}
+                    className='flex items-center gap-2'
+                  >
+                    <CheckCircle className='h-4 w-4' />
+                    チャット画面に戻る
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
-              {/* 設定保存ボタン */}
-              <div className='flex gap-2 pt-4 border-t'>
-                <Button
-                  onClick={saveRagSettings}
-                  className='flex items-center gap-2'
-                >
-                  <Settings className='h-4 w-4' />
-                  RAG設定を保存
-                </Button>
-                <Button
-                  variant='outline'
-                  onClick={() => navigate('/chat')}
-                  className='flex items-center gap-2'
-                >
-                  <CheckCircle className='h-4 w-4' />
-                  チャット画面に戻る
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* RAGパフォーマンス表示 */}
-          <RagPerformanceDisplay />
+            {/* RAGパフォーマンス表示 */}
+            <RagPerformanceDisplay />
           </div>
         </TabsContent>
       </Tabs>
@@ -1587,7 +1586,7 @@ function KnowledgeLifecycleManagement() {
       const response = await fetch('/api/knowledge-base/cleanup/auto', {
         method: 'POST',
       });
-      
+
       if (response.ok) {
         const result = await response.json();
         const resultsDiv = document.getElementById('cleanup-results');
@@ -1638,7 +1637,7 @@ function KnowledgeLifecycleManagement() {
           deleteAll: true,
         }),
       });
-      
+
       if (response.ok) {
         const result = await response.json();
         const resultsDiv = document.getElementById('cleanup-results');
@@ -1679,7 +1678,7 @@ function KnowledgeLifecycleManagement() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           type: 'all',
           destination: 'local'
         }),
@@ -1698,7 +1697,7 @@ function KnowledgeLifecycleManagement() {
         try {
           const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
           const fileName = `knowledge-export-${timestamp}.zip`;
-          
+
           const fileHandle = await (window as any).showSaveFilePicker({
             suggestedName: fileName,
             types: [{
@@ -1743,7 +1742,7 @@ function KnowledgeLifecycleManagement() {
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
-        
+
         if (resultsDiv) {
           resultsDiv.innerHTML = `
             <div class="text-green-600">
@@ -1819,14 +1818,14 @@ function KnowledgeLifecycleManagement() {
     try {
       const response = await fetch('/api/knowledge-base/archives');
       const data = await response.json();
-      
+
       const resultsDiv = document.getElementById('cleanup-results');
       if (resultsDiv) {
         if (data.success && data.data.length > 0) {
-          const archiveList = data.data.map((archive: any) => 
+          const archiveList = data.data.map((archive: any) =>
             `• ${archive.name} (${(archive.size / 1024 / 1024).toFixed(2)}MB) - ${new Date(archive.createdAt).toLocaleString('ja-JP')}`
           ).join('<br>');
-          
+
           resultsDiv.innerHTML = `
             <div class="text-blue-600">
               <strong>📁 アーカイブ一覧 (${data.total}件):</strong><br>
@@ -1876,7 +1875,7 @@ function KnowledgeLifecycleManagement() {
             エクスポート: {storageStats.exportFiles || 0} | ドキュメント: {storageStats.documentFiles || 0}
           </p>
         </div>
-        
+
         <div className='p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg border border-green-200'>
           <div className='flex items-center gap-2 mb-2'>
             <Database className='h-5 w-5 text-green-600' />
@@ -1889,7 +1888,7 @@ function KnowledgeLifecycleManagement() {
             アーカイブ: {storageStats.archivedFiles || 0} ファイル
           </p>
         </div>
-        
+
         <div className='p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg border border-yellow-200'>
           <div className='flex items-center gap-2 mb-2'>
             <AlertTriangle className='h-5 w-5 text-yellow-600' />
@@ -1900,14 +1899,14 @@ function KnowledgeLifecycleManagement() {
             {storageStats.duplicates > 0 ? '要整理データあり' : '重複なし'}
           </p>
         </div>
-        
+
         <div className='p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg border border-purple-200'>
           <div className='flex items-center gap-2 mb-2'>
             <CheckCircle className='h-5 w-5 text-purple-600' />
             <span className='text-sm font-medium text-purple-800'>最終整理</span>
           </div>
           <p className='text-lg font-bold text-purple-600'>
-            {storageStats.lastMaintenance 
+            {storageStats.lastMaintenance
               ? new Date(storageStats.lastMaintenance).toLocaleDateString('ja-JP')
               : '未実行'
             }
@@ -1924,7 +1923,7 @@ function KnowledgeLifecycleManagement() {
           <Settings className='h-4 w-4' />
           ライフサイクル管理操作
         </h4>
-        
+
         <div className='grid grid-cols-1 gap-4'>
           {/* 管理操作ボタン */}
           <div className='space-y-3'>
@@ -1940,7 +1939,7 @@ function KnowledgeLifecycleManagement() {
                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                 自動整理
               </Button>
-              
+
               <Button
                 variant='default'
                 size='default'
@@ -1951,7 +1950,7 @@ function KnowledgeLifecycleManagement() {
                 <Target className='h-4 w-4' />
                 重複解決
               </Button>
-              
+
               <Button
                 variant='default'
                 size='default'
@@ -1962,7 +1961,7 @@ function KnowledgeLifecycleManagement() {
                 <Activity className='h-4 w-4' />
                 状況更新
               </Button>
-              
+
               <Button
                 variant='default'
                 size='default'
@@ -1995,7 +1994,7 @@ function KnowledgeLifecycleManagement() {
           <AlertTriangle className='h-4 w-4' />
           手動によるナレッジデータ削除
         </h4>
-        
+
         <div className='grid grid-cols-1 gap-4'>
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             {/* エクスポートオプション */}
@@ -2012,7 +2011,7 @@ function KnowledgeLifecycleManagement() {
                   <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                   全データエクスポート
                 </Button>
-                
+
                 <Button
                   variant='outline'
                   size='default'
@@ -2040,7 +2039,7 @@ function KnowledgeLifecycleManagement() {
                   <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                   1年以上経過データをアーカイブ
                 </Button>
-                
+
                 <Button
                   variant='outline'
                   size='default'
