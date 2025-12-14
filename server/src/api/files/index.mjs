@@ -44,7 +44,7 @@ export default async function (req, res) {
 
       const uploadedFile = req.file;
       const saveOriginalFile = req.body.saveOriginalFile === 'true';
-      
+
       console.log('[api/files/import] File upload:', {
         fileName: uploadedFile?.originalname,
         fileSize: uploadedFile?.size,
@@ -67,16 +67,29 @@ export default async function (req, res) {
       if (useAzure) {
         // Azure Blob Storage に保存
         console.log('[api/files/import] Saving to Azure Blob Storage');
-        
+
         try {
           const blobServiceClient = getBlobServiceClient();
           if (!blobServiceClient) {
-            throw new Error('Blob Service Client is not available');
+            console.error('[api/files/import] ❌ Failed to initialize Blob Service Client');
+            return res.status(503).json({
+              success: false,
+              error: 'Storage service unavailable (Configuration Error)',
+              message: 'ストレージサービスへの接続に失敗しました。管理者に連絡してください。',
+              code: 'BLOB_CLIENT_INIT_FAILED'
+            });
           }
 
           const containerClient = blobServiceClient.getContainerClient(containerName);
           const blobPath = norm(`imports/${safeFileName}`);
           const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
+
+          // コンテナの存在確認と作成
+          const containerExists = await containerClient.exists();
+          if (!containerExists) {
+            console.log('[api/files/import] Creating container:', containerName);
+            await containerClient.create();
+          }
 
           await blockBlobClient.upload(uploadedFile.buffer, uploadedFile.size, {
             blobHTTPHeaders: {
@@ -109,14 +122,14 @@ export default async function (req, res) {
       } else {
         // ローカルファイルシステムに保存
         console.log('[api/files/import] Saving to local filesystem');
-        
+
         try {
           const uploadsDir = path.join(process.cwd(), 'uploads', 'imports');
           await fs.mkdir(uploadsDir, { recursive: true });
-          
+
           const localPath = path.join(uploadsDir, safeFileName);
           await fs.writeFile(localPath, uploadedFile.buffer);
-          
+
           console.log('[api/files/import] ✅ File saved locally:', localPath);
 
           return res.status(200).json({

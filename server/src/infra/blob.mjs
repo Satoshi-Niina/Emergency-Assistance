@@ -61,14 +61,27 @@ export const getBlobServiceClient = () => {
     }
   }
 
-  // ローカル環境（STORAGE_MODE=local）の場合は警告を出さない
   if (isLocalMode) {
     console.log('[Blob] ℹ️ Local mode - BLOB client not required');
     return null;
   }
 
-  console.error('[Blob] ❌ No connection string or account name provided.');
-  console.error('[Blob] Please set AZURE_STORAGE_CONNECTION_STRING or AZURE_STORAGE_ACCOUNT_NAME');
+  // エラー詳細を収集してログに出力
+  const errors = [];
+  
+  if (!AZURE_STORAGE_CONNECTION_STRING && !AZURE_STORAGE_ACCOUNT_NAME) {
+    errors.push('No connection string or account name provided');
+  }
+
+  console.error('[Blob] ❌ Failed to initialize Blob Service Client');
+  console.error('[Blob] Reasons:', errors.join(', '));
+  console.error('[Blob] Environment Status:', {
+    NODE_ENV: process.env.NODE_ENV,
+    STORAGE_MODE: process.env.STORAGE_MODE,
+    HAS_CONN_STRING: !!process.env.AZURE_STORAGE_CONNECTION_STRING,
+    HAS_ACCOUNT_NAME: !!process.env.AZURE_STORAGE_ACCOUNT_NAME
+  });
+  
   return null;
 };
 

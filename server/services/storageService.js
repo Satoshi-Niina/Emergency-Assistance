@@ -77,12 +77,26 @@ export class StorageService {
         }
         try {
             // Azure Blob Storage SDKを動的インポート
-            const { BlobServiceClient } = await import('@azure/storage-blob');
-            const { accountName, accountKey, containerName } = this.config.azure;
-            const connectionString = `DefaultEndpointsProtocol=https;AccountName=${accountName};AccountKey=${accountKey};EndpointSuffix=core.windows.net`;
-            const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+            // Azure Blob Storage SDKを動的インポート - ここではinfra/blob.mjsの共通関数を使用する
+            // const { BlobServiceClient } = await import('@azure/storage-blob');
+            const { getBlobServiceClient } = await import('../src/infra/blob.mjs');
+            const blobServiceClient = getBlobServiceClient();
+
+            if (!blobServiceClient) {
+                throw new Error('Azure Blob Service Clientの初期化に失敗しました。環境変数を確認してください。');
+            }
+
+            const { containerName } = this.config.azure;
             const containerClient = blobServiceClient.getContainerClient(containerName);
             const blockBlobClient = containerClient.getBlockBlobClient(filename);
+
+            // コンテナが存在するか確認して作成
+            const containerExists = await containerClient.exists();
+            if (!containerExists) {
+                console.log(`[StorageService] Creating container: ${containerName}`);
+                await containerClient.create();
+            }
+
             // ファイルをアップロード
             await blockBlobClient.upload(buffer, buffer.length, {
                 blobHTTPHeaders: {
@@ -144,10 +158,16 @@ export class StorageService {
             return false;
         }
         try {
-            const { BlobServiceClient } = await import('@azure/storage-blob');
-            const { accountName, accountKey, containerName } = this.config.azure;
-            const connectionString = `DefaultEndpointsProtocol=https;AccountName=${accountName};AccountKey=${accountKey};EndpointSuffix=core.windows.net`;
-            const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+            // const { BlobServiceClient } = await import('@azure/storage-blob');
+            const { getBlobServiceClient } = await import('../src/infra/blob.mjs');
+            const blobServiceClient = getBlobServiceClient();
+
+            if (!blobServiceClient) {
+                console.error('[StorageService] ❌ Blob client not available for delete operation');
+                return false;
+            }
+
+            const { containerName } = this.config.azure;
             const containerClient = blobServiceClient.getContainerClient(containerName);
             const blockBlobClient = containerClient.getBlockBlobClient(filename);
             await blockBlobClient.delete();
@@ -197,10 +217,14 @@ export class StorageService {
             }
             else if (this.config.type === 'azure') {
                 // Azure Blobの存在確認
-                const { BlobServiceClient } = await import('@azure/storage-blob');
-                const { accountName, accountKey, containerName } = this.config.azure;
-                const connectionString = `DefaultEndpointsProtocol=https;AccountName=${accountName};AccountKey=${accountKey};EndpointSuffix=core.windows.net`;
-                const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+                // Azure Blobの存在確認
+                // const { BlobServiceClient } = await import('@azure/storage-blob');
+                const { getBlobServiceClient } = await import('../src/infra/blob.mjs');
+                const blobServiceClient = getBlobServiceClient();
+
+                if (!blobServiceClient) return false;
+
+                const { containerName } = this.config.azure;
                 const containerClient = blobServiceClient.getContainerClient(containerName);
                 const blockBlobClient = containerClient.getBlockBlobClient(filename);
                 const exists = await blockBlobClient.exists();

@@ -7,17 +7,31 @@ import { getBlobServiceClient, containerName } from '../../infra/blob.mjs';
 export default async function (req, res) {
   try {
     console.log('[api/knowledge-base] Request:', { method: req.method, path: req.path });
-    
+
     // 統計エンドポイント: /api/knowledge-base/stats
-    if (req.path.endsWith('/stats')) {
-      return res.json({
-        success: true,
-        stats: {
-          documents: 0,
-          lastUpdated: null,
-        },
-        timestamp: new Date().toISOString(),
-      });
+    // 統計エンドポイント: /api/knowledge-base/stats
+    // Azure Functionsでは /api/knowledge-base 部分でトリガーされるため、
+    // 相対パスが /stats または stats であるか、もしくはクエリパラメータ等も考慮
+    const isStatsRequest = req.path.endsWith('/stats') || req.url.includes('/stats');
+
+    if (isStatsRequest) {
+      console.log('[api/knowledge-base] Serving stats endpoint');
+      try {
+        // BlobとDBの両方から統計を取得するのは重いため、一旦簡易的な応答を返す
+        // 必要であればここでDBカウントなどを実施
+        return res.json({
+          success: true,
+          stats: {
+            documents: rows.length || 0, // rowsはこの時点では空だが、構造を維持
+            lastUpdated: new Date().toISOString(),
+            status: 'online'
+          },
+          timestamp: new Date().toISOString(),
+        });
+      } catch (statsError) {
+        console.error('[api/knowledge-base/stats] Error generating stats:', statsError);
+        return res.status(500).json({ error: 'Stats generation failed' });
+      }
     }
 
     console.log('Knowledge base HTTP trigger function processed a request.');
@@ -41,7 +55,7 @@ export default async function (req, res) {
       console.log('Knowledge base query result:', { count: rows.length });
     } catch (dbError) {
       console.warn('Knowledge base DB query failed, falling back to storage:', dbError.message);
-      
+
       // Azure環境かどうかを判定
       const useAzure = isAzureEnvironment();
       console.log('[knowledge-base] Environment check:', {
@@ -55,7 +69,7 @@ export default async function (req, res) {
       if (!useAzure) {
         console.log('[knowledge-base] LOCAL: Using local filesystem');
         const localPath = join(process.cwd(), 'knowledge-base', 'index.json');
-        
+
         if (fs.existsSync(localPath)) {
           const raw = fs.readFileSync(localPath, 'utf8');
           const fallbackData = JSON.parse(raw);
@@ -69,26 +83,26 @@ export default async function (req, res) {
         console.log('[knowledge-base] AZURE: Using BLOB storage');
         try {
           const blobServiceClient = getBlobServiceClient();
-          
+
           if (blobServiceClient) {
             const containerClient = blobServiceClient.getContainerClient(containerName);
             const prefix = 'knowledge-base/documents/';
-            
+
             for await (const blob of containerClient.listBlobsFlat({ prefix })) {
               if (!blob.name.endsWith('.json')) continue;
-              
+
               try {
                 const blobClient = containerClient.getBlobClient(blob.name);
                 const downloadResponse = await blobClient.download();
                 const chunks = [];
-                
+
                 if (downloadResponse.readableStreamBody) {
                   for await (const chunk of downloadResponse.readableStreamBody) {
                     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
                   }
                   const buffer = Buffer.concat(chunks);
                   const data = JSON.parse(buffer.toString('utf8'));
-                  
+
                   if (Array.isArray(data)) {
                     rows.push(...data);
                   } else if (data.title && data.content) {
