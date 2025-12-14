@@ -25,10 +25,12 @@
   <script>
     // バックエンドURLの設定（本番環境用）
     // GitHub ActionsビルドではVITE_BACKEND_SERVICE_URLから置換されます
-    // デフォルト値として本番URLを設定（フォールバック）
     const backendUrl = '%%%VITE_BACKEND_SERVICE_URL%%%';
-    // プレースホルダーが置換されていない場合はデフォルトの本番URLを使用
-    window.BACKEND_SERVICE_URL = (backendUrl && backendUrl.startsWith('http') && !backendUrl.includes('%%%')) 
+    // プレースホルダーが置換されていない場合、またはStatic Web AppsのURLの場合は、App ServiceのURLを使用
+    window.BACKEND_SERVICE_URL = (backendUrl && 
+                                  backendUrl.startsWith('http') && 
+                                  !backendUrl.includes('%%%') && 
+                                  !backendUrl.includes('azurestaticapps.net')) 
       ? backendUrl 
       : 'https://emergency-assistantapp.azurewebsites.net';
 
