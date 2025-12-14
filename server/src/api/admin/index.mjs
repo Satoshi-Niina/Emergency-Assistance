@@ -51,4 +51,4 @@ export default async function adminHandler(req, res) {
   });
 }
 
-export const methods = ['get'];
+export const methods = ['get', 'post'];

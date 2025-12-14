@@ -1,6 +1,6 @@
 export default async function (req, res) {
   try {
-    console.log('Files API processed a request.');
+    console.log('[api/files] Request:', { method: req.method, path: req.path, url: req.url });
 
     // OPTIONSリクエストの処理
     if (req.method === 'OPTIONS') {
@@ -79,11 +79,19 @@ export default async function (req, res) {
     });
 
   } catch (error) {
-    console.error('Error in files function:', error);
+    console.error('[api/files] Error:', {
+      message: error.message,
+      stack: error.stack,
+      path: req.path,
+      method: req.method
+    });
     return res.status(500).json({
       success: false,
       error: 'Internal server error',
-      message: error.message
+      message: error.message,
+      path: req.path
     });
   }
 }
+
+export const methods = ['get', 'post', 'put', 'delete', 'options'];

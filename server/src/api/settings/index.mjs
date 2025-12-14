@@ -66,4 +66,4 @@ export default async function settingsHandler(req, res) {
   });
 }
 
-export const methods = ['get', 'post'];
+export const methods = ['get', 'post', 'put', 'delete'];

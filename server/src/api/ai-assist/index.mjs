@@ -39,4 +39,4 @@ export default async function aiAssistHandler(req, res) {
   }
 }
 
-export const methods = ['get'];
+export const methods = ['get', 'post'];

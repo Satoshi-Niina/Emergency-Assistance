@@ -6,6 +6,8 @@ import { getBlobServiceClient, containerName } from '../../infra/blob.mjs';
 
 export default async function (req, res) {
   try {
+    console.log('[api/knowledge-base] Request:', { method: req.method, path: req.path });
+    
     // 統計エンドポイント: /api/knowledge-base/stats
     if (req.path.endsWith('/stats')) {
       return res.json({

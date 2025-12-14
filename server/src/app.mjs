@@ -102,12 +102,24 @@ export async function createApp() {
 
   // Error Handler
   app.use((err, req, res, next) => {
-    console.error('[Error] Unhandled error:', err);
-    // Temporary: Always show error details for debugging
+    console.error('[Error] Unhandled error:', {
+      error: err.message,
+      stack: err.stack,
+      path: req.path,
+      method: req.method,
+      url: req.url
+    });
+    
+    // Don't send response if headers already sent
+    if (res.headersSent) {
+      return next(err);
+    }
+    
     res.status(500).json({
       error: 'internal_error',
       message: err.message,
       stack: NODE_ENV === 'development' ? err.stack : undefined,
+      path: req.path,
       details: 'Check server logs for more info'
     });
   });
@@ -147,23 +159,43 @@ async function loadApiRoutes(app) {
         const moduleUrl = pathToFileURL(indexPath).href;
         const module = await import(moduleUrl);
         
-        if (!module.default) continue;
+        if (!module.default) {
+          console.warn(`[App] No default export in ${moduleName}`);
+          continue;
+        }
         
         const routePath = `/api/${moduleName}`;
         const methods = module.methods || ['get', 'post', 'put', 'delete'];
         
         for (const method of methods) {
           if (typeof app[method] === 'function') {
-            app[method](routePath, module.default);
+            // Wrap handler with error catching
+            const wrappedHandler = async (req, res, next) => {
+              try {
+                await module.default(req, res, next);
+              } catch (error) {
+                console.error(`[App] Error in ${routePath}:`, {
+                  message: error.message,
+                  stack: error.stack,
+                  path: req.path
+                });
+                next(error);
+              }
+            };
+            
+            app[method](routePath, wrappedHandler);
             
             // Wildcard support for all modules to handle sub-paths
             // e.g. /api/machines/machine-types
-            app[method](`${routePath}/*`, module.default);
+            app[method](`${routePath}/*`, wrappedHandler);
           }
         }
-        console.log(`[App] Loaded route: ${routePath}`);
+        console.log(`[App] ✅ Loaded route: ${routePath} [${methods.join(', ')}]`);
       } catch (err) {
-        console.error(`[App] Failed to load ${moduleName}:`, err.message);
+        console.error(`[App] ❌ Failed to load ${moduleName}:`, {
+          message: err.message,
+          stack: err.stack
+        });
       }
     }
   } catch (error) {
