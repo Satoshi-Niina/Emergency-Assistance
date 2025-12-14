@@ -92,13 +92,19 @@ export const apiRequest = async <T = any>(
         if (!response.ok) {
             let errorMessage = `API Error ${response.status}: ${response.statusText}`;
             try {
-                const errorData = await response.json();
-                console.error(`❌ API Error Response:`, errorData);
-                errorMessage = errorData.error || errorData.message || errorMessage;
-            } catch {
+                // テキストとして読み取り、その後JSONパースを試みる
                 const errorText = await response.text();
-                console.error(`❌ API Error: ${response.status} ${response.statusText} - ${errorText}`);
-                errorMessage = errorText || errorMessage;
+                try {
+                    const errorData = JSON.parse(errorText);
+                    console.error(`❌ API Error Response:`, errorData);
+                    errorMessage = errorData.error || errorData.message || errorMessage;
+                } catch {
+                    // JSONパースに失敗した場合はテキストをそのまま使用
+                    console.error(`❌ API Error: ${response.status} ${response.statusText} - ${errorText}`);
+                    errorMessage = errorText || errorMessage;
+                }
+            } catch (err) {
+                console.error(`❌ Failed to read error response:`, err);
             }
 
             if (response.status === 401) {
@@ -111,14 +117,14 @@ export const apiRequest = async <T = any>(
 
         const data = await response.json();
         console.log(`✅ API Response: ${options.method || 'GET'} ${url}`, data);
-        
+
         // サーバーがsuccess: falseを返している場合でもHTTP 200の場合がある
         if (data && typeof data === 'object' && 'success' in data && data.success === false) {
             const errorMessage = data.error || data.message || 'Unknown error';
             console.error(`❌ API returned success: false:`, errorMessage);
             throw new Error(errorMessage);
         }
-        
+
         return data;
     } catch (error) {
         console.error(`❌ API Request Failed: ${options.method || 'GET'} ${url}`, error);
