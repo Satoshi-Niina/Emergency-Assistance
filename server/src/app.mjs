@@ -189,9 +189,10 @@ async function loadApiRoutes(app) {
             };
 
             // For files module, apply multer middleware for /import endpoint
+            // 重要: より具体的なルート（/import）を先に登録
             if (moduleName === 'files' && upload) {
-              app[method](routePath, wrappedHandler);
               app[method](`${routePath}/import`, upload.single('file'), wrappedHandler);
+              app[method](routePath, wrappedHandler);
               app[method](`${routePath}/*`, wrappedHandler);
             } else {
               app[method](routePath, wrappedHandler);
