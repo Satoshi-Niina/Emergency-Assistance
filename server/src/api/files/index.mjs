@@ -48,7 +48,7 @@ export default async function (req, res) {
         return res.status(400).json({
           success: false,
           error: 'No file uploaded',
-          message: 'ファイルが選択されていません。Multerミドルウェアが正しく動作していない可能性があります。'
+          message: 'ファイルが選択されていません。ファイルサイズが制限（100MB）を超えている可能性があります。'
         });
       }
 

@@ -22,11 +22,13 @@ export default async function (req, res) {
         try {
           const countResult = await dbQuery('SELECT COUNT(*) as count FROM base_documents');
           docCount = parseInt(countResult.rows[0]?.count || 0);
+          console.log('[api/knowledge-base/stats] Document count:', docCount);
         } catch (countError) {
           console.warn('[api/knowledge-base/stats] DB count failed:', countError.message);
+          // DB接続エラーの場合もゼロ値を返す（致命的エラーにしない）
         }
 
-        return res.json({
+        return res.status(200).json({
           success: true,
           data: {
             total: docCount,
@@ -42,10 +44,19 @@ export default async function (req, res) {
         });
       } catch (statsError) {
         console.error('[api/knowledge-base/stats] Error generating stats:', statsError);
-        return res.status(500).json({ 
-          success: false,
-          error: 'Stats generation failed',
-          details: statsError.message 
+        // エラーの場合でもゼロ値を返して処理を継続
+        return res.status(200).json({ 
+          success: true,
+          data: {
+            total: 0,
+            totalSize: 0,
+            typeStats: { json: 0, document: 0 },
+            oldData: 0,
+            lastMaintenance: new Date().toISOString()
+          },
+          warning: 'Stats generation had errors',
+          error: statsError.message,
+          timestamp: new Date().toISOString()
         });
       }
     }
