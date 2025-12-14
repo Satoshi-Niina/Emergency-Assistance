@@ -98,7 +98,6 @@
     },
     {
       "route": "/api/*",
-      "rewrite": "https://emergency-assistantapp.azurewebsites.net/api/{*}",
       "allowedRoles": [
         "anonymous",
         "authenticated"
