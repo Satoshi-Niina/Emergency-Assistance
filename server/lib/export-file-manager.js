@@ -19,7 +19,7 @@ export class ExportFileManager {
     /**
      * チャットエクスポートデータをファイルに保存
      */
-    saveChatExport(chatId, data, timestamp) {
+    async saveChatExport(chatId, data, timestamp) {
         const chatDir = path.join(this.baseDir, `chat_${chatId}`);
         if (!fs.existsSync(chatDir)) {
             fs.mkdirSync(chatDir, { recursive: true });
