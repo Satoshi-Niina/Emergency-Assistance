@@ -14,9 +14,8 @@ const getApiBaseUrl = (): string => {
     }
 
     // 環境変数が設定されていて、本番環境の場合のみ使用
-    if (isProduction) {
-        // 環境変数があればそれを使用、なければハードコードされた本番URLをフォールバックとして使用
-        return import.meta.env.VITE_API_BASE_URL || 'https://emergency-assistantapp.azurewebsites.net/api';
+    if (isProduction && import.meta.env.VITE_API_BASE_URL) {
+        return import.meta.env.VITE_API_BASE_URL;
     }
 
     // 開発・その他では相対パス（統合サーバーを使用）

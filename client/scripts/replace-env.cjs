@@ -18,8 +18,7 @@ console.log(' NODE_ENV:', process.env.NODE_ENV || 'development');
 // 環境変数を取得（process.envを優先）
 // 環境変数を取得（process.envを優先）
 let envVars = {
-  // フォールバック値を設定（CIでシークレットが設定されていない場合の安全策）
-  VITE_BACKEND_SERVICE_URL: process.env.VITE_BACKEND_SERVICE_URL || 'https://emergency-assistantapp.azurewebsites.net',
+  VITE_BACKEND_SERVICE_URL: process.env.VITE_BACKEND_SERVICE_URL || '',
   VITE_API_BASE_URL: process.env.VITE_API_BASE_URL || '',
   VITE_SERVER_URL: process.env.VITE_SERVER_URL || '',
 };
