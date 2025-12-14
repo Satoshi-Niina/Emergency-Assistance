@@ -26,11 +26,11 @@ export async function createApp() {
   // Basic Middleware
   app.disable('x-powered-by');
   app.set('trust proxy', true);
-  
+
   app.use(createSecurityMiddleware());
   app.use(compression());
   app.use(morgan(NODE_ENV === 'production' ? 'tiny' : 'dev'));
-  
+
   // CORS
   app.use(cors(corsOptions));
   app.options('*', cors(corsOptions));
@@ -109,18 +109,20 @@ export async function createApp() {
       method: req.method,
       url: req.url
     });
-    
+
     // Don't send response if headers already sent
     if (res.headersSent) {
       return next(err);
     }
-    
+
     res.status(500).json({
       error: 'internal_error',
       message: err.message,
-      stack: NODE_ENV === 'development' ? err.stack : undefined,
+      stack: process.env.NODE_ENV === 'development' || process.env.DEBUG_ERRORS === 'true' ? err.stack : undefined,
       path: req.path,
-      details: 'Check server logs for more info'
+      // デバッグのため、本番でも一時的に詳細を表示
+      details: err.message || 'Check server logs for more info',
+      code: err.code || 'INTERNAL_ERROR'
     });
   });
 
@@ -130,7 +132,7 @@ export async function createApp() {
 async function loadApiRoutes(app) {
   console.log('[App] Loading API routes dynamically...');
   const apiDir = path.join(__dirname, 'api');
-  
+
   if (!fs.existsSync(apiDir)) {
     console.warn('[App] API directory not found:', apiDir);
     return;
@@ -140,10 +142,10 @@ async function loadApiRoutes(app) {
 
   try {
     const entries = fs.readdirSync(apiDir, { withFileTypes: true });
-    
+
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
-      
+
       const moduleName = entry.name;
       if (excludedDirs.includes(moduleName)) continue;
 
@@ -152,24 +154,24 @@ async function loadApiRoutes(app) {
       if (!fs.existsSync(indexPath)) {
         indexPath = path.join(moduleDir, 'index.js');
       }
-      
+
       if (!fs.existsSync(indexPath)) continue;
-      
+
       try {
         const moduleUrl = pathToFileURL(indexPath).href;
         const module = await import(moduleUrl);
-        
+
         if (!module.default) {
           console.warn(`[App] No default export in ${moduleName}`);
           continue;
         }
-        
+
         const routePath = `/api/${moduleName}`;
         const methods = module.methods || ['get', 'post', 'put', 'delete'];
-        
+
         // Multer middleware import for file uploads
         const upload = module.upload || null;
-        
+
         for (const method of methods) {
           if (typeof app[method] === 'function') {
             // Wrap handler with error catching
@@ -185,7 +187,7 @@ async function loadApiRoutes(app) {
                 next(error);
               }
             };
-            
+
             // For files module, apply multer middleware for /import endpoint
             if (moduleName === 'files' && upload) {
               app[method](routePath, wrappedHandler);
@@ -193,7 +195,7 @@ async function loadApiRoutes(app) {
               app[method](`${routePath}/*`, wrappedHandler);
             } else {
               app[method](routePath, wrappedHandler);
-              
+
               // Wildcard support for all modules to handle sub-paths
               // e.g. /api/machines/machine-types
               app[method](`${routePath}/*`, wrappedHandler);
