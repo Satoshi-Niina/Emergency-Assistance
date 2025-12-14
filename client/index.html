@@ -25,7 +25,8 @@
   <script>
     // バックエンドURLの設定（ビルド時に環境変数から置換される）
     // このテンプレート変数はGitHub Actionsまたはデプロイスクリプトによってビルド時に置換されます
-    const backendUrl = '%%%VITE_BACKEND_SERVICE_URL%%%';
+    // ⚠️ 緊急対応: ビルドトラブル回避のためハードコードに変更
+    const backendUrl = 'https://emergency-assistantapp.azurewebsites.net';
     // プレースホルダーが置換されていない場合は空文字列
     window.BACKEND_SERVICE_URL = (backendUrl && backendUrl.startsWith('http')) ? backendUrl : '';
 
