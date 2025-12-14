@@ -1,3 +1,13 @@
+import { upload } from '../../infra/blob.mjs';
+import { isAzureEnvironment } from '../../config/env.mjs';
+import { getBlobServiceClient, norm, containerName } from '../../infra/blob.mjs';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 export default async function (req, res) {
   try {
     console.log('[api/files] Request:', { method: req.method, path: req.path, url: req.url });
@@ -18,30 +28,118 @@ export default async function (req, res) {
     const action = parts[parts.length - 1];
     const method = req.method;
 
-    console.log('Files request:', { method, action });
+    console.log('[api/files] Request details:', { method, action, path: req.path });
 
     // POST /api/files/import - ファイルインポート
     if (method === 'POST' && (action === 'import' || req.path.endsWith('/import'))) {
-      const body = req.body;
+      // Multerでファイルをパースする必要があるため、multerミドルウェアが適用されているかチェック
+      if (!req.file && !req.files) {
+        console.log('[api/files/import] No file uploaded, checking body:', req.body);
+        return res.status(400).json({
+          success: false,
+          error: 'No file uploaded',
+          message: 'ファイルが選択されていません'
+        });
+      }
 
-      const importResult = {
-        success: true,
-        message: 'ファイルのインポートが完了しました',
-        importedFiles: [
-          {
-            id: 'imported-1',
-            name: body.fileName || 'imported-file.txt',
-            size: body.fileSize || 1024,
-            type: body.fileType || 'text/plain',
-            importedAt: new Date().toISOString(),
-          },
-        ],
-        totalFiles: 1,
-        processedFiles: 1,
-        errors: [],
-      };
+      const uploadedFile = req.file;
+      const saveOriginalFile = req.body.saveOriginalFile === 'true';
+      
+      console.log('[api/files/import] File upload:', {
+        fileName: uploadedFile?.originalname,
+        fileSize: uploadedFile?.size,
+        mimetype: uploadedFile?.mimetype,
+        saveOriginalFile
+      });
 
-      return res.status(200).json(importResult);
+      const useAzure = isAzureEnvironment();
+      console.log('[api/files/import] Environment:', {
+        useAzure,
+        STORAGE_MODE: process.env.STORAGE_MODE,
+        NODE_ENV: process.env.NODE_ENV
+      });
+
+      // 保存先を決定
+      const fileName = uploadedFile.originalname;
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const safeFileName = `${timestamp}_${fileName}`;
+
+      if (useAzure) {
+        // Azure Blob Storage に保存
+        console.log('[api/files/import] Saving to Azure Blob Storage');
+        
+        try {
+          const blobServiceClient = getBlobServiceClient();
+          if (!blobServiceClient) {
+            throw new Error('Blob Service Client is not available');
+          }
+
+          const containerClient = blobServiceClient.getContainerClient(containerName);
+          const blobPath = norm(`imports/${safeFileName}`);
+          const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
+
+          await blockBlobClient.upload(uploadedFile.buffer, uploadedFile.size, {
+            blobHTTPHeaders: {
+              blobContentType: uploadedFile.mimetype
+            }
+          });
+
+          console.log('[api/files/import] ✅ File uploaded to Blob:', blobPath);
+
+          return res.status(200).json({
+            success: true,
+            message: 'ファイルのインポートが完了しました（Blob Storage）',
+            importedFiles: [{
+              id: `blob-${timestamp}`,
+              name: fileName,
+              path: blobPath,
+              size: uploadedFile.size,
+              type: uploadedFile.mimetype,
+              importedAt: new Date().toISOString(),
+              storage: 'blob'
+            }],
+            totalFiles: 1,
+            processedFiles: 1,
+            errors: []
+          });
+        } catch (error) {
+          console.error('[api/files/import] Blob upload error:', error);
+          throw error;
+        }
+      } else {
+        // ローカルファイルシステムに保存
+        console.log('[api/files/import] Saving to local filesystem');
+        
+        try {
+          const uploadsDir = path.join(process.cwd(), 'uploads', 'imports');
+          await fs.mkdir(uploadsDir, { recursive: true });
+          
+          const localPath = path.join(uploadsDir, safeFileName);
+          await fs.writeFile(localPath, uploadedFile.buffer);
+          
+          console.log('[api/files/import] ✅ File saved locally:', localPath);
+
+          return res.status(200).json({
+            success: true,
+            message: 'ファイルのインポートが完了しました（ローカルストレージ）',
+            importedFiles: [{
+              id: `local-${timestamp}`,
+              name: fileName,
+              path: localPath,
+              size: uploadedFile.size,
+              type: uploadedFile.mimetype,
+              importedAt: new Date().toISOString(),
+              storage: 'local'
+            }],
+            totalFiles: 1,
+            processedFiles: 1,
+            errors: []
+          });
+        } catch (error) {
+          console.error('[api/files/import] Local save error:', error);
+          throw error;
+        }
+      }
     }
 
     // GET /api/files - ファイル一覧
@@ -95,3 +193,4 @@ export default async function (req, res) {
 }
 
 export const methods = ['get', 'post', 'put', 'delete', 'options'];
+export { upload };

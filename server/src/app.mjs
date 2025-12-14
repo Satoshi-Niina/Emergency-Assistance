@@ -167,6 +167,9 @@ async function loadApiRoutes(app) {
         const routePath = `/api/${moduleName}`;
         const methods = module.methods || ['get', 'post', 'put', 'delete'];
         
+        // Multer middleware import for file uploads
+        const upload = module.upload || null;
+        
         for (const method of methods) {
           if (typeof app[method] === 'function') {
             // Wrap handler with error catching
@@ -183,11 +186,18 @@ async function loadApiRoutes(app) {
               }
             };
             
-            app[method](routePath, wrappedHandler);
-            
-            // Wildcard support for all modules to handle sub-paths
-            // e.g. /api/machines/machine-types
-            app[method](`${routePath}/*`, wrappedHandler);
+            // For files module, apply multer middleware for /import endpoint
+            if (moduleName === 'files' && upload) {
+              app[method](routePath, wrappedHandler);
+              app[method](`${routePath}/import`, upload.single('file'), wrappedHandler);
+              app[method](`${routePath}/*`, wrappedHandler);
+            } else {
+              app[method](routePath, wrappedHandler);
+              
+              // Wildcard support for all modules to handle sub-paths
+              // e.g. /api/machines/machine-types
+              app[method](`${routePath}/*`, wrappedHandler);
+            }
           }
         }
         console.log(`[App] ✅ Loaded route: ${routePath} [${methods.join(', ')}]`);
