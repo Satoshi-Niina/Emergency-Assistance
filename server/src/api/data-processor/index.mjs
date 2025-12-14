@@ -2,7 +2,9 @@ import { getBlobServiceClient, containerName, norm } from '../../infra/blob.mjs'
 import { isAzureEnvironment } from '../../config/env.mjs';
 import { chunkText } from '../../../services/chunker.js';
 import { embedTexts } from '../../../services/embedding.js';
-import pdf from 'pdf-parse';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const pdf = require('pdf-parse');
 import path from 'path';
 
 export default async function (req, res) {

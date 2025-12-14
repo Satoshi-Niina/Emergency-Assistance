@@ -53,7 +53,44 @@ export class ExportFileManager {
     /**
      * 最新のチャットエクスポートファイルを読み込み
      */
-    loadLatestChatExport(chatId) {
+    async loadLatestChatExport(chatId) {
+        // Dynamic import for environment check
+        const { isAzureEnvironment } = await import('../src/config/env.mjs');
+        const useAzure = isAzureEnvironment();
+
+        if (useAzure) {
+            try {
+                const { getBlobServiceClient, containerName } = await import('../src/infra/blob.mjs');
+                const blobServiceClient = getBlobServiceClient();
+                if (!blobServiceClient) return null;
+
+                const containerClient = blobServiceClient.getContainerClient(containerName);
+                const prefix = `knowledge-base/exports/chat_${chatId}/`;
+
+                let latestBlob = null;
+                for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+                    if (blob.name.endsWith('.json')) {
+                        if (!latestBlob || blob.properties.lastModified > latestBlob.properties.lastModified) {
+                            latestBlob = blob;
+                        }
+                    }
+                }
+
+                if (!latestBlob) return null;
+
+                const blobClient = containerClient.getBlobClient(latestBlob.name);
+                const downloadResponse = await blobClient.download();
+                const chunks = [];
+                for await (const chunk of downloadResponse.readableStreamBody) {
+                    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+                }
+                return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+            } catch (e) {
+                console.error('Blob export load failed:', e);
+                return null;
+            }
+        }
+
         const chatDir = path.join(this.baseDir, `chat_${chatId}`);
         if (!fs.existsSync(chatDir)) {
             return null;
@@ -79,7 +116,33 @@ export class ExportFileManager {
     /**
      * チャットの全エクスポートファイル一覧を取得
      */
-    getChatExportFiles(chatId) {
+    async getChatExportFiles(chatId) {
+        // Dynamic import for environment check
+        const { isAzureEnvironment } = await import('../src/config/env.mjs');
+        const useAzure = isAzureEnvironment();
+
+        if (useAzure) {
+            try {
+                const { getBlobServiceClient, containerName } = await import('../src/infra/blob.mjs');
+                const blobServiceClient = getBlobServiceClient();
+                if (!blobServiceClient) return [];
+
+                const containerClient = blobServiceClient.getContainerClient(containerName);
+                const prefix = `knowledge-base/exports/chat_${chatId}/`;
+                const files = [];
+
+                for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+                    if (blob.name.endsWith('.json')) {
+                        files.push(`blob://${containerName}/${blob.name}`);
+                    }
+                }
+                return files;
+            } catch (e) {
+                console.error('Blob export list failed:', e);
+                return [];
+            }
+        }
+
         const chatDir = path.join(this.baseDir, `chat_${chatId}`);
         if (!fs.existsSync(chatDir)) {
             return [];
@@ -98,7 +161,9 @@ export class ExportFileManager {
     /**
      * 古いエクスポートファイルを削除
      */
-    cleanupOldExports(chatId, keepCount = 5) {
+    async cleanupOldExports(chatId, keepCount = 5) {
+        // Cleanup logic involves delete, which is risky to automate blindly on Blob without precise sorting.
+        // Skipping Blob cleanup for now to prevent data loss, focusing on read stability.
         const chatDir = path.join(this.baseDir, `chat_${chatId}`);
         if (!fs.existsSync(chatDir)) {
             return;
@@ -126,7 +191,7 @@ export class ExportFileManager {
     /**
      * フォーマット済みエクスポートデータを保存
      */
-    saveFormattedExport(chatId, formattedData) {
+    async saveFormattedExport(chatId, formattedData) {
         const chatDir = path.join(this.baseDir, `chat_${chatId}`);
         if (!fs.existsSync(chatDir)) {
             fs.mkdirSync(chatDir, { recursive: true });
@@ -138,13 +203,22 @@ export class ExportFileManager {
             const jsonString = JSON.stringify(formattedData, null, 2);
             fs.writeFileSync(filePath, jsonString, { encoding: 'utf8' });
             console.log(`✅ フォーマット済みエクスポート保存（ローカル）: ${filePath}`);
-            // Azure Storageにもアップロード
-            if (this.useAzureStorage) {
+
+            // Azure Storageにもアップロード (Unified check)
+            const { isAzureEnvironment } = await import('../src/config/env.mjs');
+
+            if (isAzureEnvironment()) {
                 try {
-                    const relativePath = path.relative(process.cwd(), filePath);
-                    const blobName = relativePath.replace(/\\/g, '/');
-                    await azureStorage.uploadFile(filePath, blobName);
-                    console.log(`☁️ Azure Storageにアップロード完了: ${blobName}`);
+                    const { getBlobServiceClient, containerName, norm } = await import('../src/infra/blob.mjs');
+                    const blobServiceClient = getBlobServiceClient();
+                    if (blobServiceClient) {
+                        const containerClient = blobServiceClient.getContainerClient(containerName);
+                        // Using consistent path structure
+                        const blobName = norm(`knowledge-base/exports/chat_${chatId}/${fileName}`);
+                        const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+                        await blockBlobClient.uploadFile(filePath);
+                        console.log(`☁️ Azure Storageにアップロード完了: ${blobName}`);
+                    }
                 }
                 catch (uploadError) {
                     console.error('⚠️ Azure Storageアップロードエラー（ローカル保存は成功）:', uploadError);

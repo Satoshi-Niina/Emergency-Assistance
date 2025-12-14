@@ -71,37 +71,76 @@ export class FaultHistoryService {
             imageRecords = imageExtraction.imageRecords;
         }
         // 常にファイルシステムに保存（標準）
-        {
-            // ファイルシステムに保存
-            const exportDir = process.env.LOCAL_EXPORT_DIR ||
-                path.join(process.cwd(), 'knowledge-base', 'exports');
-            if (!fs.existsSync(exportDir)) {
-                fs.mkdirSync(exportDir, { recursive: true });
-            }
-            const filePath = path.join(exportDir, `${id}.json`);
-            const fileData = {
-                id,
-                title,
-                description,
-                machineType,
-                machineNumber,
-                office,
-                category,
-                keywords,
-                emergencyGuideTitle,
-                emergencyGuideContent,
-                jsonData,
-                metadata: {
-                    storageMode: 'file',
-                    imagePaths,
-                    imageRecords,
-                },
-                createdAt: now.toISOString(),
-                updatedAt: now.toISOString(),
-            };
-            fs.writeFileSync(filePath, JSON.stringify(fileData, null, 2), { encoding: 'utf8' });
-            console.log(`✅ 故障履歴をファイルに保存: ${filePath}`);
+        const exportDir = process.env.LOCAL_EXPORT_DIR ||
+            path.join(process.cwd(), 'knowledge-base', 'exports');
+        if (!fs.existsSync(exportDir)) {
+            fs.mkdirSync(exportDir, { recursive: true });
         }
+        const filePath = path.join(exportDir, `${id}.json`);
+        const fileData = {
+            id,
+            title,
+            description,
+            machineType,
+            machineNumber,
+            office,
+            category,
+            keywords,
+            emergencyGuideTitle,
+            emergencyGuideContent,
+            jsonData,
+            metadata: {
+                storageMode: 'file',
+                imagePaths,
+                imageRecords,
+            },
+            createdAt: now.toISOString(),
+            updatedAt: now.toISOString(),
+        };
+        fs.writeFileSync(filePath, JSON.stringify(fileData, null, 2), { encoding: 'utf8' });
+        console.log(`✅ 故障履歴をファイルに保存: ${filePath}`);
+
+        // Blob Storageへの保存を試行 (Azure環境またはBlobモードの場合)
+        try {
+            const { isAzureEnvironment } = await import('../src/config/env.mjs');
+            if (isAzureEnvironment()) {
+                const { getBlobServiceClient, containerName, norm, upload } = await import('../src/infra/blob.mjs');
+                const blobServiceClient = getBlobServiceClient();
+
+                if (blobServiceClient) {
+                    const containerClient = blobServiceClient.getContainerClient(containerName);
+                    await containerClient.createIfNotExists();
+
+                    // 1. JSONファイルのアップロード
+                    const blobName = norm(`exports/${id}.json`);
+                    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+                    await blockBlobClient.uploadFile(filePath, {
+                        blobHTTPHeaders: { blobContentType: 'application/json' }
+                    });
+                    console.log(`☁️ 故障履歴をBlobに保存: ${blobName}`);
+
+                    // 2. 画像のアップロード
+                    for (const imagePath of imagePaths) {
+                        if (fs.existsSync(imagePath)) {
+                            const imageFileName = path.basename(imagePath);
+                            const imageBlobName = norm(`images/chat-exports/${imageFileName}`);
+                            const imageBlobClient = containerClient.getBlockBlobClient(imageBlobName);
+
+                            if (!(await imageBlobClient.exists())) {
+                                await imageBlobClient.uploadFile(imagePath, {
+                                    blobHTTPHeaders: { blobContentType: 'image/jpeg' } // 簡易判定
+                                });
+                                console.log(`☁️ 画像をBlobに保存: ${imageBlobName}`);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (blobError) {
+            console.error('⚠️ Blob保存エラー (ローカル保存は完了):', blobError);
+        }
+
         // DBバックアップが有効な場合のみデータベースにも保存
         if (this.useDatabase) {
             try {
@@ -190,129 +229,129 @@ export class FaultHistoryService {
         console.log(`📁 JSONファイル数: ${jsonFiles.length}`, jsonFiles);
         const files = jsonFiles
             .map(file => {
-            try {
-                const filePath = path.join(exportDir, file);
-                const content = fs.readFileSync(filePath, 'utf8');
-                const data = JSON.parse(content);
-                // ファイル名からUUIDを抽出（複合ID対応）
-                const fileName = file.replace('.json', '');
-                const uuidMatch = fileName.match(/_([a-f0-9-]{36})_/);
-                const actualId = uuidMatch ? uuidMatch[1] : (data.chatId || fileName);
-                // 既存のJSONファイル構造に対応
-                // chatData構造から情報を抽出
-                const chatData = data.chatData || {};
-                const machineInfo = chatData.machineInfo || {};
-                // 基本情報を抽出
-                const title = data.title || '故障履歴';
-                const machineType = data.machineType ||
-                    machineInfo.machineTypeName ||
-                    machineInfo.selectedMachineType ||
-                    null;
-                const machineNumber = data.machineNumber ||
-                    machineInfo.machineNumber ||
-                    machineInfo.selectedMachineNumber ||
-                    null;
-                const createdAt = data.createdAt ||
-                    data.exportTimestamp ||
-                    data.chatData?.timestamp ||
-                    new Date().toISOString();
-                // 画像情報を構築（複数のソースから抽出）
-                const images = [];
-                // data.savedImages から抽出
-                const savedImagesArray = data.savedImages || data.jsonData?.savedImages || [];
-                console.log(`📷 [${file}] 画像配列取得:`, savedImagesArray?.length || 0, '件');
-                if (Array.isArray(savedImagesArray)) {
-                    for (const savedImage of savedImagesArray) {
-                        if (savedImage && typeof savedImage === 'object' && savedImage.fileName) {
-                            const imageFileName = savedImage.fileName;
-                            const imageFilePath = path.join(this.imagesDir, imageFileName);
-                            // ファイルが存在するか確認
-                            const exists = fs.existsSync(imageFilePath);
-                            console.log(`  📄 [${imageFileName}] 存在: ${exists}`, '実際のパス:', imageFilePath);
-                            if (exists) {
-                                images.push({
-                                    id: uuidv4(),
-                                    faultHistoryId: actualId,
-                                    // チャットエクスポート形式（fileName, path, url）とDB形式（originalFileName, mimeType等）の両方に対応
-                                    originalFileName: savedImage.originalFileName || savedImage.fileName || imageFileName,
-                                    fileName: imageFileName,
-                                    filePath: path.relative(process.cwd(), imageFilePath),
-                                    relativePath: `images/chat-exports/${imageFileName}`,
-                                    mimeType: savedImage.mimeType || 'image/jpeg',
-                                    fileSize: savedImage.fileSize || '0',
-                                    description: savedImage.description || `Image ${imageFileName}`,
-                                    createdAt: new Date(savedImage.createdAt || createdAt),
-                                });
-                            }
-                            else {
-                                console.warn(`⚠️ [${imageFileName}] ファイルが見つかりません: ${imageFilePath}`);
-                            }
-                        }
-                    }
-                }
-                console.log(`📷 [${file}] 最終的な画像数:`, images.length, '件');
-                // メッセージから画像URLを検出
-                const messages = chatData.messages || [];
-                for (const message of messages) {
-                    if (message.content && typeof message.content === 'string') {
-                        // URL形式の画像を検出
-                        if (message.content.startsWith('/api/images/') ||
-                            message.content.startsWith('http') ||
-                            message.content.match(/chat_image_.*\.(jpg|jpeg|png|gif)/i)) {
-                            const urlParts = message.content.split('/');
-                            const imageFileName = urlParts[urlParts.length - 1];
-                            const imageFilePath = path.join(this.imagesDir, imageFileName);
-                            // 既に追加されていないか確認
-                            if (fs.existsSync(imageFilePath) &&
-                                !images.some(img => img.fileName === imageFileName)) {
-                                images.push({
-                                    id: uuidv4(),
-                                    faultHistoryId: actualId,
-                                    originalFileName: imageFileName,
-                                    fileName: imageFileName,
-                                    filePath: path.relative(process.cwd(), imageFilePath),
-                                    relativePath: `images/chat-exports/${imageFileName}`,
-                                    mimeType: 'image/jpeg',
-                                    fileSize: '0',
-                                    description: `Message image: ${imageFileName}`,
-                                    createdAt: new Date(message.timestamp || createdAt),
-                                });
+                try {
+                    const filePath = path.join(exportDir, file);
+                    const content = fs.readFileSync(filePath, 'utf8');
+                    const data = JSON.parse(content);
+                    // ファイル名からUUIDを抽出（複合ID対応）
+                    const fileName = file.replace('.json', '');
+                    const uuidMatch = fileName.match(/_([a-f0-9-]{36})_/);
+                    const actualId = uuidMatch ? uuidMatch[1] : (data.chatId || fileName);
+                    // 既存のJSONファイル構造に対応
+                    // chatData構造から情報を抽出
+                    const chatData = data.chatData || {};
+                    const machineInfo = chatData.machineInfo || {};
+                    // 基本情報を抽出
+                    const title = data.title || '故障履歴';
+                    const machineType = data.machineType ||
+                        machineInfo.machineTypeName ||
+                        machineInfo.selectedMachineType ||
+                        null;
+                    const machineNumber = data.machineNumber ||
+                        machineInfo.machineNumber ||
+                        machineInfo.selectedMachineNumber ||
+                        null;
+                    const createdAt = data.createdAt ||
+                        data.exportTimestamp ||
+                        data.chatData?.timestamp ||
+                        new Date().toISOString();
+                    // 画像情報を構築（複数のソースから抽出）
+                    const images = [];
+                    // data.savedImages から抽出
+                    const savedImagesArray = data.savedImages || data.jsonData?.savedImages || [];
+                    console.log(`📷 [${file}] 画像配列取得:`, savedImagesArray?.length || 0, '件');
+                    if (Array.isArray(savedImagesArray)) {
+                        for (const savedImage of savedImagesArray) {
+                            if (savedImage && typeof savedImage === 'object' && savedImage.fileName) {
+                                const imageFileName = savedImage.fileName;
+                                const imageFilePath = path.join(this.imagesDir, imageFileName);
+                                // ファイルが存在するか確認
+                                const exists = fs.existsSync(imageFilePath);
+                                console.log(`  📄 [${imageFileName}] 存在: ${exists}`, '実際のパス:', imageFilePath);
+                                if (exists) {
+                                    images.push({
+                                        id: uuidv4(),
+                                        faultHistoryId: actualId,
+                                        // チャットエクスポート形式（fileName, path, url）とDB形式（originalFileName, mimeType等）の両方に対応
+                                        originalFileName: savedImage.originalFileName || savedImage.fileName || imageFileName,
+                                        fileName: imageFileName,
+                                        filePath: path.relative(process.cwd(), imageFilePath),
+                                        relativePath: `images/chat-exports/${imageFileName}`,
+                                        mimeType: savedImage.mimeType || 'image/jpeg',
+                                        fileSize: savedImage.fileSize || '0',
+                                        description: savedImage.description || `Image ${imageFileName}`,
+                                        createdAt: new Date(savedImage.createdAt || createdAt),
+                                    });
+                                }
+                                else {
+                                    console.warn(`⚠️ [${imageFileName}] ファイルが見つかりません: ${imageFilePath}`);
+                                }
                             }
                         }
                     }
+                    console.log(`📷 [${file}] 最終的な画像数:`, images.length, '件');
+                    // メッセージから画像URLを検出
+                    const messages = chatData.messages || [];
+                    for (const message of messages) {
+                        if (message.content && typeof message.content === 'string') {
+                            // URL形式の画像を検出
+                            if (message.content.startsWith('/api/images/') ||
+                                message.content.startsWith('http') ||
+                                message.content.match(/chat_image_.*\.(jpg|jpeg|png|gif)/i)) {
+                                const urlParts = message.content.split('/');
+                                const imageFileName = urlParts[urlParts.length - 1];
+                                const imageFilePath = path.join(this.imagesDir, imageFileName);
+                                // 既に追加されていないか確認
+                                if (fs.existsSync(imageFilePath) &&
+                                    !images.some(img => img.fileName === imageFileName)) {
+                                    images.push({
+                                        id: uuidv4(),
+                                        faultHistoryId: actualId,
+                                        originalFileName: imageFileName,
+                                        fileName: imageFileName,
+                                        filePath: path.relative(process.cwd(), imageFilePath),
+                                        relativePath: `images/chat-exports/${imageFileName}`,
+                                        mimeType: 'image/jpeg',
+                                        fileSize: '0',
+                                        description: `Message image: ${imageFileName}`,
+                                        createdAt: new Date(message.timestamp || createdAt),
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    // 統一された形式で返す
+                    return {
+                        id: actualId,
+                        title,
+                        description: data.description || '',
+                        machineType,
+                        machineNumber,
+                        office: data.office || null,
+                        category: data.category || '故障対応',
+                        keywords: data.keywords || [],
+                        emergencyGuideTitle: data.emergencyGuideTitle || null,
+                        emergencyGuideContent: data.emergencyGuideContent || null,
+                        jsonData: data,
+                        storageMode: 'file',
+                        filePath: filePath,
+                        createdAt,
+                        updatedAt: createdAt,
+                        images,
+                        // 元のデータも保持（互換性のため）
+                        chatId: data.chatId || actualId,
+                        userId: data.userId || '',
+                        exportType: data.exportType || 'manual_send',
+                        exportTimestamp: data.exportTimestamp || createdAt,
+                        savedImages: data.savedImages || [],
+                        originalFileName: fileName,
+                    };
                 }
-                // 統一された形式で返す
-                return {
-                    id: actualId,
-                    title,
-                    description: data.description || '',
-                    machineType,
-                    machineNumber,
-                    office: data.office || null,
-                    category: data.category || '故障対応',
-                    keywords: data.keywords || [],
-                    emergencyGuideTitle: data.emergencyGuideTitle || null,
-                    emergencyGuideContent: data.emergencyGuideContent || null,
-                    jsonData: data,
-                    storageMode: 'file',
-                    filePath: filePath,
-                    createdAt,
-                    updatedAt: createdAt,
-                    images,
-                    // 元のデータも保持（互換性のため）
-                    chatId: data.chatId || actualId,
-                    userId: data.userId || '',
-                    exportType: data.exportType || 'manual_send',
-                    exportTimestamp: data.exportTimestamp || createdAt,
-                    savedImages: data.savedImages || [],
-                    originalFileName: fileName,
-                };
-            }
-            catch (error) {
-                console.error(`ファイル読み込みエラー: ${file}`, error);
-                return null;
-            }
-        })
+                catch (error) {
+                    console.error(`ファイル読み込みエラー: ${file}`, error);
+                    return null;
+                }
+            })
             .filter(item => item !== null);
         console.log(`📋 ファイルから読み込んだ履歴: ${files.length}件`);
         // フィルタリング
