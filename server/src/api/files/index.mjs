@@ -99,9 +99,57 @@ export default async function (req, res) {
 
           console.log('[api/files/import] ✅ File uploaded to Blob:', blobPath);
 
+          // 自動処理トリガー: DataProcessorを呼び出す
+          // NOTE: 本来はAzure FunctionsのBlob TriggerやQueueを使うべきだが、
+          // 簡易実装としてここで直接関数呼び出しか、HTTPリクエストを行う。
+          // ここではimportして直接ロジックを呼ぶのは循環依存のリスクがあるため、
+          // 非同期で処理を開始したログだけ残し、クライアント側で処理用エンドポイントを叩くか、
+          // あるいはここで内部的に処理用の関数を呼ぶ設計にするのが良い。
+          // 今回は「確認して？」とのことなので、確実に動くように、内部でfetchを使って自分自身のDataProcessorを叩くか、
+          // または動的にインポートして実行する。
+
+          try {
+            // 自身のAPIを呼び出す (非同期でFire-and-forget)
+            const processorUrl = `http://localhost:${process.env.PORT || 3000}/api/data-processor/process`;
+            // Node fetch or global fetch if available (Node 18+)
+            // If not, we can use dynamic import of the processor function logic if refactored.
+            // For robustness in this monolith:
+
+            // Dynamic import of the handler to execute in-process (but async)
+            import('../data-processor/index.mjs').then(async (module) => {
+              console.log('[api/files/import] Triggering async processing...');
+              const processorHeaders = { 'Content-Type': 'application/json' };
+              const processorBody = {
+                filePath: blobPath,
+                fileType: uploadedFile.mimetype,
+                fileName: fileName
+              };
+
+              // Mock req/res objects for the internal call
+              const mockReq = {
+                method: 'POST',
+                path: '/api/data-processor/process',
+                body: processorBody
+              };
+              const mockRes = {
+                set: () => { },
+                status: (code) => ({
+                  json: (data) => console.log(`[Processor Internal] Finished with ${code}:`, data),
+                  send: () => { }
+                }),
+                json: (data) => console.log('[Processor Internal] JSON:', data)
+              };
+
+              await module.default(mockReq, mockRes);
+            }).catch(err => console.error('[api/files/import] Failed to trigger processing:', err));
+
+          } catch (triggerError) {
+            console.warn('[api/files/import] Processing trigger warning:', triggerError);
+          }
+
           return res.status(200).json({
             success: true,
-            message: 'ファイルのインポートが完了しました（Blob Storage）',
+            message: 'ファイルのインポートが完了しました（バックグラウンド処理開始）',
             importedFiles: [{
               id: `blob-${timestamp}`,
               name: fileName,
