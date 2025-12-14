@@ -91,8 +91,15 @@ export default async function (req, res) {
           }
 
           const containerClient = blobServiceClient.getContainerClient(containerName);
-          const blobPath = norm(`imports/${safeFileName}`);
+          // ファイルインポートは知識ベースとは別の場所に保存する
+          const blobPath = `imports/${safeFileName}`;
           const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
+
+          console.log('[api/files/import] Uploading to blob:', {
+            container: containerName,
+            blobPath,
+            fileSize: uploadedFile.size
+          });
 
           // コンテナの存在確認と作成
           const containerExists = await containerClient.exists();
