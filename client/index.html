@@ -23,11 +23,14 @@
       frame-src 'self';
     " />
   <script>
-    // バックエンドURLの設定（ビルド時に環境変数から置換される）
-    // このテンプレート変数はGitHub Actionsまたはデプロイスクリプトによってビルド時に置換されます
+    // バックエンドURLの設定（本番環境用）
+    // GitHub ActionsビルドではVITE_BACKEND_SERVICE_URLから置換されます
+    // デフォルト値として本番URLを設定（フォールバック）
     const backendUrl = '%%%VITE_BACKEND_SERVICE_URL%%%';
-    // プレースホルダーが置換されていない場合は空文字列
-    window.BACKEND_SERVICE_URL = (backendUrl && backendUrl.startsWith('http')) ? backendUrl : '';
+    // プレースホルダーが置換されていない場合はデフォルトの本番URLを使用
+    window.BACKEND_SERVICE_URL = (backendUrl && backendUrl.startsWith('http') && !backendUrl.includes('%%%')) 
+      ? backendUrl 
+      : 'https://emergency-assistantapp.azurewebsites.net';
 
     // 動的環境設定（インライン）
     (function () {
