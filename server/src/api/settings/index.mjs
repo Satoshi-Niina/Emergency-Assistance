@@ -6,9 +6,10 @@
 
 export default async function settingsHandler(req, res) {
   const method = req.method;
-  const action = req.params.action || req.path.split('/').pop();
+  const pathParts = req.path.split('/').filter(p => p);
+  const action = pathParts[pathParts.length - 1]; // 最後のパス要素を取得
 
-  console.log('[api/settings] Request:', { method, action, path: req.path });
+  console.log('[api/settings] Request:', { method, action, path: req.path, pathParts });
 
   // GET /api/settings/rag - RAG設定取得
   if (method === 'GET' && action === 'rag') {

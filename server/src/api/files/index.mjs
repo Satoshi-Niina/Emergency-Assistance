@@ -32,13 +32,23 @@ export default async function (req, res) {
 
     // POST /api/files/import - ファイルインポート
     if (method === 'POST' && (action === 'import' || req.path.endsWith('/import'))) {
+      console.log('[api/files/import] File upload request received:', {
+        hasFile: !!req.file,
+        hasFiles: !!req.files,
+        bodyKeys: Object.keys(req.body || {}),
+        contentType: req.headers['content-type']
+      });
+
       // Multerでファイルをパースする必要があるため、multerミドルウェアが適用されているかチェック
       if (!req.file && !req.files) {
-        console.log('[api/files/import] No file uploaded, checking body:', req.body);
+        console.error('[api/files/import] No file uploaded. Request details:', {
+          headers: req.headers,
+          body: req.body
+        });
         return res.status(400).json({
           success: false,
           error: 'No file uploaded',
-          message: 'ファイルが選択されていません'
+          message: 'ファイルが選択されていません。Multerミドルウェアが正しく動作していない可能性があります。'
         });
       }
 

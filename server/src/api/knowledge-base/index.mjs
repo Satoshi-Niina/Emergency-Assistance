@@ -17,20 +17,36 @@ export default async function (req, res) {
     if (isStatsRequest) {
       console.log('[api/knowledge-base] Serving stats endpoint');
       try {
-        // BlobとDBの両方から統計を取得するのは重いため、一旦簡易的な応答を返す
-        // 必要であればここでDBカウントなどを実施
+        // DBからドキュメント数を取得
+        let docCount = 0;
+        try {
+          const countResult = await dbQuery('SELECT COUNT(*) as count FROM base_documents');
+          docCount = parseInt(countResult.rows[0]?.count || 0);
+        } catch (countError) {
+          console.warn('[api/knowledge-base/stats] DB count failed:', countError.message);
+        }
+
         return res.json({
           success: true,
-          stats: {
-            documents: rows.length || 0, // rowsはこの時点では空だが、構造を維持
-            lastUpdated: new Date().toISOString(),
-            status: 'online'
+          data: {
+            total: docCount,
+            totalSize: 0,
+            typeStats: {
+              json: 0,
+              document: docCount
+            },
+            oldData: 0,
+            lastMaintenance: new Date().toISOString()
           },
           timestamp: new Date().toISOString(),
         });
       } catch (statsError) {
         console.error('[api/knowledge-base/stats] Error generating stats:', statsError);
-        return res.status(500).json({ error: 'Stats generation failed' });
+        return res.status(500).json({ 
+          success: false,
+          error: 'Stats generation failed',
+          details: statsError.message 
+        });
       }
     }
 
