@@ -12,8 +12,8 @@ const sessionCookieHttpOnly = process.env.SESSION_COOKIE_HTTPONLY
   ? process.env.SESSION_COOKIE_HTTPONLY.toLowerCase() === 'true'
   : true;
 
-const sessionCookieDomain = process.env.SESSION_COOKIE_DOMAIN 
-  ? process.env.SESSION_COOKIE_DOMAIN.trim().replace(/^["']|["']$/g, '').trim() 
+const sessionCookieDomain = process.env.SESSION_COOKIE_DOMAIN
+  ? process.env.SESSION_COOKIE_DOMAIN.trim().replace(/^["']|["']$/g, '').trim()
   : undefined;
 
 console.log('[Session Config]', {
@@ -27,7 +27,7 @@ console.log('[Session Config]', {
 });
 
 export const sessionConfig = {
-  secret: SESSION_SECRET,
+  secret: SESSION_SECRET || (() => { throw new Error('SESSION_SECRET is required'); })(),
   resave: false,
   saveUninitialized: false,
   cookie: {

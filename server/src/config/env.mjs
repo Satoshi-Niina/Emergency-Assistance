@@ -74,7 +74,11 @@ export const DATABASE_URL = process.env.DATABASE_URL ||
 
 export const PG_SSL = process.env.PG_SSL;
 
-export const SESSION_SECRET = process.env.SESSION_SECRET || 'azure-production-session-secret-32-chars-fixed';
+export const SESSION_SECRET = process.env.SESSION_SECRET || 'azure-production-fallback-secret-key-2025';
+
+if (!process.env.SESSION_SECRET) {
+  console.warn('[Config] ⚠️ SESSION_SECRET is not set in environment variables. Using fallback secret.');
+}
 
 // チャットエクスポートを自動でナレッジに取り込むか（デフォルト: false）
 export const AUTO_INGEST_CHAT_EXPORTS =
@@ -95,9 +99,9 @@ export function isAzureEnvironment() {
     portNumber: process.env.PORT,
     connectionStringPrefix: AZURE_STORAGE_CONNECTION_STRING ? AZURE_STORAGE_CONNECTION_STRING.substring(0, 50) + '...' : 'NOT_SET'
   };
-  
+
   console.log('[isAzureEnvironment] 環境判定開始:', debugInfo);
-  
+
   // 1. STORAGE_MODEが明示的に設定されている場合
   if (STORAGE_MODE === 'azure' || STORAGE_MODE === 'blob') {
     console.log('[isAzureEnvironment] ✅ TRUE - STORAGE_MODE=azure/blob');
@@ -107,19 +111,19 @@ export function isAzureEnvironment() {
     console.log('[isAzureEnvironment] ❌ FALSE - STORAGE_MODE=local');
     return false;
   }
-  
+
   // 2. Azure App Service固有の環境変数
   if (process.env.WEBSITE_INSTANCE_ID || process.env.WEBSITE_SITE_NAME) {
     console.log('[isAzureEnvironment] ✅ TRUE - Azure App Service detected');
     return true;
   }
-  
+
   // 3. AZURE_STORAGE_CONNECTION_STRINGが設定されていればAzure環境
   if (AZURE_STORAGE_CONNECTION_STRING && AZURE_STORAGE_CONNECTION_STRING.trim()) {
     console.log('[isAzureEnvironment] ✅ TRUE - BLOB connection string present');
     return true;
   }
-  
+
   // 4. デフォルト: 本番環境はAzure（ポート番号も考慮）
   const isProduction = NODE_ENV === 'production' || process.env.PORT === '8080' || process.env.PORT === '80';
   console.log(`[isAzureEnvironment] ${isProduction ? '✅ TRUE' : '❌ FALSE'} - Default production check (NODE_ENV=${NODE_ENV}, PORT=${process.env.PORT})`);
