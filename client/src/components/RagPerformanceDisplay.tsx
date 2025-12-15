@@ -33,10 +33,12 @@ export default function RagPerformanceDisplay() {
 
   const fetchRagConfig = async () => {
     try {
-      const response = await fetch('/api/config/rag');
+      const response = await fetch('/api/settings/rag');
       if (response.ok) {
         const data = await response.json();
-        setConfig(data.config);
+        // APIレスポンスの形式に対応: { success: true, data: {...} }
+        const config = data.success ? data.data : data;
+        setConfig(config);
       }
     } catch (error) {
       console.error('RAG設定取得エラー:', error);
