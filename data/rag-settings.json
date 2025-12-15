@@ -1,0 +1,25 @@
+{
+  "chunkSize": 500,
+  "chunkOverlap": 200,
+  "similarityThreshold": 0.7,
+  "maxResults": 5,
+  "useSemanticSearch": true,
+  "useKeywordSearch": true,
+  "enableSemantic": true,
+  "enableKeyword": true,
+  "removeDuplicates": true,
+  "preprocessing": {
+    "removeStopWords": true,
+    "normalizeCasing": true,
+    "removeSpecialChars": false
+  },
+  "preprocessingOptions": {
+    "removeStopWords": true,
+    "lowercaseText": true,
+    "removeSpecialChars": false
+  },
+  "customPrompt": "",
+  "customInstructions": "【回答ルール】\n1. ユーザーの質問に対して1問1答形式で回答する\n2. 回答は最大2行まで（簡潔に）\n3. ナレッジベース（/knowledge-base/documents/）を優先的に参照し、情報が不足している場合のみ一般情報を検索する\n4. ユーザーの情報から機械故障の原因を推測し、さらに新しい情報から絞り込んで回答する\n5. 問題が解消できた場合は、「チャット履歴をサーバーに送信してください」と表示する\n6. 問題が解消できない場合は、「支援要員に連絡してください」と表示する\n\n【情報源の明示】\n- ナレッジベースから: [ドキュメント]\n- 一般知識から: [一般知識]",
+  "temperature": 0.7,
+  "maxTokens": 2000
+}

@@ -79,7 +79,7 @@ export default function BaseDataPage() {
     maxResults: 5,
     enableSemantic: true,
     enableKeyword: true,
-    customPrompt: '',
+    customInstructions: '',
     preprocessing: {
       removeStopWords: true,
       normalizeCasing: true,
@@ -224,6 +224,7 @@ export default function BaseDataPage() {
   // RAG設定の保存
   const saveRagSettings = async () => {
     try {
+      // customInstructionsが空欄の場合、サーバー側で既存の値を保持する
       const response = await fetch(buildApiUrl('/settings/rag'), {
         method: 'POST',
         headers: {
@@ -234,12 +235,20 @@ export default function BaseDataPage() {
       });
 
       if (response.ok) {
+        const result = await response.json();
+        // 保存された設定を再読み込みして同期
+        if (result.success && result.data) {
+          setRagSettings(prev => ({
+            ...prev,
+            ...result.data
+          }));
+        }
         alert('RAG設定が保存されました');
       } else {
         throw new Error('設定の保存に失敗しました');
       }
-    } catch (_error) {
-      // RAG設定保存エラー
+    } catch (error) {
+      console.error('RAG設定保存エラー:', error);
       alert('設定の保存中にエラーが発生しました');
     }
   };
@@ -1428,23 +1437,23 @@ export default function BaseDataPage() {
                   </div>
                 </div>
 
-                {/* カスタムプロンプト */}
+                {/* システムプロンプト */}
                 <div className='space-y-2'>
-                  <Label htmlFor='customPrompt'>カスタムプロンプト</Label>
+                  <Label htmlFor='customInstructions'>システムプロンプト</Label>
                   <Textarea
-                    id='customPrompt'
-                    value={ragSettings.customPrompt}
+                    id='customInstructions'
+                    value={ragSettings.customInstructions}
                     onChange={e =>
                       setRagSettings(prev => ({
                         ...prev,
-                        customPrompt: e.target.value,
+                        customInstructions: e.target.value,
                       }))
                     }
                     placeholder='RAG検索結果を活用する際の追加指示を入力...'
-                    rows={3}
+                    rows={8}
                   />
                   <p className='text-xs text-gray-500'>
-                    検索結果をGPTに渡す際の追加指示
+                    検索結果をGPTに渡す際の追加指示（空欄で保存した場合は前回の設定を保持します）
                   </p>
                 </div>
 

@@ -38,10 +38,31 @@ export default function RagPerformanceDisplay() {
         const data = await response.json();
         // APIレスポンスの形式に対応: { success: true, data: {...} }
         const config = data.success ? data.data : data;
+        console.log('RAG設定を取得しました:', config);
         setConfig(config);
+      } else {
+        console.error('RAG設定取得失敗:', response.status, response.statusText);
+        // デフォルト設定を使用
+        setConfig({
+          chunkSize: 500,
+          chunkOverlap: 200,
+          similarityThreshold: 0.7,
+          maxResults: 5,
+          enableSemantic: true,
+          enableKeyword: true,
+        });
       }
     } catch (error) {
       console.error('RAG設定取得エラー:', error);
+      // デフォルト設定を使用
+      setConfig({
+        chunkSize: 500,
+        chunkOverlap: 200,
+        similarityThreshold: 0.7,
+        maxResults: 5,
+        enableSemantic: true,
+        enableKeyword: true,
+      });
     }
   };
 
@@ -62,34 +83,65 @@ export default function RagPerformanceDisplay() {
       for (const query of testQueries) {
         const startTime = Date.now();
         
-        // RAG検索を実行
-        const response = await fetch('/api/knowledge-base/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query, limit: config?.maxResults || 5 })
-        });
+        try {
+          // RAG検索を実行
+          const response = await fetch('/api/knowledge-base/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query, limit: config?.maxResults || 5 })
+          });
 
-        const endTime = Date.now();
-        const responseTime = endTime - startTime;
+          const endTime = Date.now();
+          const responseTime = endTime - startTime;
 
-        if (response.ok) {
-          const data = await response.json();
-          const accuracy = calculateAccuracy(data.results, query);
-          const relevanceScore = calculateRelevanceScore(data.results, query);
-          
+          if (response.ok) {
+            const data = await response.json();
+            console.log(`テストクエリ "${query}" の結果:`, data);
+            
+            const searchResults = data.results || data.data || [];
+            const accuracy = calculateAccuracy(searchResults, query);
+            const relevanceScore = calculateRelevanceScore(searchResults, query);
+            
+            results.push({
+              responseTime,
+              accuracy,
+              relevanceScore,
+              userSatisfaction: Math.random() * 0.3 + 0.7, // 模擬データ
+              timestamp: new Date().toISOString()
+            });
+          } else {
+            console.warn(`テストクエリ "${query}" が失敗しました:`, response.status);
+            // エラーでも結果を追加（失敗として記録）
+            results.push({
+              responseTime: Date.now() - startTime,
+              accuracy: 0,
+              relevanceScore: 0,
+              userSatisfaction: 0,
+              timestamp: new Date().toISOString()
+            });
+          }
+        } catch (queryError) {
+          console.error(`テストクエリ "${query}" でエラー:`, queryError);
+          // エラーでも結果を追加
           results.push({
-            responseTime,
-            accuracy,
-            relevanceScore,
-            userSatisfaction: Math.random() * 0.3 + 0.7, // 模擬データ
+            responseTime: 0,
+            accuracy: 0,
+            relevanceScore: 0,
+            userSatisfaction: 0,
             timestamp: new Date().toISOString()
           });
         }
       }
 
+      console.log('パフォーマンステスト結果:', results);
       setMetrics(results);
+      
+      if (results.length === 0) {
+        alert('テスト結果がありません。エラーが発生した可能性があります。');
+      }
     } catch (error) {
       console.error('パフォーマンステストエラー:', error);
+      alert('パフォーマンステストの実行中にエラーが発生しました: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsLoading(false);
     }
