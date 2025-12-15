@@ -72,7 +72,16 @@ export default async function (req, res) {
       // 保存先を決定
       const fileName = uploadedFile.originalname;
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const safeFileName = `${timestamp}_${fileName}`;
+      
+      // ファイル名をサニタイズ（特殊文字を削除してURLセーフにする）
+      const sanitizedFileName = fileName
+        .normalize('NFC')  // Unicode正規化
+        .replace(/[\s]+/g, '_')  // スペースをアンダースコアに
+        .replace(/[^\w\.\-]/g, '')  // 英数字、ドット、ハイフン、アンダースコア以外を削除
+        .replace(/\.+/g, '.')  // 連続するドットを1つに
+        .trim();
+      
+      const safeFileName = `${timestamp}_${sanitizedFileName}`;
 
       if (useAzure) {
         // Azure Blob Storage に保存
