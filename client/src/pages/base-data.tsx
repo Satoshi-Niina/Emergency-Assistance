@@ -440,7 +440,7 @@ export default function BaseDataPage() {
     setExportImportStatus({ status: 'idle' });
 
     try {
-      const response = await fetch(buildApiUrl('/history/import-export'), {
+      const response = await fetch(buildApiUrl('/history-import'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -454,7 +454,7 @@ export default function BaseDataPage() {
       if (response.ok && result.success) {
         setExportImportStatus({
           status: 'success',
-          message: `インポート完了: ${result.message} (画像: ${result.imageCount}件)`,
+          message: `インポート完了: ${result.metadata?.chunks || 0}チャンク、${result.metadata?.embeddings || 0}埋め込み生成`,
         });
         // ファイル一覧を更新
         await fetchExportFiles();
