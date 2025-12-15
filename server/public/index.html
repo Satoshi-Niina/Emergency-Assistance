@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- Trigger Client Build 2025-12-14 -->
 <html lang="ja">
 <!-- Build Timestamp: __BUILD_TIMESTAMP__ -->
 <!-- Commit: __COMMIT_SHA__ -->
@@ -22,11 +23,16 @@
       frame-src 'self';
     " />
   <script>
-    // バックエンドURLの設定（ビルド時に環境変数から置換される）
-    // このテンプレート変数はGitHub Actionsまたはデプロイスクリプトによってビルド時に置換されます
-    const backendUrl = 'https://emergency-assistantapp.azurewebsites.net';
-    // プレースホルダーが置換されていない場合は空文字列
-    window.BACKEND_SERVICE_URL = (backendUrl && backendUrl.startsWith('http')) ? backendUrl : '';
+    // バックエンドURLの設定（本番環境用）
+    // GitHub ActionsビルドではVITE_BACKEND_SERVICE_URLから置換されます
+    const backendUrl = 'http://localhost:8080';
+    // プレースホルダーが置換されていない場合、またはStatic Web AppsのURLの場合は、App ServiceのURLを使用
+    window.BACKEND_SERVICE_URL = (backendUrl && 
+                                  backendUrl.startsWith('http') && 
+                                  !backendUrl.includes('%%%') && 
+                                  !backendUrl.includes('azurestaticapps.net')) 
+      ? backendUrl 
+      : 'https://emergency-assistantapp.azurewebsites.net';
 
     // 動的環境設定（インライン）
     (function () {
@@ -77,7 +83,7 @@
       window.runtimeConfig = config;
     })();
   </script>
-  <script type="module" crossorigin src="/main.D6yhLnBL.mjs"></script>
+  <script type="module" crossorigin src="/main.B4MdIWLu.mjs"></script>
   <link rel="stylesheet" crossorigin href="/style.hcQ-ezxb.css">
 </head>
 
