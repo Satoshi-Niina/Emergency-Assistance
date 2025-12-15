@@ -8,6 +8,107 @@ export default async function (req, res) {
   try {
     console.log('[api/knowledge-base] Request:', { method: req.method, path: req.path });
 
+    // 検索エンドポイント: POST /api/knowledge-base/search
+    const isSearchRequest = req.method === 'POST' && (req.path.endsWith('/search') || req.url.includes('/search'));
+    
+    if (isSearchRequest) {
+      console.log('[api/knowledge-base] Serving search endpoint');
+      try {
+        const { query, limit = 5 } = req.body || {};
+
+        if (!query || query.trim().length === 0) {
+          return res.status(400).json({
+            success: false,
+            error: '検索クエリが指定されていません'
+          });
+        }
+
+        console.log(`🔍 ナレッジベース検索: "${query}", limit: ${limit}`);
+
+        const knowledgeBaseDir = join(process.cwd(), 'knowledge-base', 'documents');
+        const results = [];
+
+        if (!fs.existsSync(knowledgeBaseDir)) {
+          console.warn('⚠️ knowledge-base/documents ディレクトリが存在しません');
+          return res.json({
+            success: true,
+            results: [],
+            totalFound: 0,
+            query: query
+          });
+        }
+
+        // documentsディレクトリ内の各ドキュメントを検索
+        const docDirs = fs.readdirSync(knowledgeBaseDir).filter(item => {
+          const itemPath = join(knowledgeBaseDir, item);
+          return fs.statSync(itemPath).isDirectory();
+        });
+
+        const searchTerms = query.toLowerCase().split(/\s+/).filter(term => term.length > 0);
+
+        for (const dir of docDirs) {
+          try {
+            const docDir = join(knowledgeBaseDir, dir);
+            const metadataPath = join(docDir, 'metadata.json');
+            const contentPath = join(docDir, 'content.txt');
+
+            if (!fs.existsSync(metadataPath) || !fs.existsSync(contentPath)) {
+              continue;
+            }
+
+            const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+            const content = fs.readFileSync(contentPath, 'utf8');
+
+            // スコア計算
+            let score = 0;
+            const searchableText = (metadata.title + ' ' + content).toLowerCase();
+
+            for (const term of searchTerms) {
+              const matches = (searchableText.match(new RegExp(term, 'g')) || []).length;
+              score += matches;
+            }
+
+            if (score > 0) {
+              results.push({
+                id: dir,
+                title: metadata.title || 'タイトルなし',
+                content: content.substring(0, 300) + (content.length > 300 ? '...' : ''),
+                score: score / searchTerms.length, // 正規化されたスコア
+                category: metadata.category || 'uncategorized',
+                type: metadata.type || 'document',
+                createdAt: metadata.createdAt
+              });
+            }
+          } catch (error) {
+            console.warn(`ドキュメント読み込みエラー: ${dir}`, error);
+          }
+        }
+
+        // スコア順でソート
+        results.sort((a, b) => b.score - a.score);
+
+        // 制限数まで切り詰め
+        const limitedResults = results.slice(0, limit);
+
+        console.log(`✅ ${limitedResults.length}件の結果を返します（全${results.length}件中）`);
+
+        return res.json({
+          success: true,
+          results: limitedResults,
+          totalFound: results.length,
+          query: query
+        });
+
+      } catch (searchError) {
+        console.error('[api/knowledge-base/search] Error:', searchError);
+        return res.status(500).json({
+          success: false,
+          error: 'ナレッジベース検索に失敗しました',
+          details: searchError.message
+        });
+      }
+    }
+
     // 統計エンドポイント: /api/knowledge-base/stats
     // 統計エンドポイント: /api/knowledge-base/stats
     // Azure Functionsでは /api/knowledge-base 部分でトリガーされるため、
