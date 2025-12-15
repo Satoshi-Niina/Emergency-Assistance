@@ -20,7 +20,7 @@ export class SearchService {
     emergencyFuse = null;
 
     constructor() {
-        this.metadataPath = path.join(__dirname, '../../knowledge-base/processed/metadata');
+        this.metadataPath = path.join(__dirname, '../../knowledge-base/documents');
         this.emergencyGuidePath = path.join(__dirname, '../../knowledge-base/processed/emergency-guides');
         this.openai = new OpenAI();
     }
@@ -281,7 +281,7 @@ export class SearchService {
     }
 
     async getMetadataFiles() {
-        return this.getFilesFromStorage(this.metadataPath, 'knowledge-base/processed/metadata/');
+        return this.getFilesFromStorage(this.metadataPath, 'knowledge-base/documents/');
     }
 
     async getEmergencyGuideFiles() {

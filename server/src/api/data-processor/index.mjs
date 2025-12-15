@@ -31,66 +31,62 @@ export default async function (req, res) {
     // POST /api/data-processor/process
     if (method === 'POST' && (action === 'process' || req.path.endsWith('/process'))) {
       const body = req.body;
-      const { filePath, fileType, fileName } = body; // Expecting blob path or local path
+      const { filePath, fileBuffer, fileType, fileName } = body; // fileBuffer: 元ファイル非保存時のバッファ
 
-      console.log('[api/data-processor] Processing file:', { filePath, fileType });
+      console.log('[api/data-processor] Processing file:', { filePath, hasBuffer: !!fileBuffer, fileType });
 
-      if (!filePath) {
-        return res.status(400).json({ success: false, error: 'No filePath provided' });
+      if (!filePath && !fileBuffer) {
+        return res.status(400).json({ success: false, error: 'No filePath or fileBuffer provided' });
       }
 
       let textContent = '';
-      const useAzure = isAzureEnvironment();
+      let buffer = null;
 
       // 1. Fetch File Content
       try {
-        if (useAzure) {
-          // Azure Blob Storage
-          const blobServiceClient = getBlobServiceClient();
-          if (!blobServiceClient) {
-            throw new Error('Blob Service unavailable');
-          }
-          const containerClient = blobServiceClient.getContainerClient(containerName);
-          // Remove container name if present in path, just get raw blob name
-          // Assuming filePath is like "imports/filename.ext" or "blob://container/imports/filename.ext"
-          let blobName = filePath;
-          if (blobName.startsWith('blob://')) {
-            const url = new URL(blobName);
-            blobName = url.pathname.substring(1);
-          }
-
-          console.log('[api/data-processor] Downloading blob:', blobName);
-          const blobClient = containerClient.getBlobClient(blobName);
-
-          // Download to buffer
-          const downloadResponse = await blobClient.download();
-          const chunks = [];
-          for await (const chunk of downloadResponse.readableStreamBody) {
-            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-          }
-          const buffer = Buffer.concat(chunks);
-
-          // Extract text based on type
-          if (fileType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf')) {
-            const data = await pdf(buffer);
-            textContent = data.text;
-          } else {
-            textContent = buffer.toString('utf8');
-          }
+        // fileBufferが提供されている場合（元ファイル非保存）
+        if (fileBuffer) {
+          console.log('[api/data-processor] Using provided file buffer');
+          buffer = Buffer.isBuffer(fileBuffer) ? fileBuffer : Buffer.from(fileBuffer);
         } else {
-          // Local Filesystem (Not implemented fully for now, focusing on Azure fix as requested)
-          // But for completeness/fallback:
-          const fs = await import('fs/promises');
-          // If filePath is absolute, use it. If relative, assume from upload dir?
-          // For safety, let's assume filePath is what was returned by upload API.
-          // If local, upload API returns absolute path.
-          const buffer = await fs.readFile(filePath);
-          if (fileType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf')) {
-            const data = await pdf(buffer);
-            textContent = data.text;
+          // filePathから読み込む（元ファイル保存済み）
+          const useAzure = isAzureEnvironment();
+          
+          if (useAzure) {
+            // Azure Blob Storage
+            const blobServiceClient = getBlobServiceClient();
+            if (!blobServiceClient) {
+              throw new Error('Blob Service unavailable');
+            }
+            const containerClient = blobServiceClient.getContainerClient(containerName);
+            let blobName = filePath;
+            if (blobName.startsWith('blob://')) {
+              const url = new URL(blobName);
+              blobName = url.pathname.substring(1);
+            }
+
+            console.log('[api/data-processor] Downloading blob:', blobName);
+            const blobClient = containerClient.getBlobClient(blobName);
+
+            const downloadResponse = await blobClient.download();
+            const chunks = [];
+            for await (const chunk of downloadResponse.readableStreamBody) {
+              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            }
+            buffer = Buffer.concat(chunks);
           } else {
-            textContent = buffer.toString('utf8');
+            // Local Filesystem
+            const fs = await import('fs/promises');
+            buffer = await fs.readFile(filePath);
           }
+        }
+
+        // Extract text based on type
+        if (fileType === 'application/pdf' || (fileName && fileName.toLowerCase().endsWith('.pdf'))) {
+          const data = await pdf(buffer);
+          textContent = data.text;
+        } else {
+          textContent = buffer.toString('utf8');
         }
       } catch (fetchError) {
         console.error('[api/data-processor] Failed to fetch/extract file:', fetchError);
@@ -138,7 +134,7 @@ export default async function (req, res) {
       };
 
       const metadataFileName = `doc-${Date.now()}.json`;
-      const metadataBlobPath = `knowledge-base/processed/metadata/${metadataFileName}`;
+      const metadataBlobPath = `knowledge-base/documents/${metadataFileName}`;
 
       try {
         if (useAzure) {
@@ -152,7 +148,7 @@ export default async function (req, res) {
         } else {
           // Local save
           const fs = await import('fs/promises');
-          const targetDir = path.join(process.cwd(), 'knowledge-base', 'processed', 'metadata');
+          const targetDir = path.join(process.cwd(), 'knowledge-base', 'documents');
           await fs.mkdir(targetDir, { recursive: true });
           await fs.writeFile(path.join(targetDir, metadataFileName), JSON.stringify(metadata, null, 2));
         }

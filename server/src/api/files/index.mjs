@@ -100,30 +100,36 @@ export default async function (req, res) {
           }
 
           const containerClient = blobServiceClient.getContainerClient(containerName);
-          // ファイルインポートは知識ベースとは別の場所に保存する
-          const blobPath = `imports/${safeFileName}`;
-          const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
+          let blobPath = null;
 
-          console.log('[api/files/import] Uploading to blob:', {
-            container: containerName,
-            blobPath,
-            fileSize: uploadedFile.size
-          });
+          // saveOriginalFileがtrueの場合のみ元ファイルを保存
+          if (saveOriginalFile) {
+            blobPath = `knowledge-base/imports/${safeFileName}`;
+            const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
 
-          // コンテナの存在確認と作成
-          const containerExists = await containerClient.exists();
-          if (!containerExists) {
-            console.log('[api/files/import] Creating container:', containerName);
-            await containerClient.create();
-          }
+            console.log('[api/files/import] Uploading to blob:', {
+              container: containerName,
+              blobPath,
+              fileSize: uploadedFile.size
+            });
 
-          await blockBlobClient.upload(uploadedFile.buffer, uploadedFile.size, {
-            blobHTTPHeaders: {
-              blobContentType: uploadedFile.mimetype
+            // コンテナの存在確認と作成
+            const containerExists = await containerClient.exists();
+            if (!containerExists) {
+              console.log('[api/files/import] Creating container:', containerName);
+              await containerClient.create();
             }
-          });
 
-          console.log('[api/files/import] ✅ File uploaded to Blob:', blobPath);
+            await blockBlobClient.upload(uploadedFile.buffer, uploadedFile.size, {
+              blobHTTPHeaders: {
+                blobContentType: uploadedFile.mimetype
+              }
+            });
+
+            console.log('[api/files/import] ✅ File uploaded to Blob:', blobPath);
+          } else {
+            console.log('[api/files/import] ⚠️ Skipping original file save (saveOriginalFile=false)');
+          }
 
           // 自動処理トリガー: DataProcessorを呼び出す
           // NOTE: 本来はAzure FunctionsのBlob TriggerやQueueを使うべきだが、
@@ -134,44 +140,43 @@ export default async function (req, res) {
           // 今回は「確認して？」とのことなので、確実に動くように、内部でfetchを使って自分自身のDataProcessorを叩くか、
           // または動的にインポートして実行する。
 
-          try {
-            // 自身のAPIを呼び出す (非同期でFire-and-forget)
-            const processorUrl = `http://localhost:${process.env.PORT || 3000}/api/data-processor/process`;
-            // Node fetch or global fetch if available (Node 18+)
-            // If not, we can use dynamic import of the processor function logic if refactored.
-            // For robustness in this monolith:
-
-            // Dynamic import of the handler to execute in-process (but async)
-            import('../data-processor/index.mjs').then(async (module) => {
-              console.log('[api/files/import] Triggering async processing...');
-              const processorHeaders = { 'Content-Type': 'application/json' };
-              const processorBody = {
-                filePath: blobPath,
-                fileType: uploadedFile.mimetype,
-                fileName: fileName
-              };
-
-              // Mock req/res objects for the internal call
+          // 自動処理トリガー（非同期）
+          setImmediate(async () => {
+            try {
+              console.log('[api/files/import] 🔄 バックグラウンド処理開始:', fileName);
+              const module = await import('../data-processor/index.mjs');
+              
               const mockReq = {
                 method: 'POST',
                 path: '/api/data-processor/process',
-                body: processorBody
+                body: {
+                  filePath: blobPath,
+                  fileBuffer: saveOriginalFile ? null : uploadedFile.buffer,
+                  fileType: uploadedFile.mimetype,
+                  fileName: fileName
+                }
               };
+              
               const mockRes = {
-                set: () => { },
+                set: () => {},
                 status: (code) => ({
-                  json: (data) => console.log(`[Processor Internal] Finished with ${code}:`, data),
-                  send: () => { }
+                  json: (data) => {
+                    if (code === 200) {
+                      console.log('[api/files/import] ✅ 処理完了:', fileName);
+                    } else {
+                      console.error('[api/files/import] ❌ 処理失敗:', code, data);
+                    }
+                  },
+                  send: () => {}
                 }),
-                json: (data) => console.log('[Processor Internal] JSON:', data)
+                json: (data) => console.log('[api/files/import] 処理結果:', data)
               };
 
               await module.default(mockReq, mockRes);
-            }).catch(err => console.error('[api/files/import] Failed to trigger processing:', err));
-
-          } catch (triggerError) {
-            console.warn('[api/files/import] Processing trigger warning:', triggerError);
-          }
+            } catch (err) {
+              console.error('[api/files/import] ❌ バックグラウンド処理エラー:', err);
+            }
+          });
 
           return res.status(200).json({
             success: true,
@@ -198,13 +203,58 @@ export default async function (req, res) {
         console.log('[api/files/import] Saving to local filesystem');
 
         try {
-          const uploadsDir = path.join(process.cwd(), 'uploads', 'imports');
-          await fs.mkdir(uploadsDir, { recursive: true });
+          let localPath = null;
 
-          const localPath = path.join(uploadsDir, safeFileName);
-          await fs.writeFile(localPath, uploadedFile.buffer);
+          // saveOriginalFileがtrueの場合のみ元ファイルを保存
+          if (saveOriginalFile) {
+            const uploadsDir = path.join(process.cwd(), 'knowledge-base', 'imports');
+            await fs.mkdir(uploadsDir, { recursive: true });
 
-          console.log('[api/files/import] ✅ File saved locally:', localPath);
+            localPath = path.join(uploadsDir, safeFileName);
+            await fs.writeFile(localPath, uploadedFile.buffer);
+
+            console.log('[api/files/import] ✅ File saved locally:', localPath);
+          } else {
+            console.log('[api/files/import] ⚠️ Skipping original file save (saveOriginalFile=false)');
+          }
+
+          // 自動処理トリガー（非同期）
+          setImmediate(async () => {
+            try {
+              console.log('[api/files/import] 🔄 バックグラウンド処理開始:', fileName);
+              const module = await import('../data-processor/index.mjs');
+              
+              const mockReq = {
+                method: 'POST',
+                path: '/api/data-processor/process',
+                body: {
+                  filePath: localPath,
+                  fileBuffer: saveOriginalFile ? null : uploadedFile.buffer,
+                  fileType: uploadedFile.mimetype,
+                  fileName: fileName
+                }
+              };
+              
+              const mockRes = {
+                set: () => {},
+                status: (code) => ({
+                  json: (data) => {
+                    if (code === 200) {
+                      console.log('[api/files/import] ✅ 処理完了:', fileName);
+                    } else {
+                      console.error('[api/files/import] ❌ 処理失敗:', code, data);
+                    }
+                  },
+                  send: () => {}
+                }),
+                json: (data) => console.log('[api/files/import] 処理結果:', data)
+              };
+
+              await module.default(mockReq, mockRes);
+            } catch (err) {
+              console.error('[api/files/import] ❌ バックグラウンド処理エラー:', err);
+            }
+          });
 
           return res.status(200).json({
             success: true,

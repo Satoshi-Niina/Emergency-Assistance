@@ -94,7 +94,7 @@ export class TroubleshootingQA {
 
 選択肢は3-5個程度で、具体的で分かりやすい内容にしてください。`;
             const response = await this.openai.chat.completions.create({
-                model: 'gpt-4',
+                model: 'gpt-4o',
                 messages: [
                     {
                         role: 'system',
@@ -177,7 +177,7 @@ export class TroubleshootingQA {
   "reasoning": "この判断の理由"
 }`;
             const response = await this.openai.chat.completions.create({
-                model: 'gpt-4',
+                model: 'gpt-4o',
                 messages: [
                     {
                         role: 'system',
