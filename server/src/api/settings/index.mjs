@@ -14,20 +14,12 @@ export default async function settingsHandler(req, res) {
   // GET /api/settings/rag - RAG設定取得
   if (method === 'GET' && action === 'rag') {
     const ragSettings = {
-      enabled: true,
-      model: 'gpt-3.5-turbo',
-      temperature: 0.7,
-      maxTokens: 1000,
-      knowledgeBase: {
-        enabled: true,
-        sources: ['documents', 'troubleshooting', 'knowledge-base'],
-        similarityThreshold: 0.8,
-      },
-      searchSettings: {
-        maxResults: 10,
-        includeMetadata: true,
-        filterByCategory: false,
-      },
+      chunkSize: 800,
+      chunkOverlap: 200,
+      similarityThreshold: 0.7,
+      maxResults: 5,
+      enableSemantic: true,
+      enableKeyword: true,
     };
 
     return res.json({

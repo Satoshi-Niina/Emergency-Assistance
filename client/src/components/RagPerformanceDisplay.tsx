@@ -192,6 +192,10 @@ export default function RagPerformanceDisplay() {
             <Brain className="h-5 w-5" />
             RAGパフォーマンステスト
           </CardTitle>
+          <p className="text-sm text-gray-600 mt-2">
+            5つのテストクエリで検索性能を測定します。
+            結果は「応答時間」「精度」「関連性」「満足度」の4つの指標で表示されます。
+          </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button 
