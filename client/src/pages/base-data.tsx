@@ -745,7 +745,7 @@ export default function BaseDataPage() {
                     <div className='flex items-center gap-2 p-3 bg-gray-50 rounded'>
                       <FolderOpen className='h-4 w-4 text-gray-500' />
                       <span className='text-sm text-gray-700'>
-                        /knowledge-base/vehicle-maintenance
+                        /knowledge-base/documents/
                       </span>
                     </div>
                   </div>

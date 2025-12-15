@@ -16,6 +16,6 @@
   },
   "responsePattern": "step_by_step",
   "escalationTime": 20,
-  "customInstructions": "",
+  "customInstructions": "【回答の必須ルール】\n1. 1回の回答は5行以内（改行含む）\n2. 回答の最後に必ず1つだけ質問を入れる\n3. 複数の情報を一度に説明しない\n4. 箇条書きは最大3項目まで\n5. 長文説明は絶対にしない\n\n【情報源】\n- /knowledge-base/documents/ を優先的に参照\n- 不足時は一般知識で補足\n- 情報源を明記: [ドキュメント] or [一般知識]",
   "enableEmergencyContact": true
 }

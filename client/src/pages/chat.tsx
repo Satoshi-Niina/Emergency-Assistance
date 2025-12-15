@@ -149,6 +149,13 @@ export default function ChatPage() {
     reasoning?: string;
   } | null>(null);
 
+  // 機種・機械番号未設定時に保存するメッセージ
+  const [pendingMessage, setPendingMessage] = useState<{
+    content: string;
+    media: any[];
+  } | null>(null);
+  const [isProcessingPendingMessage, setIsProcessingPendingMessage] = useState(false);
+
   // ナレッジデータ管理の状態
   const [knowledgeData, setKnowledgeData] = useState<any[]>([]);
   const [isLoadingKnowledge, setIsLoadingKnowledge] = useState(false);
@@ -604,7 +611,7 @@ export default function ChatPage() {
   };
 
   // 機械番号選択の処理
-  const handleMachineNumberSelect = (machine: {
+  const handleMachineNumberSelect = async (machine: {
     id: string;
     machine_number: string;
   }) => {
@@ -612,26 +619,13 @@ export default function ChatPage() {
 
     try {
       // 状態を確実に更新
-      setSelectedMachineNumber(machine.id);
-      selectedMachineNumberRef.current = machine.id; // refも更新
       setMachineNumberInput(machine.machine_number);
       setShowMachineNumberSuggestions(false);
 
-      // 機種・機械番号が両方入力された場合は警告メッセージのrefをリセット
-      // refとstateの両方を確認
-      const hasMachineType = (selectedMachineTypeRef.current && selectedMachineTypeRef.current.trim() !== '') ||
-        (selectedMachineType && selectedMachineType.trim() !== '');
-      const hasMachineNumber = machine.id && machine.id.trim() !== '';
-
-      if (hasMachineType && hasMachineNumber) {
-        lastWarningMessageRef.current = null;
-        console.log('✅ 機種・機械番号が両方入力されました。警告メッセージをリセットします', {
-          machineType: selectedMachineTypeRef.current || selectedMachineType,
-          machineNumber: machine.id
-        });
-      }
-
       console.log('✅ 機械番号選択完了', machine.machine_number);
+
+      // 機械番号変更処理を呼び出し（自動再送信処理を含む）
+      await handleMachineNumberChange(machine.id);
     } catch (error) {
       console.error('❌ 機械番号選択処理にエラー:', error);
     }
@@ -736,6 +730,46 @@ export default function ChatPage() {
     } else {
       setMachines([]);
       setFilteredMachines([]);
+    }
+  };
+
+  // 機械番号選択時の処理
+  const handleMachineNumberChange = async (machineNumber: string) => {
+    setSelectedMachineNumber(machineNumber);
+    selectedMachineNumberRef.current = machineNumber;
+    lastWarningMessageRef.current = null;
+
+    // 機種と機械番号の両方が入力された場合、保存されたメッセージを自動再送信
+    if (selectedMachineType && machineNumber && pendingMessage && !isProcessingPendingMessage) {
+      console.log('✅ 機種・機械番号が入力されました。保存されたメッセージを自動再送信します', {
+        selectedMachineType,
+        machineNumber,
+        pendingMessage: pendingMessage.content
+      });
+      
+      try {
+        setIsProcessingPendingMessage(true);
+        const savedMessage = { ...pendingMessage };
+        // 保存されたメッセージを先にクリア（重複防止）
+        setPendingMessage(null);
+        
+        // AI支援モードの場合は処理を実行（skipMachineCheck=trueで機種・機械番号チェックをスキップ）
+        if (aiSupportMode) {
+          await handleAiSupportMessage(savedMessage.content, savedMessage.media, true);
+        } else {
+          // 通常モードの場合はメッセージ送信
+          await sendMessage(savedMessage.content, savedMessage.media, false);
+        }
+      } catch (error) {
+        console.error('❌ 保存メッセージの再送信エラー:', error);
+        toast({
+          title: 'エラー',
+          description: 'メッセージの送信に失敗しました',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsProcessingPendingMessage(false);
+      }
     }
   };
 
@@ -1626,35 +1660,22 @@ export default function ChatPage() {
   };
 
   // AI支援メティングーージ処琁EーEPT応答を使用�E�E
-  const handleAiSupportMessage = async (content: string, media: any[] = []) => {
+  const handleAiSupportMessage = async (content: string, media: any[] = [], skipMachineCheck: boolean = false) => {
     try {
-      // 機種・機械番号の入力チェティングー�E�空斁Eー�E、null、undefinedをチェティングー�E�E
-      // refとstateの両方を確認して最新の状態を取得（どちらかが有効な値を持ってぁEーかを確認！E
-      // 最新の状態を確実に取得するため、refを優先し、なければstateを使用
-      // 機械番号につぁEーは、selectedMachineNumber�E�ED�E�また�EmachineNumberInput�E�表示値�EーEどちらかがあれ�EOK
-      // stateを優先的に確認し、なければ入力値を確認
-
       // refとstateの両方を確認し、どちらかが有効な値を持ってぁEーかを確誁E
       // refが優先、なければstateを使用
       // 機種は、selectedMachineType�E�ED�E�また�EmachineTypeInput�E�表示値�EーEどちらかがあれ�EOK
-      const currentMachineType = (selectedMachineType && selectedMachineType.trim() !== '' && selectedMachineType !== 'null' && selectedMachineType !== 'undefined')
-        ? selectedMachineType
-        : (machineTypeInput && machineTypeInput.trim() !== '')
-          ? machineTypeInput.trim()
-          : '';
-
-      // 機械番号は、selectedMachineNumber�E�ED�E�また�EmachineNumberInput�E�表示値�EーEどちらかがあれ�EOK
-      const currentMachineNumber = (selectedMachineNumber && selectedMachineNumber.trim() !== '' && selectedMachineNumber !== 'null' && selectedMachineNumber !== 'undefined')
-        ? selectedMachineNumber
-        : (machineNumberInput && machineNumberInput.trim() !== '')
-          ? machineNumberInput.trim()
-          : '';
+      const currentMachineType = selectedMachineTypeRef.current || selectedMachineType || machineTypeInput;
+      const currentMachineNumber = selectedMachineNumberRef.current || selectedMachineNumber || machineNumberInput;
 
       // 最終的な判定（空斁Eー�EでなぁEーとを確認！E
-      const hasMachineType = currentMachineType !== '';
-      const hasMachineNumber = currentMachineNumber !== '';
+      const hasMachineType = currentMachineType && currentMachineType.trim() !== '' && currentMachineType !== 'null' && currentMachineType !== 'undefined';
+      const hasMachineNumber = currentMachineNumber && currentMachineNumber.trim() !== '' && currentMachineNumber !== 'null' && currentMachineNumber !== 'undefined';
 
       console.log('🔍 機種・機械番号チェティングー:', {
+        skipMachineCheck,
+        selectedMachineTypeRef: selectedMachineTypeRef.current,
+        selectedMachineNumberRef: selectedMachineNumberRef.current,
         selectedMachineType,
         selectedMachineNumber,
         machineTypeInput,
@@ -1682,8 +1703,18 @@ export default function ChatPage() {
         return updatedMessages;
       });
 
-      // 機種・機械番号が入力されていない場合の処理
-      if (!hasMachineType || !hasMachineNumber) {
+      // 機種・機械番号が入力されていない場合の処理（skipMachineCheckがtrueの場合はスキップ）
+      if (!skipMachineCheck && (!hasMachineType || !hasMachineNumber)) {
+        // ユーザーのメッセージを保存（後で自動再送信するため）
+        // ただし、既に保存されているメッセージと同じ場合は保存しない
+        if (!pendingMessage || pendingMessage.content !== content) {
+          console.log('📝 機種・機械番号未設定のため、メッセージを保存します:', content);
+          setPendingMessage({
+            content: content,
+            media: media || [],
+          });
+        }
+
         // 機種・機械番号が入力されていない場合の警告メッセージ（連続表示を防ぐ）
         const warningContent = '機種及び機械番号を選択入力してください';
         const currentTime = Date.now();
@@ -1713,7 +1744,11 @@ export default function ChatPage() {
 
       // 機種・機械番号が入力されている場合は、警告メッセージのrefをリセット
       lastWarningMessageRef.current = null;
-      console.log('✅ 機種・機械番号が入力されています。GPT応答を生成します');
+      console.log('✅ 機種・機械番号が入力されています。GPT応答を生成します', {
+        content,
+        machineType: currentMachineType,
+        machineNumber: currentMachineNumber
+      });
 
       // 会話履歴を取得（AI支援メッセージのみ、最新のメッセージを含める）
       const conversationHistory = updatedMessages
@@ -1725,8 +1760,12 @@ export default function ChatPage() {
           type: msg.type,
         }));
 
+      console.log('📝 会話履歴:', conversationHistory.length, '件');
+
       // GPTにリクエストを送信してAI応答を生成
+      console.log('🤖 GPTレスポンス生成開始...');
       const aiResponse = await generateAiSupportResponse(content, conversationHistory);
+      console.log('✅ GPTレスポンス生成完了:', aiResponse.substring(0, 100));
 
       // AI応答メッセージを追加
       const aiMessage = {
@@ -1738,6 +1777,7 @@ export default function ChatPage() {
       };
 
       setMessages(prev => [...prev, aiMessage]);
+      console.log('✅ AIメッセージを追加しました');
 
     } catch (error) {
       console.error('AI支援メティングーージ処琁Eーラー:', error);
@@ -2206,8 +2246,8 @@ export default function ChatPage() {
       selectedMachineNumberRef.current = '';
       setMachineTypeInput('');
       setMachineNumberInput('');
-      // 機種の選択肢シューティングは保持�E�ユーザーが�E選択できるように�E�E
-      // setFilteredMachineTypes([]); // 削除�E�機種の選択肢は保持
+      // フィルタリングされた機種リストをクリアして、次回のフォーカス時に再読み込み
+      setFilteredMachineTypes([]);
 
       // 機械番号は機種選択後に再取得されるため、クリア
       setMachines([]);
@@ -2218,6 +2258,9 @@ export default function ChatPage() {
       machineInfoMessageSentRef.current = false;
       initialPromptSentRef.current = false;
       lastWarningMessageRef.current = null;
+
+      // 保存されたメッセージもクリア
+      setPendingMessage(null);
 
       toast({
         title: '成功',
@@ -2395,6 +2438,10 @@ export default function ChatPage() {
                       <Input
                         id='machine-type'
                         type='text'
+                        autoComplete='off'
+                        autoCorrect='off'
+                        autoCapitalize='off'
+                        spellCheck='false'
                         placeholder={
                           isLoadingMachineTypes ? '読み込み中...' : '機種を選択...'
                         }
@@ -2409,14 +2456,13 @@ export default function ChatPage() {
                         onFocus={() => {
                           console.log('🔍 機種入力フォーカス:', {
                             machineTypesCount: machineTypes.length,
-                            machineTypes: machineTypes,
+                            machineTypeInput: machineTypeInput,
                             filteredMachineTypesCount: filteredMachineTypes.length,
-                            showMachineTypeSuggestions: showMachineTypeSuggestions,
                           });
                           setShowMachineTypeSuggestions(true);
-                          // フォーカス時に全機種を表示
+                          // フォーカス時、現在の入力値でフィルタリング（空の場合は全機種表示）
                           if (machineTypes.length > 0) {
-                            setFilteredMachineTypes(machineTypes);
+                            filterMachineTypes(machineTypeInput);
                           }
                         }}
                         onBlur={e => {
@@ -2517,6 +2563,10 @@ export default function ChatPage() {
                       <Input
                         id='machine-number'
                         type='text'
+                        autoComplete='off'
+                        autoCorrect='off'
+                        autoCapitalize='off'
+                        spellCheck='false'
                         placeholder={
                           isLoadingMachines ? '読み込み中...' : '機械番号を選択...'
                         }
