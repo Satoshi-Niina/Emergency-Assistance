@@ -1,0 +1,36 @@
+{
+  "id": "doc_1766105607796_zevssb2nd",
+  "title": "保守用車Q&A",
+  "originalFileName": "ä¿å®ç¨è»Q&A.txt",
+  "decodedFileName": "保守用車Q&A.txt",
+  "safeFileName": "保守用車Q&A.txt",
+  "category": "general",
+  "type": "document",
+  "createdAt": "2025-12-19T00:53:27.801Z",
+  "updatedAt": "2025-12-19T00:53:27.801Z",
+  "fileType": ".txt",
+  "chunkCount": 39,
+  "textLength": 15307,
+  "originalTextLength": 16415,
+  "processedAt": "2025-12-19T00:53:27.801Z",
+  "ragConfig": {
+    "chunkSize": 500,
+    "overlap": 100,
+    "minChunkSize": 50,
+    "processingMethod": "semantic-boundary-aware"
+  },
+  "keywords": [
+    "です",
+    "仕業点検",
+    "昼間",
+    "質問",
+    "回答",
+    "すか",
+    "以上です",
+    "ですか",
+    "と出発前です",
+    "は何ですか"
+  ],
+  "summary": "軌道モータカーに関するQ&A集 (200項目)\nI. 基本構造と用語 (Basic Structure and Terminology)\nNo.\n質問 (Q)\n回答 (A)\n1\nQ: 軌道モータカーの通称は何ですか？\nA: 軌道モータカーは通称MCと呼ばれ\nています。\n2\nQ: 新幹線で使用される軌道モータカー\nの通称は何ですか？\nA: 新幹線で使用されるものはMOと呼\nばれています。\n3\nQ: ...",
+  "originalFileSaved": false
+}

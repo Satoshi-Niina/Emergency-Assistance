@@ -117,10 +117,33 @@ export default function BaseDataPage() {
     setSelectedFiles(files);
 
     if (files) {
-      const statusList: ImportStatus[] = Array.from(files).map(file => ({
-        fileName: file.name,
-        status: 'pending',
-      }));
+      const allowedExtensions = ['.txt', '.pdf', '.xlsx', '.pptx', '.docx'];
+      const statusList: ImportStatus[] = Array.from(files).map(file => {
+        const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+        const isValid = allowedExtensions.includes(ext);
+        
+        if (!isValid) {
+          return {
+            fileName: file.name,
+            status: 'error' as const,
+            message: `サポートされていないファイル形式です (${ext})`,
+          };
+        }
+        
+        // DOCXファイルの場合、追加の検証
+        if (ext === '.docx') {
+          console.log('[FileSelect] DOCX file selected:', {
+            name: file.name,
+            size: file.size,
+            type: file.type
+          });
+        }
+        
+        return {
+          fileName: file.name,
+          status: 'pending' as const,
+        };
+      });
       setImportStatus(statusList);
     }
   };
@@ -171,26 +194,30 @@ export default function BaseDataPage() {
             );
           } else {
             const error = await response.json();
+            console.error('[ImportError]', error);
+            const errorMessage = error.error || error.message || error.details || 'インポートエラー';
             setImportStatus(prev =>
               prev.map((status, index) =>
                 index === i
                   ? {
                     ...status,
                     status: 'error' as const,
-                    message: error.message || 'インポートエラー',
+                    message: errorMessage,
                   }
                   : status
               )
             );
           }
-        } catch (_error) {
+        } catch (catchError: any) {
+          console.error('[ImportCatchError]', catchError);
+          const errorMessage = catchError?.message || 'ネットワークエラー';
           setImportStatus(prev =>
             prev.map((status, index) =>
               index === i
                 ? {
                   ...status,
                   status: 'error' as const,
-                  message: 'ネットワークエラー',
+                  message: errorMessage,
                 }
                 : status
             )
@@ -625,16 +652,18 @@ export default function BaseDataPage() {
               <CardContent className='space-y-4'>
                 <div>
                   <Label htmlFor='file-upload'>
-                    ファイルを選択 (TXT, PDF, XLSX, PPTX)
+                    ファイルを選択 (TXT, PDF, XLSX, PPTX, DOCX)
                   </Label>
-                  <Input
-                    id='file-upload'
-                    type='file'
-                    multiple
-                    accept='.txt,.pdf,.xlsx,.pptx'
-                    onChange={handleFileSelect}
-                    className='mt-1'
-                  />
+                  <div className='relative'>
+                    <Input
+                      id='file-upload'
+                      type='file'
+                      multiple
+                      accept='.txt,.pdf,.xlsx,.pptx,.docx'
+                      onChange={handleFileSelect}
+                      className='mt-1 border-4 border-blue-500 hover:border-blue-600 focus:border-blue-700 transition-colors'
+                    />
+                  </div>
                 </div>
 
                 {selectedFiles && (

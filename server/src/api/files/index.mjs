@@ -59,7 +59,9 @@ export default async function (req, res) {
         fileName: uploadedFile?.originalname,
         fileSize: uploadedFile?.size,
         mimetype: uploadedFile?.mimetype,
-        saveOriginalFile
+        saveOriginalFile,
+        bufferFirst20Bytes: uploadedFile?.buffer ? Array.from(uploadedFile.buffer.slice(0, 20)) : null,
+        bufferFirst20Hex: uploadedFile?.buffer ? uploadedFile.buffer.slice(0, 20).toString('hex') : null
       });
 
       const useAzure = isAzureEnvironment();
@@ -146,12 +148,21 @@ export default async function (req, res) {
               console.log('[api/files/import] 🔄 バックグラウンド処理開始:', fileName);
               const module = await import('../data-processor/index.mjs');
               
+              // 重要: fileBufferはBufferインスタンスのまま渡す（JSON化しない）
+              const fileBufferToPass = saveOriginalFile ? null : uploadedFile.buffer;
+              
+              console.log('[api/files/import] Passing buffer:', {
+                hasBuffer: !!fileBufferToPass,
+                isBuffer: fileBufferToPass ? Buffer.isBuffer(fileBufferToPass) : false,
+                bufferLength: fileBufferToPass ? fileBufferToPass.length : 0
+              });
+              
               const mockReq = {
                 method: 'POST',
                 path: '/api/data-processor/process',
                 body: {
                   filePath: blobPath,
-                  fileBuffer: saveOriginalFile ? null : uploadedFile.buffer,
+                  fileBuffer: fileBufferToPass,
                   fileType: uploadedFile.mimetype,
                   fileName: fileName
                 }
@@ -224,12 +235,21 @@ export default async function (req, res) {
               console.log('[api/files/import] 🔄 バックグラウンド処理開始:', fileName);
               const module = await import('../data-processor/index.mjs');
               
+              // 重要: fileBufferはBufferインスタンスのまま渡す（JSON化しない）
+              const fileBufferToPass = saveOriginalFile ? null : uploadedFile.buffer;
+              
+              console.log('[api/files/import] Passing buffer:', {
+                hasBuffer: !!fileBufferToPass,
+                isBuffer: fileBufferToPass ? Buffer.isBuffer(fileBufferToPass) : false,
+                bufferLength: fileBufferToPass ? fileBufferToPass.length : 0
+              });
+              
               const mockReq = {
                 method: 'POST',
                 path: '/api/data-processor/process',
                 body: {
                   filePath: localPath,
-                  fileBuffer: saveOriginalFile ? null : uploadedFile.buffer,
+                  fileBuffer: fileBufferToPass,
                   fileType: uploadedFile.mimetype,
                   fileName: fileName
                 }

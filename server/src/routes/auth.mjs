@@ -219,5 +219,7 @@ router.post('/logout', (req, res) => {
 });
 
 export default function registerAuthRoutes(app) {
+  console.log('[Auth Routes] Registering /api/auth routes...');
   app.use('/api/auth', router);
+  console.log('[Auth Routes] ✅ /api/auth routes registered');
 }
