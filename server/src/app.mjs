@@ -11,6 +11,7 @@ import { NODE_ENV, PORT } from './config/env.mjs';
 import { corsOptions } from './config/cors.mjs';
 import { createSessionMiddleware } from './config/session.mjs';
 import { createSecurityMiddleware } from './config/security.mjs';
+import { attachTenantContext } from './middleware/tenant-context.mjs';
 
 import registerAuthRoutes from './routes/auth.mjs';
 import registerHealthRoutes from './routes/health.mjs';
@@ -42,6 +43,7 @@ export async function createApp() {
 
   // Session
   app.use(createSessionMiddleware());
+  app.use(attachTenantContext);
 
   // Session Debug
   app.use((req, res, next) => {

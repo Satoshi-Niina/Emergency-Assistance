@@ -57,6 +57,14 @@
       "rewrite": "/index.html"
     },
     {
+      "route": "/apps/troubleshoot",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/apps/troubleshoot/*",
+      "rewrite": "/index.html"
+    },
+    {
       "route": "/chat",
       "rewrite": "/index.html"
     },

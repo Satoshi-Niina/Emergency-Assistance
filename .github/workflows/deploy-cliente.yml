@@ -1,0 +1,136 @@
+name: Deploy Client to Google Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'client/**'
+      - 'shared/**'
+      - '.github/workflows/deploy-cliente-azure.yml'
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  REGION: ${{ vars.GCP_REGION }}
+  ARTIFACT_REPOSITORY: ${{ vars.GCP_ARTIFACT_REPOSITORY }}
+  SERVICE_NAME: ${{ vars.GCP_CLIENT_SERVICE_NAME }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Authorize Docker Push
+        run: |
+          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build and Push Container
+        run: |
+          cat > client/cloudrun-server.mjs <<'EOF'
+          import http from 'node:http';
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import url from 'node:url';
+
+          const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+          const distDir = path.join(__dirname, 'dist');
+          const port = Number(process.env.PORT || 8080);
+          const runtimeConfig = `window.runtimeConfig = ${JSON.stringify({
+            API_BASE_URL: process.env.API_BASE_URL || '',
+          })};\n`;
+
+          fs.writeFileSync(path.join(distDir, 'runtime-config.js'), runtimeConfig, 'utf8');
+
+          const mimeTypes = new Map([
+            ['.html', 'text/html; charset=utf-8'],
+            ['.js', 'application/javascript; charset=utf-8'],
+            ['.mjs', 'application/javascript; charset=utf-8'],
+            ['.css', 'text/css; charset=utf-8'],
+            ['.json', 'application/json; charset=utf-8'],
+            ['.svg', 'image/svg+xml'],
+            ['.png', 'image/png'],
+            ['.jpg', 'image/jpeg'],
+            ['.jpeg', 'image/jpeg'],
+            ['.ico', 'image/x-icon'],
+          ]);
+
+          const sendFile = (res, filePath) => {
+            const ext = path.extname(filePath);
+            res.setHeader('Content-Type', mimeTypes.get(ext) || 'application/octet-stream');
+            fs.createReadStream(filePath).pipe(res);
+          };
+
+          const server = http.createServer((req, res) => {
+            const requestPath = new URL(req.url, `http://${req.headers.host}`).pathname;
+            const safePath = requestPath === '/' ? '/index.html' : requestPath;
+            const filePath = path.join(distDir, safePath);
+
+            if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+              sendFile(res, filePath);
+              return;
+            }
+
+            sendFile(res, path.join(distDir, 'index.html'));
+          });
+
+          server.listen(port, '0.0.0.0', () => {
+            console.log(`Client server listening on ${port}`);
+          });
+          EOF
+
+          cat > client/Dockerfile.cloudrun <<'EOF'
+          FROM node:20-alpine AS build
+          WORKDIR /app
+
+          COPY client/package*.json ./client/
+          WORKDIR /app/client
+          RUN npm install
+
+          WORKDIR /app
+          COPY shared ./shared
+          COPY client ./client
+
+          WORKDIR /app/client
+          RUN npm run build
+
+          FROM node:20-alpine
+          WORKDIR /app/client
+          ENV NODE_ENV=production
+          ENV PORT=8080
+          COPY --from=build /app/client/dist ./dist
+          COPY --from=build /app/client/cloudrun-server.mjs ./cloudrun-server.mjs
+          EXPOSE 8080
+          CMD ["node", "cloudrun-server.mjs"]
+          EOF
+
+          IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPOSITORY}/client:${GITHUB_SHA}"
+          docker build -f client/Dockerfile.cloudrun -t "${IMAGE_URI}" .
+          docker push "${IMAGE_URI}"
+          echo "IMAGE_URI=${IMAGE_URI}" >> "$GITHUB_ENV"
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "${SERVICE_NAME}" \
+            --image "${IMAGE_URI}" \
+            --region "${REGION}" \
+            --platform managed \
+            --project "${PROJECT_ID}" \
+            --allow-unauthenticated \
+            --quiet

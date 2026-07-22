@@ -4,6 +4,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/auth-context';
 import { ChatProvider } from './context/chat-context';
@@ -39,6 +40,7 @@ const SystemDiagnosticPage = lazy(() => import('./pages/system-diagnostic'));
 const HistoryPage = lazy(() => import('./pages/history'));
 const DocumentsPage = lazy(() => import('./pages/documents'));
 const TroubleshootingPage = lazy(() => import('./pages/troubleshooting'));
+const TroubleshootAppPage = lazy(() => import('./pages/apps/troubleshoot'));
 const EmergencyGuidePage = lazy(() => import('./pages/emergency-guide'));
 const UsersPage = lazy(() => import('./pages/users'));
 const BaseDataPage = lazy(() => import('./pages/base-data'));
@@ -147,13 +149,16 @@ function RootRedirect() {
 
 // アプリケーション内側コンポーネント（AuthProvider内で使用）
 function AppContent() {
+  const location = useLocation();
+  const isStandaloneApp = location.pathname.startsWith('/apps/troubleshoot');
+
   return (
-    <div className='flex flex-col h-screen'>
+    <div className={isStandaloneApp ? 'min-h-screen' : 'flex flex-col h-screen'}>
       <AuthModeBadge />
       <ApiConnectionTest />
-      <Header />
-      <main className='flex-1 overflow-auto'>
-        <AuthModeNotice />
+      {!isStandaloneApp ? <Header /> : null}
+      <main className={isStandaloneApp ? 'min-h-screen' : 'flex-1 overflow-auto'}>
+        {!isStandaloneApp ? <AuthModeNotice /> : null}
         <Suspense
           fallback={
             <div className='flex justify-center items-center h-full'>
@@ -166,6 +171,8 @@ function AppContent() {
         >
           <Routes>
             <Route path='/login' element={<LoginPage />} />
+            <Route path='/apps/troubleshoot' element={<TroubleshootAppPage />} />
+            <Route path='/apps/troubleshoot/*' element={<TroubleshootAppPage />} />
             <Route
               path='/chat'
               element={
@@ -208,11 +215,7 @@ function AppContent() {
             />
             <Route
               path='/troubleshooting'
-              element={
-                <ProtectedRoute requireAdmin>
-                  <TroubleshootingPage />
-                </ProtectedRoute>
-              }
+              element={<Navigate to='/apps/troubleshoot' replace />}
             />
             <Route
               path='/emergency-guide'
@@ -247,8 +250,7 @@ function AppContent() {
               }
             />
             <Route path='/not-found' element={<NotFoundPage />} />
-            {/* ルートパスではリダイレクトせずログイン画面を直接表示 */}
-            <Route path='/' element={<LoginPage />} />
+            <Route path='/' element={<Navigate to='/apps/troubleshoot' replace />} />
             <Route path='*' element={<Navigate to='/not-found' replace />} />
           </Routes>
         </Suspense>

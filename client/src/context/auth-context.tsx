@@ -17,12 +17,14 @@ interface User {
   displayName: string;
   role: 'admin' | 'employee';
   department?: string;
+  tenantId?: string;
+  appId?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string, appId?: string) => Promise<void>;
   logout: () => void;
   authMode: 'safe' | 'jwt-bypass' | 'jwt' | null;
 }
@@ -116,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuthStatus();
   }, []);
 
-  const login = async (username: string, password: string): Promise<void> => {
+  const login = async (username: string, password: string, appId = 'troubleshoot'): Promise<void> => {
     console.log('🔐 ログイン試行開始:', { username });
 
     // バイパスモード時は仮ログイン
@@ -134,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
 
       // 直接APIを呼び出してログイン
-      const userData = await authLogin({ username, password });
+      const userData = await authLogin({ username, password, appId });
       console.log('🔍 ログインレスポンス:', userData);
 
       if (userData && userData.success && userData.user) {
@@ -151,6 +153,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           displayName: userData.user.displayName || userData.user.display_name,
           role: normalizeRole(userData.user.role),
           department: userData.user.department,
+          tenantId: userData.user.tenantId || userData.tenant?.tenantId,
+          appId: userData.user.appId || userData.appId,
         });
       } else {
         console.log('❌ ログインレスポンスが無効:', userData);

@@ -174,7 +174,7 @@ export const api = {
 
 // 認証関連API（後方互換性のため）
 export const authApi = {
-    login: (credentials: { username: string; password: string }) =>
+    login: (credentials: { username: string; password: string; appId?: string }) =>
         api.post('/auth/login', credentials),
     logout: () => api.post('/auth/logout'),
     me: () => api.get('/auth/me'),

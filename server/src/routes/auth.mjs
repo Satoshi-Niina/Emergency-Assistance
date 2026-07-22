@@ -1,89 +1,33 @@
 import express from 'express';
-import bcrypt from 'bcryptjs';
-import { dbQuery } from '../infra/db.mjs';
 import { NODE_ENV } from '../config/env.mjs';
+import {
+  authenticateTenantLogin,
+  getAuthResponseSession,
+  normalizeAuthSession,
+} from '../services/tenant-auth.mjs';
+import { requireTenantContext } from '../middleware/tenant-context.mjs';
 
 const router = express.Router();
 
 const normalizeUserRole = (rawRole) => {
-  if (!rawRole) return 'user';
-  const role = String(rawRole).toLowerCase().trim();
-  if (role === 'admin' || role === 'administrator') return 'admin';
-  if (role === 'employee' || role === 'staff') return 'employee';
-  return 'user';
+  return normalizeAuthSession({ role: rawRole }).role;
 };
 
 // Login
 router.post('/login', async (req, res) => {
   try {
-    console.log('[auth/login] Login attempt:', { username: req.body?.username });
+    const { username, password, appId } = req.body;
+    console.log('[auth/login] Login attempt:', { username, appId });
 
-    const { username, password } = req.body;
-
-    if (!username || !password) {
-      return res.status(400).json({
-        success: false,
-        error: 'ユーザー名とパスワードが必要です'
-      });
-    }
-
-    const result = await dbQuery(
-      'SELECT id, username, display_name, password, role, department FROM users WHERE username = $1',
-      [username]
-    );
-
-    if (result.rows.length === 0) {
-      console.log('[auth/login] User not found:', username);
-      return res.status(401).json({
-        success: false,
-        error: 'ユーザー名またはパスワードが間違っています'
-      });
-    }
-
-    const user = result.rows[0];
-    // パスワードハッシュの形式チェック（デバッグ用）
-    if (!user.password || !user.password.startsWith('$2')) {
-      console.warn('[auth/login] Warning: Stored password might not be a valid bcrypt hash for user:', username);
-    }
-
-    console.log('[auth/login] Password validation debug:', {
+    const authResult = await authenticateTenantLogin({
       username,
-      passwordLength: password.length,
-      hasSpecialChars: /[&<>"']/.test(password),
-      hashPrefix: user.password?.substring(0, 10)
+      password,
+      appId: appId || 'troubleshoot',
     });
 
-    // パスワードはbcryptハッシュのみで認証（平文不可）
-    // bcryptは特殊文字(&, <, >, ", 'など)を正しく処理します
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) {
-      console.log('[auth/login] Password validation failed for user:', username);
-      console.log('[auth/login] Failed password info:', {
-        length: password.length,
-        hasAmpersand: password.includes('&'),
-        hashStart: user.password?.substring(0, 20)
-      });
-      return res.status(401).json({
-        success: false,
-        error: 'ユーザー名またはパスワードが間違っています'
-      });
-    }
-
-    console.log('[auth/login] Login successful for:', username, 'Role:', user.role);
-    console.log('[auth/login] Session debug:', {
-      sessionID: req.sessionID,
-      cookie: req.session.cookie,
-      hasSession: !!req.session
-    });
-
-    req.session.user = {
-      id: user.id,
-      username: user.username,
-      displayName: user.display_name,
-      role: normalizeUserRole(user.role),
-      department: user.department
-    };
+    req.session.user = authResult.user;
+    req.session.tenant = authResult.tenant;
+    req.session.appId = authResult.appId;
 
     // セッション保存を確実にする
     req.session.save((err) => {
@@ -98,13 +42,9 @@ router.post('/login', async (req, res) => {
       console.log('[auth/login] Session saved successfully');
       res.json({
         success: true,
-        user: {
-          id: user.id,
-          username: user.username,
-          displayName: user.display_name,
-          role: normalizeUserRole(user.role),
-          department: user.department
-        },
+        ...getAuthResponseSession(authResult),
+        token: authResult.token || undefined,
+        accessToken: authResult.token || undefined,
         message: 'ログインに成功しました',
         timestamp: new Date().toISOString(),
         debug: {
@@ -116,9 +56,9 @@ router.post('/login', async (req, res) => {
 
   } catch (error) {
     console.error('[auth/login] Error:', error);
-    res.status(500).json({
+    res.status(error?.statusCode || 500).json({
       success: false,
-      error: 'ログイン処理に失敗しました',
+      error: error?.publicMessage || 'ログイン処理に失敗しました',
       details: NODE_ENV === 'production' ? undefined : error.message
     });
   }
@@ -136,22 +76,33 @@ router.get('/handshake', (req, res) => {
 });
 
 // Me
-router.get('/me', (req, res) => {
-  if (req.session.user) {
-    const normalizedRole = normalizeUserRole(req.session.user.role);
+router.get('/me', requireTenantContext, (req, res) => {
+  if (req.user) {
     const normalizedUser = {
-      ...req.session.user,
-      role: normalizedRole
+      id: req.user.id,
+      username: req.user.username,
+      displayName: req.user.displayName || req.user.username,
+      role: normalizeUserRole(req.user.role),
+      department: req.user.department,
+      tenantId: req.user.tenantId,
+      appId: req.user.appId,
     };
-    req.session.user = normalizedUser;
+
+    if (req.session) {
+      req.session.user = normalizedUser;
+      if (req.tenant) {
+        req.session.tenant = req.tenant;
+      }
+    }
 
     res.json({
       success: true,
       user: normalizedUser,
+      tenant: req.tenant || req.session?.tenant || null,
       message: '認証済み',
       debug: {
         sessionId: req.sessionID,
-        userRole: normalizedRole,
+        userRole: normalizedUser.role,
         timestamp: new Date().toISOString()
       }
     });
@@ -221,5 +172,6 @@ router.post('/logout', (req, res) => {
 export default function registerAuthRoutes(app) {
   console.log('[Auth Routes] Registering /api/auth routes...');
   app.use('/api/auth', router);
+  app.use('/api/app-auth', router);
   console.log('[Auth Routes] ✅ /api/auth routes registered');
 }

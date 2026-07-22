@@ -4,6 +4,7 @@ import { authApi } from './api';
 interface LoginCredentials {
   username: string;
   password: string;
+  appId?: string;
 }
 
 /**
