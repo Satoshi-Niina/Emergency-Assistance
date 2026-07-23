@@ -40,7 +40,7 @@ jobs:
         uses: google-github-actions/get-secretmanager-secrets@v3
         with:
           secrets: |-
-            VITE_API_URL:maint-vehicle-management/VITE_API_URL
+            VITE_API_URL:${{ env.PROJECT_ID }}/VITE_API_URL
 
       - name: Authorize Docker Push
         run: |
