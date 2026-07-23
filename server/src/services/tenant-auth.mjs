@@ -16,8 +16,8 @@ const COMMON_DB_CONNECTION_STRING =
   process.env.COMMON_DB_V2_URL ||
   DATABASE_URL;
 
-const COMMON_TENANT_AUTH_TABLE = process.env.COMMON_TENANT_AUTH_TABLE || 'tenant_users';
-const TENANT_USERS_TABLE = process.env.TENANT_USERS_TABLE || 'users';
+const COMMON_TENANT_ROUTINGS_TABLE = process.env.COMMON_TENANT_ROUTINGS_TABLE || 'public.tenant_app_routings';
+const TENANT_USERS_TABLE = process.env.TENANT_USERS_TABLE || 'public.users';
 
 function normalizeRole(rawRole) {
   if (!rawRole) return 'user';
@@ -94,42 +94,41 @@ async function querySingle(pool, sql, params = []) {
   return result.rows[0] || null;
 }
 
-async function loadTenantDirectoryEntry(username, appId) {
+async function loadTenantRoutingEntry(tenantKey, appId) {
   const pool = getCommonDbPool();
-  const tableName = process.env.COMMON_TENANT_AUTH_TABLE || COMMON_TENANT_AUTH_TABLE;
-  const usernameColumn = process.env.COMMON_TENANT_USERNAME_COLUMN || 'username';
+  const tableName = process.env.COMMON_TENANT_ROUTINGS_TABLE || COMMON_TENANT_ROUTINGS_TABLE;
+  const tenantKeyColumn = process.env.COMMON_TENANT_KEY_COLUMN || 'tenant_key';
   const appIdColumn = process.env.COMMON_TENANT_APP_ID_COLUMN || 'app_id';
+
+  const conditions = [`${tenantKeyColumn} = $1`];
+  const params = [tenantKey];
+
+  if (appId) {
+    conditions.push(`(${appIdColumn} = $${params.length + 1} OR ${appIdColumn} IS NULL)`);
+    params.push(appId);
+  }
+
   const sql = `
     SELECT *
     FROM ${tableName}
-    WHERE ${usernameColumn} = $1
-    ${appId ? `AND (${appIdColumn} = $2 OR ${appIdColumn} IS NULL)` : ''}
+    WHERE ${conditions.join(' AND ')}
     LIMIT 1
   `;
 
   try {
-    return await querySingle(pool, sql, appId ? [username, appId] : [username]);
+    return await querySingle(pool, sql, params);
   } catch (error) {
-    console.warn('[tenant-auth] common lookup failed, retrying without app filter:', error.message);
-    if (appId) {
-      const retrySql = `
-        SELECT *
-        FROM ${tableName}
-        WHERE ${usernameColumn} = $1
-        LIMIT 1
-      `;
-      return querySingle(pool, retrySql, [username]);
-    }
+    console.warn('[tenant-auth] tenant routing lookup failed:', error.message);
     throw error;
   }
 }
 
-function extractTenantInfo(directoryRow) {
-  if (!directoryRow) {
+function extractTenantInfo(routingRow, tenantKey) {
+  if (!routingRow) {
     return null;
   }
 
-  const tenantDbConnectionString = readFirstDefined(directoryRow, [
+  const tenantDbConnectionString = readFirstDefined(routingRow, [
     'tenant_db_connection_string',
     'tenant_db_url',
     'database_url',
@@ -138,7 +137,7 @@ function extractTenantInfo(directoryRow) {
   ]);
 
   const storage = readJsonMaybe(
-    readFirstDefined(directoryRow, [
+    readFirstDefined(routingRow, [
       'storage_info',
       'storage_config',
       'storage_json',
@@ -147,21 +146,27 @@ function extractTenantInfo(directoryRow) {
   );
 
   return {
-    tenantId: String(readFirstDefined(directoryRow, [
+    tenantId: String(readFirstDefined(routingRow, [
       'tenant_id',
       'tenantId',
       'tenant',
       'id',
-    ]) || ''),
-    tenantName: readFirstDefined(directoryRow, [
+      'tenant_key',
+      'tenantKey',
+    ]) || tenantKey || ''),
+    tenantKey: String(readFirstDefined(routingRow, [
+      'tenant_key',
+      'tenantKey',
+    ]) || tenantKey || ''),
+    tenantName: readFirstDefined(routingRow, [
       'tenant_name',
       'tenantName',
       'name',
     ]) || null,
-    appId: readFirstDefined(directoryRow, ['app_id', 'appId']) || null,
+    appId: readFirstDefined(routingRow, ['app_id', 'appId']) || null,
     tenantDbConnectionString,
     storage,
-    raw: directoryRow,
+    raw: routingRow,
   };
 }
 
@@ -203,11 +208,18 @@ function signAuthToken(payload) {
   });
 }
 
-export async function authenticateTenantLogin({ username, password, appId = 'troubleshoot' }) {
+export async function authenticateTenantLogin({ username, password, appId = 'troubleshoot', tenantId = null }) {
   if (!username || !password) {
     throw Object.assign(new Error('missing_credentials'), {
       statusCode: 400,
       publicMessage: 'ユーザー名とパスワードが必要です',
+    });
+  }
+
+  if (!tenantId) {
+    throw Object.assign(new Error('missing_tenant_id'), {
+      statusCode: 400,
+      publicMessage: 'テナントIDが必要です',
     });
   }
 
@@ -218,15 +230,15 @@ export async function authenticateTenantLogin({ username, password, appId = 'tro
     });
   }
 
-  const directoryRow = await loadTenantDirectoryEntry(username, appId);
-  if (!directoryRow) {
+  const routingRow = await loadTenantRoutingEntry(String(tenantId).trim(), appId);
+  if (!routingRow) {
     throw Object.assign(new Error('tenant_directory_not_found'), {
       statusCode: 401,
-      publicMessage: 'ユーザー名またはパスワードが間違っています',
+      publicMessage: 'テナントが見つかりません',
     });
   }
 
-  const tenant = extractTenantInfo(directoryRow);
+  const tenant = extractTenantInfo(routingRow, String(tenantId).trim());
   if (!tenant.tenantDbConnectionString) {
     throw Object.assign(new Error('tenant_db_connection_missing'), {
       statusCode: 503,
@@ -274,12 +286,13 @@ export async function authenticateTenantLogin({ username, password, appId = 'tro
     user,
     tenant: {
       tenantId: tenant.tenantId,
+      tenantKey: tenant.tenantKey,
       tenantName: tenant.tenantName,
       appId: tenant.appId || appId,
       storage: tenant.storage,
     },
     storage: tenant.storage,
-    directory: tenant.raw,
+    routing: tenant.raw,
     tenantUser: tenantUserRow,
     appId,
   };

@@ -16,13 +16,14 @@ const normalizeUserRole = (rawRole) => {
 // Login
 router.post('/login', async (req, res) => {
   try {
-    const { username, password, appId } = req.body;
-    console.log('[auth/login] Login attempt:', { username, appId });
+    const { username, password, appId, tenantId } = req.body;
+    console.log('[auth/login] Login attempt:', { username, appId, tenantId });
 
     const authResult = await authenticateTenantLogin({
       username,
       password,
       appId: appId || 'troubleshoot',
+      tenantId,
     });
 
     req.session.user = authResult.user;

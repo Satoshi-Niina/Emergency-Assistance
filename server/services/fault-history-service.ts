@@ -14,7 +14,7 @@ import sharp from 'sharp';
  * 環境変数に基づいてデータベースまたはファイルシステムに保存
  */
 export class FaultHistoryService {
-  private db: unknown;
+  private db: any;
   private useDatabase: boolean;
   private imagesDir: string;
 

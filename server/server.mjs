@@ -1,13 +1,4 @@
-import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
 import process from 'process';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const rootDir = resolve(__dirname, '..');
-
-process.chdir(rootDir);
-console.log('  Working directory set to:', process.cwd());
 
 import { createApp } from './src/app.mjs';
 import { PORT } from './src/config/env.mjs';
@@ -44,7 +35,9 @@ async function startupSequence() {
 (async () => {
   try {
     const app = await createApp();
-    const listenPort = Number(process.env.PORT || PORT || 8080);
+    const listenPort = process.env.PORT
+      ? Number(process.env.PORT)
+      : Number(PORT || 8080);
 
     const server = app.listen(listenPort, '0.0.0.0', () => {
       console.log('');

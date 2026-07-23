@@ -20,6 +20,7 @@ import registerHistoryRoutes from './routes/history.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const publicDir = path.join(__dirname, '..', 'public');
 
 export async function createApp() {
   const app = express();
@@ -62,32 +63,22 @@ export async function createApp() {
   // Auto Routing (src/api)
   await loadApiRoutes(app);
 
-  // Static Files (Client)
-  const clientDistPaths = [
-    path.join(__dirname, '../client/dist'),
-    path.join(__dirname, '../../client/dist'),
-    path.join(process.cwd(), 'client/dist')
-  ];
-
-  let clientDistPath = null;
-  for (const testPath of clientDistPaths) {
-    if (fs.existsSync(path.join(testPath, 'index.html'))) {
-      clientDistPath = testPath;
-      break;
-    }
-  }
-
-  if (clientDistPath) {
-    console.log('[App] Serving client from:', clientDistPath);
-    app.use(express.static(clientDistPath, {
+  // Static Files (Cloud Run build output)
+  if (fs.existsSync(path.join(publicDir, 'index.html'))) {
+    console.log('[App] Serving static files from:', publicDir);
+    app.use(express.static(publicDir, {
       maxAge: '7d', etag: true, lastModified: true, immutable: true
     }));
 
-    app.get(/^(?!\/api).*/, (_req, res) => {
-      res.sendFile(path.join(clientDistPath, 'index.html'));
+    // SPA fallback must stay after API route registration so /api/* keeps returning JSON.
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api/')) {
+        return next();
+      }
+      res.sendFile(path.join(publicDir, 'index.html'));
     });
   } else {
-    console.warn('[App] Client dist not found. Running in API-only mode.');
+    console.warn('[App] server/public not found. Running in API-only mode.');
   }
 
   // 404 Handler

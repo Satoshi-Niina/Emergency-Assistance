@@ -43,6 +43,8 @@ export interface FlowSearchParams {
   offset?: number;
 }
 
+const isDefinedString = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
+
 export interface FlowSearchResult {
   items: EmergencyFlow[];
   total: number;
@@ -284,14 +286,14 @@ export class KnowledgeService {
     try {
       console.log('📋 カテゴリ一覧取得');
 
-      const categories = await db
+      const categories = (await db
         .select({ category: emergencyFlows.category })
         .from(emergencyFlows)
-        .where(emergencyFlows.category.isNotNull());
+      ) as Array<{ category: string | null }>;
 
-      const uniqueCategories = [
-        ...new Set(categories.map(c => c.category)),
-      ].filter(Boolean);
+      const uniqueCategories = Array.from(
+        new Set(categories.map(c => c.category).filter(isDefinedString))
+      );
 
       console.log('✅ カテゴリ一覧取得完了:', uniqueCategories.length + '件');
       return uniqueCategories;

@@ -174,7 +174,7 @@ export const api = {
 
 // 認証関連API（後方互換性のため）
 export const authApi = {
-    login: (credentials: { username: string; password: string; appId?: string }) =>
+    login: (credentials: { username: string; password: string; appId?: string; tenantId?: string }) =>
         api.post('/auth/login', credentials),
     logout: () => api.post('/auth/logout'),
     me: () => api.get('/auth/me'),
@@ -194,7 +194,7 @@ export const userApi = {
             body: data ? JSON.stringify(data) : undefined
         }),
     delete: <T = any>(path: string) => apiRequest<T>(path, { method: 'DELETE' }),
-    login: (credentials: { username: string; password: string }) =>
+    login: (credentials: { username: string; password: string; tenantId?: string; appId?: string }) =>
         apiRequest('/auth/login', {
             method: 'POST',
             body: JSON.stringify(credentials)
@@ -202,7 +202,7 @@ export const userApi = {
 };
 
 export const auth = {
-    login: (credentials: { username: string; password: string }) =>
+    login: (credentials: { username: string; password: string; tenantId?: string; appId?: string }) =>
         userApi.post('/auth/login', credentials),
     logout: () => userApi.post('/auth/logout'),
     me: () => userApi.get('/auth/me'),

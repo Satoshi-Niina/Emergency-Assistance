@@ -118,6 +118,21 @@ export const supportHistory = pgTable('support_history', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// 応急処置フロー管理テーブル
+export const emergencyFlows = pgTable('emergency_flows', {
+  id: text('id')
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  title: text('title').notNull(),
+  description: text('description'),
+  keyword: text('keyword').notNull(),
+  category: text('category').notNull().default(''),
+  steps: jsonb('steps').notNull(),
+  imagePath: text('image_path'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // メディアテーブル
 export const media = pgTable('media', {
   id: text('id')
@@ -248,6 +263,7 @@ export const schema = {
   historyItems,
   historyImages,
   supportHistory,
+  emergencyFlows,
   media,
   documents,
   keywords,

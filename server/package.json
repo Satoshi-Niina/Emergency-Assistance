@@ -24,6 +24,8 @@
     "diagnose:blob": "node scripts/diagnose-blob-production.mjs"
   },
   "dependencies": {
+    "@azure/storage-blob": "^12.32.0",
+    "adm-zip": "^0.6.0",
     "archiver": "^7.0.1",
     "bcryptjs": "^2.4.3",
     "chardet": "^2.1.1",

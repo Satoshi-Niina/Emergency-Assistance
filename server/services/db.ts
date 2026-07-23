@@ -11,10 +11,9 @@ if (!process.env.DATABASE_URL) {
 // PostgreSQL接続プールを作成
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    require: true,
-    rejectUnauthorized: false
-  },
+  ssl: process.env.NODE_ENV === 'production'
+    ? { rejectUnauthorized: false }
+    : false,
   max: 20, // 最大接続数
   idleTimeoutMillis: 30000, // アイドルタイムアウト
   connectionTimeoutMillis: 60000, // 接続タイムアウト (60秒)

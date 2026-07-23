@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/auth-context';
+import { buildTenantPath, resolveCurrentTenantId } from '../../lib/tenant-path';
 
 interface AdminRouteProps {
   children: ReactNode;
@@ -8,6 +9,7 @@ interface AdminRouteProps {
 
 export function AdminRoute({ children }: AdminRouteProps) {
   const { user, isLoading } = useAuth();
+  const tenantId = resolveCurrentTenantId(window.location.pathname);
 
   console.log('🔍 AdminRoute - 管理者権限確認:', {
     isLoading,
@@ -28,7 +30,7 @@ export function AdminRoute({ children }: AdminRouteProps) {
   // 未認証の場合はログインページにリダイレクト
   if (!user) {
     console.log('🚫 AdminRoute - 未認証、ログインページにリダイレクト');
-    return <Navigate to='/login' replace />;
+    return <Navigate to={buildTenantPath('/login', tenantId)} replace />;
   }
 
   // 管理者でない場合はチャットページにリダイレクト
@@ -37,7 +39,7 @@ export function AdminRoute({ children }: AdminRouteProps) {
     console.log(
       '🚫 AdminRoute - 管理者権限がありません、チャットページにリダイレクト'
     );
-    return <Navigate to='/chat' replace />;
+    return <Navigate to={buildTenantPath('/chat', tenantId)} replace />;
   }
 
   console.log('✅ AdminRoute - 管理者権限OK、コンテンツを表示');

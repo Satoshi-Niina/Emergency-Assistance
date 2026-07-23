@@ -30,6 +30,7 @@ import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { RouteDebugger } from './components/shared/RouteDebugger';
 import { DebugError } from './components/shared/DebugError';
 import { api } from './lib/api';
+import { buildTenantPath, resolveTenantPath, setStoredTenantId } from './lib/tenant-path';
 
 // Lazy load pages
 import { lazy } from 'react';
@@ -125,6 +126,8 @@ function ApiConnectionTest() {
 function RootRedirect() {
   console.log('🔍 RootRedirect - コンポーネント実行開始');
   const { user, isLoading } = useAuth();
+  const location = useLocation();
+  const tenantId = resolveTenantPath(location.pathname).tenantId;
 
   console.log('🔍 RootRedirect - 認証状態確認:', {
     isLoading,
@@ -144,13 +147,25 @@ function RootRedirect() {
   }
 
   // 認証済みの場合はチャット画面に、未認証の場合はログイン画面にリダイレクト
-  return <Navigate to={user ? '/chat' : '/login'} replace />;
+  return <Navigate to={buildTenantPath(user ? '/chat' : '/login', tenantId)} replace />;
 }
 
 // アプリケーション内側コンポーネント（AuthProvider内で使用）
 function AppContent() {
   const location = useLocation();
-  const isStandaloneApp = location.pathname.startsWith('/apps/troubleshoot');
+  const tenantResolution = resolveTenantPath(location.pathname);
+  const routeLocation = tenantResolution.tenantId
+    ? {
+        ...location,
+        pathname: tenantResolution.pathname,
+      }
+    : location;
+
+  useEffect(() => {
+    setStoredTenantId(tenantResolution.tenantId);
+  }, [tenantResolution.tenantId]);
+
+  const isStandaloneApp = tenantResolution.pathname.startsWith('/apps/troubleshoot');
 
   return (
     <div className={isStandaloneApp ? 'min-h-screen' : 'flex flex-col h-screen'}>
@@ -169,7 +184,7 @@ function AppContent() {
             </div>
           }
         >
-          <Routes>
+          <Routes location={routeLocation}>
             <Route path='/login' element={<LoginPage />} />
             <Route path='/apps/troubleshoot' element={<TroubleshootAppPage />} />
             <Route path='/apps/troubleshoot/*' element={<TroubleshootAppPage />} />
@@ -250,7 +265,7 @@ function AppContent() {
               }
             />
             <Route path='/not-found' element={<NotFoundPage />} />
-            <Route path='/' element={<Navigate to='/apps/troubleshoot' replace />} />
+            <Route path='/' element={<Navigate to={buildTenantPath('/apps/troubleshoot', tenantResolution.tenantId)} replace />} />
             <Route path='*' element={<Navigate to='/not-found' replace />} />
           </Routes>
         </Suspense>

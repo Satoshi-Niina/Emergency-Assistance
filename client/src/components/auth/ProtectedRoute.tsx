@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/auth-context';
+import { buildTenantPath, resolveCurrentTenantId } from '../../lib/tenant-path';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -13,6 +14,7 @@ export function ProtectedRoute({
 }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
   const location = useLocation();
+  const tenantId = resolveCurrentTenantId(location.pathname);
 
   console.log('🔍 ProtectedRoute - 認証状態確認:', {
     isLoading,
@@ -40,14 +42,14 @@ export function ProtectedRoute({
   // 未認証の場合はログインページにリダイレクト
   if (!user) {
     console.log('🚫 ProtectedRoute - 未認証、ログインページにリダイレクト');
-    return <Navigate to='/login' state={{ from: location }} replace />;
+    return <Navigate to={buildTenantPath('/login', tenantId)} state={{ from: location }} replace />;
   }
 
   // 管理者権限が必要で、管理者でない場合
   // employee（一般ユーザー）は管理者権限を持たない
   if (requireAdmin && user.role !== 'admin') {
     console.log('🚫 ProtectedRoute - 管理者権限が必要ですが、権限がありません');
-    return <Navigate to='/chat' replace />;
+    return <Navigate to={buildTenantPath('/chat', tenantId)} replace />;
   }
 
   console.log('✅ ProtectedRoute - 認証OK、コンテンツを表示');

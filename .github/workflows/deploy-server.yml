@@ -9,7 +9,7 @@ on:
       - 'shared/**'
       - 'scripts/**'
       - 'package.json'
-      - '.github/workflows/deploy-server-AppCervce.yml'
+      - '.github/workflows/deploy-server.yml'
   workflow_dispatch:
 
 env:
@@ -41,6 +41,11 @@ jobs:
       - name: Authorize Docker Push
         run: |
           gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Validate Server Type Check
+        run: |
+          npm --prefix server install
+          npm --prefix server run type-check
 
       - name: Build and Push Container
         run: |

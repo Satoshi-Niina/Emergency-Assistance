@@ -6,7 +6,6 @@ import * as fs from 'fs';
 
 // 知識ベースディレクトリのパス（絶対パスで指定）
 import { fileURLToPath } from 'url';
-import { knowledgeBase } from '../knowledge-base-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
