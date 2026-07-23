@@ -35,19 +35,11 @@ jobs:
         run: |
           gcloud auth configure-docker ${{ env.GAR_LOCATION }}-docker.pkg.dev --quiet
 
-      # 5. Docker イメージのビルドと push
-      - name: Build and Push Docker Image
-        run: |
-          IMAGE_TAG="${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.REPOSITORY_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
-          docker build -t $IMAGE_TAG .
-          docker push $IMAGE_TAG
-          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
-
-      # 6. Cloud Run への最小デプロイ (環境変数なし)
+      # 5. Cloud Run への最小デプロイ (Dockerfile なしの source deploy)
       - name: Deploy to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: ${{ env.SERVICE_NAME }}
-          region: ${{ env.GAR_LOCATION }}
-          image: ${{ env.IMAGE_TAG }}
-          # あえて env_vars や secrets は指定していません
+        run: |
+          gcloud run deploy "${{ env.SERVICE_NAME }}" \
+            --source . \
+            --region "${{ env.GAR_LOCATION }}" \
+            --project "${{ env.GCP_PROJECT_ID }}" \
+            --quiet
