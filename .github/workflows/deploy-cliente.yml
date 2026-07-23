@@ -14,6 +14,7 @@ env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   ARTIFACT_REPOSITORY: emergency-assistance
   SERVICE_NAME: emergency-assistance-client
+  API_BASE_URL: https://emergency-assistance-server-800711608362.asia-northeast2.run.app
 
 jobs:
   build-and-deploy:
@@ -97,6 +98,11 @@ jobs:
           FROM node:20-alpine AS build
           WORKDIR /app
 
+          ARG VITE_API_URL
+          ARG VITE_API_BASE_URL
+          ENV VITE_API_URL=${VITE_API_URL}
+          ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
           COPY client/package*.json ./client/
           WORKDIR /app/client
           RUN npm install
@@ -119,7 +125,10 @@ jobs:
           EOF
 
           IMAGE_URI="asia-northeast2-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPOSITORY}/client:${GITHUB_SHA}"
-          docker build -f client/Dockerfile.cloudrun -t "${IMAGE_URI}" .
+          docker build \
+            --build-arg VITE_API_URL="${API_BASE_URL}" \
+            --build-arg VITE_API_BASE_URL="${API_BASE_URL}" \
+            -f client/Dockerfile.cloudrun -t "${IMAGE_URI}" .
           docker push "${IMAGE_URI}"
           echo "IMAGE_URI=${IMAGE_URI}" >> "$GITHUB_ENV"
 
@@ -130,5 +139,6 @@ jobs:
             --region asia-northeast2 \
             --platform managed \
             --project "${PROJECT_ID}" \
+            --set-env-vars "API_BASE_URL=${API_BASE_URL}" \
             --allow-unauthenticated \
             --quiet

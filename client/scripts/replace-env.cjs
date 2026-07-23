@@ -18,12 +18,18 @@ console.log(' NODE_ENV:', process.env.NODE_ENV || 'development');
 // 環境変数を取得（process.envを優先）
 // 環境変数を取得（process.envを優先）
 let envVars = {
+  VITE_API_URL: process.env.VITE_API_URL || '',
   VITE_BACKEND_SERVICE_URL: process.env.VITE_BACKEND_SERVICE_URL || '',
   VITE_API_BASE_URL: process.env.VITE_API_BASE_URL || '',
   VITE_SERVER_URL: process.env.VITE_SERVER_URL || '',
 };
 
+if (!envVars.VITE_API_BASE_URL && envVars.VITE_API_URL) {
+  envVars.VITE_API_BASE_URL = envVars.VITE_API_URL;
+}
+
 console.log(' Environment variables from process.env:');
+console.log('   VITE_API_URL:', envVars.VITE_API_URL || '(not set)');
 console.log('   VITE_BACKEND_SERVICE_URL:', envVars.VITE_BACKEND_SERVICE_URL || '(not set)');
 console.log('   VITE_API_BASE_URL:', envVars.VITE_API_BASE_URL || '(not set)');
 console.log('   VITE_SERVER_URL:', envVars.VITE_SERVER_URL || '(not set)');

@@ -13,9 +13,11 @@ const getApiBaseUrl = (): string => {
         return (window as any).runtimeConfig.API_BASE_URL;
     }
 
+    const configuredBaseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL;
+
     // 環境変数が設定されていて、本番環境の場合のみ使用
-    if (isProduction && import.meta.env.VITE_API_BASE_URL) {
-        return import.meta.env.VITE_API_BASE_URL;
+    if (isProduction && configuredBaseUrl) {
+        return configuredBaseUrl;
     }
 
     // 開発・その他では相対パス（統合サーバーを使用）
