@@ -14,7 +14,7 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  ARTIFACT_REPOSITORY: emergency-assistance-apps
+  ARTIFACT_REPOSITORY: emergency-assistance
   SERVICE_NAME: emergency-assistance-server
 
 jobs:
