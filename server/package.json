@@ -3,7 +3,7 @@
   "version": "1.0.11",
   "type": "module",
   "main": "azure-server.mjs",
-  "description": "Emergency Assistance System - Azure App Service Backend",
+  "description": "Emergency Assistance System - Cloud Run Backend",
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
@@ -24,10 +24,6 @@
     "diagnose:blob": "node scripts/diagnose-blob-production.mjs"
   },
   "dependencies": {
-    "@azure/functions": "^4.0.0",
-    "@azure/identity": "^4.0.1",
-    "@azure/storage-blob": "^12.20.0",
-    "@azure/storage-file-share": "^12.20.0",
     "archiver": "^7.0.1",
     "bcryptjs": "^2.4.3",
     "chardet": "^2.1.1",
@@ -86,7 +82,6 @@
   "keywords": [
     "emergency",
     "assistance",
-    "azure",
     "nodejs"
   ],
   "author": "Emergency Assistance Team",

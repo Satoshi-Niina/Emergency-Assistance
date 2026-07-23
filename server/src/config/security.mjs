@@ -1,9 +1,4 @@
 import helmet from 'helmet';
-import { AZURE_STORAGE_ACCOUNT_NAME } from './env.mjs';
-
-const storageUrl = AZURE_STORAGE_ACCOUNT_NAME
-  ? `https://${AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net`
-  : "https://*.blob.core.windows.net";
 
 export const helmetConfig = {
   contentSecurityPolicy: {
@@ -13,12 +8,11 @@ export const helmetConfig = {
       "img-src": [
         "'self'",
         "data:",
-        "blob:",
-        storageUrl
+        "blob:"
       ],
       "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
       "style-src": ["'self'", "'unsafe-inline'"],
-      "connect-src": ["'self'", storageUrl],
+      "connect-src": ["'self'"],
     },
   },
 };

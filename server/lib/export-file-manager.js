@@ -1,16 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import { azureStorage } from './azure-storage.js';
 // ESM用__dirname定義
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 export class ExportFileManager {
     baseDir;
-    useAzureStorage;
     constructor(baseDir = path.join(__dirname, '../../knowledge-base/exports')) {
         this.baseDir = process.env.LOCAL_EXPORT_DIR || baseDir;
-        this.useAzureStorage = process.env.STORAGE_MODE === 'hybrid' && !!process.env.AZURE_STORAGE_CONNECTION_STRING;
         // ディレクトリが存在しない場合は作成
         if (!fs.existsSync(this.baseDir)) {
             fs.mkdirSync(this.baseDir, { recursive: true });
@@ -19,7 +16,7 @@ export class ExportFileManager {
     /**
      * チャットエクスポートデータをファイルに保存
      */
-    async saveChatExport(chatId, data, timestamp) {
+    saveChatExport(chatId, data, timestamp) {
         const chatDir = path.join(this.baseDir, `chat_${chatId}`);
         if (!fs.existsSync(chatDir)) {
             fs.mkdirSync(chatDir, { recursive: true });
@@ -31,18 +28,6 @@ export class ExportFileManager {
             const jsonString = JSON.stringify(data, null, 2);
             fs.writeFileSync(filePath, jsonString, { encoding: 'utf8' });
             console.log(`✅ チャットエクスポート保存（ローカル）: ${filePath}`);
-            // Azure Storageにもアップロード
-            if (this.useAzureStorage) {
-                try {
-                    const relativePath = path.relative(process.cwd(), filePath);
-                    const blobName = relativePath.replace(/\\/g, '/');
-                    await azureStorage.uploadFile(filePath, blobName);
-                    console.log(`☁️ Azure Storageにアップロード完了: ${blobName}`);
-                }
-                catch (uploadError) {
-                    console.error('⚠️ Azure Storageアップロードエラー（ローカル保存は成功）:', uploadError);
-                }
-            }
             return filePath;
         }
         catch (error) {

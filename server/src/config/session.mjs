@@ -1,7 +1,6 @@
 import session from 'express-session';
 import { SESSION_SECRET, NODE_ENV } from './env.mjs';
 
-const isAzureHosted = !!process.env.WEBSITE_SITE_NAME;
 const isProductionEnv = NODE_ENV === 'production';
 
 // デバッグ用: セッション設定を緩和
@@ -17,7 +16,6 @@ const sessionCookieDomain = process.env.SESSION_COOKIE_DOMAIN
   : undefined;
 
 console.log('[Session Config]', {
-  isAzureHosted,
   isProductionEnv,
   cookieSecure: sessionCookieSecure,
   cookieSameSite: sessionCookieSameSite,

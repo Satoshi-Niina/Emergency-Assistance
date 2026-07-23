@@ -1,7 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import { azureStorage } from './azure-storage.js';
 
 // ESM用__dirname定義
 const __filename = fileURLToPath(import.meta.url);
@@ -9,13 +8,11 @@ const __dirname = path.dirname(__filename);
 
 export class ExportFileManager {
   private baseDir: string;
-  private useAzureStorage: boolean;
 
   constructor(
     baseDir: string = path.join(__dirname, '../../knowledge-base/exports')
   ) {
     this.baseDir = process.env.LOCAL_EXPORT_DIR || baseDir;
-    this.useAzureStorage = process.env.STORAGE_MODE === 'hybrid' && !!process.env.AZURE_STORAGE_CONNECTION_STRING;
 
     // ディレクトリが存在しない場合は作成
     if (!fs.existsSync(this.baseDir)) {
@@ -37,22 +34,9 @@ export class ExportFileManager {
     const filePath = path.join(chatDir, fileName);
 
     try {
-      // ダブルクオーテーションを英数小文字に統一してJSONファイルを保存
       const jsonString = JSON.stringify(data, null, 2);
       fs.writeFileSync(filePath, jsonString, { encoding: 'utf8' });
       console.log(`✅ チャットエクスポート保存（ローカル）: ${filePath}`);
-
-      // Azure Storageにもアップロード
-      if (this.useAzureStorage) {
-        try {
-          const relativePath = path.relative(process.cwd(), filePath);
-          const blobName = relativePath.replace(/\\/g, '/');
-          await azureStorage.uploadFile(filePath, blobName);
-          console.log(`☁️ Azure Storageにアップロード完了: ${blobName}`);
-        } catch (uploadError) {
-          console.error('⚠️ Azure Storageアップロードエラー（ローカル保存は成功）:', uploadError);
-        }
-      }
 
       return filePath;
     } catch (error) {
@@ -157,22 +141,9 @@ export class ExportFileManager {
     const filePath = path.join(chatDir, fileName);
 
     try {
-      // ダブルクオーテーションを英数小文字に統一してフォーマット済みエクスポートを保存
       const jsonString = JSON.stringify(formattedData, null, 2);
       fs.writeFileSync(filePath, jsonString, { encoding: 'utf8' });
       console.log(`✅ フォーマット済みエクスポート保存（ローカル）: ${filePath}`);
-
-      // Azure Storageにもアップロード
-      if (this.useAzureStorage) {
-        try {
-          const relativePath = path.relative(process.cwd(), filePath);
-          const blobName = relativePath.replace(/\\/g, '/');
-          await azureStorage.uploadFile(filePath, blobName);
-          console.log(`☁️ Azure Storageにアップロード完了: ${blobName}`);
-        } catch (uploadError) {
-          console.error('⚠️ Azure Storageアップロードエラー（ローカル保存は成功）:', uploadError);
-        }
-      }
 
       return filePath;
     } catch (error) {

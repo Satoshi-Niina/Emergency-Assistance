@@ -2,7 +2,7 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { VERSION, AZURE_STORAGE_CONNECTION_STRING, AZURE_STORAGE_CONTAINER_NAME, BLOB_PREFIX } from '../config/env.mjs';
+import { VERSION, BLOB_PREFIX } from '../config/env.mjs';
 import { getBlobServiceClient, containerName } from '../infra/blob.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -32,7 +32,6 @@ router.get('/env', (req, res) => {
     // 重要な環境変数の確認
     criticalEnvVars: {
       OPENAI_API_KEY: process.env.OPENAI_API_KEY ? '✅ SET' : '❌ NOT SET',
-      AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING ? '✅ SET' : '❌ NOT SET',
       DATABASE_URL: process.env.DATABASE_URL ? '✅ SET' : '❌ NOT SET',
       NODE_ENV: process.env.NODE_ENV || 'not set',
       PORT: process.env.PORT || 'not set'
@@ -74,8 +73,6 @@ router.get('/blob-detailed', async (req, res) => {
     environment: process.env.NODE_ENV,
     config: {
       containerName: containerName,
-      connectionStringSet: !!AZURE_STORAGE_CONNECTION_STRING,
-      containerNameFromEnv: AZURE_STORAGE_CONTAINER_NAME,
       BLOB_PREFIX: BLOB_PREFIX || '(empty string)'
     },
     tests: {}
@@ -180,8 +177,7 @@ router.get('/blob-detailed', async (req, res) => {
     }
 
     // Test 5: Upload test
-    // norm()を使用してBLOB_PREFIXを自動適用（knowledge-base/は重複するので除外）
-    const testBlobName = norm(`images/chat-exports/_test_${Date.now()}.txt`);
+    const testBlobName = `images/chat-exports/_test_${Date.now()}.txt`;
     const testContent = 'Upload test - ' + new Date().toISOString();
     const testBlockBlobClient = containerClient.getBlockBlobClient(testBlobName);
     

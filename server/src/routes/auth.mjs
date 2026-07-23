@@ -69,7 +69,7 @@ router.get('/handshake', (req, res) => {
   res.json({
     ok: true,
     mode: 'session',
-    env: 'azure-production',
+    env: 'cloud-run-production',
     timestamp: new Date().toISOString(),
     sessionId: req.sessionID
   });

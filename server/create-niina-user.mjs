@@ -3,14 +3,16 @@ import bcrypt from 'bcryptjs';
 
 const { Pool } = pg;
 
+const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:CHANGE_ME@localhost:5432/webappdb';
+
 const pool = new Pool({
-  connectionString: 'postgresql://postgres:Takabeni@localhost:5432/webappdb'
+  connectionString
 });
 
 try {
   console.log('Creating user niina...');
   
-  const password = 'G&896845';
+  const password = process.env.NIINA_PASSWORD || 'CHANGE_ME_PASSWORD';
   const hashedPassword = bcrypt.hashSync(password, 10);
   
   await pool.query(
@@ -20,7 +22,7 @@ try {
   
   console.log('✅ User niina created/updated successfully');
   console.log('   Username: niina');
-  console.log('   Password: G&896845');
+  console.log('   Password: [from NIINA_PASSWORD env var]');
   console.log('   Role: admin');
   
   // 確認

@@ -1,8 +1,10 @@
 import pg from 'pg';
 const { Pool } = pg;
 
+const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:CHANGE_ME@localhost:5432/webappdb';
+
 const pool = new Pool({
-  connectionString: 'postgresql://postgres:Takabeni@localhost:5432/webappdb'
+  connectionString
 });
 
 try {

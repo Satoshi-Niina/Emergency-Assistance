@@ -6,19 +6,8 @@ import process from 'process';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Azure App Service環境の検出と対応
-const isAzure = !!process.env.WEBSITE_SITE_NAME;
-let rootDir;
-
-if (isAzure) {
-  // Azure環境: /home/site/wwwroot がルート
-  rootDir = '/home/site/wwwroot';
-  console.log('  Azure環境を検出: ルートを /home/site/wwwroot に設定');
-} else {
-  // ローカル環境: server/の親ディレクトリがルート
-  rootDir = resolve(__dirname, '..');
-  console.log('  ローカル環境: 相対パスでルートを設定');
-}
+// サーバーファイルの位置からルートディレクトリに移動
+const rootDir = resolve(__dirname, '..');
 
 // カレントディレクトリをルートに変更（knowledge-base/アクセスのため）
 process.chdir(rootDir);
@@ -61,12 +50,13 @@ async function startupSequence() {
 (async () => {
   try {
     const app = await createApp();
+    const listenPort = Number(process.env.PORT || PORT || 8080);
     
-    const server = app.listen(PORT, () => {
+    const server = app.listen(listenPort, '0.0.0.0', () => {
       console.log('');
       console.log('  ================================================');
       console.log('  Azure Production Server Started Successfully!');
-      console.log(`  Listening on port ${PORT}`);
+      console.log(`  Listening on port ${listenPort}`);
       console.log('  ================================================');
       
       startupSequence().catch(err => {

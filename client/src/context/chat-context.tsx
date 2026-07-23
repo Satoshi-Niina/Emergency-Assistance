@@ -12,9 +12,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   startSpeechRecognition,
   stopSpeechRecognition,
-  startBrowserSpeechRecognition,
-  stopBrowserSpeechRecognition,
-} from '../lib/azure-speech.ts';
+} from '../lib/speech-recognition.ts';
 import { Message } from '@shared/schema';
 
 // 十分な文とみなす最小文字数

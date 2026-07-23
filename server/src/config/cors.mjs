@@ -9,10 +9,7 @@ export const allowedOrigins = [
   'http://localhost:5176',
   'http://localhost:5002',
   'http://localhost:3000',
-  'http://localhost:8080',
-  'https://emergency-assistantapp.azurewebsites.net',  // 本番App Service
-  'https://happy-bush-083160b00.3.azurestaticapps.net',
-  'https://witty-river-012f39e00.1.azurestaticapps.net'
+  'http://localhost:8080'
 ];
 
 export const corsOptions = {
@@ -22,9 +19,6 @@ export const corsOptions = {
     if (!origin) {
       callback(null, true);
     } else if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else if (origin.includes('azurestaticapps.net') || origin.includes('azurewebsites.net')) {
-      // Azure関連ドメインを許可
       callback(null, true);
     } else {
       // デバッグのため、一時的にすべて許可しつつログ出力

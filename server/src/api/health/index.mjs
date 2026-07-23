@@ -26,42 +26,15 @@ export default async function (req, res) {
     console.warn('Database connection test failed:', error.message);
   }
 
-  // Azure Storage接続テスト
-  let storageStatus = 'unknown';
-  let storageError = null;
-  try {
-    const { BlobServiceClient } = await import('@azure/storage-blob');
-    const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
-    const containerName =
-      process.env.AZURE_STORAGE_CONTAINER_NAME ||
-      process.env.BLOB_CONTAINER_NAME ||
-      'knowledge';
-    if (connectionString) {
-      const blobServiceClient =
-        BlobServiceClient.fromConnectionString(connectionString);
-      const containerClient =
-        blobServiceClient.getContainerClient(containerName);
-      await containerClient.exists();
-      storageStatus = 'connected';
-    } else {
-      storageStatus = 'skipped (no connection string)';
-    }
-  } catch (error) {
-    storageStatus = 'error';
-    storageError = error.message;
-    console.warn('Storage connection test failed:', error.message);
-  }
-
-  const overallStatus = (dbStatus === 'connected' || dbStatus === 'unknown') && 
-                        (storageStatus === 'connected' || storageStatus === 'skipped (no connection string)') 
-                        ? 'healthy' : 'degraded';
+  const overallStatus = (dbStatus === 'connected' || dbStatus === 'unknown')
+    ? 'healthy'
+    : 'degraded';
 
   res.json({
     status: overallStatus,
     timestamp: new Date().toISOString(),
     checks: {
-      database: { status: dbStatus, error: dbError },
-      storage: { status: storageStatus, error: storageError }
+      database: { status: dbStatus, error: dbError }
     }
   });
 }
