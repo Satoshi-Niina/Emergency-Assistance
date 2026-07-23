@@ -2,17 +2,17 @@
   "name": "emergency-assistance-server",
   "version": "1.0.11",
   "type": "module",
-  "main": "azure-server.mjs",
+  "main": "server.mjs",
   "description": "Emergency Assistance System - Cloud Run Backend",
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
   },
   "scripts": {
-    "start": "node azure-server.mjs",
+    "start": "node server.mjs",
     "start:fallback": "node app.js",
     "start:legacy": "node server.js",
-    "start:debug": "node --inspect azure-server.mjs",
+    "start:debug": "node --inspect server.mjs",
     "dev": "cross-env NODE_ENV=development PORT=8080 node dev-server.mjs",
     "dev:old": "cross-env NODE_ENV=development PORT=8080 tsx watch unified-hot-reload-server.js",
     "build": "echo 'No build needed - using .mjs files directly'",

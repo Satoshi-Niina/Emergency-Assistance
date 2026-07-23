@@ -50,7 +50,7 @@ if (styleCssFiles.length === 0) {
 
 // 3. サーバー側の重要な.mjsファイルの存在確認
 const CRITICAL_SERVER_FILES = [
-    'server/azure-server.mjs',
+    'server/server.mjs',
     'server/src/api/emergency-flow/index.mjs',
     'server/src/routes/history.mjs',
     'server/src/infra/blob.mjs'

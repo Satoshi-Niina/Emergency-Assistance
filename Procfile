@@ -1,0 +1,1 @@
+web: node --no-warnings server/server.mjs

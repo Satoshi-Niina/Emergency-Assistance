@@ -95,7 +95,7 @@ export async function dbQuery(sql, params = [], retries = 3) {
 // 初期データ投入などのロジックも必要ならここに移動するか、別ファイルにする
 // 今回は簡略化のため、initializeDatabase 内でのテーブル作成ロジックは省略し、
 // 必要であれば startupSequence から呼び出す形にするか、マイグレーションツールに任せるべきだが、
-// azure-server.mjs にあったテーブル作成ロジックも移植しておくのが安全。
+// server.mjs にあったテーブル作成ロジックも移植しておくのが安全。
 
 export async function ensureTables() {
   if (!dbPool) return;
