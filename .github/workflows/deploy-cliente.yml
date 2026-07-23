@@ -7,12 +7,11 @@ on:
     paths:
       - 'client/**'
       - 'shared/**'
-      - '.github/workflows/deploy-client.yml'
+      - '.github/workflows/deploy-cliente.yml'
   workflow_dispatch:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: ${{ vars.GCP_REGION }}
   ARTIFACT_REPOSITORY: ${{ vars.GCP_ARTIFACT_REPOSITORY }}
   SERVICE_NAME: ${{ vars.GCP_CLIENT_SERVICE_NAME }}
 
@@ -38,7 +37,7 @@ jobs:
 
       - name: Authorize Docker Push
         run: |
-          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+          gcloud auth configure-docker "asia-northeast2-docker.pkg.dev" --quiet
 
       - name: Build and Push Container
         run: |
@@ -119,7 +118,7 @@ jobs:
           CMD ["node", "cloudrun-server.mjs"]
           EOF
 
-          IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPOSITORY}/client:${GITHUB_SHA}"
+          IMAGE_URI="asia-northeast2-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPOSITORY}/client:${GITHUB_SHA}"
           docker build -f client/Dockerfile.cloudrun -t "${IMAGE_URI}" .
           docker push "${IMAGE_URI}"
           echo "IMAGE_URI=${IMAGE_URI}" >> "$GITHUB_ENV"
@@ -128,7 +127,7 @@ jobs:
         run: |
           gcloud run deploy "${SERVICE_NAME}" \
             --image "${IMAGE_URI}" \
-            --region "${REGION}" \
+            --region asia-northeast2 \
             --platform managed \
             --project "${PROJECT_ID}" \
             --allow-unauthenticated \
