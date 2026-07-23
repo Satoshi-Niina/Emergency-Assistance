@@ -14,8 +14,8 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  ARTIFACT_REPOSITORY: ${{ vars.GCP_ARTIFACT_REPOSITORY }}
-  SERVICE_NAME: ${{ vars.GCP_SERVER_SERVICE_NAME }}
+  ARTIFACT_REPOSITORY: emergency-assistance-apps
+  SERVICE_NAME: emergency-assistance-server
 
 jobs:
   build-and-deploy:
