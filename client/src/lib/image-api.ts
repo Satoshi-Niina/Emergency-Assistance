@@ -3,9 +3,16 @@ import React from 'react';
 
 // API設定 - 環境変数から取得、フォールバックは相対パス
 // 末尾の/apiを除去（二重パス防止）
+const normalizeApiBaseUrl = (base: string) =>
+    base.trim().replace(/\/api\/?$/, '').replace(/\/+$/, '');
+
 const getCleanApiBaseUrl = () => {
-  const base = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_BACKEND_SERVICE_URL || '';
-  return base.replace(/\/api\/?$/, '');
+    const base =
+        import.meta.env.VITE_API_URL ||
+        import.meta.env.VITE_API_BASE_URL ||
+        import.meta.env.VITE_BACKEND_SERVICE_URL ||
+        '';
+    return normalizeApiBaseUrl(base);
 };
 const API_BASE_URL = getCleanApiBaseUrl();
 

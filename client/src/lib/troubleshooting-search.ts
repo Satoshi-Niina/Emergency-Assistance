@@ -1,4 +1,5 @@
 import Fuse from 'fuse.js';
+import { buildApiUrl } from './api';
 import { apiRequest } from './queryClient';
 
 // 検索結果の型定義
@@ -61,15 +62,12 @@ export const getTroubleshootingFlowById = async (
   try {
     // キャッシュ無効化のためのタイムスタンプを追加
     const timestamp = Date.now();
-    const response = await fetch(
-      `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${id}?_t=${timestamp}`,
-      {
+    const response = await fetch(buildApiUrl(`/troubleshooting/${id}?_t=${timestamp}`), {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           Pragma: 'no-cache',
         },
-      }
-    );
+      });
 
     if (response.ok) {
       const flow = await response.json();

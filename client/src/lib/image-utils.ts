@@ -17,8 +17,13 @@ function getApiBaseUrl(): string {
       }
 
       // 環境変数が設定されている場合
-      if (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.trim() !== '') {
-        return import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '');
+      const configuredBaseUrl =
+        import.meta.env.VITE_API_URL ||
+        import.meta.env.VITE_API_BASE_URL ||
+        import.meta.env.VITE_BACKEND_SERVICE_URL ||
+        '';
+      if (configuredBaseUrl.trim() !== '') {
+        return configuredBaseUrl.replace(/\/$/, '').replace(/\/api$/, '');
       }
 
       // 環境判定によるフォールバック
@@ -37,14 +42,18 @@ function getApiBaseUrl(): string {
       }
 
       // 本番環境のデフォルト（環境変数から取得、フォールバックは相対パス）
-      return import.meta.env.VITE_BACKEND_SERVICE_URL || '';
+      return configuredBaseUrl || import.meta.env.VITE_BACKEND_SERVICE_URL || '';
     }
   } catch (error) {
     console.warn('APIベースURL取得エラー:', error);
   }
 
   // フォールバック - 環境変数またはバックエンドサービスURL
-  const fallbackUrl = import.meta.env.VITE_BACKEND_SERVICE_URL || import.meta.env.VITE_SERVER_URL || '';
+  const fallbackUrl =
+    import.meta.env.VITE_API_URL ||
+    import.meta.env.VITE_BACKEND_SERVICE_URL ||
+    import.meta.env.VITE_SERVER_URL ||
+    '';
   // ブラウザ環境では現在のoriginを優先
   if (typeof window !== 'undefined') {
     return fallbackUrl || window.location.origin;
@@ -79,7 +88,10 @@ export function convertImageUrl(url: any): string {
   // レガシーポート参照の自動修正
   if (typeof url === 'string' && (url.includes('localhost:8000') || url.includes('localhost:8080'))) {
     // 環境変数から適切なベースURLを取得
-    const backendUrl = import.meta.env.VITE_BACKEND_SERVICE_URL || import.meta.env.VITE_SERVER_URL;
+    const backendUrl =
+      import.meta.env.VITE_API_URL ||
+      import.meta.env.VITE_BACKEND_SERVICE_URL ||
+      import.meta.env.VITE_SERVER_URL;
     const currentOrigin = typeof window !== 'undefined' && backendUrl ? backendUrl : (typeof window !== 'undefined' ? window.location.origin : '');
     const correctedUrl = url.replace(/http:\/\/localhost:(8000|8080)/g, currentOrigin);
     console.log('🔧 レガシーポート修正:', { original: url, corrected: correctedUrl, currentOrigin });

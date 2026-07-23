@@ -1,4 +1,5 @@
 import { apiRequest } from '../lib/queryClient.ts';
+import { buildApiUrl } from './api';
 import {
   getUnsyncedMessages,
   markMessageAsSynced,
@@ -119,7 +120,7 @@ export async function syncChat(chatId: number) {
             }
 
             const mediaResponse = await fetch(
-              `${import.meta.env.VITE_API_BASE_URL}/api/messages/${data.id}/media`,
+              buildApiUrl(`/messages/${data.id}/media`),
               {
                 method: 'POST',
                 body: formData,

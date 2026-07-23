@@ -5,6 +5,7 @@ import {
   QAFlow,
   ProblemCategory,
 } from './qa-flow-manager';
+import { buildApiUrl } from './api';
 
 interface EmergencyProcedure {
   id: string;
@@ -43,8 +44,7 @@ async function callOpenAIAPI(
   useKnowledgeBase: boolean = true
 ): Promise<string> {
   try {
-    const apiBase = import.meta.env.VITE_API_BASE_URL || '';
-    const response = await fetch(`${apiBase}/api/chatgpt`, {
+    const response = await fetch(buildApiUrl('/chatgpt'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -80,7 +80,7 @@ export class EnhancedQAManager {
   async initializeKnowledgeBase(): Promise<void> {
     try {
       // ナレッジベースの取得
-      const knowledgeResponse = await fetch('/knowledge-base', {
+      const knowledgeResponse = await fetch(buildApiUrl('/knowledge-base'), {
         method: 'GET',
         credentials: 'include',
       });
@@ -90,7 +90,7 @@ export class EnhancedQAManager {
       }
 
       // 応急処置情報の取得
-      const emergencyResponse = await fetch('/emergency-procedures', {
+      const emergencyResponse = await fetch(buildApiUrl('/emergency-procedures'), {
         method: 'GET',
         credentials: 'include',
       });

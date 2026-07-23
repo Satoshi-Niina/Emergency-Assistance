@@ -5,19 +5,35 @@
 const isProduction = import.meta.env.PROD;
 const isDevelopment = import.meta.env.DEV;
 
-// APIベースURL決定（シンプル版）
-// 実行時に毎回評価して、window.runtimeConfigが確実に反映されるようにする
-const getApiBaseUrl = (): string => {
-    // window.runtimeConfigが設定されている場合は最優先（index.htmlで設定される）
-    if (typeof window !== 'undefined' && (window as any).runtimeConfig?.API_BASE_URL) {
-        return (window as any).runtimeConfig.API_BASE_URL;
+const normalizeBaseUrl = (baseUrl: string): string => baseUrl.trim().replace(/\/+$/, '');
+
+const normalizeApiPath = (path: string): string => {
+    let cleanPath = path.startsWith('/') ? path : `/${path}`;
+
+    if (cleanPath.startsWith('/api/')) {
+        cleanPath = cleanPath.substring(4);
     }
 
-    const configuredBaseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL;
+    return cleanPath;
+};
 
-    // 環境変数が設定されていて、本番環境の場合のみ使用
-    if (isProduction && configuredBaseUrl) {
-        return configuredBaseUrl;
+// APIベースURL決定（シンプル版）
+// 実行時に毎回評価して、window.runtimeConfigが確実に反映されるようにする
+export const getApiBaseUrl = (): string => {
+    // window.runtimeConfigが設定されている場合は最優先（index.htmlで設定される）
+    if (typeof window !== 'undefined' && (window as any).runtimeConfig?.API_BASE_URL) {
+        return normalizeBaseUrl((window as any).runtimeConfig.API_BASE_URL);
+    }
+
+    const configuredBaseUrl =
+        import.meta.env.VITE_API_URL ||
+        import.meta.env.VITE_API_BASE_URL ||
+        import.meta.env.VITE_BACKEND_SERVICE_URL ||
+        import.meta.env.VITE_SERVER_URL;
+
+    // 環境変数が設定されている場合は優先使用
+    if (configuredBaseUrl) {
+        return normalizeBaseUrl(configuredBaseUrl);
     }
 
     // 開発・その他では相対パス（統合サーバーを使用）
@@ -27,33 +43,19 @@ const getApiBaseUrl = (): string => {
 // API URL構築（改善版 - パス重複を防止）
 // 実行時に毎回getApiBaseUrl()を呼び出して、最新の設定を取得
 export const buildApiUrl = (path: string): string => {
-    // パスの正規化（先頭の/を確保）
-    let cleanPath = path.startsWith('/') ? path : `/${path}`;
-
-    // /api/ で始まっている場合は /api を除去
-    // /api/auth/login のような形式の場合、/api プレフィックスを除去
-    if (cleanPath.startsWith('/api/')) {
-        cleanPath = cleanPath.substring(4); // '/api' を除去
-    }
-
+    const cleanPath = normalizeApiPath(path);
     const apiBaseUrl = getApiBaseUrl(); // 実行時に毎回取得
 
     if (apiBaseUrl) {
-        // 絶対URLが設定されている場合
-        const normalizedBaseUrl = apiBaseUrl.replace(/\/+$/, ''); // 末尾のスラッシュを除去
-
-        // ベースURLが既に /api で終わっているかチェック
-        if (normalizedBaseUrl.endsWith('/api')) {
-            // ベースURLが /api で終わっている場合、そのままパスを追加
-            const finalUrl = `${normalizedBaseUrl}${cleanPath}`;
+        if (apiBaseUrl.endsWith('/api')) {
+            const finalUrl = `${apiBaseUrl}${cleanPath}`;
             console.log(`🔗 API URL (base has /api): ${path} -> ${finalUrl}`);
             return finalUrl;
-        } else {
-            // /api を追加してパスを結合
-            const finalUrl = `${normalizedBaseUrl}/api${cleanPath}`;
-            console.log(`🔗 API URL (add /api): ${path} -> ${finalUrl}`);
-            return finalUrl;
         }
+
+        const finalUrl = `${apiBaseUrl}/api${cleanPath}`;
+        console.log(`🔗 API URL (add /api): ${path} -> ${finalUrl}`);
+        return finalUrl;
     } else {
         // 開発環境: 相対パス（Viteプロキシが /api を http://localhost:8080 に転送）
         const finalUrl = `/api${cleanPath}`;

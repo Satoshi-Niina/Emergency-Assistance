@@ -3,8 +3,15 @@ import React, { useState, useEffect } from 'react';
 import { storage } from './api';
 
 // API設定 - 環境変数から取得、フォールバックは相対パス
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_BACKEND_SERVICE_URL || '';
+const normalizeApiBaseUrl = (base: string) =>
+  base.trim().replace(/\/api\/?$/, '').replace(/\/+$/, '');
+
+const API_BASE_URL = normalizeApiBaseUrl(
+  import.meta.env.VITE_API_URL ||
+    import.meta.env.VITE_API_BASE_URL ||
+    import.meta.env.VITE_BACKEND_SERVICE_URL ||
+    ''
+);
 
 export interface ImageData {
   id: string;
@@ -33,7 +40,12 @@ export async function getImageUrl(imageId: string): Promise<string> {
   } catch (error) {
     console.error('Failed to get image SAS URL:', error);
     // フォールバック: 従来のAPIエンドポイント
-    const fallbackBaseUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_BACKEND_SERVICE_URL || '';
+    const fallbackBaseUrl = normalizeApiBaseUrl(
+      import.meta.env.VITE_API_URL ||
+        import.meta.env.VITE_API_BASE_URL ||
+        import.meta.env.VITE_BACKEND_SERVICE_URL ||
+        ''
+    );
     return `${fallbackBaseUrl}/api/images/${imageId}`;
   }
 }

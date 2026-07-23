@@ -165,7 +165,7 @@ export default function FlowGenerationResult({
       </div>
 
       {/* GPTの生のレスポンス（開発用） */}
-      {generatedContent && process.env.NODE_ENV === 'development' && (
+      {generatedContent && import.meta.env.DEV && (
         <Card>
           <CardHeader>
             <CardTitle className='flex items-center gap-2'>

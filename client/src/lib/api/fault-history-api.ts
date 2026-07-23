@@ -184,11 +184,9 @@ export const importFromExports = async (force = false): Promise<{
  * 敁Eー履歴画像�EURLを生戁E
  */
 export const getFaultHistoryImageUrl = (filename: string): string => {
-  const baseUrl = import.meta.env.DEV
-    ? ''
-    : import.meta.env.VITE_API_BASE_URL || window.location.origin;
+  const baseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || window.location.origin;
 
-  return `${baseUrl}/api/fault-history/images/${filename}`;
+  return `${baseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '')}/api/fault-history/images/${filename}`;
 };
 
 /**
