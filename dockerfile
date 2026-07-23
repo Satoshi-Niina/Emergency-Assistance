@@ -1,6 +1,12 @@
 # --- ステージ1: client のビルド ---
 FROM node:20-slim AS client-builder
 WORKDIR /app/client
+
+ARG VITE_API_URL
+ARG VITE_API_BASE_URL
+ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
 COPY client/package*.json ./
 RUN npm ci
 COPY client/ ./
