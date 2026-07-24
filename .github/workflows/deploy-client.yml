@@ -42,6 +42,14 @@ jobs:
           secrets: |-
             VITE_API_URL:${{ env.PROJECT_ID }}/VITE_API_URL
 
+# ▼▼▼ このステップを追加 ▼▼▼
+      - name: Debug Secret Value
+        run: |
+          echo "VITE_API_URL length: ${#SECRET_VAL}"
+        env:
+          SECRET_VAL: ${{ steps.secrets.outputs.VITE_API_URL }}
+      # ▲▲▲ ここまで ▲▲▲
+
       - name: Authorize Docker Push
         run: |
           gcloud auth configure-docker "asia-northeast2-docker.pkg.dev" --quiet
@@ -69,3 +77,6 @@ jobs:
             --project "${PROJECT_ID}" \
             --allow-unauthenticated \
             --quiet
+
+     
+      
