@@ -3,9 +3,7 @@ import postgres from 'postgres';
 const sql = postgres(process.env.DATABASE_URL ||
     'postgresql://postgres:CHANGE_THIS_PASSWORD@localhost:5432/webappdb', {
     // 使用中: データベース接続文字列
-    ssl: process.env.NODE_ENV === 'production'
-        ? { require: true, rejectUnauthorized: false }
-        : false, // 使用中: 環境判別
+    ssl: false,
     max: 10,
     idle_timeout: 20,
     connect_timeout: 10,

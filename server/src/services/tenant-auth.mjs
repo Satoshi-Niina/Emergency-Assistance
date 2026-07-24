@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 
-import { DATABASE_URL, PG_SSL } from '../config/env.mjs';
+import { DATABASE_URL } from '../config/env.mjs';
 
 const { Pool } = pkg;
 
@@ -28,8 +28,7 @@ function normalizeRole(rawRole) {
 }
 
 function getSslConfig() {
-  if (PG_SSL === 'disable') return false;
-  return { rejectUnauthorized: false };
+  return false;
 }
 
 function getPoolCacheKey(connectionString, label) {

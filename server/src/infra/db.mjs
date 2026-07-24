@@ -1,7 +1,7 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 import bcrypt from 'bcryptjs';
-import { DATABASE_URL, PG_SSL } from '../config/env.mjs';
+import { DATABASE_URL } from '../config/env.mjs';
 
 export let dbPool = null;
 
@@ -16,15 +16,9 @@ export function initializeDatabase() {
   }
 
   try {
-    const sslConfig = PG_SSL === 'require'
-      ? { rejectUnauthorized: false }
-      : PG_SSL === 'disable'
-        ? false
-        : { rejectUnauthorized: false };
-
     dbPool = new Pool({
       connectionString: DATABASE_URL,
-      ssl: sslConfig,
+      ssl: false,
       max: 10,
       min: 2,
       idleTimeoutMillis: 30000,

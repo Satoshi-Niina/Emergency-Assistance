@@ -19,11 +19,6 @@ function getDatabaseUrl() {
 }
 // 本番環境でのSSL設定
 function getSSLConfig() {
-    const isProduction = process.env.NODE_ENV === 'production';
-    const isAzure = process.env.WEBSITE_SITE_NAME || process.env.AZURE_ENVIRONMENT;
-    if (isProduction || isAzure) {
-        return { rejectUnauthorized: false };
-    }
     return false;
 }
 // セーフモード用のダミーDB実装
