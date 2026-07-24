@@ -79,5 +79,8 @@ jobs:
             --region asia-northeast2 \
             --platform managed \
             --project "${PROJECT_ID}" \
+            --add-cloudsql-instances "maint-vehicle-management:asia-northeast2:free-trial-first-project" \
+            --set-secrets "DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,GCS_BUCKET_NAME=GCS_BUCKET_NAME:latest" \
+            --set-env-vars "NODE_ENV=production" \
             --allow-unauthenticated \
             --quiet
