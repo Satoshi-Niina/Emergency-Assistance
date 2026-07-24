@@ -2,9 +2,12 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
+# 受け取るビルド引数を定義
 ARG VITE_API_URL
-ENV VITE_API_URL=$VITE_API_URL
-ENV VITE_API_BASE_URL=$VITE_API_URL
+
+# ENV で明示的にセット（よく使われる両方の変数名に確実に代入）
+ENV VITE_API_URL="${VITE_API_URL}"
+ENV VITE_API_BASE_URL="${VITE_API_URL}"
 
 COPY client/package*.json ./client/
 WORKDIR /app/client
