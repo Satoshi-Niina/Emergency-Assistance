@@ -27,6 +27,21 @@ function normalizeRole(rawRole) {
   return 'user';
 }
 
+// 接続文字列から pg ライブラリが誤認する SSL 関連パラメータを除去する関数
+function cleanConnectionString(connStr) {
+  if (!connStr) return connStr;
+  try {
+    // postgresql://... のURLから sslmode / ssl 関連のパラメータを消去
+    return connStr
+      .replace(/([?&])sslmode=[^&]*&?/g, '$1')
+      .replace(/([?&])ssl=[^&]*&?/g, '$1')
+      .replace(/\?$/, '')
+      .replace(/&$/, '');
+  } catch (_e) {
+    return connStr;
+  }
+}
+
 function getSslConfig() {
   return false;
 }
@@ -35,10 +50,13 @@ function getPoolCacheKey(connectionString, label) {
   return `${label}:${crypto.createHash('sha1').update(connectionString).digest('hex')}`;
 }
 
-function getPool(connectionString, label) {
-  if (!connectionString) {
+function getPool(rawConnectionString, label) {
+  if (!rawConnectionString) {
     throw new Error(`missing_${label}_connection_string`);
   }
+
+  // 接続文字列から SSL 指定を取り除いた綺麗なURLにする
+  const connectionString = cleanConnectionString(rawConnectionString);
 
   const cacheKey = getPoolCacheKey(connectionString, label);
   if (poolCache.has(cacheKey)) {
@@ -47,7 +65,7 @@ function getPool(connectionString, label) {
 
   const pool = new Pool({
     connectionString,
-    ssl: getSslConfig(),
+    ssl: false, // 明示的に false を固定
     max: label === 'common' ? 4 : 6,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
