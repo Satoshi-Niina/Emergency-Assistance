@@ -7,6 +7,14 @@ const isDevelopment = import.meta.env.DEV;
 
 const normalizeBaseUrl = (baseUrl: string): string => baseUrl.trim().replace(/\/+$/, '');
 
+const normalizeRuntimeBaseUrl = (baseUrl?: string): string => {
+    if (!baseUrl) {
+        return '';
+    }
+
+    return normalizeBaseUrl(baseUrl);
+};
+
 const normalizeApiPath = (path: string): string => {
     let cleanPath = path.startsWith('/') ? path : `/${path}`;
 
@@ -22,7 +30,10 @@ const normalizeApiPath = (path: string): string => {
 export const getApiBaseUrl = (): string => {
     // window.runtimeConfigが設定されている場合は最優先（index.htmlで設定される）
     if (typeof window !== 'undefined' && (window as any).runtimeConfig?.API_BASE_URL) {
-        return normalizeBaseUrl((window as any).runtimeConfig.API_BASE_URL);
+        const runtimeBaseUrl = normalizeRuntimeBaseUrl((window as any).runtimeConfig.API_BASE_URL);
+        if (runtimeBaseUrl && runtimeBaseUrl !== '/api') {
+            return runtimeBaseUrl;
+        }
     }
 
     const configuredBaseUrl =

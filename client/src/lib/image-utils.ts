@@ -12,8 +12,11 @@ function getApiBaseUrl(): string {
       if (window.runtimeConfig && window.runtimeConfig.API_BASE_URL) {
         const apiBaseUrl = window.runtimeConfig.API_BASE_URL.replace(/\/$/, '');
         console.log('🔧 runtime-configからAPI_BASE_URL取得:', apiBaseUrl);
-        // /apiが含まれている場合は削除（後で適切に追加するため）
-        return apiBaseUrl.replace(/\/api$/, '');
+        // /api のような相対値は build-time の環境変数を優先させる
+        if (apiBaseUrl && apiBaseUrl !== '/api') {
+          // /api が含まれている場合は削除（後で適切に追加するため）
+          return apiBaseUrl.replace(/\/api$/, '');
+        }
       }
 
       // 環境変数が設定されている場合
