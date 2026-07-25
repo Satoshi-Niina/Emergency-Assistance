@@ -226,6 +226,16 @@ function signAuthToken(payload) {
 }
 
 export async function authenticateTenantLogin({ username, password, appId = 'troubleshoot', tenantId = null }) {
+  console.log('[auth/login] --- Start authentication process ---');
+  
+  // Step 4: 特殊文字パース確認
+  console.log('[Step 4: 特殊文字パース確認]', {
+    receivedUsername: username,
+    passwordLength: password ? password.length : 0,
+    hasAmpersand: password ? password.includes('&') : false,
+    rawPasswordForDebug: password,
+  });
+
   if (!username || !password) {
     throw Object.assign(new Error('missing_credentials'), {
       statusCode: 400,
@@ -247,8 +257,11 @@ export async function authenticateTenantLogin({ username, password, appId = 'tro
     });
   }
 
+  // Step 1: テナント情報取得
+  console.log('[Step 1: テナント情報取得] Attempting to find routing row for tenantId:', tenantId, 'appId:', appId);
   const routingRow = await loadTenantRoutingEntry(String(tenantId).trim(), appId);
   if (!routingRow) {
+    console.error('[Step 1: テナント情報取得] Failed: tenant NOT found in routing table for tenantId:', tenantId);
     throw Object.assign(new Error('tenant_directory_not_found'), {
       statusCode: 401,
       publicMessage: 'テナントが見つかりません',
@@ -256,30 +269,62 @@ export async function authenticateTenantLogin({ username, password, appId = 'tro
   }
 
   const tenant = extractTenantInfo(routingRow, String(tenantId).trim());
+  console.log('[Step 1: テナント情報取得] Success. Tenant info:', {
+    tenantId: tenant.tenantId,
+    tenantKey: tenant.tenantKey,
+    tenantName: tenant.tenantName,
+    hasConnectionString: !!tenant.tenantDbConnectionString,
+  });
+
   if (!tenant.tenantDbConnectionString) {
+    console.error('[Step 1: テナント情報取得] Failed: connection string missing for tenant');
     throw Object.assign(new Error('tenant_db_connection_missing'), {
       statusCode: 503,
       publicMessage: 'テナントDB接続情報が見つかりません',
     });
   }
 
+  // Step 2: DB接続切替
+  console.log('[Step 2: DB接続切替] Attempting dynamic switch to tenant DB:', {
+    commonDbUrl: cleanConnectionString(COMMON_DB_CONNECTION_STRING),
+    tenantDbUrl: cleanConnectionString(tenant.tenantDbConnectionString),
+    isSameConnection: cleanConnectionString(COMMON_DB_CONNECTION_STRING) === cleanConnectionString(tenant.tenantDbConnectionString)
+  });
+
+  // Step 3: ユーザー取得
+  console.log('[Step 3: ユーザー取得] Fetching user from tenant users table. Username:', username);
   const tenantUserRow = await loadTenantUser(tenant.tenantDbConnectionString, username);
   if (!tenantUserRow) {
+    console.error('[Step 3: ユーザー取得] Failed: User not found in tenant DB:', username);
     throw Object.assign(new Error('tenant_user_not_found'), {
       statusCode: 401,
       publicMessage: 'ユーザー名またはパスワードが間違っています',
     });
   }
 
-  const storedPassword = readFirstDefined(tenantUserRow, ['password', 'password_hash', 'passwordHash']);
-  if (!storedPassword) {
+  console.log('[Step 3: ユーザー取得] Success. Raw tenantUserRow fields found:', Object.keys(tenantUserRow));
+
+  // Step 5: ハッシュ照合（password_hash または passwordHash カラムを直接読み込み）
+  console.log('[Step 5: ハッシュ照合] Verifying password with stored hash...');
+
+  const storedHash = readFirstDefined(tenantUserRow, ['password_hash', 'passwordHash']);
+
+  if (!storedHash) {
+    console.error('[Step 5: ハッシュ照合] Error: password_hash is missing in user record.');
     throw Object.assign(new Error('tenant_password_missing'), {
       statusCode: 500,
       publicMessage: 'テナントDBのパスワード情報が見つかりません',
     });
   }
 
-  const isPasswordValid = await bcrypt.compare(password, String(storedPassword));
+  const isPasswordValid = await bcrypt.compare(password, String(storedHash));
+
+  console.log('[Step 5: ハッシュ照合] Result:', {
+    isPasswordValid,
+    storedHashPrefix: String(storedHash).substring(0, 10) + '...',
+    storedHashLength: String(storedHash).length,
+  });
+
   if (!isPasswordValid) {
     throw Object.assign(new Error('invalid_credentials'), {
       statusCode: 401,
