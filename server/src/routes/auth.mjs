@@ -6,6 +6,11 @@ import {
   normalizeAuthSession,
 } from '../services/tenant-auth.mjs';
 import { requireTenantContext } from '../middleware/tenant-context.mjs';
+import {
+  logAuthSuccess,
+  logAuthFailure,
+  logAuthzDenied,
+} from '../infra/auditLogger.mjs';
 
 const router = express.Router();
 
@@ -33,12 +38,25 @@ router.post('/login', async (req, res) => {
     // セッション保存を確実にする
     req.session.save((err) => {
       if (err) {
+        logAuthFailure(req, {
+          attemptedUserId: username,
+          method: 'tenant_login',
+          failureDetail: err.message,
+        });
         console.error('[auth/login] Session save error:', err);
         return res.status(500).json({
           success: false,
           error: 'セッション保存エラー'
         });
       }
+
+      logAuthSuccess(req, {
+        userId: authResult.user?.id,
+        username: authResult.user?.username || username,
+        method: 'tenant_login',
+        role: authResult.user?.role,
+        tenantId,
+      });
 
       console.log('[auth/login] Session saved successfully');
       res.json({
@@ -56,6 +74,11 @@ router.post('/login', async (req, res) => {
     });
 
   } catch (error) {
+    logAuthFailure(req, {
+      attemptedUserId: req.body?.username,
+      method: 'tenant_login',
+      failureDetail: error?.message,
+    });
     console.error('[auth/login] Error:', error);
     res.status(error?.statusCode || 500).json({
       success: false,
@@ -130,6 +153,11 @@ router.get('/check-admin', (req, res) => {
       user: req.session.user
     });
   } else {
+    logAuthzDenied(req, {
+      targetResource: '/api/auth/check-admin',
+      requiredRole: 'admin',
+      userRole: req.session?.user?.role,
+    });
     res.status(403).json({
       success: false,
       message: '管理者権限がありません'
@@ -146,6 +174,11 @@ router.get('/check-employee', (req, res) => {
       user: req.session.user
     });
   } else {
+    logAuthzDenied(req, {
+      targetResource: '/api/auth/check-employee',
+      requiredRole: 'employee',
+      userRole: req.session?.user?.role,
+    });
     res.status(403).json({
       success: false,
       message: '従業員権限がありません'
