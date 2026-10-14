@@ -32,23 +32,20 @@ server/check-user-passwords.mjs
 # ローカル開発専用サーバー（本番では不要）
 server/unified-hot-reload-server.js
 # Environment variables (Local・Docker use)
-# Exclude ALL .env files by default
-# Exclude ALL .env files by default
-
-# ALLOW only these specific files needed for deployment (MUST come before broad patterns)
-!server/.env.production     # ✅ Server production template (sanitized)
-!client/.env.production     # ✅ Client production template (sanitized)
-!client/.env.template       # ✅ Client template for reference
-!*.env.example              # ✅ Allow example env files
-!*.env.template             # ✅ Allow template env files
-
 # Now exclude all other .env files
 *.env
 *.env.*
 .env
+.env.*
 .env.local
 .env.development
 .env.staging
+
+# ALLOW only template/example files (must come after exclude patterns)
+!*.env.example
+!*.env.*.example
+!*.env.template
+!client/.env.template
 # Essential files - NEVER exclude
 # Package lock files (for reproducible builds)
 !package-lock.json
