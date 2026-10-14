@@ -200,6 +200,10 @@ secrets.json
 *.key
 *.pem
 *.p12
+*.pfx
+*service-account*.json
+*credentials*.json
+*-key.json
 *api-key*
 *secret*
 *token*
