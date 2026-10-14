@@ -4,6 +4,7 @@ import path from 'path';
 import { getBlobServiceClient, containerName, norm, upload, streamToBuffer } from '../infra/blob.mjs';
 import { AZURE_STORAGE_CONNECTION_STRING, isAzureEnvironment } from '../config/env.mjs';
 import { dbQuery } from '../infra/db.mjs';
+import { logOperation } from '../infra/auditLogger.mjs';
 
 const router = express.Router();
 
@@ -1148,6 +1149,13 @@ async function handleUpdateHistory(req, res, rawId) {
       blobHTTPHeaders: { blobContentType: 'application/json' }
     });
 
+    logOperation(req, {
+      action: 'update_history',
+      targetType: 'troubleshooting_history',
+      targetId: rawId,
+      status: 'success'
+    });
+
     return res.json({
       success: true,
       message: '保存しました',
@@ -1251,6 +1259,13 @@ router.delete('/:id', async (req, res) => {
       await fs.promises.unlink(filePath);
       console.log(`[history/delete] ✅ Deleted JSON: ${targetFile}`);
       
+      logOperation(req, {
+        action: 'delete_history',
+        targetType: 'troubleshooting_history',
+        targetId: req.params.id,
+        status: 'success'
+      });
+
       return res.json({ 
         success: true, 
         message: '削除しました', 
@@ -1321,6 +1336,13 @@ router.delete('/:id', async (req, res) => {
     // JSONファイルを削除
     await containerClient.getBlobClient(found.blobName).delete();
     console.log(`[history/delete] ✅ Deleted JSON: ${found.blobName}`);
+
+    logOperation(req, {
+      action: 'delete_history',
+      targetType: 'troubleshooting_history',
+      targetId: req.params.id,
+      status: 'success'
+    });
 
     return res.json({ 
       success: true, 

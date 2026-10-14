@@ -17,6 +17,7 @@ import registerAuthRoutes from './routes/auth.mjs';
 import registerHealthRoutes from './routes/health.mjs';
 import registerDiagRoutes from './routes/diag.mjs';
 import registerHistoryRoutes from './routes/history.mjs';
+import { logSystemError } from './infra/auditLogger.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -95,6 +96,7 @@ export async function createApp() {
 
   // Error Handler
   app.use((err, req, res, next) => {
+    logSystemError(req, err, { http_status: 500 });
     console.error('[Error] Unhandled error:', {
       error: err.message,
       stack: err.stack,
