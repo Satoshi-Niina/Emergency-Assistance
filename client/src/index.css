@@ -60,71 +60,92 @@
     line-height: 1.5;
   }
 
-  /* フォーム要素のサイズ調整 */
+  /* フォーム要素のサイズ・行間調整（固定高さ・折り返しによる文字重なりを防止） */
   input,
   textarea,
   select,
   button {
-    font-size: 1.5rem !important;
-    padding: 0.75rem 1rem !important;
-    border-radius: 0.5rem !important;
+    font-size: 1.25rem;
+    line-height: 1.5;
+    padding: 0.625rem 1rem;
+    border-radius: 0.5rem;
+    overflow-wrap: break-word;
   }
 
-  /* ボタンの高さ調整 */
+  /* ボタンの高さ調整（中身に応じて自動拡張できるようheight:autoを阻害しない） */
   button {
-    min-height: 3rem !important;
+    min-height: 2.75rem;
   }
 
   /* ラベルのサイズ調整 */
   label {
-    font-size: 1.5rem !important;
+    font-size: 1.25rem !important;
+    line-height: 1.5 !important;
     font-weight: 500 !important;
   }
 
   /* カードのパディング調整 */
   .card,
   [class*='card'] {
-    padding: 1.5rem !important;
+    padding: 1.25rem;
   }
 
-  /* テキストサイズの調整 */
+  /* 見出しテキストサイズと行間の調整（font-sizeとline-heightの逆転による重なり防止） */
   h1 {
-    font-size: 3rem !important;
+    font-size: 2.25rem !important;
+    line-height: 1.45 !important;
+    overflow-wrap: break-word;
   }
   h2 {
-    font-size: 2.5rem !important;
+    font-size: 1.75rem !important;
+    line-height: 1.5 !important;
+    overflow-wrap: break-word;
   }
   h3 {
-    font-size: 2rem !important;
+    font-size: 1.5rem !important;
+    line-height: 1.5 !important;
+    overflow-wrap: break-word;
   }
   h4 {
-    font-size: 1.75rem !important;
+    font-size: 1.35rem !important;
+    line-height: 1.5 !important;
+    overflow-wrap: break-word;
   }
   h5 {
-    font-size: 1.5rem !important;
+    font-size: 1.25rem !important;
+    line-height: 1.5 !important;
+    overflow-wrap: break-word;
   }
   h6 {
-    font-size: 1.25rem !important;
+    font-size: 1.125rem !important;
+    line-height: 1.5 !important;
+    overflow-wrap: break-word;
   }
 
-  /* 小さいテキストの調整 */
+  /* 小さい〜大きいテキストの調整（必ずfont-sizeに見合うline-heightを同時に指定） */
   .text-xs {
-    font-size: 1rem !important;
+    font-size: 0.95rem !important;
+    line-height: 1.55 !important;
   }
   .text-sm {
-    font-size: 1.25rem !important;
+    font-size: 1.05rem !important;
+    line-height: 1.55 !important;
   }
   .text-base {
-    font-size: 1.5rem !important;
+    font-size: 1.15rem !important;
+    line-height: 1.6 !important;
   }
   .text-lg {
-    font-size: 1.75rem !important;
+    font-size: 1.35rem !important;
+    line-height: 1.55 !important;
   }
   .text-xl {
-    font-size: 2rem !important;
+    font-size: 1.5rem !important;
+    line-height: 1.5 !important;
   }
   .text-2xl {
-    font-size: 2.5rem !important;
+    font-size: 1.75rem !important;
+    line-height: 1.45 !important;
   }
 }
 

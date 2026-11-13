@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import './index.css';
+import { initializeDashboardSso } from './modules/tenant-auth/dashboard-sso';
 
 // シンプルなQueryClientの作成
 const queryClient = new QueryClient({
@@ -128,9 +129,22 @@ function initializeApp() {
   }
 }
 
+const startApp = async () => {
+  try {
+    await initializeDashboardSso();
+    initializeApp();
+  } catch (error) {
+    console.error('Dashboard SSO failed:', error);
+    const container = document.getElementById('root');
+    if (container) {
+      container.textContent = error instanceof Error ? error.message : '認証連携に失敗しました。';
+    }
+  }
+};
+
 // DOMが準備できたら初期化
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeApp);
+  document.addEventListener('DOMContentLoaded', startApp);
 } else {
-  initializeApp();
+  void startApp();
 }

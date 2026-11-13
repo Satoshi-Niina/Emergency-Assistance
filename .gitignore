@@ -308,6 +308,7 @@ docker/data/
 
 # Now exclude other development scripts
 scripts/*
+!scripts/start-dashboard-dev.mjs
 
 # Development database files
 *.db

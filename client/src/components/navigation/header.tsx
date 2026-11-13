@@ -63,8 +63,8 @@ export default function Header({
   };
 
   return (
-    <header className='bg-primary text-white py-3 px-4 flex items-center justify-between shadow-md'>
-      <div className='flex items-center'>
+    <header className='bg-primary text-white py-3 px-4 flex flex-wrap gap-4 items-center justify-between shadow-md'>
+      <div className='flex flex-wrap gap-y-2 items-center min-w-0'>
         <h1 className='text-sm font-semibold mr-6' style={{ fontSize: '70%' }}>
           応急処置支援システム
         </h1>
@@ -125,7 +125,7 @@ export default function Header({
                       handleSettingsClick();
                       setSidebarOpen(false);
                     }}
-                    className='flex items-center w-full px-3 py-2 text-sm rounded-md hover:bg-gray-100 text-blue-600'
+                    className='flex items-center w-full px-3 py-2 !text-[30px] rounded-md hover:bg-gray-100 text-blue-600'
                   >
                     <Settings className='mr-2 h-4 w-4' />
                     設定
@@ -135,7 +135,7 @@ export default function Header({
                       handleLogout();
                       setSidebarOpen(false);
                     }}
-                    className='flex items-center w-full px-3 py-2 text-sm rounded-md hover:bg-gray-100 text-red-600'
+                    className='flex items-center w-full px-3 py-2 !text-[30px] rounded-md hover:bg-gray-100 text-red-600'
                   >
                     <LogOut className='mr-2 h-4 w-4' />
                     ログアウト

@@ -6,10 +6,9 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "predev": "powershell -ExecutionPolicy Bypass -File scripts/kill-port-8080.ps1",
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "dev:server": "cross-env NODE_ENV=development PORT=8080 NODE_OPTIONS=--no-warnings node --no-warnings server/unified-hot-reload-server.js",
-    "dev:clean": "npm run predev && npm run dev",
+    "dev": "node scripts/start-dashboard-dev.mjs",
+    "dev:server": "node scripts/start-dashboard-dev.mjs",
+    "dev:clean": "npm run dev",
     "dev:client": "npm --prefix client run vite-only",
     "start": "node server/server.mjs",
     "start:prod": "node --no-warnings server/server.mjs",

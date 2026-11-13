@@ -32,6 +32,7 @@ import {
   exportAllHistory,
   advancedSearch,
   generateReport,
+  summarizeWithGPT,
 } from '../lib/api/history-api';
 import { storage } from '../lib/api';
 import ChatExportReport from '../components/report/chat-export-report';
@@ -93,6 +94,57 @@ export default function HistoryPage() {
   const [editingItem, setEditingItem] = useState<SupportHistoryItem | null>(null);
   const [originalEditingItem, setOriginalEditingItem] = useState<SupportHistoryItem | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [generatingReportId, setGeneratingReportId] = useState<string | null>(null);
+  const [reportGenerationError, setReportGenerationError] = useState('');
+  const reportGenerationRef = React.useRef(false);
+
+  const handleGenerateFailureReport = async (item: SupportHistoryItem) => {
+    if (reportGenerationRef.current) return;
+    if (item.jsonData?.problemDescription?.trim() &&
+      !window.confirm('既存の事象説明を基にAI下書きを生成します。保存するまでは元の履歴を変更しません。続行しますか？')) return;
+
+    reportGenerationRef.current = true;
+    setGeneratingReportId(item.id);
+    setReportGenerationError('');
+    try {
+      const originalItem: SupportHistoryItem = JSON.parse(JSON.stringify(item));
+      const jsonData = originalItem.jsonData || {};
+      const conversationHistory = [
+        jsonData.chatData?.messages,
+        jsonData.originalChatData?.messages,
+        jsonData.conversationHistory,
+        jsonData.messages,
+        originalItem.conversationHistory,
+        originalItem.messages,
+      ].find(messages => Array.isArray(messages) && messages.length > 0) || [];
+      const summary = await summarizeWithGPT({
+        ...jsonData,
+        title: jsonData.title || originalItem.title || originalItem.incidentTitle,
+        conversationHistory,
+      });
+      if (!summary.trim()) throw new Error('AIから下書きが返されませんでした。');
+
+      setOriginalEditingItem(originalItem);
+      setEditingItem({
+        ...originalItem,
+        jsonData: {
+          ...jsonData,
+          title: jsonData.title || originalItem.title || originalItem.incidentTitle || '',
+          problemDescription: summary,
+          answer: summary,
+        },
+      });
+      setShowEditDialog(true);
+    } catch (error) {
+      console.error('機械故障報告書の下書き生成エラー:', error);
+      setReportGenerationError(
+        `下書きを生成できませんでした。元の履歴は変更していません。${error instanceof Error ? error.message : 'AI設定と通信状態を確認してください。'}`
+      );
+    } finally {
+      reportGenerationRef.current = false;
+      setGeneratingReportId(null);
+    }
+  };
 
   // データ初期化
   const initializeData = async () => {
@@ -1506,10 +1558,19 @@ export default function HistoryPage() {
   return (
     <div className="mx-auto p-6" style={{ maxWidth: '2168px', width: '100%' }}>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">履歴管理</h1>
+        <h1 className="text-3xl font-bold text-gray-900">機械故障管理</h1>
         <p className="text-gray-600 mt-2">
-          機械故障履歴の検索、表示、管理を行います。
+          機械故障履歴の検索・管理と、機械故障報告書の下書き生成・確認・保存・印刷を行います。
         </p>
+        <p className="text-sm text-gray-600 mt-2">
+          「報告書の下書き生成」で履歴をAI要約し、既存の編集画面で確認・修正できます。AIの推測と事実を確認してから保存してください。自動保存・自動送信はしません。
+        </p>
+        {reportGenerationError && (
+          <p role="alert" className="mt-2 text-sm text-red-700">{reportGenerationError}</p>
+        )}
+        {generatingReportId !== null && (
+          <p role="status" className="mt-2 text-sm text-blue-700">機械故障報告書の下書きを生成中...</p>
+        )}
       </div>
 
       {/* 検索・フィルターセクション */}
@@ -1866,7 +1927,17 @@ export default function HistoryPage() {
                           </div>
                         </td>
                         <td className="border border-gray-300 p-3">
-                          <div className="flex justify-center gap-1">
+                          <div className="flex flex-wrap justify-center gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={generatingReportId !== null}
+                              onClick={() => handleGenerateFailureReport(item)}
+                              className="px-3 text-sm text-blue-700"
+                              style={{ height: '42px' }}
+                            >
+                              {generatingReportId === item.id ? '下書き生成中...' : '報告書の下書き生成'}
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
@@ -1981,7 +2052,7 @@ export default function HistoryPage() {
           <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">機械故障履歴編集</h2>
+                <h2 className="text-xl font-bold">機械故障報告書・履歴編集</h2>
                 <div className="flex gap-2">
                   <Button
                     onClick={() => {

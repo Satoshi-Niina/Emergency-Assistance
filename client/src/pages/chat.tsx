@@ -11,6 +11,7 @@ import KeywordButtons from '../components/troubleshooting/keyword-buttons';
 import StepByStepQA from '../components/chat/step-by-step-qa';
 import TroubleshootingQABubble from '../components/chat/troubleshooting-qa-bubble';
 import SolutionBubble from '../components/chat/solution-bubble';
+import DraggableResizableCard from '../components/chat/draggable-resizable-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,6 +51,8 @@ import {
   Wrench,
   Database,
   Save,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -95,6 +98,7 @@ export default function ChatPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showEmergencyGuide, setShowEmergencyGuide] = useState(false);
   const [availableGuides, setAvailableGuides] = useState<any[]>([]);
@@ -102,6 +106,7 @@ export default function ChatPage() {
   const [selectedGuideId, setSelectedGuideId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoadingGuides, setIsLoadingGuides] = useState(false);
+  const [guideError, setGuideError] = useState('');
 
   // インタラクティブ診断モードの状態管理
   const [interactiveDiagnosisMode, setInteractiveDiagnosisMode] =
@@ -112,6 +117,29 @@ export default function ChatPage() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [emergencyStep, setEmergencyStep] = useState<number>(0);
   const [problemType, setProblemType] = useState<string>('');
+  // AIリクエスト中の同期ロック・通信中状態（連続タップによる重複送信防止）
+  const [isAiProcessing, setIsAiProcessing] = useState(false);
+  const aiProcessingLockRef = useRef<boolean>(false);
+  // C方式：過去の会話履歴の折りたたみ開閉状態
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+  // 開発環境限定の仮機種・仮機械番号データ使用中フラグ（「開発用データ」明示用）
+  const [isUsingDevMachineData, setIsUsingDevMachineData] = useState(false);
+  // AI通信エラー時の画面内エラー表示・再試行用ステート
+  const [aiApiError, setAiApiError] = useState<string | null>(null);
+  const [lastFailedInput, setLastFailedInput] = useState<{ content: string; media: any[] } | null>(null);
+  // 「前の質問に戻る」で回答を変更した際の訂正履歴保持用ref
+  const pendingCorrectionRef = useRef<{
+    previousAnswer: string;
+    invalidatedDiagnosis: string;
+    questionText: string;
+    correctedAt: string;
+  } | null>(null);
+  const effectiveIsLoading = isLoading || isAiProcessing;
+  // React 18 自動バッチング下でも常に最新のmessages配列を参照するためのref
+  const messagesRef = useRef<any[]>(messages);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
   // 追加: 機種と機械番号のオートコンプリート状態管理
   const [machineTypes, setMachineTypes] = useState<
     Array<{ id: string; machine_type_name: string }>
@@ -124,6 +152,9 @@ export default function ChatPage() {
     useState<string>('');
   const [isLoadingMachineTypes, setIsLoadingMachineTypes] = useState(false);
   const [isLoadingMachines, setIsLoadingMachines] = useState(false);
+  const [machineTypesError, setMachineTypesError] = useState('');
+  const [machinesError, setMachinesError] = useState('');
+  const machineRequestId = useRef(0);
 
   // オートコンプリート用の状態
   const [machineTypeInput, setMachineTypeInput] = useState('');
@@ -162,7 +193,6 @@ export default function ChatPage() {
 
   // 機種データの初期読み込み
   useEffect(() => {
-    fetchMachineTypes();
     fetchKnowledgeData();
     loadAiAssistSettings().catch(error => {
       console.error('AI支援設定の初期読み込みエラー:', error);
@@ -283,7 +313,9 @@ export default function ChatPage() {
         !target.closest('#machine-type') &&
         !target.closest('#machine-number') &&
         !target.closest('#machine-type-menu') &&
-        !target.closest('#machine-number-menu')
+        !target.closest('#machine-number-menu') &&
+        !target.closest('[aria-controls="machine-type-menu"]') &&
+        !target.closest('[aria-controls="machine-number-menu"]')
       ) {
         setShowMachineTypeSuggestions(false);
         setShowMachineNumberSuggestions(false);
@@ -459,6 +491,7 @@ export default function ChatPage() {
   const fetchMachineTypes = useCallback(async () => {
     try {
       setIsLoadingMachineTypes(true);
+      setMachineTypesError('');
       console.log('🔍 機種一覧取得開始');
 
       // 統一API設定を使用
@@ -475,6 +508,9 @@ export default function ChatPage() {
       const response = await fetch(apiUrl, {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
+          ...(localStorage.getItem('authToken') && {
+            Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+          }),
         },
         credentials: 'include', // セッション維持のため
       });
@@ -495,10 +531,11 @@ export default function ChatPage() {
 
           // データ形式を統一（machine_type_nameフィールドに統一）
           const formattedData = typesData.map((type: any) => ({
-            id: type.id,
+            id: String(type.id),
             machine_type_name: type.name || type.machine_type_name || type.category
           }));
 
+          setIsUsingDevMachineData(Boolean(result.isDevFallback));
           setMachineTypes(formattedData);
           setFilteredMachineTypes(formattedData); // 初期表示用にも設定
 
@@ -509,6 +546,7 @@ export default function ChatPage() {
           console.error('❌ 機種一覧取得成功だがデータが無効:', result);
           setMachineTypes([]);
           setFilteredMachineTypes([]);
+          setMachineTypesError('機種マスタを取得できませんでした。再取得してください。');
         }
       } else {
         const errorText = await response.text();
@@ -520,11 +558,13 @@ export default function ChatPage() {
 
         setMachineTypes([]);
         setFilteredMachineTypes([]);
+        setMachineTypesError(`機種マスタ取得エラー（${response.status}）。データベース接続を確認してください。`);
       }
     } catch (error) {
       console.error('❌ 機種一覧取得エラー:', error);
       setMachineTypes([]);
       setFilteredMachineTypes([]);
+      setMachineTypesError('機種マスタに接続できません。通信状態を確認してください。');
     } finally {
       setIsLoadingMachineTypes(false);
       console.log('🔍 機種一覧取得完了 - 最終状態', {
@@ -597,6 +637,7 @@ export default function ChatPage() {
       setMachineNumberInput('');
       setMachines([]);
       setFilteredMachines([]);
+      setMachinesError('');
 
       // 警告メッセージのrefをリセット（機種が変更されたため）
       lastWarningMessageRef.current = null;
@@ -634,18 +675,23 @@ export default function ChatPage() {
   // 追加: 特定の機種に紐づく機械番号一覧を取得する関数（設定UIと同じAPIを使用）
   const fetchMachines = useCallback(
     async (typeId: string) => {
+      const requestId = ++machineRequestId.current;
       try {
         setIsLoadingMachines(true);
+        setMachinesError('');
         console.log('🔍 機械番号一覧取得開始 - 機種ID:', typeId);
 
         // 統一API設定を使用
         const { buildApiUrl } = await import('../lib/api');
-        const apiUrl = buildApiUrl(`/machines?type_id=${typeId}`);
+        const apiUrl = buildApiUrl(`/machines?type_id=${encodeURIComponent(typeId)}`);
         console.log('🔍 機械番号一覧取得URL:', apiUrl);
 
         const response = await fetch(apiUrl, {
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
+            ...(localStorage.getItem('authToken') && {
+              Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+            }),
           },
           credentials: 'include', // セッション維持のため
         });
@@ -660,15 +706,19 @@ export default function ChatPage() {
           if (result.success) {
             // APIレスポンス形式に対応（machinesキーにデータが入っている）
             const machinesData = result.machines || result.data || [];
+            if (requestId !== machineRequestId.current) return;
             console.log('✅ 機械番号一覧設定完了:', machinesData.length, '件');
             console.log('✅ 機械番号データ:', machinesData);
 
             // データ形式を統一（machine_numberフィールドに統一）
             const formattedMachines = machinesData.map((machine: any) => ({
-              id: machine.id,
+              id: String(machine.id),
               machine_number: machine.machine_number
             }));
 
+            if (result.isDevFallback) {
+              setIsUsingDevMachineData(true);
+            }
             setMachines(formattedMachines);
             setFilteredMachines(formattedMachines); // 初期表示用
 
@@ -681,11 +731,14 @@ export default function ChatPage() {
               showMachineNumberSuggestions,
             });
           } else {
+            if (requestId !== machineRequestId.current) return;
             console.error('❌ 機械番号一覧取得成功だがsuccess=false:', result);
             setMachines([]);
             setFilteredMachines([]);
+            setMachinesError('機械番号マスタを取得できませんでした。再取得してください。');
           }
         } else {
+          if (requestId !== machineRequestId.current) return;
           const errorText = await response.text();
           console.error(
             '❌ 機械番号一覧取得エラー:',
@@ -694,13 +747,16 @@ export default function ChatPage() {
           );
           setMachines([]);
           setFilteredMachines([]);
+          setMachinesError(`機械番号マスタ取得エラー（${response.status}）。データベース接続を確認してください。`);
         }
       } catch (error) {
+        if (requestId !== machineRequestId.current) return;
         console.error('❌ 機械番号一覧取得エラー:', error);
         setMachines([]);
         setFilteredMachines([]);
+        setMachinesError('機械番号マスタに接続できません。通信状態を確認してください。');
       } finally {
-        setIsLoadingMachines(false);
+        if (requestId === machineRequestId.current) setIsLoadingMachines(false);
         console.log('🔍 機械番号一覧取得完了 - 最終状態', {
           machinesCount: machines.length,
           filteredMachinesCount: filteredMachines.length,
@@ -746,13 +802,13 @@ export default function ChatPage() {
         machineNumber,
         pendingMessage: pendingMessage.content
       });
-      
+
       try {
         setIsProcessingPendingMessage(true);
         const savedMessage = { ...pendingMessage };
         // 保存されたメッセージを先にクリア（重複防止）
         setPendingMessage(null);
-        
+
         // AI支援モードの場合は処理を実行（skipMachineCheck=trueで機種・機械番号チェックをスキップ）
         if (aiSupportMode) {
           await handleAiSupportMessage(savedMessage.content, savedMessage.media, true);
@@ -774,7 +830,13 @@ export default function ChatPage() {
   };
 
   useEffect(() => {
-    scrollToBottom();
+    const hasAiCard = messages.some((m: any) => m?.isAiResponse);
+    if (hasAiCard) {
+      // C方式では最新AIカードが上部メイン領域に表示されるため、ヘッダーやリサイズハンドルが隠れない位置を保つ
+      chatScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+    } else {
+      scrollToBottom();
+    }
   }, [messages]);
 
   // AI支援モードの自動開始用のref - 一度だけ実行するため
@@ -826,36 +888,17 @@ export default function ChatPage() {
     });
   }, [chatId, initializeChat, fetchMachineTypes]);
 
-  // AI支援モードの自動開始を無効化（ボタン押下で手動開始に変更）
-  // useEffect(() => {
-  //   if (!aiSupportMode && !aiSupportInitializedRef.current) {
-  //     console.log('AI支援モードをデフォルトで有効化');
-  //     aiSupportInitializedRef.current = true;
-  //     (async () => {
-  //       try {
-  //         const loadedSettings = await loadAiAssistSettings();
-  //         setAiSupportMode(true);
-  //         setAiSupportStartTime(new Date());
-  //         setElapsedTime(0);
-  //         if (!initialPromptSentRef.current) {
-  //           initialPromptSentRef.current = true;
-  //           const initialPrompt = loadedSettings?.initialPrompt || aiAssistSettings.initialPrompt;
-  //           const aiSupportMessage = {
-  //             id: Date.now().toString(),
-  //             content: initialPrompt,
-  //             isAiResponse: true,
-  //             timestamp: new Date(),
-  //             type: 'ai_support',
-  //           };
-  //           setMessages((prev: any) => [...prev, aiSupportMessage]);
-  //           console.log('初期メッセージを表示:', initialPrompt);
-  //         }
-  //       } catch (error) {
-  //         console.error('AI支援モード自動開始エラー:', error);
-  //       }
-  //     })();
-  //   }
-  // }, [aiSupportMode, loadAiAssistSettings, aiAssistSettings, setMessages]);
+  // 機種・機械番号が選択済みかどうかの判定（AI支援開始および送信の必須条件）
+  const currentMachineTypeVal = selectedMachineTypeRef.current || selectedMachineType || machineTypeInput.trim();
+  const currentMachineNumberVal = selectedMachineNumberRef.current || selectedMachineNumber || machineNumberInput.trim();
+  const isMachineReady = Boolean(
+    currentMachineTypeVal &&
+      currentMachineTypeVal !== 'null' &&
+      currentMachineTypeVal !== 'undefined' &&
+      currentMachineNumberVal &&
+      currentMachineNumberVal !== 'null' &&
+      currentMachineNumberVal !== 'undefined'
+  );
 
   // 機種・機械番号が両方入力された時に警告メティングーージを削除�E�オプション�E�E
   useEffect(() => {
@@ -961,6 +1004,47 @@ export default function ChatPage() {
   // AI支援開始（カスタマイズ対応版）
   const handleStartAiSupport = async () => {
     try {
+      // 機種・機械番号が手入力のみでドロップダウン未確定の場合、候補と一致すれば自動補完する
+      let resolvedType = selectedMachineTypeRef.current || selectedMachineType;
+      let resolvedNumber = selectedMachineNumberRef.current || selectedMachineNumber;
+      if (!resolvedType && machineTypeInput.trim()) {
+        const matchedType = machineTypes.find(
+          t => t.machine_type_name === machineTypeInput.trim() || t.id === machineTypeInput.trim()
+        );
+        if (matchedType) {
+          resolvedType = matchedType.id;
+          selectedMachineTypeRef.current = matchedType.id;
+          setSelectedMachineType(matchedType.id);
+        } else {
+          resolvedType = machineTypeInput.trim();
+        }
+      }
+      if (!resolvedNumber && machineNumberInput.trim()) {
+        const matchedMachine = machines.find(
+          m => m.machine_number === machineNumberInput.trim() || m.id === machineNumberInput.trim()
+        );
+        if (matchedMachine) {
+          resolvedNumber = matchedMachine.id;
+          selectedMachineNumberRef.current = matchedMachine.id;
+          setSelectedMachineNumber(matchedMachine.id);
+        } else {
+          resolvedNumber = machineNumberInput.trim();
+        }
+      }
+
+      // 機種・機械番号未選択時はAI支援開始を禁止し、選択が必要なことを画面に表示する
+      if (!resolvedType || !resolvedNumber) {
+        toast({
+          title: '機種・機械番号の選択が必要です',
+          description: '画面上部の「機種」と「機械番号」を選択してから「AI支援開始」ボタンを押してください。',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setAiApiError(null);
+      setLastFailedInput(null);
+
       // AI支援設定を読み込み
       const loadedSettings = await loadAiAssistSettings();
 
@@ -975,7 +1059,7 @@ export default function ChatPage() {
       machineInfoMessageSentRef.current = false;
       lastWarningMessageRef.current = null;
 
-      // カスタマイズされた初期メッセージを送信
+      // カスタマイズされた初期メッセージを送信（1問1答の初期選択ボタン付き）
       const initialPrompt = loadedSettings?.initialPrompt || aiAssistSettings.initialPrompt;
       const aiSupportMessage = {
         id: Date.now().toString(),
@@ -983,14 +1067,30 @@ export default function ChatPage() {
         isAiResponse: true,
         timestamp: new Date(),
         type: 'ai_support',
+        qaData: {
+          status: 'question' as const,
+          safetyWarning:
+            '異臭・発煙・液漏れがある場合はエンジンを始動せず、高温部や回転部に近づかないでください。',
+          question: initialPrompt,
+          options: [
+            'ディーゼルエンジンが急に停止した・始動しない',
+            '前進スイッチを入れたがトルコン（走行）が反応しない',
+            '走行中にラジエーター付近から異音がする',
+            'エアーが溜まらない・駐車バネブレーキが解放しない',
+          ],
+          reasoning:
+            '発生している症状を選択（または最上部の「状況を自由文・音声で送信してください」から自由文・音声・カメラで入力）すると、状況に応じた1問1答を開始します。',
+        },
       };
 
-      setMessages((prev: any) => [...prev, aiSupportMessage]);
+      const nextMessages = [...messagesRef.current, aiSupportMessage];
+      messagesRef.current = nextMessages;
+      setMessages(nextMessages);
       console.log('✅ AI支援開始 - 初期メッセージを表示:', initialPrompt);
 
       toast({
         title: 'AI支援開始',
-        description: 'AI支援が開始されました。チャットエリアでやり取りしてください',
+        description: 'AI支援が開始されました。症状を選択または入力してください。',
       });
     } catch (error) {
       console.error('AI支援開始エラー:', error);
@@ -1021,6 +1121,8 @@ export default function ChatPage() {
     setElapsedTime(0);
     setEmergencyStep(0);
     setProblemType('');
+    setAiApiError(null);
+    setLastFailedInput(null);
 
     // 初期化フラグをリセット
     aiSupportInitializedRef.current = false;
@@ -1053,11 +1155,11 @@ export default function ChatPage() {
       };
       document.getElementById('end-btn')!.onclick = async () => {
         document.body.removeChild(dialog);
-        
+
         // 🔧 未エクスポート画像の削除処理
         if (hasUnexportedMessages && messages.length > 0) {
           console.log('🗑️ AI支援終了: 未エクスポート画像のクリーンアップを実行');
-          
+
           try {
             const { buildApiUrl } = await import('../lib/api');
             const cleanupResponse = await fetch(buildApiUrl('/history/cleanup-orphaned-images'), {
@@ -1066,7 +1168,7 @@ export default function ChatPage() {
               credentials: 'include',
               body: JSON.stringify({ dryRun: false }),
             });
-            
+
             if (cleanupResponse.ok) {
               const result = await cleanupResponse.json();
               console.log('✅ 孤立画像クリーンアップ完了:', result.stats);
@@ -1075,7 +1177,7 @@ export default function ChatPage() {
             console.warn('⚠️ クリーンアップ失敗:', err);
           }
         }
-        
+
         resolve(false);
       };
     });
@@ -1187,11 +1289,14 @@ export default function ChatPage() {
           machineTypeName: machineTypeInput,
           machineNumber: machineNumberInput,
         },
-        messages: messages.map(msg => ({
+        messages: messages.map((msg: any) => ({
           id: msg.id,
           content: msg.content,
           isAiResponse: msg.isAiResponse,
           timestamp: msg.timestamp,
+          ...(msg.correctionHistory && {
+            correctionHistory: msg.correctionHistory,
+          }),
           media:
             msg.media?.map((media: any) => ({
               id: media.id,
@@ -1402,6 +1507,7 @@ export default function ChatPage() {
   const fetchAvailableGuides = async () => {
     try {
       setIsLoadingGuides(true);
+      setGuideError('');
       console.log('🔄 応急処置ガイド一覧取得開始');
 
       // キャッシュ無効化のためにタイムスタンプを追加
@@ -1420,6 +1526,9 @@ export default function ChatPage() {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           'X-Requested-With': 'XMLHttpRequest',
+          ...(localStorage.getItem('authToken') && {
+            Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+          }),
         },
       });
 
@@ -1445,9 +1554,7 @@ export default function ChatPage() {
             });
           });
         } else {
-          console.error('❁E応急処置ガイド取得失敁E', data.message);
-          setAvailableGuides([]);
-          setFilteredGuides([]);
+          throw new Error(data.message || 'マニュアル一覧を取得できませんでした。');
         }
       } else {
         const errorText = await response.text();
@@ -1465,18 +1572,31 @@ export default function ChatPage() {
       });
       setAvailableGuides([]);
       setFilteredGuides([]);
+      setGuideError('マニュアル一覧を取得できませんでした。接続を確認して再取得してください。');
     } finally {
       setIsLoadingGuides(false);
     }
   };
 
   const handleEmergencyGuide = async () => {
-    await fetchAvailableGuides();
     setShowEmergencyGuide(true);
+    setSelectedGuideId(null);
+    setSearchQuery('');
+    chatScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    await fetchAvailableGuides();
   };
 
   const handleSelectGuide = (guideId: string) => {
     setSelectedGuideId(guideId);
+  };
+
+  const handleOpenMatchedGuide = async (guideId: string) => {
+    setShowEmergencyGuide(true);
+    setSelectedGuideId(guideId);
+    chatScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    if (availableGuides.length === 0) {
+      await fetchAvailableGuides();
+    }
   };
 
   const handleExitGuide = () => {
@@ -1498,7 +1618,7 @@ export default function ChatPage() {
       // クライアントサイド検索を実衁E
       const searchResults = availableGuides.filter(guide => {
         const searchText =
-          `${guide.title} ${guide.description} ${guide.keyword || ''}`.toLowerCase();
+          `${guide.title} ${guide.fileName || ''} ${guide.description} ${guide.keyword || ''}`.toLowerCase();
         return searchText.includes(query.toLowerCase());
       });
 
@@ -1660,7 +1780,51 @@ export default function ChatPage() {
   };
 
   // AI支援メティングーージ処琁EーEPT応答を使用�E�E
-  const handleAiSupportMessage = async (content: string, media: any[] = [], skipMachineCheck: boolean = false) => {
+  const handleBackToPreviousQuestion = () => {
+    if (aiProcessingLockRef.current || effectiveIsLoading) return;
+
+    setMessages((prev: any[]) => {
+      if (prev.length < 3) return prev;
+      const lastIdx = prev.length - 1;
+      const lastMsg = prev[lastIdx];
+      const prevUserMsg = prev[lastIdx - 1];
+      const targetQuestionMsg = prev[lastIdx - 2];
+
+      if (!lastMsg?.isAiResponse || prevUserMsg?.isAiResponse || !targetQuestionMsg?.isAiResponse) {
+        return prev;
+      }
+
+      pendingCorrectionRef.current = {
+        previousAnswer: prevUserMsg.content,
+        invalidatedDiagnosis: lastMsg.content,
+        questionText: targetQuestionMsg.content,
+        correctedAt: new Date().toISOString(),
+      };
+
+      const nextMessages = prev.slice(0, lastIdx - 1);
+      messagesRef.current = nextMessages;
+      return nextMessages;
+    });
+
+    toast({
+      title: '前の質問に戻りました',
+      description: '前の回答に基づく診断結果を無効化しました。新しい回答を選択してください。',
+      duration: 3000,
+    });
+  };
+
+  const handleAiSupportMessage = async (content: string, media: any[] = [], skipMachineCheck: boolean = false): Promise<boolean> => {
+    if (aiProcessingLockRef.current) {
+      console.warn('⏳ AIリクエスト処理中のため重複送信をブロックしました:', content);
+      return false;
+    }
+    aiProcessingLockRef.current = true;
+    setIsAiProcessing(true);
+
+    const userMessageId = Date.now().toString();
+    const correctionRecord = pendingCorrectionRef.current;
+    pendingCorrectionRef.current = null;
+
     try {
       // refとstateの両方を確認し、どちらかが有効な値を持ってぁEーかを確誁E
       // refが優先、なければstateを使用
@@ -1687,72 +1851,100 @@ export default function ChatPage() {
       });
 
       // ユーザーメティングーージを�Eに追加�E�常に表示する�E�E
-      const userMessage = {
-        id: Date.now().toString(),
+      const userMessage: any = {
+        id: userMessageId,
         content: content,
         isAiResponse: false,
         timestamp: new Date(),
         type: 'user_message',
         media: media,
+        ...(correctionRecord && {
+          correctionHistory: correctionRecord,
+        }),
       };
 
-      // メティングーージを追加し、最新の状態を取征E
-      let updatedMessages: any[] = [];
-      setMessages(prev => {
-        updatedMessages = [...prev, userMessage];
-        return updatedMessages;
-      });
+      // React 18 自動バッチングでも同期的に最新履歴を構築できるよう messagesRef を更新
+      const updatedMessages: any[] = [...messagesRef.current, userMessage];
+      messagesRef.current = updatedMessages;
+      setMessages(updatedMessages);
 
-      // 機種・機械番号が入力されていない場合の処理（skipMachineCheckがtrueの場合はスキップ）
-      if (!skipMachineCheck && (!hasMachineType || !hasMachineNumber)) {
-        // ユーザーのメッセージを保存（後で自動再送信するため）
-        // ただし、既に保存されているメッセージと同じ場合は保存しない
-        if (!pendingMessage || pendingMessage.content !== content) {
-          console.log('📝 機種・機械番号未設定のため、メッセージを保存します:', content);
-          setPendingMessage({
-            content: content,
-            media: media || [],
-          });
+      // 機種・機械番号が手入力のみでドロップダウン未確定の場合、候補と一致すれば自動補完する
+      if (!selectedMachineTypeRef.current && machineTypeInput) {
+        const matchedType = machineTypes.find(
+          t => t.machine_type_name === machineTypeInput.trim() || t.id === machineTypeInput.trim()
+        );
+        if (matchedType) {
+          selectedMachineTypeRef.current = matchedType.id;
+          setSelectedMachineType(matchedType.id);
         }
-
-        // 機種・機械番号が入力されていない場合の警告メッセージ（連続表示を防ぐ）
-        const warningContent = '機種及び機械番号を選択入力してください';
-        const currentTime = Date.now();
-
-        // 前回の警告メティングーージから5秒以上経過してぁEー場合�Eみ表示
-        const lastWarningTime = lastWarningMessageRef.current
-          ? parseInt(lastWarningMessageRef.current)
-          : 0;
-        const timeSinceLastWarning = currentTime - lastWarningTime;
-
-        if (timeSinceLastWarning > 5000) {
-          lastWarningMessageRef.current = currentTime.toString();
-          const warningMessage = {
-            id: (Date.now() + 1).toString(),
-            content: warningContent,
-            isAiResponse: true,
-            timestamp: new Date(),
-            type: 'ai_support',
-          };
-          setMessages((prev: any) => [...prev, warningMessage]);
-          console.log('⚠️ 警告メッセージを表示:', warningContent);
-        } else {
-          console.log('⏭️ 警告メッセージをスキップ（30秒以内）', timeSinceLastWarning);
+      }
+      if (!selectedMachineNumberRef.current && machineNumberInput) {
+        const matchedMachine = machines.find(
+          m => m.machine_number === machineNumberInput.trim() || m.id === machineNumberInput.trim()
+        );
+        if (matchedMachine) {
+          selectedMachineNumberRef.current = matchedMachine.id;
+          setSelectedMachineNumber(matchedMachine.id);
         }
-        return; // GPT応答を生成せずに終了
       }
 
-      // 機種・機械番号が入力されている場合は、警告メッセージのrefをリセット
+      // 機種・機械番号が未選択の場合は送信をブロックして警告を表示
+      const finalHasMachineType = Boolean(selectedMachineTypeRef.current || selectedMachineType || machineTypeInput.trim());
+      const finalHasMachineNumber = Boolean(selectedMachineNumberRef.current || selectedMachineNumber || machineNumberInput.trim());
+      if (!skipMachineCheck && (!finalHasMachineType || !finalHasMachineNumber)) {
+        const rolledBack = messagesRef.current.filter(msg => msg.id !== userMessageId);
+        messagesRef.current = rolledBack;
+        setMessages(rolledBack);
+        toast({
+          title: '機種・機械番号が未選択です',
+          description: '機種と機械番号を選択してから送信してください。',
+          variant: 'destructive',
+        });
+        return false;
+      }
+
+      setAiApiError(null);
+      setLastFailedInput(null);
       lastWarningMessageRef.current = null;
       console.log('✅ 機種・機械番号が入力されています。GPT応答を生成します', {
         content,
         machineType: currentMachineType,
-        machineNumber: currentMachineNumber
+        machineNumber: currentMachineNumber,
       });
 
-      // 会話履歴を取得（AI支援メッセージのみ、最新のメッセージを含める）
+      // 完了系アクションボタンが選択された場合のハンドリング
+      if (content === '応急復旧マニュアル一覧を確認する') {
+        await handleEmergencyGuide();
+        return true;
+      }
+      if (content === '別の症状について診断を開始する') {
+        await handleStartAiSupport();
+        return true;
+      }
+      if (
+        content === '了解しました（対応完了）' ||
+        content === '技術支援センター・指令へ連絡しました' ||
+        content === '技術支援センター・責任者へ連絡しました'
+      ) {
+        const ackMessage = {
+          id: (Date.now() + 1).toString(),
+          content:
+            content === '了解しました（対応完了）'
+              ? '対応お疲れ様でした。「サーバーへ送信」ボタンから今回の対応履歴を保存できます。'
+              : '連絡内容の記録を完了しました。専門技術者の到着・指示があるまで安全な場所で待機してください。',
+          isAiResponse: true,
+          timestamp: new Date(),
+          type: 'ai_support_response',
+        };
+        const nextAck = [...messagesRef.current, ackMessage];
+        messagesRef.current = nextAck;
+        setMessages(nextAck);
+        return true;
+      }
+
+      // 会話履歴を取得（無効化された回答を除外し、最新のメッセージを含める）
       const conversationHistory = updatedMessages
-        .filter(msg => msg.type === 'ai_support' || msg.type === 'ai_support_response' || msg.type === 'user_message')
+        .filter(msg => !msg.invalidated && (msg.type === 'ai_support' || msg.type === 'ai_support_response' || msg.type === 'user_message'))
         .map(msg => ({
           content: msg.content,
           isAiResponse: msg.isAiResponse,
@@ -1762,42 +1954,50 @@ export default function ChatPage() {
 
       console.log('📝 会話履歴:', conversationHistory.length, '件');
 
-      // GPTにリクエストを送信してAI応答を生成
+      // GPTにリクエストを送信してAI応答（＋1問1答構造化データ）を生成
       console.log('🤖 GPTレスポンス生成開始...');
-      const aiResponse = await generateAiSupportResponse(content, conversationHistory);
-      console.log('✅ GPTレスポンス生成完了:', aiResponse.substring(0, 100));
+      const aiResult = await generateAiSupportResponse(content, conversationHistory);
+      console.log('✅ GPTレスポンス生成完了:', aiResult.response.substring(0, 100));
 
-      // AI応答メッセージを追加
+      // AI応答メッセージを追加（qaDataがあれば保持、なければ従来のテキスト表示にフォールバック）
       const aiMessage = {
         id: (Date.now() + 1).toString(),
-        content: aiResponse,
+        content: aiResult.response,
         isAiResponse: true,
         timestamp: new Date(),
         type: 'ai_support_response',
+        qaData: aiResult.qaData || undefined,
       };
 
-      setMessages(prev => [...prev, aiMessage]);
+      const nextWithAi = [...messagesRef.current, aiMessage];
+      messagesRef.current = nextWithAi;
+      setMessages(nextWithAi);
       console.log('✅ AIメッセージを追加しました');
+      return true;
 
     } catch (error) {
-      console.error('AI支援メティングーージ処琁Eーラー:', error);
+      console.error('AI支援メッセージ処理エラー:', error);
 
-      // エラー時のフォールバック応答
-      const errorMessage = {
-        id: (Date.now() + 1).toString(),
-        content: '申し訳ございません。現在AI支援の応答を生成できません。しばらく時間をおいてから再度お試しください。',
-        isAiResponse: true,
-        timestamp: new Date(),
-        type: 'ai_support_response',
-      };
+      if (correctionRecord) {
+        pendingCorrectionRef.current = correctionRecord;
+      }
+      const rolledBack = messagesRef.current.filter(msg => msg.id !== userMessageId);
+      messagesRef.current = rolledBack;
+      setMessages(rolledBack);
 
-      setMessages(prev => [...prev, errorMessage]);
+      const errMsg = error instanceof Error ? error.message : 'AI支援の応答生成に失敗しました。';
+      setAiApiError(errMsg);
+      setLastFailedInput({ content, media });
 
       toast({
-        title: 'エラー',
-        description: 'AI支援の応答生成に失敗しました',
+        title: '通信エラー（再試行可能）',
+        description: 'AI支援の応答生成に失敗しました。画面の「再試行する」ボタンまたは再送信をお試しください。',
         variant: 'destructive',
       });
+      return false;
+    } finally {
+      aiProcessingLockRef.current = false;
+      setIsAiProcessing(false);
     }
   };
 
@@ -1871,7 +2071,7 @@ export default function ChatPage() {
   const applyConversationStyle = (question: string): string => {
     switch (aiAssistSettings.conversationStyle) {
       case 'frank':
-        return question.replace(/ください/g, 'くださいね').replace(/ますか/g, 'ますか？');
+        return question.replace(/ください/g, 'くださいね').replace(/ますか(?!？)/g, 'ますか？');
       case 'business':
         return `恐れ入りますが、${question}をお聞かせいただけますでしょうか。`;
       case 'technical':
@@ -2032,7 +2232,7 @@ export default function ChatPage() {
   const generateAiSupportResponse = async (
     userMessage: string,
     conversationHistory: any[] = []
-  ): Promise<string> => {
+  ): Promise<{ response: string; qaData?: any }> => {
     try {
       // 統一API設定を使用
       const { buildApiUrl } = await import('../lib/api');
@@ -2048,7 +2248,20 @@ export default function ChatPage() {
 
       // 時間制限チェック（20分）
       if (elapsedMinutes >= 20) {
-        return `⏰ 診断時間が20分を超過しました。\n技術支援センターへの救援要請をお勧めします：\n📞 技術支援センター: 0123-456-789\n\nお疲れ様でした。また何かお困りのことがあれば、いつでもお声がけください。`;
+        const timeoutMsg = `⏰ 診断時間が20分を超過しました。\n技術支援センターへの救援要請をお勧めします：\n📞 技術支援センター: 0123-456-789\n\nお疲れ様でした。また何かお困りのことがあれば、いつでもお声がけください。`;
+        return {
+          response: timeoutMsg,
+          qaData: {
+            status: 'emergency',
+            safetyWarning: '診断開始から20分を超過しました。現場の安全を確保し、速やかに技術支援センターまたは指令へ連絡してください。',
+            steps: [
+              '車両の停止・駐車ブレーキ・輪止めを再確認してください。',
+              '技術支援センター（0123-456-789）または指令へ連絡し、これまでの確認状況を伝えてください。',
+            ],
+            options: ['技術支援センター・指令へ連絡しました'],
+            verifiedSource: { isVerified: true, sourceName: '標準エスカレーション基準' },
+          },
+        };
       }
 
       // 会話履歴を構築（ナレッジベース検索用のコンテキストとして使用）
@@ -2070,10 +2283,16 @@ export default function ChatPage() {
         credentials: 'include',
         body: JSON.stringify({
           text: enhancedPrompt,
+          rawUserMessage: userMessage,
           useOnlyKnowledgeBase: true, // knowledge-baseからのデータのみを使用
-          conversationHistory: conversationHistory.slice(-4), // 直近4件の履歴
+          conversationHistory: conversationHistory.slice(-6), // 直近6件の履歴
           elapsedMinutes: elapsedMinutes,
           aiSupportMode: true,
+          machineInfo: {
+            machineTypeId: selectedMachineTypeRef.current || selectedMachineType,
+            machineTypeName: machineTypeInput,
+            machineNumber: machineNumberInput || selectedMachineNumberRef.current || selectedMachineNumber,
+          },
           aiAssistSettings: {
             responsePattern: aiAssistSettings.responsePattern,
             customInstructions: aiAssistSettings.customInstructions,
@@ -2097,40 +2316,41 @@ export default function ChatPage() {
       const data = await response.json();
       // APIレスポンスのキーは `response` / `answer` の両方に対応させる
       let aiResponse = data.response || data.answer || '申し訳ございません。現在AI支援の応答を生成できません';
+      const qaData = data.qaData || null;
 
-      // 会話スタイルを適用
+      // qaDataが存在する場合は1問1答構造化データを優先使用
+      if (qaData) {
+        if (qaData.status === 'question' && qaData.question) {
+          aiResponse = applyConversationStyle(qaData.question);
+          qaData.question = aiResponse;
+        }
+        if (elapsedMinutes >= 15 && elapsedMinutes < 20) {
+          const timeWarn = `診断開始から${elapsedMinutes}分が経過しています。あと5分で技術支援センターへの救援要請をお勧めします。`;
+          qaData.safetyWarning = qaData.safetyWarning
+            ? `${qaData.safetyWarning}\n⏰ ${timeWarn}`
+            : `⏰ ${timeWarn}`;
+        }
+        return { response: aiResponse, qaData };
+      }
+
+      // qaDataが取得できない場合は従来のテキスト整形にフォールバック
       aiResponse = applyConversationStyle(aiResponse);
 
-      // 応答パターンに応じて調整
       if (aiAssistSettings.responsePattern === 'minimal') {
-        // 最小限表示：要点のみ簡潔に
-        const sentences = aiResponse.split(/[、。\n]/).filter(s => s.trim());
+        const sentences = aiResponse.split(/[、。\n]/).filter((s: string) => s.trim());
         aiResponse = sentences.slice(0, 2).join('、') + (sentences.length > 2 ? '...' : '');
-      } else if (aiAssistSettings.responsePattern === 'comprehensive') {
-        // 包括的表示：そのまま（既に包括的）
-      } else {
-        // 段階的表示（デフォルト）：1問1答形式を維持
-        // 既に1問1答形式なので、そのまま
       }
 
-      // カスタム指示を適用
-      if (aiAssistSettings.customInstructions) {
-        // カスタム指示があれば、応答の最後に追加するが、状況に応じて判断
-        // ただし、1問1答形式を維持するため、ここでは適用しない
-      }
-
-      // フレンドリーな言い回しに調整
       aiResponse = makeFriendlyResponse(aiResponse);
 
-      // 時間制限の警告を追加（15分経過時）
       if (elapsedMinutes >= 15 && elapsedMinutes < 20) {
         aiResponse += `\n\n⏰ 診断開始から${elapsedMinutes}分が経過しています。あと5分で技術支援センターへの救援要請をお勧めします。`;
       }
 
-      return aiResponse;
+      return { response: aiResponse, qaData: null };
     } catch (error) {
       console.error('AI支援応答生成エラー:', error);
-      return '申し訳ございません。現在AI支援の応答を生成できません。しばらく時間をおいてから再度お試しください。';
+      throw error;
     }
   };
 
@@ -2202,26 +2422,43 @@ export default function ChatPage() {
   };
 
   // メティングーージ送信処琁Eー拡張
-  const handleSendMessage = async (content: string, media: any[] = []) => {
-    if (!content.trim() && media.length === 0) return;
+  const handleSendMessage = async (
+    content: string,
+    media: any[] = []
+  ): Promise<boolean> => {
+    if (!content.trim() && media.length === 0) return false;
 
-    // トラブルシューティングモード�E場合�E特別な処琁E
+    // 機種・機械番号が未選択の場合は送信を禁止
+    if (!isMachineReady) {
+      toast({
+        title: '機種・機械番号の選択が必要です',
+        description: '画面上部の「機種」と「機械番号」を選択し、「AI支援開始」を押してから送信してください。',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    // トラブルシューティングモードの場合は特別な処理
     if (troubleshootingMode && troubleshootingSession) {
       await handleTroubleshootingAnswer(content);
-      return;
+      return true;
     }
 
-    // AI支援モード�E場合�E特別な処琁E
-    if (aiSupportMode) {
-      await handleAiSupportMessage(content, media);
-      return;
+    // AI支援モードが未開始の場合は開始を促す
+    if (!aiSupportMode) {
+      toast({
+        title: 'AI支援を開始してください',
+        description: '上部の「AI支援開始」ボタンを押して診断を開始してから送信してください。',
+        variant: 'destructive',
+      });
+      return false;
     }
 
-    // 通常のメティングーージ送信処琁E
-    sendMessage(content, media, false);
+    // AI支援モード中の自由文・音声・写真・選択ボタンはすべて handleAiSupportMessage (/api/chatgpt) に統一
+    return await handleAiSupportMessage(content, media);
   };
 
-  // トラブルシューティングQA開始�Eタンの追加
+  // トラブルシューティングQA開始ボタンの追加
   const handleStartTroubleshooting = () => {
     const problemDescription = prompt(
       '発生した事象を教えてください�E�例：エンジンが止まった、ブレーキが効かなぁEーど�E�E'
@@ -2235,9 +2472,12 @@ export default function ChatPage() {
   const handleClearChat = async () => {
     try {
       await clearChatHistory();
+      messagesRef.current = [];
       setTroubleshootingMode(false);
       setTroubleshootingSession(null);
       setAiSupportMode(false);
+      setAiApiError(null);
+      setLastFailedInput(null);
 
       // 機種・機械番号の選択状態�Eみクリア�E�選択肢シューティングは保持�E�E
       setSelectedMachineType('');
@@ -2388,7 +2628,7 @@ export default function ChatPage() {
   // エクスポート機能
   const handleExportChat = async () => {
     try {
-            const chatData = messages.map(msg => ({
+      const chatData = messages.map(msg => ({
         role: msg.role,
         content: msg.content,
         timestamp: new Date().toISOString(),
@@ -2413,19 +2653,19 @@ export default function ChatPage() {
   };
 
   return (
-    <div className='flex flex-col h-screen bg-gray-50'>
+    <div className='flex flex-col h-full min-h-0 bg-gray-50 overflow-hidden'>
       {/* ヘッダー - 固定表示 */}
-      <div className='sticky top-0 z-50 bg-white border-b px-6 py-2 flex items-center justify-between shadow-sm'>
+      <div className='shrink-0 z-40 bg-white border-b px-6 py-2 flex flex-wrap gap-4 items-center justify-between shadow-sm'>
         {/* 左側：機種・機械番号選択 */}
-        <div className='flex items-center gap-4'>
-          <div className='flex items-center gap-2'>
+        <div className='flex flex-wrap items-center gap-4'>
+          <div className='flex flex-wrap max-w-full items-center gap-2'>
             <Label
               htmlFor='machine-type'
-              className='text-sm font-medium text-gray-700'
+              className='!text-[30px] font-medium text-gray-700'
             >
               機種:
             </Label>
-            <div className='relative'>
+            <div className='relative max-w-full'>
               <TooltipProvider>
                 <Tooltip open={
                   aiSupportMode &&
@@ -2434,7 +2674,7 @@ export default function ChatPage() {
                   !machineTypeInput.trim()
                 }>
                   <TooltipTrigger asChild>
-                    <div className='w-56'>
+                    <div className='relative w-72 max-w-full'>
                       <Input
                         id='machine-type'
                         type='text'
@@ -2450,6 +2690,16 @@ export default function ChatPage() {
                           const value = e.target.value;
                           console.log('🔍 機種入力変更:', value);
                           setMachineTypeInput(value);
+                          machineRequestId.current++;
+                          setSelectedMachineType('');
+                          selectedMachineTypeRef.current = '';
+                          setSelectedMachineNumber('');
+                          selectedMachineNumberRef.current = '';
+                          setMachineNumberInput('');
+                          setMachines([]);
+                          setFilteredMachines([]);
+                          setMachinesError('');
+                          setIsLoadingMachines(false);
                           filterMachineTypes(value);
                           setShowMachineTypeSuggestions(true);
                         }}
@@ -2461,9 +2711,7 @@ export default function ChatPage() {
                           });
                           setShowMachineTypeSuggestions(true);
                           // フォーカス時、現在の入力値でフィルタリング（空の場合は全機種表示）
-                          if (machineTypes.length > 0) {
-                            filterMachineTypes(machineTypeInput);
-                          }
+                          setFilteredMachineTypes(machineTypes);
                         }}
                         onBlur={e => {
                           // ドロティング�Eダウン冁E�Eクリティングーの場合�E閉じなぁE
@@ -2480,8 +2728,23 @@ export default function ChatPage() {
                           }, 150);
                         }}
                         disabled={isLoadingMachineTypes}
-                        className='w-48'
+                        className='w-72 max-w-full h-[60px] !text-[30px] !pr-12'
                       />
+                      <button
+                        type='button'
+                        aria-label='機種マスタの一覧を表示'
+                        aria-expanded={showMachineTypeSuggestions}
+                        aria-controls='machine-type-menu'
+                        disabled={isLoadingMachineTypes}
+                        onMouseDown={event => event.preventDefault()}
+                        onClick={() => {
+                          setFilteredMachineTypes(machineTypes);
+                          setShowMachineTypeSuggestions(previous => !previous);
+                        }}
+                        className='absolute right-0 top-0 h-[60px] w-10 flex items-center justify-center'
+                      >
+                        <ChevronDown className='h-5 w-5' />
+                      </button>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side='top' className='bg-yellow-100 text-yellow-800 border-yellow-300'>
@@ -2503,7 +2766,7 @@ export default function ChatPage() {
               {showMachineTypeSuggestions && (
                 <div
                   id='machine-type-menu'
-                  className='absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto machine-type-dropdown'
+                  className='absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-72 overflow-y-auto machine-type-dropdown [&>*]:!text-[30px]'
                 >
                   {isLoadingMachineTypes ? (
                     <div className='px-3 py-2 text-sm text-gray-500'>
@@ -2511,9 +2774,10 @@ export default function ChatPage() {
                     </div>
                   ) : filteredMachineTypes.length > 0 ? (
                     filteredMachineTypes.map(type => (
-                      <div
+                      <button
+                        type='button'
                         key={type.id}
-                        className='px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm'
+                        className='block w-full text-left px-3 py-2 hover:bg-gray-100 cursor-pointer'
                         onClick={e => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -2526,30 +2790,36 @@ export default function ChatPage() {
                         tabIndex={0}
                       >
                         {type.machine_type_name}
-                      </div>
+                      </button>
                     ))
                   ) : (
                     <div className='px-3 py-2 text-sm text-gray-500'>
-                      {machineTypeInput.trim()
+                      {machineTypesError || (machineTypeInput.trim()
                         ? '該当する機種が見つかりません'
                         : machineTypes.length === 0
-                          ? '機種シューティングを読み込み中...'
-                          : '機種を入力してください'}
+                          ? '機種マスタに登録がありません'
+                          : '機種を入力してください')}
                     </div>
                   )}
+                </div>
+              )}
+              {machineTypesError && (
+                <div role='alert' className='mt-1 max-w-72 text-sm text-red-700'>
+                  {machineTypesError}
+                  <button type='button' className='ml-2 underline' onClick={fetchMachineTypes}>再取得</button>
                 </div>
               )}
             </div>
           </div>
 
-          <div className='flex items-center gap-2'>
+          <div className='flex flex-wrap max-w-full items-center gap-2'>
             <Label
               htmlFor='machine-number'
-              className='text-sm font-medium text-gray-700'
+              className='!text-[30px] font-medium text-gray-700'
             >
               機械番号:
             </Label>
-            <div className='relative'>
+            <div className='relative max-w-full'>
               <TooltipProvider>
                 <Tooltip open={
                   aiSupportMode &&
@@ -2559,7 +2829,7 @@ export default function ChatPage() {
                   !machineNumberInput.trim()
                 }>
                   <TooltipTrigger asChild>
-                    <div className='w-56'>
+                    <div className='relative w-72 max-w-full'>
                       <Input
                         id='machine-number'
                         type='text'
@@ -2575,6 +2845,8 @@ export default function ChatPage() {
                           const value = e.target.value;
                           console.log('🔍 機械番号入力変更:', value);
                           setMachineNumberInput(value);
+                          setSelectedMachineNumber('');
+                          selectedMachineNumberRef.current = '';
                           filterMachines(value);
                           setShowMachineNumberSuggestions(true);
                         }}
@@ -2618,8 +2890,23 @@ export default function ChatPage() {
                           }, 150);
                         }}
                         disabled={!selectedMachineType || isLoadingMachines}
-                        className='w-48'
+                        className='w-72 max-w-full h-[60px] !text-[30px] !pr-12'
                       />
+                      <button
+                        type='button'
+                        aria-label='機械番号マスタの一覧を表示'
+                        aria-expanded={showMachineNumberSuggestions}
+                        aria-controls='machine-number-menu'
+                        disabled={!selectedMachineType || isLoadingMachines}
+                        onMouseDown={event => event.preventDefault()}
+                        onClick={() => {
+                          setFilteredMachines(machines);
+                          setShowMachineNumberSuggestions(previous => !previous);
+                        }}
+                        className='absolute right-0 top-0 h-[60px] w-10 flex items-center justify-center'
+                      >
+                        <ChevronDown className='h-5 w-5' />
+                      </button>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side='top' className='bg-yellow-100 text-yellow-800 border-yellow-300'>
@@ -2641,13 +2928,14 @@ export default function ChatPage() {
               {showMachineNumberSuggestions && (
                 <div
                   id='machine-number-menu'
-                  className='absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto machine-number-dropdown'
+                  className='absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-72 overflow-y-auto machine-number-dropdown [&>*]:!text-[30px]'
                 >
                   {filteredMachines.length > 0 ? (
                     filteredMachines.map(machine => (
-                      <div
+                      <button
+                        type='button'
                         key={machine.id}
-                        className='px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm'
+                        className='block w-full text-left px-3 py-2 hover:bg-gray-100 cursor-pointer'
                         onClick={e => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -2660,32 +2948,46 @@ export default function ChatPage() {
                         tabIndex={0}
                       >
                         {machine.machine_number}
-                      </div>
+                      </button>
                     ))
                   ) : (
                     <div className='px-3 py-2 text-sm text-gray-500'>
-                      {machineNumberInput.trim()
+                      {machinesError || (machineNumberInput.trim()
                         ? '該当する機械番号が見つかりません'
                         : selectedMachineType
                           ? 'この機種に登録されている機械番号がありません'
-                          : '先に機種を選択してください'}
+                          : '先に機種を選択してください')}
                     </div>
                   )}
                 </div>
               )}
+              {machinesError && (
+                <div role='alert' className='mt-1 max-w-72 text-sm text-red-700'>
+                  {machinesError}
+                  <button type='button' className='ml-2 underline' onClick={() => fetchMachines(selectedMachineType)}>再取得</button>
+                </div>
+              )}
             </div>
+            {isUsingDevMachineData && (
+              <span
+                role='status'
+                className='px-2.5 py-1 rounded-md border border-amber-400 bg-amber-100 text-amber-900 text-xs font-bold whitespace-nowrap'
+              >
+                開発用データ
+              </span>
+            )}
           </div>
         </div>
 
         {/* 中央�E�AI支援・カメラ・応急処置ガイド�Eタン */}
-        <div className='flex items-center gap-4'>
+        <div className='flex flex-wrap items-center gap-4'>
           {/* 応急復旧マニュアルボタン */}
           <Button
             variant='outline'
             size='lg'
             onClick={handleEmergencyGuide}
             disabled={isLoadingGuides}
-            className='bg-yellow-400 border-yellow-600 text-yellow-900 hover:bg-yellow-500 border-3 px-6 py-2 text-lg font-bold'
+            className='bg-yellow-400 border-yellow-600 text-yellow-900 hover:bg-yellow-500 border-3 px-6 py-2 h-auto min-h-[66px] max-w-full whitespace-normal !text-[42px] font-bold'
           >
             <Activity className='w-6 h-6 mr-2' />
             応急復旧マニュアル
@@ -2696,22 +2998,32 @@ export default function ChatPage() {
             variant='outline'
             size='sm'
             onClick={handleCameraClick}
-            className='bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
+            className='bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 h-auto min-h-[54px] !text-[30px] [&_svg]:!size-8'
           >
             <Camera className='w-4 h-4 mr-2' />
             カメラ
           </Button>
 
-          {/* AI支援開始/終了ボタン - カメラの右側に配置 */}
+          {/* AI支援開始/終了ボタン - 機種・機械番号選択後に操作可能 */}
           <Button
             variant='outline'
             size='lg'
             onClick={aiSupportMode ? handleAiSupportExit : handleStartAiSupport}
-            disabled={isLoading}
-            className={`px-6 py-2 text-lg font-bold border-3 ${aiSupportMode
-              ? 'bg-orange-50 border-orange-600 text-orange-700 hover:bg-orange-100'
-              : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-600'
-              }`}
+            disabled={effectiveIsLoading || (!aiSupportMode && !isMachineReady)}
+            title={
+              !aiSupportMode && !isMachineReady
+                ? '先に機種と機械番号を選択してください'
+                : aiSupportMode
+                  ? 'AI支援を終了します'
+                  : 'AI支援（1問1答）を開始します'
+            }
+            className={`px-6 py-2 h-auto min-h-[66px] max-w-full whitespace-normal !text-[42px] font-bold border-3 ${
+              aiSupportMode
+                ? 'bg-orange-50 border-orange-600 text-orange-700 hover:bg-orange-100'
+                : isMachineReady
+                  ? 'bg-blue-600 text-white hover:bg-blue-700 border-blue-700 shadow-md'
+                  : 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed'
+            }`}
           >
             {aiSupportMode ? (
               <>
@@ -2725,6 +3037,24 @@ export default function ChatPage() {
               </>
             )}
           </Button>
+
+          {/* モード状態バッジ */}
+          <span
+            role='status'
+            className={`px-3 py-1.5 rounded-full text-sm font-bold border ${
+              aiSupportMode
+                ? 'bg-blue-100 text-blue-900 border-blue-400'
+                : isMachineReady
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                  : 'bg-amber-50 text-amber-900 border-amber-300'
+            }`}
+          >
+            {aiSupportMode
+              ? '🤖 AI支援モード中（1問1答）'
+              : isMachineReady
+                ? '✅ 準備完了（「AI支援開始」を押してください）'
+                : '⚠️ 機種・機械番号を選択してください'}
+          </span>
 
           {/* 時間表示 - AI支援モードが有効な時のみ表示 */}
           {aiSupportMode && (
@@ -2749,7 +3079,7 @@ export default function ChatPage() {
         </div>
 
         {/* 右側のアクションボタン */}
-        <div className='flex items-center gap-3'>
+        <div className='flex flex-wrap items-center gap-3'>
           <Button
             variant='outline'
             size='sm'
@@ -2783,50 +3113,339 @@ export default function ChatPage() {
         /* 通常チャティングーモーティング*/
         <>
           {/* メティングーージ表示エリア */}
-          <div className='flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth'>
-            {messages.map(message => (
-              <div
-                key={message.id}
-                className="w-full"
+          <div ref={chatScrollRef} className='flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 space-y-4 scroll-smooth relative'>
+            {showEmergencyGuide && (
+              <section aria-label='応急復旧マニュアルのファイル選択' className='rounded-lg border bg-white p-4 shadow-sm'>
+                <div className='mb-4 flex flex-wrap items-center justify-between gap-2'>
+                  <h2 className='text-xl font-semibold'>応急復旧マニュアルのファイル選択</h2>
+                  <div className='flex gap-2'>
+                    <Button variant='outline' size='sm' onClick={handleEmergencyGuide} disabled={isLoadingGuides}>
+                      <RefreshCw className='mr-2 h-4 w-4' />
+                      再取得
+                    </Button>
+                    <Button variant='ghost' size='sm' onClick={handleExitGuide}>
+                      <X className='mr-2 h-4 w-4' />
+                      閉じる
+                    </Button>
+                  </div>
+                </div>
+                {!selectedGuideId ? (
+                  <>
+                    <Input
+                      aria-label='マニュアルを検索'
+                      placeholder='タイトル・ファイル名・キーワードで検索...'
+                      value={searchQuery}
+                      onChange={event => handleSearch(event.target.value)}
+                      className='mb-4'
+                    />
+                    <div className='mb-4'>
+                      <KeywordButtons onKeywordClick={handleKeywordClick} />
+                    </div>
+                    {isLoadingGuides ? (
+                      <p role='status'>マニュアル一覧を読み込み中...</p>
+                    ) : guideError ? (
+                      <p role='alert' className='text-red-700'>{guideError}</p>
+                    ) : filteredGuides.length === 0 ? (
+                      <p className='text-gray-600'>選択できるマニュアルがありません。</p>
+                    ) : (
+                      <div aria-label='マニュアル一覧' className='flex flex-wrap items-start gap-4'>
+                        {filteredGuides.map(guide => (
+                          <button
+                            key={guide.id}
+                            type='button'
+                            aria-label={guide.title || guide.fileName}
+                            className='w-full min-w-0 md:w-[calc(50%-0.5rem)] rounded-lg border border-blue-200 bg-white p-4 text-left shadow-md transition hover:-translate-y-1 hover:bg-blue-50 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500'
+                            onClick={() => handleSelectGuide(guide.id)}
+                          >
+                            <span className='block break-words font-semibold text-blue-700'>
+                              {guide.title || guide.fileName}
+                            </span>
+                            {guide.fileName && <span className='mt-1 block break-words text-sm text-gray-600'>{guide.fileName}</span>}
+                            <span className='mt-2 block break-words text-sm text-gray-700'>{guide.description}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <EmergencyGuideDisplay
+                    key={selectedGuideId}
+                    guideId={selectedGuideId}
+                    onxit={() => setSelectedGuideId(null)}
+                    backButtonText='一覧に戻る'
+                    onSendToChat={() => {
+                      console.log('応急復旧マニュアルの履歴をチャットに追加しました');
+                    }}
+                  />
+                )}
+              </section>
+            )}
+            {/* AI支援開始前の案内バナー（機種・機械番号の選択およびAI支援開始のガイド） */}
+            {!aiSupportMode && (
+              <section
+                aria-label='AI支援開始案内'
+                className={`max-w-4xl mx-auto rounded-xl border-2 p-5 shadow-sm h-auto ${
+                  isMachineReady
+                    ? 'bg-blue-50/90 border-blue-400 text-blue-950'
+                    : 'bg-amber-50/95 border-amber-400 text-amber-950'
+                }`}
               >
-                <div className="w-full">
-                  {message.isAiResponse &&
-                    troubleshootingMode &&
-                    troubleshootingSession?.currentQuestion ===
-                    message.content ? (
-                    // トラブルシューティングQAバブル
-                    <TroubleshootingQABubble
-                      question={message.content}
-                      options={troubleshootingSession?.currentOptions || []}
-                      reasoning={troubleshootingSession?.reasoning}
-                      onAnswer={handleTroubleshootingAnswer}
-                      isLoading={isLoading}
-                    />
-                  ) : message.isAiResponse &&
-                    (message.content.includes('解決策') ||
-                      message.content.includes('緊急対応')) ? (
-                    // 解決策バブル
-                    <SolutionBubble
-                      solution={message.content}
-                      problemDescription={
-                        troubleshootingSession?.problemDescription
-                      }
-                      isEmergency={message.content.includes('緊急対応')}
-                    />
-                  ) : (
-                    // 通常のメッセージバブル
-                    <MessageBubble message={message} />
+                {!isMachineReady ? (
+                  <div className='space-y-2.5 min-w-0'>
+                    <h2 className='text-xl font-bold flex items-start gap-2 text-amber-900 leading-relaxed break-words'>
+                      <span className='flex-shrink-0'>⚠️</span>
+                      <span className='min-w-0 break-words'>機種と機械番号を選択してください</span>
+                    </h2>
+                    <p className='text-base text-amber-900 leading-relaxed break-words whitespace-normal'>
+                      AI故障診断（1問1答）を開始するには、画面上部の<strong>「機種」</strong>と<strong>「機械番号」</strong>を選択してください。未選択の状態ではAI支援の開始およびメッセージ送信はできません。
+                    </p>
+                  </div>
+                ) : (
+                  <div className='flex flex-wrap items-center justify-between gap-4 min-w-0'>
+                    <div className='space-y-2 flex-1 min-w-[240px]'>
+                      <h2 className='text-xl font-bold text-blue-900 leading-relaxed break-words whitespace-normal'>
+                        ✅ 機種・機械番号が選択されました（{machineTypeInput} / {machineNumberInput}）
+                      </h2>
+                      <p className='text-base text-blue-800 leading-relaxed break-words whitespace-normal'>
+                        「AI支援開始」ボタンを押すと、1問1答形式のAI故障対応支援を開始します。
+                      </p>
+                    </div>
+                    <Button
+                      type='button'
+                      size='lg'
+                      onClick={handleStartAiSupport}
+                      className='bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg px-6 py-3 h-auto whitespace-normal shadow flex-shrink-0'
+                    >
+                      <Brain className='w-5 h-5 mr-2 flex-shrink-0' />
+                      <span>AI支援開始</span>
+                    </Button>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* API通信エラー表示と再試行ボタン */}
+            {aiApiError && (
+              <section
+                role='alert'
+                aria-label='AI通信エラー'
+                className='max-w-4xl mx-auto rounded-xl border-2 border-red-400 bg-red-50 p-4 text-red-900 shadow-sm h-auto'
+              >
+                <div className='flex flex-wrap items-center justify-between gap-3 min-w-0'>
+                  <div className='space-y-1.5 flex-1 min-w-[220px]'>
+                    <p className='font-bold text-base leading-relaxed break-words'>⚠️ AI応答の取得中に通信エラーが発生しました</p>
+                    <p className='text-sm text-red-800 leading-relaxed break-words'>{aiApiError}</p>
+                    <p className='text-xs text-red-700 leading-relaxed break-words'>
+                      ネットワーク状態を確認のうえ、「再試行する」ボタンを押すか、もう一度選択ボタン／入力欄から送信してください。
+                    </p>
+                  </div>
+                  {lastFailedInput && (
+                    <Button
+                      type='button'
+                      variant='outline'
+                      disabled={effectiveIsLoading}
+                      onClick={() => handleAiSupportMessage(lastFailedInput.content, lastFailedInput.media)}
+                      className='border-red-600 bg-white text-red-700 hover:bg-red-100 font-bold h-auto py-2.5 px-4 flex-shrink-0'
+                    >
+                      <RefreshCw className='w-4 h-4 mr-1.5 flex-shrink-0' />
+                      再試行する
+                    </Button>
                   )}
                 </div>
-              </div>
-            ))}
+              </section>
+            )}
 
-            {isLoading && (
-              <div className='flex justify-end'>
+            {(() => {
+              const renderMessageItem = (
+                message: any,
+                index: number,
+                isInResizableContainer: boolean = false
+              ) => {
+                const qaData = (message as any).qaData;
+                const isLatestBubble = index === messages.length - 1;
+                const nextMessage = index + 1 < messages.length ? messages[index + 1] : null;
+                const selectedAnswerForBubble =
+                  nextMessage && !nextMessage.isAiResponse ? nextMessage.content : undefined;
+                const canGoBack =
+                  isLatestBubble &&
+                  index >= 2 &&
+                  !messages[index - 1]?.isAiResponse &&
+                  Boolean(messages[index - 2]?.isAiResponse);
+
+                return (
+                  <div key={message.id} className='w-full'>
+                    <div className='w-full'>
+                      {message.isAiResponse && qaData ? (
+                        qaData.status === 'solution' || qaData.status === 'emergency' ? (
+                          <SolutionBubble
+                            solution={message.content}
+                            reasoning={qaData.reasoning}
+                            isEmergency={qaData.status === 'emergency'}
+                            safetyWarning={qaData.safetyWarning}
+                            steps={qaData.steps}
+                            detailDescription={qaData.detailDescription}
+                            verifiedSource={qaData.verifiedSource}
+                            options={qaData.options}
+                            selectedAnswer={selectedAnswerForBubble}
+                            onAnswer={(ans, media) => handleSendMessage(ans, media)}
+                            onOpenGuide={handleOpenMatchedGuide}
+                            isLoading={effectiveIsLoading}
+                            isLatestBubble={isLatestBubble}
+                            canGoBack={canGoBack}
+                            onGoBack={handleBackToPreviousQuestion}
+                            contained={isInResizableContainer}
+                          />
+                        ) : (
+                          <TroubleshootingQABubble
+                            question={qaData.question || message.content}
+                            options={qaData.options || []}
+                            reasoning={qaData.reasoning}
+                            safetyWarning={qaData.safetyWarning}
+                            detailDescription={qaData.detailDescription}
+                            steps={qaData.steps}
+                            verifiedSource={qaData.verifiedSource}
+                            selectedAnswer={selectedAnswerForBubble}
+                            onAnswer={(ans, media) => handleSendMessage(ans, media)}
+                            onOpenGuide={handleOpenMatchedGuide}
+                            isLoading={effectiveIsLoading}
+                            isLatestBubble={isLatestBubble}
+                            canGoBack={canGoBack}
+                            onGoBack={handleBackToPreviousQuestion}
+                            contained={isInResizableContainer}
+                          />
+                        )
+                      ) : message.isAiResponse &&
+                        troubleshootingMode &&
+                        troubleshootingSession?.currentQuestion === message.content ? (
+                        <TroubleshootingQABubble
+                          question={message.content}
+                          options={troubleshootingSession?.currentOptions || []}
+                          reasoning={troubleshootingSession?.reasoning}
+                          onAnswer={handleTroubleshootingAnswer}
+                          isLoading={effectiveIsLoading}
+                          isLatestBubble={isLatestBubble}
+                          contained={isInResizableContainer}
+                        />
+                      ) : message.isAiResponse &&
+                        (message.content.includes('解決策') ||
+                          message.content.includes('緊急対応')) ? (
+                        <SolutionBubble
+                          solution={message.content}
+                          problemDescription={troubleshootingSession?.problemDescription}
+                          isEmergency={message.content.includes('緊急対応')}
+                          isLatestBubble={isLatestBubble}
+                          contained={isInResizableContainer}
+                        />
+                      ) : (
+                        <MessageBubble message={message} />
+                      )}
+                    </div>
+                  </div>
+                );
+              };
+
+              // C方式：最新のAI応答インデックスを特定（qaDataの有無にかかわらず最新のAI応答をメイン領域の先頭にする）
+              let latestAiIndex = -1;
+              for (let i = messages.length - 1; i >= 0; i--) {
+                if (messages[i]?.isAiResponse) {
+                  latestAiIndex = i;
+                  break;
+                }
+              }
+
+              if (latestAiIndex === -1) {
+                return (
+                  <div className='w-full max-w-4xl mx-auto space-y-4'>
+                    <section
+                      aria-label='最新のAI応答'
+                      className='w-full space-y-3'
+                    >
+                      {messages.map((msg, idx) => renderMessageItem(msg, idx))}
+                    </section>
+                  </div>
+                );
+              }
+
+              const pastEntries = messages
+                .slice(0, latestAiIndex)
+                .map((msg, idx) => ({ msg, idx }));
+              const latestAiEntry = {
+                msg: messages[latestAiIndex],
+                idx: latestAiIndex,
+              };
+              const trailingEntries = messages
+                .slice(latestAiIndex + 1)
+                .map((msg, offset) => ({ msg, idx: latestAiIndex + 1 + offset }));
+              const lastUserInPast = [...pastEntries]
+                .reverse()
+                .find(item => !item.msg.isAiResponse);
+
+              return (
+                <div className='w-full max-w-4xl mx-auto space-y-4'>
+                  {/* 1. 過去の会話履歴（折りたたみ式の履歴領域） */}
+                  {pastEntries.length > 0 && (
+                    <section
+                      aria-label='過去の会話履歴'
+                      className='rounded-lg border border-gray-300 bg-gray-50/90 shadow-sm overflow-hidden'
+                    >
+                      <div className='flex flex-wrap items-center justify-between gap-2 px-4 py-3 bg-gray-100/90'>
+                        <button
+                          type='button'
+                          onClick={() => setIsHistoryExpanded(prev => !prev)}
+                          aria-expanded={isHistoryExpanded}
+                          className='flex items-center gap-2 text-left font-bold text-gray-800 hover:text-blue-700 text-base'
+                        >
+                          {isHistoryExpanded ? (
+                            <ChevronUp className='w-5 h-5 text-blue-600 flex-shrink-0' />
+                          ) : (
+                            <ChevronDown className='w-5 h-5 text-blue-600 flex-shrink-0' />
+                          )}
+                          <span>
+                            {isHistoryExpanded
+                              ? `過去のやり取り履歴を閉じる（${pastEntries.length}件）`
+                              : `過去のやり取り履歴を表示（${pastEntries.length}件）`}
+                          </span>
+                        </button>
+
+                        {!isHistoryExpanded && lastUserInPast && (
+                          <div className='text-sm text-gray-700 truncate max-w-full md:max-w-md bg-white px-3 py-1 rounded border border-gray-200'>
+                            <span className='font-semibold text-gray-600'>直前の回答: </span>
+                            {lastUserInPast.msg.content}
+                          </div>
+                        )}
+                      </div>
+
+                      {isHistoryExpanded && (
+                        <div className='p-4 space-y-3 border-t border-gray-200 max-h-[45vh] overflow-y-auto bg-white/80'>
+                          {pastEntries.map(({ msg, idx }) => renderMessageItem(msg, idx))}
+                        </div>
+                      )}
+                    </section>
+                  )}
+
+                  {/* 2. 最新応答専用のメイン表示領域（移動・サイズ変更可能コンテナ） */}
+                  <section
+                    aria-label='最新のAI応答'
+                    className='w-full space-y-3'
+                  >
+                    <DraggableResizableCard
+                      boundaryRef={chatScrollRef}
+                      activeKey={latestAiEntry.msg.id}
+                    >
+                      {renderMessageItem(latestAiEntry.msg, latestAiEntry.idx, true)}
+                    </DraggableResizableCard>
+                    {trailingEntries.map(({ msg, idx }) => renderMessageItem(msg, idx))}
+                  </section>
+                </div>
+              );
+            })()}
+
+            {effectiveIsLoading && (
+              <div className='flex justify-end max-w-4xl mx-auto w-full'>
                 <div className='bg-white rounded-lg shadow-sm border p-4'>
                   <div className='flex items-center gap-2'>
                     <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600'></div>
-                    <span className='text-gray-600'>AIが応答を生�E中...</span>
+                    <span className='text-gray-600'>AIが応答を生成中...</span>
                   </div>
                 </div>
               </div>
@@ -2836,16 +3455,6 @@ export default function ChatPage() {
             <div ref={messagesEndRef} className='h-4' />
           </div>
 
-          {/* メティングーージ入力エリア�E�通常チャティングーモード！E*/}
-          <div className='border-t bg-white p-4'>
-            <MessageInput
-              onSendMessage={handleSendMessage}
-              isLoading={isLoading}
-              disabled={
-                troubleshootingMode && !troubleshootingSession?.currentQuestion
-              }
-            />
-          </div>
         </>
       )}
 
@@ -2855,108 +3464,6 @@ export default function ChatPage() {
       {/* 画像�Eレビューモーダル */}
       {showImagePreview && selectedImage && <ImagePreviewModal />}
 
-      {/* 応急処置ガイドモーダル */}
-      {showEmergencyGuide && (
-        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-          <div className='bg-white rounded-lg p-6 w-full max-w-6xl max-h-[85vh] overflow-y-auto'>
-            <div className='flex justify-between items-center mb-4'>
-              <h2 className='text-xl font-semibold'>応急処置ガイド</h2>
-              <Button
-                variant='ghost'
-                size='sm'
-                onClick={handleExitGuide}
-                className='text-gray-500 hover:text-gray-700'
-              >
-                <X className='w-4 h-4 mr-2' />
-                閉じる
-              </Button>
-            </div>
-
-            {/* 検索機�E */}
-            <div className='mb-4'>
-              <Input
-                type='text'
-                placeholder='ガイドを検索...'
-                value={searchQuery}
-                onChange={e => handleSearch(e.target.value)}
-                className='w-full'
-              />
-            </div>
-
-            {/* キーワード�Eタン */}
-            <div className='mb-4'>
-              <KeywordButtons onKeywordClick={handleKeywordClick} />
-            </div>
-
-            {/* ガイド一覧 */}
-            {!selectedGuideId && (
-              <div className='overflow-auto'>
-                <table className='w-full border-collapse border border-gray-300 text-sm'>
-                  <thead>
-                    <tr className='bg-gray-100'>
-                      <th className='border border-gray-300 p-3 text-left text-sm font-medium'>
-                        タイトル
-                      </th>
-                      <th className='border border-gray-300 p-3 text-left text-sm font-medium'>
-                        説昁E
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredGuides.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={2}
-                          className='border border-gray-300 p-4 text-center text-gray-500'
-                        >
-                          ガイドが見つかりません
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredGuides.map(guide => (
-                        <tr
-                          key={guide.id}
-                          className={`hover:bg-gray-50 cursor-pointer ${selectedGuideId === guide.id
-                            ? 'bg-blue-50 ring-2 ring-blue-500'
-                            : ''
-                            }`}
-                          onClick={() => handleSelectGuide(guide.id)}
-                        >
-                          <td className='border border-gray-300 p-3'>
-                            <div className='break-words leading-tight text-sm font-semibold hover:text-blue-600'>
-                              {guide.title}
-                            </div>
-                          </td>
-                          <td className='border border-gray-300 p-3'>
-                            <div className='break-words leading-tight text-sm text-gray-600'>
-                              {guide.description}
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* 選択されたガイド�E表示 */}
-            {selectedGuideId && (
-              <div className='mt-6'>
-                <EmergencyGuideDisplay
-                  guideId={selectedGuideId}
-                  onxit={() => setSelectedGuideId(null)}
-                  backButtonText='一覧に戻る'
-                  onSendToChat={() => {
-                    console.log('応急処置ガイドをチャットに送信 - 継続可能');
-                    // マニュアルは閉じずに継続できるようにする（EmergencyGuideDisplay側で制御）
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

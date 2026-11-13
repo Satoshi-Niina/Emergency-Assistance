@@ -127,7 +127,7 @@ function RootRedirect() {
   console.log('🔍 RootRedirect - コンポーネント実行開始');
   const { user, isLoading } = useAuth();
   const location = useLocation();
-  const tenantId = resolveTenantPath(location.pathname).tenantId;
+  const tenantId = resolveTenantPath(location.pathname).tenantId || user?.tenantId;
 
   console.log('🔍 RootRedirect - 認証状態確認:', {
     isLoading,
@@ -171,7 +171,7 @@ function AppContent() {
     <div className={isStandaloneApp ? 'min-h-screen' : 'flex flex-col h-screen'}>
       <AuthModeBadge />
       <ApiConnectionTest />
-      {!isStandaloneApp ? <Header /> : null}
+      <Header />
       <main className={isStandaloneApp ? 'min-h-screen' : 'flex-1 overflow-auto'}>
         {!isStandaloneApp ? <AuthModeNotice /> : null}
         <Suspense
@@ -230,7 +230,7 @@ function AppContent() {
             />
             <Route
               path='/troubleshooting'
-              element={<Navigate to='/apps/troubleshoot' replace />}
+              element={<Navigate to={buildTenantPath('/apps/troubleshoot', tenantResolution.tenantId)} replace />}
             />
             <Route
               path='/emergency-guide'
@@ -265,7 +265,7 @@ function AppContent() {
               }
             />
             <Route path='/not-found' element={<NotFoundPage />} />
-            <Route path='/' element={<Navigate to={buildTenantPath('/apps/troubleshoot', tenantResolution.tenantId)} replace />} />
+            <Route path='/' element={<RootRedirect />} />
             <Route path='*' element={<Navigate to='/not-found' replace />} />
           </Routes>
         </Suspense>

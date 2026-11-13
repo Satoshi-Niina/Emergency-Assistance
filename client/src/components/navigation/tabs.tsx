@@ -15,6 +15,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { useAuth } from '../../context/auth-context';
+import { buildTenantPath, resolveCurrentTenantId, resolveTenantPath } from '../../lib/tenant-path';
 
 interface TabItem {
   title: string;
@@ -26,7 +27,11 @@ interface TabItem {
 
 export function Tabs() {
   const location = useLocation();
-  const currentPath = location.pathname;
+  const resolvedPath = resolveTenantPath(location.pathname).pathname;
+  const currentPath = resolvedPath.startsWith('/apps/troubleshoot')
+    ? '/troubleshooting'
+    : resolvedPath;
+  const tenantId = resolveCurrentTenantId(location.pathname);
   const { user } = useAuth();
 
   // ユーザーロールに基づく表示制御
@@ -38,10 +43,10 @@ export function Tabs() {
       path: '/chat',
       icon: <MessageSquare className='mr-2 h-5 w-5 text-blue-600' />,
       className:
-        'text-blue-600 font-bold text-lg border border-blue-300 rounded-md bg-blue-50',
+        'text-blue-600 font-bold !text-[42px] border border-blue-300 rounded-md bg-blue-50',
     },
     {
-      title: '履歴管理',
+      title: '機械故障管理',
       path: '/history',
       icon: <History className='mr-2 h-4 w-4' />,
       adminOnly: true, // 管理者のみ
@@ -69,13 +74,13 @@ export function Tabs() {
   const filteredTabs = tabs.filter(tab => !tab.adminOnly || isAdmin);
 
   return (
-    <div className='flex items-center space-x-2'>
+    <div className='flex flex-wrap items-center gap-2'>
       {filteredTabs.map(tab => (
-        <Link key={tab.path} to={tab.path}>
+        <Link key={tab.path} to={buildTenantPath(tab.path, tenantId)} className='max-w-full'>
           <Button
             variant='ghost'
             className={cn(
-              'px-4 py-3 rounded-md',
+              'h-auto min-h-[60px] max-w-full whitespace-normal px-4 py-3 rounded-md !text-[30px]',
               currentPath === tab.path
                 ? 'text-primary font-semibold bg-blue-100'
                 : 'text-gray-600 hover:bg-gray-100',
