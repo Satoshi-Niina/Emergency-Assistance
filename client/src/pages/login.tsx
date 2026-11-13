@@ -6,7 +6,7 @@ export default function Login() {
       appId='troubleshoot'
       appTitle='共通ログイン'
       appSubtitle='応急処置支援アプリ'
-      redirectTo='/apps/troubleshoot'
+      redirectTo='/chat'
       heroTitle='応急処置支援アプリ'
       heroSubtitle='テナントに応じた認証とDB切替を行う共通ログイン画面です。'
     />

@@ -14,6 +14,7 @@ import { createSecurityMiddleware } from './config/security.mjs';
 import { attachTenantContext } from './middleware/tenant-context.mjs';
 
 import registerAuthRoutes from './routes/auth.mjs';
+import { registerDashboardSso } from './routes/dashboard-sso.mjs';
 import registerHealthRoutes from './routes/health.mjs';
 import registerDiagRoutes from './routes/diag.mjs';
 import registerHistoryRoutes from './routes/history.mjs';
@@ -58,6 +59,7 @@ export async function createApp() {
   // Register Manual Routes
   registerHealthRoutes(app); // /live, /ready, /api/health
   registerAuthRoutes(app);   // /api/auth
+  registerDashboardSso(app);
   registerDiagRoutes(app);   // /api/_diag
   registerHistoryRoutes(app); // /api/history
 

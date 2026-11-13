@@ -3,20 +3,21 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
     base: '/',
+    cacheDir: '.vite-cache',
     plugins: [react()],
     publicDir: 'public', // publicフォルダを明示的に指定
     server: {
-        port: 5173,
+        port: Number(process.env.CLIENT_PORT || 3006),
         host: true,
-        strictPort: false,
+        strictPort: true,
         proxy: {
             '/api': {
-                target: 'http://localhost:8080',
+                target: `http://127.0.0.1:${process.env.EMERGENCY_API_PORT || 3003}`,
                 changeOrigin: true,
                 secure: false,
                 configure: (proxy, options) => {
                     proxy.on('proxyReq', (proxyReq, req, res) => {
-                        console.log('Proxying request:', req.method, req.url, '-> http://localhost:3000');
+                        console.log('Proxying request:', req.method, req.url, '->', options.target);
                     });
                     proxy.on('error', (err, req, res) => {
                         console.error('Proxy error:', err);

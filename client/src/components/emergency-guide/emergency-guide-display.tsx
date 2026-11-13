@@ -120,6 +120,9 @@ export default function mergencyGuideDisplay({
             Pragma: 'no-cache',
             Expires: 'Thu, 01 Jan 1970 00:00:00 GMT',
             'X-Requested-With': 'XMLHttpRequest',
+            ...(localStorage.getItem('authToken') && {
+              Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+            }),
           },
         });
 

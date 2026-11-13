@@ -3,21 +3,27 @@ import { useChat } from '../../context/chat-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Camera, X } from 'lucide-react';
+import { Send, Camera, X, Mic, Square } from 'lucide-react';
 import { useIsMobile } from '../../hooks/use-mobile';
+import { useVoiceInput } from '../../hooks/use-voice-input';
 
 interface MessageInputProps {
   onSendMessage: (content: string, media?: any[]) => void;
   isLoading?: boolean;
   disabled?: boolean;
+  placeholder?: string;
 }
 
 export default function MessageInput({
   onSendMessage,
   isLoading = false,
   disabled = false,
+  placeholder,
 }: MessageInputProps) {
   const [message, setMessage] = useState('');
+  const voice = useVoiceInput(text => {
+    setMessage(previous => previous ? `${previous} ${text}` : text);
+  });
   const [media, setMedia] = useState<any[]>([]);
   const { recordedText, selectedText, draftMessage, setDraftMessage } =
     useChat();
@@ -58,7 +64,7 @@ export default function MessageInput({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim() && media.length === 0) return;
-    if (isLoading || disabled) return;
+    if (isLoading || disabled || voice.recording || voice.processing) return;
 
     const currentMessage = message;
     const currentMedia = [...media];
@@ -97,10 +103,10 @@ export default function MessageInput({
               <Textarea
                 ref={textareaRef}
                 className='absolute inset-0 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-1 overflow-y-auto text-lg'
-                placeholder={'メッセージを入力...'}
+                placeholder={placeholder || 'メッセージを入力...'}
                 value={message}
                 onChange={handleInputChange}
-                disabled={isLoading}
+                disabled={isLoading || disabled}
                 rows={1}
                 style={{ lineHeight: '1.2' }}
                 onKeyDown={e => {
@@ -130,10 +136,10 @@ export default function MessageInput({
                 ref={inputRef}
                 type='text'
                 className='w-full h-full bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-lg'
-                placeholder={'メッセージを入力...'}
+                placeholder={placeholder || 'メッセージを入力...'}
                 value={message}
                 onChange={handleInputChange}
-                disabled={isLoading}
+                disabled={isLoading || disabled}
               />
               {/* テキストがある場合にのみクリアボタンを表示 */}
               {message.trim() && (
@@ -149,7 +155,7 @@ export default function MessageInput({
           )}
           <Button
             type='submit'
-            disabled={isLoading || !message.trim()}
+            disabled={isLoading || disabled || voice.recording || voice.processing || !message.trim()}
             size='icon'
             variant='ghost'
             className='ml-1 p-1 min-w-[28px] min-h-[28px] h-7 w-7 bg-gradient-to-r from-sky-100 to-blue-100 hover:from-sky-200 hover:to-blue-200 rounded-full border border-blue-300'
@@ -157,6 +163,20 @@ export default function MessageInput({
             <Send className='h-4 w-4 text-blue-600' />
           </Button>
         </div>
+
+        <Button
+          type='button'
+          onClick={voice.recording ? voice.stop : voice.start}
+          disabled={isLoading || disabled || voice.processing}
+          aria-label={voice.recording ? '音声入力を停止' : '音声入力を開始'}
+          aria-pressed={voice.recording}
+          title={voice.recording ? '音声入力を停止' : 'マイクで日本語を入力'}
+          variant='outline'
+          size='icon'
+          className={`ml-2 h-16 w-16 shrink-0 !p-2 rounded-full [&_svg]:!size-8 ${voice.recording ? 'bg-red-100 text-red-700 animate-pulse' : 'text-blue-600'}`}
+        >
+          {voice.recording ? <Square className='h-5 w-5' /> : <Mic className='h-5 w-5' />}
+        </Button>
 
         {/* モバイル向けカメラボタン - 右配置 - コンパクト化 */}
         <div className='md:hidden flex flex-col items-center ml-2'>
@@ -166,9 +186,10 @@ export default function MessageInput({
           <Button
             type='button'
             onClick={handleCameraClick}
+            aria-label='カメラを開く'
             size='icon'
             variant='ghost'
-            className='p-2 h-10 w-10 rounded-full bg-gradient-to-r from-indigo-100 to-cyan-100 hover:from-indigo-200 hover:to-cyan-200 border border-indigo-300'
+            className='!p-2 h-16 w-16 shrink-0 rounded-full bg-gradient-to-r from-indigo-100 to-cyan-100 hover:from-indigo-200 hover:to-cyan-200 border border-indigo-300 [&_svg]:!size-8'
           >
             <Camera className='h-5 w-5 text-indigo-600' />
           </Button>
@@ -182,14 +203,21 @@ export default function MessageInput({
           <Button
             type='button'
             onClick={handleCameraClick}
+            aria-label='カメラを開く'
             size='icon'
             variant='ghost'
-            className='p-2 h-10 w-10 rounded-full bg-gradient-to-r from-indigo-100 to-cyan-100 hover:from-indigo-200 hover:to-cyan-200 border border-indigo-300'
+            className='!p-2 h-16 w-16 shrink-0 rounded-full bg-gradient-to-r from-indigo-100 to-cyan-100 hover:from-indigo-200 hover:to-cyan-200 border border-indigo-300 [&_svg]:!size-8'
           >
             <Camera className='h-5 w-5 text-indigo-600' />
           </Button>
         </div>
       </form>
+      {(voice.recording || voice.processing) && (
+        <p role='status' className='mt-1 text-sm text-blue-700'>
+          {voice.processing ? '音声を処理中...' : '音声入力中です。終了したら停止ボタンを押し、内容を確認して送信してください。'}
+        </p>
+      )}
+      {voice.error && <p role='alert' className='mt-1 text-sm text-red-700'>{voice.error}</p>}
     </div>
   );
 }

@@ -45,8 +45,10 @@ export default function CameraModal() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   // 常に背面カメラを使用する（切替機能なし）
   const [useBackCamera] = useState(true);
+  const [attachToCard, setAttachToCard] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<BlobPart[]>([]);
 
@@ -56,8 +58,12 @@ export default function CameraModal() {
 
   useEffect(() => {
     // Listen for open-camera event
-    const handleOpenCamera = event => {
-      console.log('📸 CameraModal: open-camera イベントを受信しました', event);
+    const handleOpenCamera = (event: Event) => {
+      const detail = (event as CustomEvent)?.detail;
+      console.log('📸 CameraModal: open-camera イベントを受信しました', detail);
+      setAttachToCard(Boolean(detail?.attachToCard));
+      setCapturedImage(null);
+      setCapturedBlob(null);
       setIsOpen(true);
     };
 
@@ -404,15 +410,23 @@ export default function CameraModal() {
           fileName: serverFileName
         });
         
-        await sendMessage('画像を送信しました', [
-          {
-            type: 'image',
-            url: imageUrl,  // サーバーから返却されたURL（相対パス）
-            thumbnail: capturedImage, // ローカルのBlob URLをサムネイルとして使用（即時表示用）
-            fileName: serverFileName,  // サーバーが生成したファイル名（history_xxx.jpg）
-            title: 'カメラ画像',
-          },
-        ]);
+        const mediaItem = {
+          type: 'image' as const,
+          url: imageUrl,  // サーバーから返却されたURL（相対パス）
+          thumbnail: capturedImage, // ローカルのBlob URLをサムネイルとして使用（即時表示用）
+          fileName: serverFileName,  // サーバーが生成したファイル名（history_xxx.jpg）
+          title: 'カメラ画像',
+        };
+
+        if (attachToCard) {
+          window.dispatchEvent(
+            new CustomEvent('camera-media-attached', {
+              detail: { mediaItem },
+            })
+          );
+        } else {
+          await sendMessage('画像を送信しました', [mediaItem]);
+        }
 
         // BlobURLをクリーンアップ（即時ではなく遅延させることで表示を維持）
         // メッセージバブルが表示された後に破棄されるようにする
@@ -425,8 +439,10 @@ export default function CameraModal() {
         setCapturedBlob(null);
 
         toast({
-          title: '画像を送信しました',
-          description: '画像がチャットに追加されました。',
+          title: attachToCard ? '画像をカードに添付しました' : '画像を送信しました',
+          description: attachToCard
+            ? '質問カードの「送信」ボタンから状況と一緒にAIへ送信できます。'
+            : '画像がチャットに追加されました。',
         });
       } catch (error) {
         console.error('❌ 画像送信エラー:', error);
@@ -577,16 +593,45 @@ export default function CameraModal() {
           )}
         </div>
 
-        <div className='p-4 bg-blue-50'>
+        <div className='p-4 bg-blue-50 space-y-2'>
+          <input
+            ref={fileInputRef}
+            type='file'
+            accept='image/*'
+            className='hidden'
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const previewUrl = URL.createObjectURL(file);
+              setIsVideoMode(false);
+              setCapturedBlob(file);
+              setCapturedImage(previewUrl);
+              e.target.value = '';
+            }}
+          />
           {capturedImage ? (
-            <Button
-              className='w-full bg-blue-600 text-white py-3 rounded-lg font-medium text-lg'
-              onClick={handleSend}
-            >
-              送信する
-            </Button>
+            <div className='flex gap-2'>
+              <Button
+                type='button'
+                variant='outline'
+                className='h-auto py-3 px-4'
+                onClick={() => {
+                  setCapturedImage(null);
+                  setCapturedBlob(null);
+                }}
+              >
+                やり直す
+              </Button>
+              <Button
+                type='button'
+                className='flex-1 bg-blue-600 text-white py-3 rounded-lg font-medium text-lg h-auto'
+                onClick={handleSend}
+              >
+                {attachToCard ? 'カードに添付する' : '送信する'}
+              </Button>
+            </div>
           ) : (
-            <div className='flex items-center justify-between'>
+            <div className='flex flex-wrap items-center justify-between gap-2'>
               <p className='text-sm text-blue-700 font-medium'>
                 {isVideoMode
                   ? isRecording
@@ -594,6 +639,18 @@ export default function CameraModal() {
                     : '◎ をタップして録画開始'
                   : '○ をタップして写真撮影'}
               </p>
+              {!isVideoMode && (
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='sm'
+                  onClick={() => fileInputRef.current?.click()}
+                  className='bg-white border-blue-300 text-blue-700 hover:bg-blue-100 h-auto py-2 px-3 text-sm'
+                >
+                  <Upload className='w-4 h-4 mr-1.5' />
+                  画像を選択
+                </Button>
+              )}
             </div>
           )}
         </div>
